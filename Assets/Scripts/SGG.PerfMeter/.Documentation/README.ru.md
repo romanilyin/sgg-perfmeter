@@ -53,7 +53,7 @@ public static class PerfMeterBootstrap
 
 ## Runtime-метрики
 
-Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder` без per-frame allocation со стороны PerfMeter.
+Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder`. Путь сбора метрик избегает per-frame allocation со стороны PerfMeter; overlay text refresh throttled и пока пересобирает managed strings с частотой обновления overlay.
 
 - Тайминги: `CpuFrameTimeMs`, `CpuMainThreadFrameTimeMs`, `CpuRenderThreadFrameTimeMs`, `CpuMainThreadPresentWaitTimeMs`, `GpuFrameTimeMs`.
 - FPS-статистика: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, `SevereFrameSpikeCount`; источник - `FrameTiming.cpuFrameTime`, не `Time.deltaTime`.
@@ -73,6 +73,7 @@ Runtime overlay создается программно на UI Toolkit (`UIDocu
 - По умолчанию overlay находится в правом верхнем углу (`TopRight`) и режиме `Full`; доступные углы: `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`.
 - Режимы: `FpsOnly` показывает одну строку FPS/1%/0.1%, `TextCompact` показывает компактную текстовую сводку, `Graphs` показывает FPS и CPU/GPU графики, `Full` добавляет счетчики render/memory/overdraw.
 - Label обновляется максимум 4 раза в секунду из последних runtime snapshots, а не каждый кадр.
+- Полный zero-allocation refresh overlay остается в backlog: разбить text block на стабильные field labels, закэшировать enum strings, форматировать числа в переиспользуемые buffers и обновлять только изменившиеся labels вместо пересборки текста через `StringBuilder`.
 - Графики рисуются через UI Toolkit `generateVisualContent`; CPU-граф использует stacked area для `render`, `main` и остатка до `frame`, а `frame` рисуется верхней границей без суммирования `frame + main + render`.
 - Справа от графиков выводятся цветные подписи-плашки `frame`, `other`, `main`, `render` и `gpu` с текущим значением, средним, худшими 1% и 0.1% по времени кадра; числа имеют фиксированную ширину относительно текущего масштаба/максимума.
 - Если GPU timing временно недоступен, GPU-плашка становится серой, текущее значение заменяется underscore placeholder, а средние/история используют только валидные samples.

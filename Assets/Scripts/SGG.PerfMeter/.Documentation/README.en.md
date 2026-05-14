@@ -53,7 +53,7 @@ public static class PerfMeterBootstrap
 
 ## Runtime Metrics
 
-The runtime singleton updates snapshots in `Update()` with real values from `FrameTimingManager` and `ProfilerRecorder` without PerfMeter-side per-frame allocations.
+The runtime singleton updates snapshots in `Update()` with real values from `FrameTimingManager` and `ProfilerRecorder`. The metric collection path avoids PerfMeter-side per-frame allocations; the overlay text refresh is throttled and still rebuilds managed strings at the refresh interval.
 
 - Timings: `CpuFrameTimeMs`, `CpuMainThreadFrameTimeMs`, `CpuRenderThreadFrameTimeMs`, `CpuMainThreadPresentWaitTimeMs`, `GpuFrameTimeMs`.
 - FPS stats: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, and `SevereFrameSpikeCount`; the source is `FrameTiming.cpuFrameTime`, not `Time.deltaTime`.
@@ -73,6 +73,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - The overlay defaults to the top-right corner (`TopRight`) and `Full` mode; available corners are `TopLeft`, `TopRight`, `BottomLeft`, and `BottomRight`.
 - Modes: `FpsOnly` shows one FPS/1%/0.1% line, `TextCompact` shows a compact text summary, `Graphs` shows FPS plus CPU/GPU graphs, and `Full` adds render/memory/overdraw counters.
 - The label is refreshed at most 4 times per second from the latest runtime snapshots, not every frame.
+- Full zero-allocation overlay refresh is backlog work: split the text block into stable field labels, cache enum strings, use custom numeric formatting into reusable buffers, and update only changed labels instead of rebuilding text with `StringBuilder`.
 - Graphs are drawn through UI Toolkit `generateVisualContent`; the CPU graph uses stacked areas for `render`, `main`, and the remainder up to `frame`, while `frame` is drawn as the upper boundary without summing `frame + main + render`.
 - The right side of the graphs shows colored label badges for `frame`, `other`, `main`, `render`, and `gpu` with current, average, worst 1%, and worst 0.1% timings; numbers use fixed width relative to the current graph scale/maximum.
 - If GPU timing is temporarily unavailable, the GPU badge turns gray, the current value uses an underscore placeholder, and averages/history use valid samples only.

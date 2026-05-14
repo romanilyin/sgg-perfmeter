@@ -34,6 +34,7 @@ Still pending / needs validation:
 - overdraw heatmap mode;
 - CSV/JSON session export;
 - fully validated self-overhead subtraction;
+- full zero-allocation overlay refresh path with field labels, cached enum strings, custom numeric formatting, and no `StringBuilder` text rebuilds;
 - CI workflow for Unity batchmode compile/tests.
 
 ## Requirements
@@ -453,7 +454,7 @@ Recommended next verification targets:
 - GPU timings can be delayed or unavailable depending on platform and graphics API.
 - Bottleneck classification is intentionally simple and should be hardened before treating it as authoritative.
 - Present/VSync-limited classification is not a separate enum value yet.
-- The overlay refresh is throttled, but text assignment still creates managed strings on refresh.
+- The overlay refresh is throttled, but text assignment still creates managed strings on refresh; full zero-allocation overlay refresh is tracked as a later optimization.
 - Self-overhead marker exists, but full overhead subtraction is not finalized.
 - Overdraw heatmap output is not implemented yet.
 - CSV/JSON session export is not implemented yet.

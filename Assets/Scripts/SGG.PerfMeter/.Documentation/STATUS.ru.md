@@ -31,4 +31,5 @@
 - Численное измерение overdraw использует replacement shader, atomic fragment counting и `AsyncGPUReadback`; visual heatmap output еще не реализован.
 - Overdraw shader требует поддержку fragment UAV/storage buffer; поведение на OpenGL ES и других ограниченных backend требует отдельной проверки.
 - Аналитика Render Graph passes/aliasing/merge еще не реализована.
+- Полный zero-allocation refresh overlay еще не реализован; текущий overlay throttles text rebuilds и managed string assignment до refresh interval.
 - Manual device validation еще требуется, особенно для поведения Android Vulkan/GLES GPU timing.
