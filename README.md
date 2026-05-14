@@ -119,7 +119,7 @@ SGG/Perfmeter/Setup
 Run the recommended setup:
 
 1. Enable **Frame Timing Stats**.
-2. Install `PerfMeterRenderGraphFeature` into the active URP renderer asset.
+2. Review the discovered URP renderer assets and install `PerfMeterRenderGraphFeature` into all missing renderers or only the selected ones.
 3. Copy or add the initialization snippet.
 4. Enter Play Mode and verify the overlay.
 
@@ -326,7 +326,7 @@ The package includes `PerfMeterRenderGraphFeature`.
 Recommended installation:
 
 ```text
-SGG/Perfmeter/Setup -> Install Renderer Feature
+SGG/Perfmeter/Setup -> URP Renderer Features -> Install All Missing / Install Selected
 ```
 
 Manual installation:

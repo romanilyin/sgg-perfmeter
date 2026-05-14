@@ -122,6 +122,72 @@
     margin-bottom: 4px;
 }
 
+.pm-renderer-list {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.pm-renderer-empty {
+    color: var(--pm-text-muted);
+    background-color: rgba(20, 20, 20, 0.35);
+    padding-top: 4px;
+    padding-right: 6px;
+    padding-bottom: 4px;
+    padding-left: 6px;
+}
+
+.pm-renderer-row {
+    flex-direction: row;
+    align-items: flex-start;
+    background-color: rgba(20, 20, 20, 0.35);
+    padding-top: 4px;
+    padding-right: 6px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    margin-bottom: 3px;
+}
+
+.pm-renderer-row--installed {
+    background-color: rgba(30, 60, 42, 0.35);
+}
+
+.pm-renderer-toggle {
+    width: 22px;
+    min-width: 22px;
+    margin-top: 0;
+    margin-right: 4px;
+}
+
+.pm-renderer-status {
+    width: 128px;
+    min-width: 128px;
+    margin-right: 8px;
+    -unity-font-style: bold;
+}
+
+.pm-renderer-status--installed {
+    color: #35b66f;
+}
+
+.pm-renderer-status--missing {
+    color: #ffc107;
+}
+
+.pm-renderer-text {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.pm-renderer-name {
+    color: #f2f2f2;
+    -unity-font-style: bold;
+}
+
+.pm-renderer-path {
+    color: var(--pm-text-muted);
+    white-space: normal;
+}
+
 .pm-indicator {
     width: 10px;
     height: 10px;

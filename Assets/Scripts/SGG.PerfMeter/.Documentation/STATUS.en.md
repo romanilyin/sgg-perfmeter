@@ -18,7 +18,7 @@
 
 ## Setup
 
-- Open `SGG/Perfmeter/Setup` to inspect the project, install `PerfMeterRenderGraphFeature`, and copy bootstrap code.
+- Open `SGG/Perfmeter/Setup` to inspect the project, install `PerfMeterRenderGraphFeature` into all or selected URP renderer assets, and copy bootstrap code.
 - For headless/agent setup, call `SGG.PerfMeter.Editor.Setup.PerfMeterSetupActions.RunRecommendedSetup()` from an Editor context.
 - Add `PerfMeterRenderGraphFeature` to the active URP renderer asset when Render Graph markers or numerical overdraw measurement are needed; the setup window does this automatically for discovered URP renderer assets.
 - Enable Player Settings -> Rendering -> Frame Timing Stats before relying on `FrameTimingManager` in builds.

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using SGG.PerfMeter.Editor.Setup;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -12,8 +11,8 @@ namespace SGG.PerfMeter.Editor.UI
 {
 	public sealed class PerfMeterSetupWindow : EditorWindow
 	{
-		private readonly StringBuilder _builder = new StringBuilder(512);
 		private readonly List<Button> _runtimeButtons = new List<Button>();
+		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private VisualElement _setupPanel;
 		private VisualElement _runtimePanel;
 		private ToolbarToggle _setupTab;
@@ -25,8 +24,11 @@ namespace SGG.PerfMeter.Editor.UI
 		private VisualElement _projectIndicator;
 
 		private Label _rendererStatus;
-		private Label _rendererList;
+		private VisualElement _rendererList;
 		private VisualElement _rendererIndicator;
+		private Button _installSelectedRendererButton;
+		private Button _installAllMissingRendererButton;
+		private Button _selectMissingRendererButton;
 
 		private TextField _initCode;
 		private Toggle _initOverlayVisible;
@@ -139,10 +141,14 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			VisualElement section = AddSection(parent, "URP Renderer Features");
 			_rendererIndicator = AddStatusLine(section, out _rendererStatus);
-			_rendererList = AddRow(section, "Renderers");
+			_rendererList = new VisualElement();
+			_rendererList.AddToClassList("pm-renderer-list");
+			AddControlRow(section, "Renderers", _rendererList);
 
 			VisualElement actions = AddActions(section);
-			AddButton(actions, "Install Renderer Feature", () => RunAction("Install Renderer Feature", PerfMeterSetupActions.InstallRendererFeatures));
+			_installSelectedRendererButton = AddButton(actions, "Install Selected", () => RunAction("Install Selected", () => PerfMeterSetupActions.InstallRendererFeatures(GetSelectedRendererPaths())));
+			_installAllMissingRendererButton = AddButton(actions, "Install All Missing", () => RunAction("Install All Missing", PerfMeterSetupActions.InstallRendererFeatures));
+			_selectMissingRendererButton = AddButton(actions, "Select Missing", SelectMissingRenderers);
 			AddButton(actions, "Refresh", RefreshAll);
 		}
 
@@ -345,40 +351,164 @@ namespace SGG.PerfMeter.Editor.UI
 			SetIndicator(_projectIndicator, status.FrameTimingStatsEnabled, !status.FrameTimingStatsEnabled);
 
 			_rendererStatus.text = status.RendererMessage;
-			_rendererList.text = BuildRendererList(status);
+			BuildRendererList(status);
+			RefreshRendererButtons(status);
 			SetIndicator(_rendererIndicator, status.AllRenderersConfigured, status.Renderers.Count > 0 && !status.AllRenderersConfigured);
 			RefreshInitializationCode();
 			RefreshRuntimePanel();
 		}
 
-		private string BuildRendererList(PerfMeterSetupUtility.PerfMeterSetupStatus status)
+		private void BuildRendererList(PerfMeterSetupUtility.PerfMeterSetupStatus status)
 		{
-			if (status.Renderers.Count == 0)
+			if (_rendererList == null)
 			{
-				return "No renderer assets discovered.";
+				return;
 			}
 
-			_builder.Length = 0;
+			_rendererList.Clear();
+			if (status.Renderers.Count == 0)
+			{
+				Label emptyLabel = new Label("No renderer assets discovered.");
+				emptyLabel.AddToClassList("pm-renderer-empty");
+				_rendererList.Add(emptyLabel);
+				_selectedRendererPaths.Clear();
+				return;
+			}
+
+			HashSet<string> discoveredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			for (int i = 0; i < status.Renderers.Count; i++)
 			{
 				PerfMeterSetupUtility.RendererSetupStatus renderer = status.Renderers[i];
-				if (i > 0)
+				discoveredPaths.Add(renderer.AssetPath);
+				if (renderer.HasPerfMeterFeature)
 				{
-					_builder.Append('\n');
+					_selectedRendererPaths.Remove(renderer.AssetPath);
 				}
 
-				_builder.Append(renderer.HasPerfMeterFeature ? "OK " : "Missing ");
-				_builder.Append(string.IsNullOrEmpty(renderer.Name) ? "Renderer" : renderer.Name);
-				if (renderer.HasMissingFeatureReference)
-				{
-					_builder.Append(" (has missing feature reference)");
-				}
-
-				_builder.Append('\n');
-				_builder.Append(renderer.AssetPath);
+				_rendererList.Add(CreateRendererRow(renderer));
 			}
 
-			return _builder.ToString();
+			string[] selectedPaths = GetSelectedRendererPaths();
+			for (int i = 0; i < selectedPaths.Length; i++)
+			{
+				if (!discoveredPaths.Contains(selectedPaths[i]))
+				{
+					_selectedRendererPaths.Remove(selectedPaths[i]);
+				}
+			}
+		}
+
+		private VisualElement CreateRendererRow(PerfMeterSetupUtility.RendererSetupStatus renderer)
+		{
+			string assetPath = renderer.AssetPath ?? string.Empty;
+			bool canInstall = !renderer.HasPerfMeterFeature && !string.IsNullOrEmpty(assetPath);
+
+			VisualElement row = new VisualElement();
+			row.AddToClassList("pm-renderer-row");
+			if (renderer.HasPerfMeterFeature)
+			{
+				row.AddToClassList("pm-renderer-row--installed");
+			}
+
+			Toggle toggle = new Toggle();
+			toggle.AddToClassList("pm-renderer-toggle");
+			toggle.SetEnabled(canInstall);
+			toggle.SetValueWithoutNotify(canInstall && _selectedRendererPaths.Contains(assetPath));
+			toggle.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue)
+				{
+					_selectedRendererPaths.Add(assetPath);
+				}
+				else
+				{
+					_selectedRendererPaths.Remove(assetPath);
+				}
+
+				RefreshSelectedRendererButton();
+			});
+			row.Add(toggle);
+
+			Label statusLabel = new Label(GetRendererStatusText(renderer));
+			statusLabel.AddToClassList("pm-renderer-status");
+			statusLabel.AddToClassList(renderer.HasPerfMeterFeature ? "pm-renderer-status--installed" : "pm-renderer-status--missing");
+			row.Add(statusLabel);
+
+			VisualElement textColumn = new VisualElement();
+			textColumn.AddToClassList("pm-renderer-text");
+			Label nameLabel = new Label(string.IsNullOrEmpty(renderer.Name) ? "Renderer" : renderer.Name);
+			nameLabel.AddToClassList("pm-renderer-name");
+			Label pathLabel = new Label(assetPath);
+			pathLabel.AddToClassList("pm-renderer-path");
+			textColumn.Add(nameLabel);
+			textColumn.Add(pathLabel);
+			row.Add(textColumn);
+
+			return row;
+		}
+
+		private void RefreshRendererButtons(PerfMeterSetupUtility.PerfMeterSetupStatus status)
+		{
+			bool hasMissing = HasMissingRendererFeature(status);
+			RefreshSelectedRendererButton();
+			_installAllMissingRendererButton?.SetEnabled(hasMissing);
+			_selectMissingRendererButton?.SetEnabled(hasMissing);
+		}
+
+		private void RefreshSelectedRendererButton()
+		{
+			_installSelectedRendererButton?.SetEnabled(_selectedRendererPaths.Count > 0);
+		}
+
+		private void SelectMissingRenderers()
+		{
+			PerfMeterSetupUtility.PerfMeterSetupStatus status = PerfMeterSetupUtility.GetStatus();
+			_selectedRendererPaths.Clear();
+			for (int i = 0; i < status.Renderers.Count; i++)
+			{
+				PerfMeterSetupUtility.RendererSetupStatus renderer = status.Renderers[i];
+				if (!renderer.HasPerfMeterFeature && !string.IsNullOrEmpty(renderer.AssetPath))
+				{
+					_selectedRendererPaths.Add(renderer.AssetPath);
+				}
+			}
+
+			BuildRendererList(status);
+			RefreshRendererButtons(status);
+			if (_lastActionLabel != null)
+			{
+				_lastActionLabel.text = "Selected " + _selectedRendererPaths.Count + " renderer asset(s) missing PerfMeter feature.";
+			}
+		}
+
+		private string[] GetSelectedRendererPaths()
+		{
+			string[] paths = new string[_selectedRendererPaths.Count];
+			_selectedRendererPaths.CopyTo(paths);
+			return paths;
+		}
+
+		private static bool HasMissingRendererFeature(PerfMeterSetupUtility.PerfMeterSetupStatus status)
+		{
+			for (int i = 0; i < status.Renderers.Count; i++)
+			{
+				if (!status.Renderers[i].HasPerfMeterFeature)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static string GetRendererStatusText(PerfMeterSetupUtility.RendererSetupStatus renderer)
+		{
+			if (renderer.HasPerfMeterFeature)
+			{
+				return renderer.HasMissingFeatureReference ? "Installed + broken refs" : "Installed";
+			}
+
+			return renderer.HasMissingFeatureReference ? "Missing + broken refs" : "Missing";
 		}
 
 		private void CopyInitializationCode()

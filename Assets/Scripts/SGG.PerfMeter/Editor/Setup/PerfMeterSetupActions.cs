@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
@@ -18,6 +19,11 @@ namespace SGG.PerfMeter.Editor.Setup
 		public static PerfMeterSetupActionResult InstallRendererFeatures()
 		{
 			return ToPublicResult(PerfMeterSetupUtility.InstallRendererFeatures());
+		}
+
+		public static PerfMeterSetupActionResult InstallRendererFeatures(IEnumerable<string> rendererAssetPaths)
+		{
+			return ToPublicResult(PerfMeterSetupUtility.InstallRendererFeatures(rendererAssetPaths));
 		}
 
 		public static PerfMeterSetupActionResult CopyInitializationSnippetToClipboard()

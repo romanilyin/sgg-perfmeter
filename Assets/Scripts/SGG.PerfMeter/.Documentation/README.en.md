@@ -18,7 +18,7 @@ Queries are safe before the runtime is started: normal reads return a snapshot w
 Open `SGG/Perfmeter/Setup` to prepare the project without editing URP renderer assets by hand.
 
 - `Project Settings` shows `Frame Timing Stats` status and can enable the Player Setting with `Enable Frame Timing`.
-- `URP Renderer Features` discovers project URP renderer assets and adds `PerfMeterRenderGraphFeature` with `Install Renderer Feature` without creating duplicates.
+- `URP Renderer Features` lists discovered URP renderer assets with installed/missing status and can add `PerfMeterRenderGraphFeature` to all missing renderers or only selected renderers without creating duplicates.
 - `Initialization Code` shows the runtime overlay bootstrap; `Overlay Visible`, `Target FPS`, `Overlay Corner`, and `Overlay Mode` options immediately update the code copied by `Copy Init Code`.
 - The `Runtime` tab is for Play Mode: buttons are disabled in Edit Mode, and in Play Mode they switch target FPS, overlay mode/corner, show or hide the overlay, and start a short overdraw measurement.
 
@@ -88,7 +88,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 
 `PerfMeterRenderGraphFeature` adds a URP 17 Render Graph marker pass with a dedicated profiling sampler named `SGG.PerfMeter.Overlay` and an opt-in pass for numerical overdraw measurement. The overlay marker does not render heavy graphics; it is reserved for future `ProfilerRecorder`-based measurement and subtraction of the tool cost.
 
-- Preferred installation: `SGG/Perfmeter/Setup` -> `Install Renderer Feature`.
+- Preferred installation: `SGG/Perfmeter/Setup` -> select missing renderers or use `Install All Missing`.
 - Manual installation: add the feature to the renderer asset, for example `Assets/Settings/PC_Renderer.asset` for PC or `Assets/Settings/Mobile_Renderer.asset` for Mobile.
 - In the renderer asset Inspector, choose `Add Renderer Feature` -> `Perf Meter Render Graph Feature`.
 - Keep `Enabled` on, leave `Render Pass Event` at the default `AfterRenderingPostProcessing`, or switch it to `AfterRendering` if the marker must run after the whole frame.

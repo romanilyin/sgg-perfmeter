@@ -106,6 +106,71 @@ public static class PerfMeterBootstrap
 			return InstallResult.Ok("Installed PerfMeter Render Graph feature in " + installedCount + " renderer asset(s).");
 		}
 
+		internal static InstallResult InstallRendererFeatures(IEnumerable<string> rendererAssetPaths)
+		{
+			if (rendererAssetPaths == null)
+			{
+				return InstallResult.Fail("No renderer assets selected.");
+			}
+
+			HashSet<string> requestedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			foreach (string rendererAssetPath in rendererAssetPaths)
+			{
+				if (!string.IsNullOrEmpty(rendererAssetPath))
+				{
+					requestedPaths.Add(rendererAssetPath.Replace('\\', '/'));
+				}
+			}
+
+			if (requestedPaths.Count == 0)
+			{
+				return InstallResult.Fail("No renderer assets selected.");
+			}
+
+			List<RendererSetupStatus> renderers = FindRendererStatuses();
+			if (renderers.Count == 0)
+			{
+				return InstallResult.Fail("No URP renderer assets were found.");
+			}
+
+			int matchedCount = 0;
+			int installedCount = 0;
+			for (int i = 0; i < renderers.Count; i++)
+			{
+				RendererSetupStatus rendererStatus = renderers[i];
+				if (!requestedPaths.Contains(rendererStatus.AssetPath))
+				{
+					continue;
+				}
+
+				matchedCount++;
+				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature)
+				{
+					continue;
+				}
+
+				if (AddRendererFeature(rendererStatus.RendererData))
+				{
+					installedCount++;
+				}
+			}
+
+			AssetDatabase.SaveAssets();
+			AssetDatabase.Refresh();
+
+			if (matchedCount == 0)
+			{
+				return InstallResult.Fail("No selected URP renderer assets were found.");
+			}
+
+			if (installedCount == 0)
+			{
+				return InstallResult.Ok("PerfMeter Render Graph feature is already installed in the selected URP renderer asset(s).");
+			}
+
+			return InstallResult.Ok("Installed PerfMeter Render Graph feature in " + installedCount + " selected renderer asset(s).");
+		}
+
 		private static List<RendererSetupStatus> FindRendererStatuses()
 		{
 			List<RendererSetupStatus> result = new List<RendererSetupStatus>();
