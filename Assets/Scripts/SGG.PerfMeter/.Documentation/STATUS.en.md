@@ -12,6 +12,7 @@
 - `PerfMeter.Stop()` stops metric collection and overlay runtime objects.
 - `PerfMeter.GetStatus()` / `PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot status)` return agent-readable status.
 - `PerfMeter.GetLatestMetrics()` / `PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)` return immutable metric snapshots with FPS/lows/spikes, render, SRP Batcher, BRG/GRD, index upload, memory, timing, and overdraw values.
+- `PerfMeterBottleneck.PresentLimited` separates present/VSync/frame pacing waits from balanced frames and CPU/GPU-bound frames.
 - `PerfMeter.SetOverlayVisible(bool visible)`, `PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerfMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerfMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerfMeter.IsOverlayVisible`, `PerfMeter.OverlayCorner`, `PerfMeter.OverlayMode`, and `PerfMeter.TargetFps` control the runtime overlay and target line.
 - `PerfMeter.RequestOverdrawMeasurement(int frameCount = 60)` / `PerfMeter.CancelOverdrawMeasurement()` control the bounded numerical overdraw measurement.
 - Editor setup actions for agents: `PerfMeterSetupActions.GetStatusReport()`, `PerfMeterSetupActions.EnableFrameTimingStats()`, `PerfMeterSetupActions.InstallRendererFeatures()`, `PerfMeterSetupActions.RunRecommendedSetup()`.

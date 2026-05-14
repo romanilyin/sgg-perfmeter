@@ -223,7 +223,7 @@ namespace SGG.PerfMeter
 			return deviceType == GraphicsDeviceType.OpenGLES3 || deviceType == GraphicsDeviceType.OpenGLCore;
 		}
 
-		private static PerfMeterBottleneck ClassifyBottleneck(
+		internal static PerfMeterBottleneck ClassifyBottleneck(
 			PerfMeterFrameTimingAvailability frameTimingAvailability,
 			double frameBudgetMs,
 			double cpuFrameTimeMs,
@@ -238,20 +238,32 @@ namespace SGG.PerfMeter
 				return PerfMeterBottleneck.Unknown;
 			}
 
+			bool mainOverBudget = cpuMainThreadFrameTimeMs > frameBudgetMs;
+			bool renderOverBudget = cpuRenderThreadFrameTimeMs > frameBudgetMs;
+			bool gpuOverBudget = gpuFrameTimeAvailable && gpuFrameTimeMs > frameBudgetMs;
 			bool hasSignificantPresentWait = cpuMainThreadPresentWaitTimeMs > 1d ||
 				(cpuFrameTimeMs > 0d && cpuMainThreadPresentWaitTimeMs / cpuFrameTimeMs >= 0.25d);
+			double cpuMainWorkTimeMs = System.Math.Max(0d, cpuMainThreadFrameTimeMs - cpuMainThreadPresentWaitTimeMs);
+			bool workBelowBudget = cpuMainWorkTimeMs < frameBudgetMs * 0.85d &&
+				cpuRenderThreadFrameTimeMs < frameBudgetMs * 0.85d &&
+				(!gpuFrameTimeAvailable || gpuFrameTimeMs < frameBudgetMs * 0.85d);
 
-			if (gpuFrameTimeAvailable && gpuFrameTimeMs > frameBudgetMs && hasSignificantPresentWait)
+			if (hasSignificantPresentWait && workBelowBudget)
+			{
+				return PerfMeterBottleneck.PresentLimited;
+			}
+
+			if (gpuOverBudget)
 			{
 				return PerfMeterBottleneck.GpuBound;
 			}
 
-			if (cpuMainThreadFrameTimeMs > frameBudgetMs)
+			if (mainOverBudget)
 			{
 				return PerfMeterBottleneck.CpuMainThreadBound;
 			}
 
-			if (cpuRenderThreadFrameTimeMs > frameBudgetMs)
+			if (renderOverBudget)
 			{
 				return PerfMeterBottleneck.CpuRenderThreadBound;
 			}

@@ -60,7 +60,7 @@ The runtime singleton updates snapshots in `Update()` with real values from `Fra
 - Render counters: `DrawCalls`, `SetPassCalls`, `Batches`, `Vertices`, `SrpBatcherInstances`.
 - BRG/GRD counters when available: `BrgDrawCalls`, `BrgInstances`, `IndexBufferUploadInFrameBytes` through `PerfMeterStatusSnapshot.AvailableCounters` / `UnavailableCounters`.
 - Memory counters: `SystemUsedMemoryBytes`, `GcReservedMemoryBytes`, `GpuMemoryBytes`.
-- Classification: `Bottleneck` (`GpuBound`, `CpuMainThreadBound`, `CpuRenderThreadBound`, `Balanced`, `Unknown`) with the current `FrameBudgetMs`, derived from `PerfMeterTargetFps`.
+- Classification: `Bottleneck` (`GpuBound`, `CpuMainThreadBound`, `CpuRenderThreadBound`, `PresentLimited`, `Balanced`, `Unknown`) with the current `FrameBudgetMs`, derived from `PerfMeterTargetFps`; `PresentLimited` indicates significant present/VSync/frame pacing wait while CPU/GPU work is below budget.
 - Numerical overdraw measurement: `OverdrawState`, `OverdrawProgress`, and `OverdrawRatio` are available in status/metrics snapshots for agent-readable measurement control.
 
 On OpenGL/OpenGLES, hardware GPU timing may be unavailable or unreliable. In that case `GpuFrameTimeAvailable` is `false` and `PerfMeterStatusSnapshot.Warning` contains a warning; Vulkan is preferred on Android.

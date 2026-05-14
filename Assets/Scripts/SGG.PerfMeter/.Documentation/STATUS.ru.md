@@ -12,6 +12,7 @@
 - `PerfMeter.Stop()` останавливает сбор метрик и runtime-объекты overlay.
 - `PerfMeter.GetStatus()` / `PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot status)` возвращают статус, читаемый агентами.
 - `PerfMeter.GetLatestMetrics()` / `PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)` возвращают immutable snapshots метрик с FPS/lows/spikes, render, SRP Batcher, BRG/GRD, index upload, memory, timing и overdraw значениями.
+- `PerfMeterBottleneck.PresentLimited` отделяет ожидание present/VSync/frame pacing от balanced frames и CPU/GPU-bound frames.
 - `PerfMeter.SetOverlayVisible(bool visible)`, `PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerfMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerfMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerfMeter.IsOverlayVisible`, `PerfMeter.OverlayCorner`, `PerfMeter.OverlayMode` и `PerfMeter.TargetFps` управляют runtime overlay и target line.
 - `PerfMeter.RequestOverdrawMeasurement(int frameCount = 60)` / `PerfMeter.CancelOverdrawMeasurement()` управляют ограниченным по времени численным измерением overdraw.
 - Editor setup actions для агентов: `PerfMeterSetupActions.GetStatusReport()`, `PerfMeterSetupActions.EnableFrameTimingStats()`, `PerfMeterSetupActions.InstallRendererFeatures()`, `PerfMeterSetupActions.RunRecommendedSetup()`.

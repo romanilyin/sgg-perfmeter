@@ -281,7 +281,10 @@ PerfMeterBottleneck.Balanced
 PerfMeterBottleneck.GpuBound
 PerfMeterBottleneck.CpuMainThreadBound
 PerfMeterBottleneck.CpuRenderThreadBound
+PerfMeterBottleneck.PresentLimited
 ```
+
+`PresentLimited` means present/VSync/frame pacing wait is significant while CPU main work, render-thread work, and available GPU work are below the target frame budget.
 
 The frame budget comes from:
 
@@ -452,8 +455,7 @@ Recommended next verification targets:
 
 - Root project is currently a sample Unity project plus a nested UPM package; install through `?path=/Assets/Scripts/SGG.PerfMeter` when using Git dependencies.
 - GPU timings can be delayed or unavailable depending on platform and graphics API.
-- Bottleneck classification is intentionally simple and should be hardened before treating it as authoritative.
-- Present/VSync-limited classification is not a separate enum value yet.
+- Bottleneck classification is heuristic and should be validated against Unity Profiler captures before treating it as authoritative.
 - The overlay refresh is throttled, but text assignment still creates managed strings on refresh; full zero-allocation overlay refresh is tracked as a later optimization.
 - Self-overhead marker exists, but full overhead subtraction is not finalized.
 - Overdraw heatmap output is not implemented yet.

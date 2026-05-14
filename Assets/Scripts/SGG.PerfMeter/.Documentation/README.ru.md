@@ -60,7 +60,7 @@ Runtime singleton обновляет snapshots в `Update()` реальными 
 - Render counters: `DrawCalls`, `SetPassCalls`, `Batches`, `Vertices`, `SrpBatcherInstances`.
 - BRG/GRD counters, если доступны: `BrgDrawCalls`, `BrgInstances`, `IndexBufferUploadInFrameBytes` через `PerfMeterStatusSnapshot.AvailableCounters` / `UnavailableCounters`.
 - Memory counters: `SystemUsedMemoryBytes`, `GcReservedMemoryBytes`, `GpuMemoryBytes`.
-- Классификация: `Bottleneck` (`GpuBound`, `CpuMainThreadBound`, `CpuRenderThreadBound`, `Balanced`, `Unknown`) с текущим `FrameBudgetMs`, который определяется `PerfMeterTargetFps`.
+- Классификация: `Bottleneck` (`GpuBound`, `CpuMainThreadBound`, `CpuRenderThreadBound`, `PresentLimited`, `Balanced`, `Unknown`) с текущим `FrameBudgetMs`, который определяется `PerfMeterTargetFps`; `PresentLimited` означает заметное ожидание present/VSync/frame pacing при CPU/GPU work ниже бюджета.
 - Численное измерение overdraw: `OverdrawState`, `OverdrawProgress` и `OverdrawRatio` доступны в status/metrics snapshots для чтения агентами без UI.
 
 На OpenGL/OpenGLES аппаратный GPU timing может быть недоступен или ненадежен. В этом случае `GpuFrameTimeAvailable` будет `false`, а `PerfMeterStatusSnapshot.Warning` содержит предупреждение; для Android предпочтителен Vulkan.

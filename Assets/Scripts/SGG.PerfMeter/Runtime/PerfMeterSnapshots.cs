@@ -32,7 +32,8 @@ namespace SGG.PerfMeter
 		Balanced = 1,
 		GpuBound = 2,
 		CpuMainThreadBound = 3,
-		CpuRenderThreadBound = 4
+		CpuRenderThreadBound = 4,
+		PresentLimited = 5
 	}
 
 	public enum PerfMeterOverdrawMeasurementState
