@@ -146,10 +146,18 @@ namespace SGG.PerfMeter
 
 			private void RecordOverdrawPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData)
 			{
-				Material overdrawMaterial = GetOverdrawMaterial(out string materialError);
+				Material overdrawMaterial = GetOverdrawMaterial(out string materialError, out bool unsupported);
 				if (overdrawMaterial == null)
 				{
-					PerfMeterRuntime.FailOverdrawMeasurement(materialError);
+					if (unsupported)
+					{
+						PerfMeterRuntime.MarkOverdrawMeasurementUnsupported(materialError);
+					}
+					else
+					{
+						PerfMeterRuntime.FailOverdrawMeasurement(materialError);
+					}
+
 					return;
 				}
 
@@ -221,9 +229,10 @@ namespace SGG.PerfMeter
 				return renderGraph.CreateRendererList(rendererListParams);
 			}
 
-			private Material GetOverdrawMaterial(out string error)
+			private Material GetOverdrawMaterial(out string error, out bool unsupported)
 			{
 				error = string.Empty;
+				unsupported = false;
 
 				if (_overdrawMaterial != null)
 				{
@@ -245,6 +254,7 @@ namespace SGG.PerfMeter
 				if (!overdrawShader.isSupported)
 				{
 					error = "PerfMeter overdraw shader '" + OverdrawShaderName + "' is unsupported on " + SystemInfo.graphicsDeviceType + ".";
+					unsupported = true;
 					return null;
 				}
 

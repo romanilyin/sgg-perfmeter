@@ -182,6 +182,18 @@ namespace SGG.PerfMeter
 			_instance.RefreshStatusOverlayState();
 		}
 
+		internal static void MarkOverdrawMeasurementUnsupported(string reason)
+		{
+			if (_instance == null)
+			{
+				return;
+			}
+
+			_instance._overdrawController.MarkUnsupported(reason);
+			_instance._latestMetrics = _instance.WithOverdrawState(_instance._latestMetrics);
+			_instance.RefreshStatusOverlayState();
+		}
+
 		internal void SetOverlayVisible(bool visible)
 		{
 			_overlayRequestedVisible = visible;

@@ -55,7 +55,7 @@ Known platform caveats:
 
 - GPU timing can be unavailable, delayed, or unreliable on some platforms and graphics APIs.
 - OpenGL/OpenGLES should be treated as degraded mode for GPU timing and overdraw instrumentation.
-- Numerical overdraw requires fragment-stage UAV/storage-buffer support and async GPU readback support.
+- Numerical overdraw requires fragment-stage UAV/storage-buffer support, compute shader support, a supported graphics API, and async GPU readback support; unsupported targets report `OverdrawState = Unsupported` instead of entering measurement.
 - WebGL/XR/mobile backends may return partial metrics or mark GPU timing as unavailable.
 
 ## Installation
@@ -378,7 +378,7 @@ Notes:
 
 - This is a diagnostic measurement, not a steady-state metric.
 - It can be expensive and should not be left on permanently.
-- It depends on graphics API and device support.
+- It depends on graphics API and device support; unsupported targets return `OverdrawState = Unsupported` with a warning before scheduling the Render Graph pass.
 - Transparent objects, particles, UI, renderer queues, replacement-shader compatibility, and camera selection can affect the result.
 - Visual heatmap output is not implemented yet.
 

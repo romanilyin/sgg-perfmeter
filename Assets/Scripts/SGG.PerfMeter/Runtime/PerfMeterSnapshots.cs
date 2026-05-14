@@ -42,7 +42,8 @@ namespace SGG.PerfMeter
 		Measuring = 1,
 		Completed = 2,
 		Canceled = 3,
-		Error = 4
+		Error = 4,
+		Unsupported = 5
 	}
 
 	public enum PerfMeterOverlayCorner

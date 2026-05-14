@@ -122,12 +122,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.DoesNotThrow(() => PerfMeter.RequestOverdrawMeasurement(2));
 			PerfMeterStatusSnapshot measuringStatus = PerfMeter.GetStatus();
 			PerfMeterMetricsSnapshot measuringMetrics = PerfMeter.GetLatestMetrics();
-			Assert.That(measuringStatus.OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Measuring));
-			Assert.That(measuringMetrics.OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Measuring));
+			bool measurementAccepted = measuringStatus.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring ||
+				measuringStatus.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported;
+			Assert.That(measurementAccepted, Is.True);
+			Assert.That(measuringMetrics.OverdrawState, Is.EqualTo(measuringStatus.OverdrawState));
 			Assert.That(measuringMetrics.OverdrawRatio, Is.EqualTo(0d));
 
 			Assert.DoesNotThrow(PerfMeter.CancelOverdrawMeasurement);
 			Assert.That(PerfMeter.GetStatus().OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Canceled));
+		}
+
+		[Test]
+		public void UnsupportedOverdrawDoesNotScheduleRenderGraphFrame()
+		{
+			PerfMeterOverdrawController controller = new PerfMeterOverdrawController();
+			controller.RequestMeasurement(2, "Unsupported test backend.");
+
+			Assert.That(controller.State, Is.EqualTo(PerfMeterOverdrawMeasurementState.Unsupported));
+			Assert.That(controller.Progress, Is.EqualTo(0f));
+			Assert.That(controller.Ratio, Is.EqualTo(0d));
+			Assert.That(controller.Warning, Does.Contain("Unsupported test backend"));
+			Assert.That(controller.TryBeginRenderGraphFrame(1, 100, out UnityEngine.GraphicsBuffer counterBuffer), Is.False);
+			Assert.That(counterBuffer, Is.Null);
 		}
 	}
 }

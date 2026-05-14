@@ -106,7 +106,7 @@ Runtime overlay создается программно на UI Toolkit (`UIDocu
 - Pass повторно рендерит scene renderer list с hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`: `ZTest Always`, `ZWrite Off`, `ColorMask 0`.
 - Fragment shader выполняет atomic increment в GPU `GraphicsBuffer`, затем readback pass вызывает `AsyncGPUReadback` без CPU stall.
 - `OverdrawRatio` считается как `TotalFragments / RenderedCameraPixels` и усредняется по завершенным readback samples.
-- Shader требует поддержку fragment UAV/storage buffer; на OpenGL ES или других ограниченных backend измерение может перейти в `Error` с предупреждением.
+- Shader требует поддержку fragment UAV/storage buffer, compute shaders, поддерживаемый graphics API и `AsyncGPUReadback`; неподдерживаемые targets переходят в `Unsupported` с предупреждением до планирования Render Graph pass.
 - Visual heatmap output еще не реализован.
 - Progress растет после async readback, запланированного из Render Graph overdraw pass. Если progress остается `0`, проверьте, что renderer feature установлен в renderer, который использует активная камера, и что target backend поддерживает shader instrumentation.
 

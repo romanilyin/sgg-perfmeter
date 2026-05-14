@@ -31,7 +31,7 @@
 
 - `-runTests` batchmode execution is a known local verification issue; compile batchmode is the current reliable check.
 - Overdraw numeric measurement uses replacement shader rendering, atomic fragment counting, and `AsyncGPUReadback`; visual heatmap output is not implemented yet.
-- The overdraw shader requires fragment UAV/storage buffer support; OpenGL ES and other limited backends need separate validation.
+- Overdraw measurement gates unsupported targets with `OverdrawState.Unsupported`; fragment UAV/storage buffer behavior still needs device validation on limited backends.
 - Render Graph pass/aliasing/merge analytics are not implemented.
 - Full zero-allocation overlay refresh is not implemented yet; the current overlay throttles text rebuilds and managed string assignment to the refresh interval.
 - Manual device validation is still pending, especially Android Vulkan/GLES GPU timing behavior.

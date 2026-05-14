@@ -106,7 +106,7 @@ Overdraw measurement is opt-in and bounded. Call `PerfMeter.RequestOverdrawMeasu
 - The pass redraws the scene renderer list with the hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`: `ZTest Always`, `ZWrite Off`, `ColorMask 0`.
 - The fragment shader atomically increments a GPU `GraphicsBuffer`, then a readback pass uses `AsyncGPUReadback` without a CPU stall.
 - `OverdrawRatio` is computed as `TotalFragments / RenderedCameraPixels` and averaged across completed readback samples.
-- The shader requires fragment UAV/storage buffer support; on OpenGL ES or other limited backends the measurement can enter `Error` with a warning.
+- The shader requires fragment UAV/storage buffer support, compute shader support, a supported graphics API, and `AsyncGPUReadback`; unsupported targets enter `Unsupported` with a warning before scheduling the Render Graph pass.
 - Visual heatmap output is not implemented yet.
 - Progress advances after async readback scheduled from the Render Graph overdraw pass. If progress stays at `0`, verify that the renderer feature is installed on the renderer used by the active camera and that the target backend supports shader instrumentation.
 

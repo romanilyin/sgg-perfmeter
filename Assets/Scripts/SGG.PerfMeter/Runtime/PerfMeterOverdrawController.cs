@@ -31,6 +31,27 @@ namespace SGG.PerfMeter
 
 		internal void RequestMeasurement(int frameCount)
 		{
+			RequestMeasurement(frameCount, GetUnsupportedReason());
+		}
+
+		internal void RequestMeasurement(int frameCount, string unsupportedReason)
+		{
+			if (!string.IsNullOrEmpty(unsupportedReason))
+			{
+				SetUnsupported(unsupportedReason);
+				return;
+			}
+
+			BeginMeasurement(frameCount);
+		}
+
+		internal void MarkUnsupported(string reason)
+		{
+			SetUnsupported(reason);
+		}
+
+		private void BeginMeasurement(int frameCount)
+		{
 			_requestedFrameCount = frameCount > 0 ? frameCount : DefaultFrameCount;
 			_recordedFrameCount = 0;
 			_lastScheduledUnityFrame = -1;
@@ -156,6 +177,42 @@ namespace SGG.PerfMeter
 
 			_counterBuffer.Release();
 			_counterBuffer = null;
+		}
+
+		private void SetUnsupported(string reason)
+		{
+			ReleaseCounterBuffer();
+			_requestedFrameCount = 0;
+			_recordedFrameCount = 0;
+			_lastScheduledUnityFrame = -1;
+			_pendingScreenPixelCount = 0;
+			_totalFragmentCount = 0d;
+			_totalScreenPixelCount = 0d;
+			_ratio = 0d;
+			_lastError = string.IsNullOrEmpty(reason) ? "Overdraw measurement is unsupported on this platform." : reason;
+			_readbackPending = false;
+			_state = PerfMeterOverdrawMeasurementState.Unsupported;
+		}
+
+		private static string GetUnsupportedReason()
+		{
+			if (!SystemInfo.supportsAsyncGPUReadback)
+			{
+				return "Overdraw measurement is unsupported: AsyncGPUReadback is not available on this platform.";
+			}
+
+			if (!SystemInfo.supportsComputeShaders)
+			{
+				return "Overdraw measurement is unsupported: compute shaders are not available on this platform.";
+			}
+
+			GraphicsDeviceType graphicsDeviceType = SystemInfo.graphicsDeviceType;
+			if (graphicsDeviceType == GraphicsDeviceType.OpenGLES3 || graphicsDeviceType == GraphicsDeviceType.OpenGLCore)
+			{
+				return "Overdraw measurement is unsupported on " + graphicsDeviceType + ": fragment UAV/storage buffer instrumentation requires a modern graphics backend.";
+			}
+
+			return string.Empty;
 		}
 
 		private string GetWarning()
