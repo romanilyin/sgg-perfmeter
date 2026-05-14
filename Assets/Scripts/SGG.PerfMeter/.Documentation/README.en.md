@@ -55,6 +55,8 @@ public static class PerfMeterBootstrap
 
 The runtime singleton updates snapshots in `Update()` with real values from `FrameTimingManager` and `ProfilerRecorder`. The metric collection path avoids PerfMeter-side per-frame allocations; the overlay text refresh is throttled and still rebuilds managed strings at the refresh interval.
 
+`CollectionFrame` is the `Time.frameCount` when PerfMeter collected the snapshot. It is not guaranteed to be the exact frame represented by `FrameTimingManager`, because Unity frame timings can arrive delayed by a few frames.
+
 - Timings: `CpuFrameTimeMs`, `CpuMainThreadFrameTimeMs`, `CpuRenderThreadFrameTimeMs`, `CpuMainThreadPresentWaitTimeMs`, `GpuFrameTimeMs`.
 - FPS stats: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, and `SevereFrameSpikeCount`; the source is `FrameTiming.cpuFrameTime`, not `Time.deltaTime`.
 - Render counters: `DrawCalls`, `SetPassCalls`, `Batches`, `Vertices`, `SrpBatcherInstances`.

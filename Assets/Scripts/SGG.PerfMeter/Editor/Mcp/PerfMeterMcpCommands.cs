@@ -90,7 +90,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"graphics_device_type\":").Append(JsonString(status.GraphicsDeviceType.ToString()));
 			builder.Append(",\"graphics_device_name\":").Append(JsonString(status.GraphicsDeviceName));
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
-			builder.Append(",\"last_sample_frame\":").Append(status.LastSampleFrame);
+			builder.Append(",\"collection_frame\":").Append(status.CollectionFrame);
 			builder.Append(",\"last_error\":").Append(JsonString(status.LastError));
 			builder.Append(",\"bottleneck\":").Append(JsonString(status.Bottleneck.ToString()));
 			builder.Append(",\"available_counters\":").Append(JsonString(status.AvailableCounters.ToString()));
@@ -113,7 +113,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			StringBuilder builder = new StringBuilder(768);
 			builder.Append("{\"state\":").Append(JsonString(metrics.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(metrics.Availability.ToString()));
-			builder.Append(",\"last_sample_frame\":").Append(metrics.LastSampleFrame);
+			builder.Append(",\"collection_frame\":").Append(metrics.CollectionFrame);
 			builder.Append(",\"bottleneck\":").Append(JsonString(metrics.Bottleneck.ToString()));
 			builder.Append(",\"frame_budget_ms\":").Append(JsonNumber(metrics.FrameBudgetMs));
 			builder.Append(",\"gpu_frame_time_available\":").Append(JsonBool(metrics.GpuFrameTimeAvailable));

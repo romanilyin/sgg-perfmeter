@@ -55,6 +55,8 @@ public static class PerfMeterBootstrap
 
 Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder`. Путь сбора метрик избегает per-frame allocation со стороны PerfMeter; overlay text refresh throttled и пока пересобирает managed strings с частотой обновления overlay.
 
+`CollectionFrame` - это `Time.frameCount`, на котором PerfMeter собрал snapshot. Это не гарантированно тот же кадр, который описывает `FrameTimingManager`, потому что Unity frame timings могут приходить с задержкой в несколько кадров.
+
 - Тайминги: `CpuFrameTimeMs`, `CpuMainThreadFrameTimeMs`, `CpuRenderThreadFrameTimeMs`, `CpuMainThreadPresentWaitTimeMs`, `GpuFrameTimeMs`.
 - FPS-статистика: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, `SevereFrameSpikeCount`; источник - `FrameTiming.cpuFrameTime`, не `Time.deltaTime`.
 - Render counters: `DrawCalls`, `SetPassCalls`, `Batches`, `Vertices`, `SrpBatcherInstances`.

@@ -93,7 +93,7 @@ namespace SGG.PerfMeter
 			_isRunning = false;
 		}
 
-		internal PerfMeterMetricsSnapshot Collect(int frame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning)
+		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning)
 		{
 			if (!_isRunning)
 			{
@@ -127,7 +127,7 @@ namespace SGG.PerfMeter
 			return new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
 				PerfMeterAvailability.Available,
-				frame,
+				collectionFrame,
 				bottleneck,
 				frameBudgetMs,
 				gpuFrameTimeAvailable,

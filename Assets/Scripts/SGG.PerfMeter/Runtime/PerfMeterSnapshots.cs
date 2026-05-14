@@ -98,7 +98,7 @@ namespace SGG.PerfMeter
 			GraphicsDeviceType graphicsDeviceType,
 			string graphicsDeviceName,
 			string warning,
-			int lastSampleFrame,
+			int collectionFrame,
 			string lastError,
 			PerfMeterBottleneck bottleneck = PerfMeterBottleneck.Unknown,
 			PerfMeterCounterAvailability availableCounters = PerfMeterCounterAvailability.None,
@@ -117,7 +117,7 @@ namespace SGG.PerfMeter
 			GraphicsDeviceType = graphicsDeviceType;
 			GraphicsDeviceName = graphicsDeviceName ?? string.Empty;
 			Warning = warning ?? string.Empty;
-			LastSampleFrame = lastSampleFrame;
+			CollectionFrame = collectionFrame;
 			LastError = lastError ?? string.Empty;
 			Bottleneck = bottleneck;
 			AvailableCounters = availableCounters;
@@ -137,7 +137,7 @@ namespace SGG.PerfMeter
 		public GraphicsDeviceType GraphicsDeviceType { get; }
 		public string GraphicsDeviceName { get; }
 		public string Warning { get; }
-		public int LastSampleFrame { get; }
+		public int CollectionFrame { get; }
 		public string LastError { get; }
 		public PerfMeterBottleneck Bottleneck { get; }
 		public PerfMeterCounterAvailability AvailableCounters { get; }
@@ -190,7 +190,7 @@ namespace SGG.PerfMeter
 		public PerfMeterMetricsSnapshot(
 			PerfMeterRuntimeState state,
 			PerfMeterAvailability availability,
-			int lastSampleFrame,
+			int collectionFrame,
 			PerfMeterBottleneck bottleneck,
 			double frameBudgetMs,
 			bool gpuFrameTimeAvailable,
@@ -223,7 +223,7 @@ namespace SGG.PerfMeter
 		{
 			State = state;
 			Availability = availability;
-			LastSampleFrame = lastSampleFrame;
+			CollectionFrame = collectionFrame;
 			Bottleneck = bottleneck;
 			FrameBudgetMs = frameBudgetMs;
 			GpuFrameTimeAvailable = gpuFrameTimeAvailable;
@@ -257,7 +257,7 @@ namespace SGG.PerfMeter
 
 		public PerfMeterRuntimeState State { get; }
 		public PerfMeterAvailability Availability { get; }
-		public int LastSampleFrame { get; }
+		public int CollectionFrame { get; }
 		public PerfMeterBottleneck Bottleneck { get; }
 		public double FrameBudgetMs { get; }
 		public bool GpuFrameTimeAvailable { get; }

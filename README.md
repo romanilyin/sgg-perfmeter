@@ -220,6 +220,12 @@ All read APIs are safe before the runtime starts. A read before startup returns 
 
 ## Metrics
 
+### Snapshot frame identity
+
+| Field | Meaning |
+| --- | --- |
+| `CollectionFrame` | Unity `Time.frameCount` when PerfMeter collected the snapshot. This is not guaranteed to be the exact frame represented by `FrameTimingManager`, because Unity frame timings can arrive delayed by a few frames. |
+
 ### Timing
 
 | Field | Meaning |
@@ -454,7 +460,7 @@ Recommended next verification targets:
 ## Known limitations
 
 - Root project is currently a sample Unity project plus a nested UPM package; install through `?path=/Assets/Scripts/SGG.PerfMeter` when using Git dependencies.
-- GPU timings can be delayed or unavailable depending on platform and graphics API.
+- GPU timings can be delayed or unavailable depending on platform and graphics API; `CollectionFrame` identifies when the snapshot was collected, not the original hardware timing frame.
 - Bottleneck classification is heuristic and should be validated against Unity Profiler captures before treating it as authoritative.
 - The overlay refresh is throttled, but text assignment still creates managed strings on refresh; full zero-allocation overlay refresh is tracked as a later optimization.
 - Self-overhead marker exists, but full overhead subtraction is not finalized.

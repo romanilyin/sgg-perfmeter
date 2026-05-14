@@ -25,7 +25,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 			Assert.That(status.Availability, Is.EqualTo(PerfMeterAvailability.Available));
 			Assert.That(status.FrameTimingAvailability, Is.EqualTo(PerfMeterFrameTimingAvailability.NotCollected));
-			Assert.That(status.LastSampleFrame, Is.EqualTo(-1));
+			Assert.That(status.CollectionFrame, Is.EqualTo(-1));
 			Assert.That(status.GraphicsDeviceName, Is.Not.Null);
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
@@ -41,7 +41,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(status.Availability, Is.EqualTo(PerfMeterAvailability.Available));
-			Assert.That(status.LastSampleFrame, Is.GreaterThanOrEqualTo(0));
+			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(status.Warning, Is.Not.Null);
 			Assert.That(status.Bottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
 		}
@@ -54,7 +54,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
-			Assert.That(status.LastSampleFrame, Is.EqualTo(-1));
+			Assert.That(status.CollectionFrame, Is.EqualTo(-1));
 		}
 
 		[Test]
@@ -74,7 +74,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeter.EnsureRunning();
 			PerfMeterMetricsSnapshot runningMetrics = PerfMeter.GetLatestMetrics();
 			Assert.That(runningMetrics.State, Is.EqualTo(PerfMeterRuntimeState.Running));
-			Assert.That(runningMetrics.LastSampleFrame, Is.GreaterThanOrEqualTo(0));
+			Assert.That(runningMetrics.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(runningMetrics.FrameBudgetMs, Is.EqualTo(1000d / 60d).Within(0.001d));
 			Assert.That(runningMetrics.SrpBatcherInstances, Is.GreaterThanOrEqualTo(0));
 			Assert.That(runningMetrics.GpuMemoryBytes, Is.GreaterThanOrEqualTo(0L));

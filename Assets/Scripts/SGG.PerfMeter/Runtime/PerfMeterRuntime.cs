@@ -308,11 +308,11 @@ namespace SGG.PerfMeter
 				_overdrawController.Progress);
 		}
 
-		private static PerfMeterStatusSnapshot CreateStatus(PerfMeterRuntimeState state, int lastSampleFrame, string warning, string lastError)
+		private static PerfMeterStatusSnapshot CreateStatus(PerfMeterRuntimeState state, int collectionFrame, string warning, string lastError)
 		{
 			return CreateStatus(
 				state,
-				lastSampleFrame,
+				collectionFrame,
 				PerfMeterFrameTimingAvailability.NotCollected,
 				warning,
 				lastError,
@@ -330,7 +330,7 @@ namespace SGG.PerfMeter
 
 		private static PerfMeterStatusSnapshot CreateStatus(
 			PerfMeterRuntimeState state,
-			int lastSampleFrame,
+			int collectionFrame,
 			PerfMeterFrameTimingAvailability frameTimingAvailability,
 			string warning,
 			string lastError,
@@ -352,7 +352,7 @@ namespace SGG.PerfMeter
 				SystemInfo.graphicsDeviceType,
 				SystemInfo.graphicsDeviceName,
 				warning,
-				lastSampleFrame,
+				collectionFrame,
 				lastError,
 				bottleneck,
 				availableCounters,
@@ -383,7 +383,7 @@ namespace SGG.PerfMeter
 			return new PerfMeterMetricsSnapshot(
 				metrics.State,
 				metrics.Availability,
-				metrics.LastSampleFrame,
+				metrics.CollectionFrame,
 				metrics.Bottleneck,
 				metrics.FrameBudgetMs,
 				metrics.GpuFrameTimeAvailable,
@@ -420,7 +420,7 @@ namespace SGG.PerfMeter
 			return new PerfMeterMetricsSnapshot(
 				metrics.State,
 				metrics.Availability,
-				metrics.LastSampleFrame,
+				metrics.CollectionFrame,
 				metrics.Bottleneck,
 				GetFrameBudgetMs(_targetFps),
 				metrics.GpuFrameTimeAvailable,
@@ -498,7 +498,7 @@ namespace SGG.PerfMeter
 		{
 			_status = CreateStatus(
 				_status.State,
-				_status.LastSampleFrame,
+				_status.CollectionFrame,
 				_status.FrameTimingAvailability,
 				CombineWarnings(_lastCollectorWarning, _overdrawController.Warning),
 				_status.LastError,
