@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "package": "com.sungeargames.perfmeter",
+  "commands": [
+    {
+      "id": "perfmeter.setup.status",
+      "title": "PerfMeter setup status",
+      "description": "Read SGG PerfMeter setup status.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SetupStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "setup"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.setup.run",
+      "title": "PerfMeter recommended setup",
+      "description": "Run the recommended SGG PerfMeter project setup actions.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SetupRun",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 60000,
+      "tags": ["perfmeter", "setup"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["editing"],
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.runtime.status",
+      "title": "PerfMeter runtime status",
+      "description": "Read SGG PerfMeter runtime status.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "runtime"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.runtime.ensure",
+      "title": "Start PerfMeter runtime",
+      "description": "Ensure SGG PerfMeter runtime is running.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeEnsure",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "runtime"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.runtime.stop",
+      "title": "Stop PerfMeter runtime",
+      "description": "Stop SGG PerfMeter runtime if it is running.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeStop",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "runtime"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.metrics.latest",
+      "title": "PerfMeter latest metrics",
+      "description": "Read the latest SGG PerfMeter metrics snapshot.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MetricsLatest",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "metrics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.overlay.set",
+      "title": "Set PerfMeter overlay",
+      "description": "Show or hide the SGG PerfMeter overlay and optionally set its screen corner, display mode, and target FPS.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverlaySet",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "overlay"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "visible": { "type": "boolean" },
+          "corner": {
+            "type": "string",
+            "enum": ["TopLeft", "TopRight", "BottomLeft", "BottomRight"]
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["FpsOnly", "TextCompact", "Graphs", "Full"]
+          },
+          "target_fps": {
+            "type": "integer",
+            "enum": [15, 30, 60, 90, 120, 144, 240]
+          }
+        },
+        "required": ["visible"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.overdraw.start",
+      "title": "Start PerfMeter overdraw measurement",
+      "description": "Request a bounded SGG PerfMeter overdraw measurement.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverdrawStart",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "overdraw"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "frame_count": { "type": "integer", "minimum": 1, "maximum": 600 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.overdraw.cancel",
+      "title": "Cancel PerfMeter overdraw measurement",
+      "description": "Cancel the current SGG PerfMeter overdraw measurement.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverdrawCancel",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "overdraw"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ]
+}

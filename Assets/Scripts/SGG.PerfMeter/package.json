@@ -1,0 +1,22 @@
+{
+  "name": "com.sungeargames.perfmeter",
+  "version": "2026.5.13-1",
+  "displayName": "SGG PerfMeter",
+  "description": "Low-overhead performance meter and agent-readable profiling API for Unity URP projects.",
+  "unity": "6000.4",
+  "license": "LicenseRef-Stinger-Royalty-Free-EULA-1.0",
+  "dependencies": {
+    "com.unity.render-pipelines.universal": "17.4.0"
+  },
+  "keywords": [
+    "performance",
+    "profiler",
+    "metrics",
+    "urp"
+  ],
+  "author": {
+    "name": "Sungear Games",
+    "email": "roman.ilyin@gmail.com",
+    "url": "https://sungeargames.com"
+  }
+}

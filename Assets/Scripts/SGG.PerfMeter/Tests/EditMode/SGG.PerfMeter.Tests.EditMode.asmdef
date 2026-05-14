@@ -1,0 +1,21 @@
+{
+    "name": "SGG.PerfMeter.Tests.EditMode",
+    "rootNamespace": "SGG.PerfMeter.Tests.EditMode",
+    "references": [
+        "SGG.PerfMeter"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}
