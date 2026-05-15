@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
-using RuntimePerfMeter = SGG.PerfMeter.PerfMeter;
+using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
 using RuntimeRenderGraphFeature = SGG.PerfMeter.PerfMeterRenderGraphFeature;
 
 namespace SGG.PerfMeter.Editor.Setup
@@ -22,11 +22,11 @@ public static class PerfMeterBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void StartPerfMeter()
     {
-        PerfMeter.EnsureRunning();
-        PerfMeter.SetTargetFps(PerfMeterTargetFps." + targetFps + @");
-        PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner." + overlayCorner + @");
-        PerfMeter.SetOverlayMode(PerfMeterOverlayMode." + overlayMode + @");
-        PerfMeter.SetOverlayVisible(" + (overlayVisible ? "true" : "false") + @");
+        PerformanceMeter.EnsureRunning();
+        PerformanceMeter.SetTargetFps(PerfMeterTargetFps." + targetFps + @");
+        PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner." + overlayCorner + @");
+        PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode." + overlayMode + @");
+        PerformanceMeter.SetOverlayVisible(" + (overlayVisible ? "true" : "false") + @");
     }
 }
 ";
@@ -38,7 +38,7 @@ public static class PerfMeterBootstrap
 		{
 			get
 			{
-				UnityEditor.PackageManager.PackageInfo packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(RuntimePerfMeter).Assembly);
+				UnityEditor.PackageManager.PackageInfo packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(RuntimePerformanceMeter).Assembly);
 				if (!string.IsNullOrEmpty(packageInfo?.assetPath))
 				{
 					return packageInfo.assetPath.Replace('\\', '/');

@@ -3,9 +3,9 @@ using UnityEngine;
 namespace SGG.PerfMeter
 {
 	/// <summary>
-	/// Public entry point for agent-readable PerfMeter state and latest metric snapshots.
+	/// Public entry point for agent-readable performance meter state and latest metric snapshots.
 	/// </summary>
-	public static class PerfMeter
+	public static class PerformanceMeter
 	{
 		public static PerfMeterStatusSnapshot GetStatus()
 		{

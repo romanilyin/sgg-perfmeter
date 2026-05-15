@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using RuntimePerfMeter = SGG.PerfMeter.PerfMeter;
+using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
 
 namespace SGG.PerfMeter.Editor.UI
 {
@@ -200,9 +200,9 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeOverdraw = AddRow(runtimeSection, "Overdraw");
 
 			VisualElement lifecycleActions = AddActions(runtimeSection);
-			AddRuntimeButton(lifecycleActions, "Ensure Runtime", () => RunRuntimeAction("Ensure Runtime", RuntimePerfMeter.EnsureRunning));
-			AddRuntimeButton(lifecycleActions, "Show Overlay", () => RunRuntimeAction("Show Overlay", () => RuntimePerfMeter.SetOverlayVisible(true)));
-			AddRuntimeButton(lifecycleActions, "Hide Overlay", () => RunRuntimeAction("Hide Overlay", () => RuntimePerfMeter.SetOverlayVisible(false)));
+			AddRuntimeButton(lifecycleActions, "Ensure Runtime", () => RunRuntimeAction("Ensure Runtime", RuntimePerformanceMeter.EnsureRunning));
+			AddRuntimeButton(lifecycleActions, "Show Overlay", () => RunRuntimeAction("Show Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(true)));
+			AddRuntimeButton(lifecycleActions, "Hide Overlay", () => RunRuntimeAction("Hide Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(false)));
 
 			VisualElement targetActions = AddActions(runtimeSection);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps15);
@@ -214,20 +214,20 @@ namespace SGG.PerfMeter.Editor.UI
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps240);
 
 			VisualElement modeActions = AddActions(runtimeSection);
-			AddRuntimeButton(modeActions, "Fps Only", () => RunRuntimeAction("Fps Only", () => RuntimePerfMeter.SetOverlayMode(PerfMeterOverlayMode.FpsOnly)));
-			AddRuntimeButton(modeActions, "Text Compact", () => RunRuntimeAction("Text Compact", () => RuntimePerfMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact)));
-			AddRuntimeButton(modeActions, "Graphs", () => RunRuntimeAction("Graphs", () => RuntimePerfMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs)));
-			AddRuntimeButton(modeActions, "Full", () => RunRuntimeAction("Full", () => RuntimePerfMeter.SetOverlayMode(PerfMeterOverlayMode.Full)));
+			AddRuntimeButton(modeActions, "Fps Only", () => RunRuntimeAction("Fps Only", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.FpsOnly)));
+			AddRuntimeButton(modeActions, "Text Compact", () => RunRuntimeAction("Text Compact", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact)));
+			AddRuntimeButton(modeActions, "Graphs", () => RunRuntimeAction("Graphs", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs)));
+			AddRuntimeButton(modeActions, "Full", () => RunRuntimeAction("Full", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full)));
 
 			VisualElement cornerActions = AddActions(runtimeSection);
-			AddRuntimeButton(cornerActions, "Top Left", () => RunRuntimeAction("Top Left", () => RuntimePerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopLeft)));
-			AddRuntimeButton(cornerActions, "Top Right", () => RunRuntimeAction("Top Right", () => RuntimePerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight)));
-			AddRuntimeButton(cornerActions, "Bottom Left", () => RunRuntimeAction("Bottom Left", () => RuntimePerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft)));
-			AddRuntimeButton(cornerActions, "Bottom Right", () => RunRuntimeAction("Bottom Right", () => RuntimePerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomRight)));
+			AddRuntimeButton(cornerActions, "Top Left", () => RunRuntimeAction("Top Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopLeft)));
+			AddRuntimeButton(cornerActions, "Top Right", () => RunRuntimeAction("Top Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight)));
+			AddRuntimeButton(cornerActions, "Bottom Left", () => RunRuntimeAction("Bottom Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft)));
+			AddRuntimeButton(cornerActions, "Bottom Right", () => RunRuntimeAction("Bottom Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomRight)));
 
 			VisualElement overdrawActions = AddActions(runtimeSection);
-			AddRuntimeButton(overdrawActions, "Measure Overdraw 30f", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerfMeter.RequestOverdrawMeasurement(30)));
-			AddRuntimeButton(overdrawActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerfMeter.CancelOverdrawMeasurement));
+			AddRuntimeButton(overdrawActions, "Measure Overdraw 30f", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerformanceMeter.RequestOverdrawMeasurement(30)));
+			AddRuntimeButton(overdrawActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerformanceMeter.CancelOverdrawMeasurement));
 		}
 
 		private VisualElement AddSection(VisualElement parent, string caption)
@@ -316,7 +316,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private Button AddTargetFpsButton(VisualElement parent, PerfMeterTargetFps targetFps)
 		{
-			return AddRuntimeButton(parent, FormatTargetFps(targetFps), () => RunRuntimeAction("Target " + FormatTargetFps(targetFps), () => RuntimePerfMeter.SetTargetFps(targetFps)));
+			return AddRuntimeButton(parent, FormatTargetFps(targetFps), () => RunRuntimeAction("Target " + FormatTargetFps(targetFps), () => RuntimePerformanceMeter.SetTargetFps(targetFps)));
 		}
 
 		private void RunAction(string title, Func<PerfMeterSetupActionResult> action)
@@ -626,7 +626,7 @@ namespace SGG.PerfMeter.Editor.UI
 				? "Runtime controls affect the currently running Play Mode session."
 				: "Runtime controls are read-only in Edit Mode. Enter Play Mode to test overlay modes, visibility, and short overdraw capture.";
 
-			PerfMeterStatusSnapshot status = RuntimePerfMeter.GetStatus();
+			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			_runtimeStatus.text = status.State + " / " + status.Bottleneck;
 			_runtimeOverlayVisible.text = status.OverlayVisible ? "Visible" : "Hidden";
 			_runtimeTargetFps.text = FormatTargetFps(status.TargetFps) + " / " + (1000d / (int)status.TargetFps).ToString("0.00") + " ms";

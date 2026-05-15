@@ -2,25 +2,25 @@ using NUnit.Framework;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
-	public sealed class PerfMeterApiTests
+	public sealed class PerformanceMeterApiTests
 	{
 		[SetUp]
 		public void SetUp()
 		{
-			PerfMeter.Stop();
+			PerformanceMeter.Stop();
 		}
 
 		[TearDown]
 		public void TearDown()
 		{
-			PerfMeter.Stop();
+			PerformanceMeter.Stop();
 		}
 
 		[Test]
 		public void QueryBeforeStartReturnsStoppedStatus()
 		{
 			PerfMeterStatusSnapshot status = default;
-			Assert.DoesNotThrow(() => status = PerfMeter.GetStatus());
+			Assert.DoesNotThrow(() => status = PerformanceMeter.GetStatus());
 
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 			Assert.That(status.Availability, Is.EqualTo(PerfMeterAvailability.Available));
@@ -29,16 +29,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.GraphicsDeviceName, Is.Not.Null);
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
-			Assert.That(PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot tryStatus), Is.True);
+			Assert.That(PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot tryStatus), Is.True);
 			Assert.That(tryStatus.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 		}
 
 		[Test]
 		public void EnsureRunningCreatesRunningStatus()
 		{
-			Assert.DoesNotThrow(PerfMeter.EnsureRunning);
+			Assert.DoesNotThrow(PerformanceMeter.EnsureRunning);
 
-			PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
+			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(status.Availability, Is.EqualTo(PerfMeterAvailability.Available));
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
@@ -49,10 +49,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void StopReturnsStoppedStatus()
 		{
-			PerfMeter.EnsureRunning();
-			PerfMeter.Stop();
+			PerformanceMeter.EnsureRunning();
+			PerformanceMeter.Stop();
 
-			PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
+			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 			Assert.That(status.CollectionFrame, Is.EqualTo(-1));
 		}
@@ -61,18 +61,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void MetricsQueryIsSafe()
 		{
 			PerfMeterMetricsSnapshot stoppedMetrics = default;
-			Assert.DoesNotThrow(() => stoppedMetrics = PerfMeter.GetLatestMetrics());
+			Assert.DoesNotThrow(() => stoppedMetrics = PerformanceMeter.GetLatestMetrics());
 			Assert.That(stoppedMetrics.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 			Assert.That(stoppedMetrics.FrameSampleCount, Is.EqualTo(0));
 			Assert.That(stoppedMetrics.AverageFps, Is.EqualTo(0d));
 			Assert.That(stoppedMetrics.OnePercentLowFps, Is.EqualTo(0d));
 			Assert.That(stoppedMetrics.PointOnePercentLowFps, Is.EqualTo(0d));
 
-			Assert.That(PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot tryMetrics), Is.True);
+			Assert.That(PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot tryMetrics), Is.True);
 			Assert.That(tryMetrics.Availability, Is.EqualTo(PerfMeterAvailability.Available));
 
-			PerfMeter.EnsureRunning();
-			PerfMeterMetricsSnapshot runningMetrics = PerfMeter.GetLatestMetrics();
+			PerformanceMeter.EnsureRunning();
+			PerfMeterMetricsSnapshot runningMetrics = PerformanceMeter.GetLatestMetrics();
 			Assert.That(runningMetrics.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(runningMetrics.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(runningMetrics.FrameBudgetMs, Is.EqualTo(1000d / 60d).Within(0.001d));
@@ -83,53 +83,53 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void OverlayApiIsSafeInEditMode()
 		{
-			Assert.That(PerfMeter.IsOverlayVisible, Is.False);
-			Assert.That(PerfMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
-			Assert.That(PerfMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
-			Assert.That(PerfMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
-			Assert.DoesNotThrow(() => PerfMeter.SetOverlayVisible(true));
+			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
+			Assert.That(PerformanceMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
+			Assert.That(PerformanceMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
+			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(true));
 
-			PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
+			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(status.OverlayVisible, Is.False);
 			Assert.That(status.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
-			Assert.That(PerfMeter.IsOverlayVisible, Is.False);
+			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
 
-			Assert.DoesNotThrow(() => PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomRight));
-			Assert.That(PerfMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomRight));
-			Assert.That(PerfMeter.GetStatus().OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomRight));
+			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomRight));
+			Assert.That(PerformanceMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomRight));
+			Assert.That(PerformanceMeter.GetStatus().OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomRight));
 
-			Assert.DoesNotThrow(() => PerfMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs));
-			Assert.That(PerfMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
-			Assert.That(PerfMeter.GetStatus().OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
+			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs));
+			Assert.That(PerformanceMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
+			Assert.That(PerformanceMeter.GetStatus().OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
 
-			Assert.DoesNotThrow(() => PerfMeter.SetTargetFps(PerfMeterTargetFps.Fps120));
-			Assert.That(PerfMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
-			Assert.That(PerfMeter.GetStatus().TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
-			Assert.That(PerfMeter.GetLatestMetrics().FrameBudgetMs, Is.EqualTo(1000d / 120d).Within(0.001d));
+			Assert.DoesNotThrow(() => PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps120));
+			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
+			Assert.That(PerformanceMeter.GetStatus().TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
+			Assert.That(PerformanceMeter.GetLatestMetrics().FrameBudgetMs, Is.EqualTo(1000d / 120d).Within(0.001d));
 
-			Assert.DoesNotThrow(() => PerfMeter.SetOverlayVisible(false));
-			Assert.That(PerfMeter.GetStatus().OverlayVisible, Is.False);
+			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(false));
+			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
 		}
 
 		[Test]
 		public void OverdrawApiIsOptInAndSafeInEditMode()
 		{
-			PerfMeterStatusSnapshot stoppedStatus = PerfMeter.GetStatus();
+			PerfMeterStatusSnapshot stoppedStatus = PerformanceMeter.GetStatus();
 			Assert.That(stoppedStatus.OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Off));
 			Assert.That(stoppedStatus.OverdrawProgress, Is.EqualTo(0f));
 
-			Assert.DoesNotThrow(() => PerfMeter.RequestOverdrawMeasurement(2));
-			PerfMeterStatusSnapshot measuringStatus = PerfMeter.GetStatus();
-			PerfMeterMetricsSnapshot measuringMetrics = PerfMeter.GetLatestMetrics();
+			Assert.DoesNotThrow(() => PerformanceMeter.RequestOverdrawMeasurement(2));
+			PerfMeterStatusSnapshot measuringStatus = PerformanceMeter.GetStatus();
+			PerfMeterMetricsSnapshot measuringMetrics = PerformanceMeter.GetLatestMetrics();
 			bool measurementAccepted = measuringStatus.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring ||
 				measuringStatus.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported;
 			Assert.That(measurementAccepted, Is.True);
 			Assert.That(measuringMetrics.OverdrawState, Is.EqualTo(measuringStatus.OverdrawState));
 			Assert.That(measuringMetrics.OverdrawRatio, Is.EqualTo(0d));
 
-			Assert.DoesNotThrow(PerfMeter.CancelOverdrawMeasurement);
-			Assert.That(PerfMeter.GetStatus().OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Canceled));
+			Assert.DoesNotThrow(PerformanceMeter.CancelOverdrawMeasurement);
+			Assert.That(PerformanceMeter.GetStatus().OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Canceled));
 		}
 
 		[Test]

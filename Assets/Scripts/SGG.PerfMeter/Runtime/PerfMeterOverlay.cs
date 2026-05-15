@@ -544,8 +544,8 @@ namespace SGG.PerfMeter
 			}
 
 			_nextRefreshTime = Time.unscaledTime + RefreshIntervalSeconds;
-			PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
-			PerfMeterMetricsSnapshot metrics = PerfMeter.GetLatestMetrics();
+			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
+			PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 			string warning = ResolveDisplayWarning(status.Warning);
 			_history.AddSample(metrics, status);
 

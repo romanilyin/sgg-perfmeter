@@ -4,7 +4,7 @@ using System.Text;
 using SGG.PerfMeter.Editor.Setup;
 using UnityEditor;
 using UnityEngine;
-using RuntimePerfMeter = SGG.PerfMeter.PerfMeter;
+using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
 
 namespace SGG.PerfMeter.Editor.Mcp
 {
@@ -26,24 +26,24 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		public static string RuntimeStatus()
 		{
-			return StatusJson(RuntimePerfMeter.GetStatus());
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
 		public static string RuntimeEnsure()
 		{
-			RuntimePerfMeter.EnsureRunning();
-			return StatusJson(RuntimePerfMeter.GetStatus());
+			RuntimePerformanceMeter.EnsureRunning();
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
 		public static string RuntimeStop()
 		{
-			RuntimePerfMeter.Stop();
-			return StatusJson(RuntimePerfMeter.GetStatus());
+			RuntimePerformanceMeter.Stop();
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
 		public static string MetricsLatest()
 		{
-			return MetricsJson(RuntimePerfMeter.GetLatestMetrics());
+			return MetricsJson(RuntimePerformanceMeter.GetLatestMetrics());
 		}
 
 		public static string OverlaySet(string argsJson)
@@ -51,34 +51,34 @@ namespace SGG.PerfMeter.Editor.Mcp
 			bool visible = RequireBool(argsJson, "visible");
 			if (TryExtractString(argsJson, "corner", out string corner))
 			{
-				RuntimePerfMeter.SetOverlayCorner(ParseOverlayCorner(corner));
+				RuntimePerformanceMeter.SetOverlayCorner(ParseOverlayCorner(corner));
 			}
 
 			if (TryExtractString(argsJson, "mode", out string mode))
 			{
-				RuntimePerfMeter.SetOverlayMode(ParseOverlayMode(mode));
+				RuntimePerformanceMeter.SetOverlayMode(ParseOverlayMode(mode));
 			}
 
 			if (TryExtractInt(argsJson, "target_fps", out int targetFps))
 			{
-				RuntimePerfMeter.SetTargetFps(ParseTargetFps(targetFps));
+				RuntimePerformanceMeter.SetTargetFps(ParseTargetFps(targetFps));
 			}
 
-			RuntimePerfMeter.SetOverlayVisible(visible);
-			return StatusJson(RuntimePerfMeter.GetStatus());
+			RuntimePerformanceMeter.SetOverlayVisible(visible);
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
 		public static string OverdrawStart(string argsJson)
 		{
 			int frameCount = Mathf.Clamp(ExtractInt(argsJson, "frame_count", 60), 1, 600);
-			RuntimePerfMeter.RequestOverdrawMeasurement(frameCount);
-			return StatusJson(RuntimePerfMeter.GetStatus());
+			RuntimePerformanceMeter.RequestOverdrawMeasurement(frameCount);
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
 		public static string OverdrawCancel()
 		{
-			RuntimePerfMeter.CancelOverdrawMeasurement();
-			return StatusJson(RuntimePerfMeter.GetStatus());
+			RuntimePerformanceMeter.CancelOverdrawMeasurement();
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
 		private static string StatusJson(PerfMeterStatusSnapshot status)

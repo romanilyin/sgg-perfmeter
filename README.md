@@ -134,11 +134,11 @@ public static class PerfMeterBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void StartPerfMeter()
     {
-        PerfMeter.EnsureRunning();
-        PerfMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
-        PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-        PerfMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-        PerfMeter.SetOverlayVisible(true);
+        PerformanceMeter.EnsureRunning();
+        PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
+        PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
+        PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
+        PerformanceMeter.SetOverlayVisible(true);
     }
 }
 ```
@@ -165,16 +165,16 @@ using SGG.PerfMeter;
 Lifecycle:
 
 ```csharp
-PerfMeter.EnsureRunning();
-PerfMeter.Stop();
+PerformanceMeter.EnsureRunning();
+PerformanceMeter.Stop();
 ```
 
 Status:
 
 ```csharp
-PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
+PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 
-if (PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
+if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 {
     Debug.Log($"PerfMeter state: {safeStatus.State}, GPU: {safeStatus.GraphicsDeviceType}");
 }
@@ -183,7 +183,7 @@ if (PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 Metrics:
 
 ```csharp
-PerfMeterMetricsSnapshot metrics = PerfMeter.GetLatestMetrics();
+PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 
 Debug.Log(
     $"CPU {metrics.CpuFrameTimeMs:0.00} ms, " +
@@ -195,25 +195,25 @@ Debug.Log(
 Overlay:
 
 ```csharp
-PerfMeter.SetOverlayVisible(true);
-PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-PerfMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-PerfMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
+PerformanceMeter.SetOverlayVisible(true);
+PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
+PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
+PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 ```
 
 Overdraw:
 
 ```csharp
-PerfMeter.RequestOverdrawMeasurement(frameCount: 60);
+PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
 
-PerfMeterStatusSnapshot status = PerfMeter.GetStatus();
+PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 Debug.Log($"Overdraw: {status.OverdrawState}, {status.OverdrawProgress:P0}, ratio {status.OverdrawRatio:0.00}");
 ```
 
 Cancel overdraw measurement:
 
 ```csharp
-PerfMeter.CancelOverdrawMeasurement();
+PerformanceMeter.CancelOverdrawMeasurement();
 ```
 
 All read APIs are safe before the runtime starts. A read before startup returns a stopped snapshot instead of throwing.
@@ -357,7 +357,7 @@ The feature currently provides:
 Numerical overdraw measurement is opt-in and bounded.
 
 ```csharp
-PerfMeter.RequestOverdrawMeasurement(60);
+PerformanceMeter.RequestOverdrawMeasurement(60);
 ```
 
 The Render Graph feature redraws the scene with a hidden replacement shader that uses:
@@ -412,7 +412,7 @@ These commands are intended for Unity MCP / editor automation workflows where an
 Assets/Scripts/SGG.PerfMeter/
   package.json
   Runtime/
-    PerfMeter.cs
+    PerformanceMeter.cs
     PerfMeterRuntime.cs
     PerfMeterCollector.cs
     PerfMeterFrameStatsSampler.cs

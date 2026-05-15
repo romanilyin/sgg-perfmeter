@@ -8,14 +8,14 @@
 
 ## Public Runtime API
 
-- `PerfMeter.EnsureRunning()` запускает singleton runtime, когда это возможно.
-- `PerfMeter.Stop()` останавливает сбор метрик и runtime-объекты overlay.
-- `PerfMeter.GetStatus()` / `PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot status)` возвращают статус, читаемый агентами.
-- `PerfMeter.GetLatestMetrics()` / `PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)` возвращают immutable snapshots метрик с FPS/lows/spikes, render, SRP Batcher, BRG/GRD, index upload, memory, timing и overdraw значениями.
+- `PerformanceMeter.EnsureRunning()` запускает singleton runtime, когда это возможно.
+- `PerformanceMeter.Stop()` останавливает сбор метрик и runtime-объекты overlay.
+- `PerformanceMeter.GetStatus()` / `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)` возвращают статус, читаемый агентами.
+- `PerformanceMeter.GetLatestMetrics()` / `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)` возвращают immutable snapshots метрик с FPS/lows/spikes, render, SRP Batcher, BRG/GRD, index upload, memory, timing и overdraw значениями.
 - `CollectionFrame` указывает Unity frame, на котором собран snapshot; значения `FrameTimingManager` могут быть задержаны относительно этого кадра.
 - `PerfMeterBottleneck.PresentLimited` отделяет ожидание present/VSync/frame pacing от balanced frames и CPU/GPU-bound frames.
-- `PerfMeter.SetOverlayVisible(bool visible)`, `PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerfMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerfMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerfMeter.IsOverlayVisible`, `PerfMeter.OverlayCorner`, `PerfMeter.OverlayMode` и `PerfMeter.TargetFps` управляют runtime overlay и target line.
-- `PerfMeter.RequestOverdrawMeasurement(int frameCount = 60)` / `PerfMeter.CancelOverdrawMeasurement()` управляют ограниченным по времени численным измерением overdraw.
+- `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode` и `PerformanceMeter.TargetFps` управляют runtime overlay и target line.
+- `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)` / `PerformanceMeter.CancelOverdrawMeasurement()` управляют ограниченным по времени численным измерением overdraw.
 - Editor setup actions для агентов: `PerfMeterSetupActions.GetStatusReport()`, `PerfMeterSetupActions.EnableFrameTimingStats()`, `PerfMeterSetupActions.InstallRendererFeatures()`, `PerfMeterSetupActions.RunRecommendedSetup()`.
 
 ## Setup
@@ -25,7 +25,7 @@
 - Добавьте `PerfMeterRenderGraphFeature` в активный URP renderer asset, если нужны Render Graph markers или численное измерение overdraw; setup window делает это автоматически для найденных URP renderer assets.
 - Включите Player Settings -> Rendering -> Frame Timing Stats перед использованием `FrameTimingManager` в билдах.
 - Для Android предпочтителен Vulkan, если важен GPU frame timing; на OpenGL ES timing может быть недоступен или ненадежен.
-- Вызывайте `PerfMeter.EnsureRunning()` из gameplay/bootstrap кода, затем читайте snapshots из агентов, диагностики или тестов.
+- Вызывайте `PerformanceMeter.EnsureRunning()` из gameplay/bootstrap кода, затем читайте snapshots из агентов, диагностики или тестов.
 
 ## Известные ограничения
 

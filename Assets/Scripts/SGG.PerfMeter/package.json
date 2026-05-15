@@ -1,6 +1,6 @@
 {
   "name": "com.sungeargames.perfmeter",
-  "version": "2026.5.13-1",
+  "version": "2026.5.15-1",
   "displayName": "SGG PerfMeter",
   "description": "Low-overhead performance meter and agent-readable profiling API for Unity URP projects.",
   "unity": "6000.4",

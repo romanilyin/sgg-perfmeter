@@ -5,11 +5,11 @@ SGG PerfMeter exposes a public runtime API for safely reading profiler status an
 ## Agent API
 
 - Namespace: `SGG.PerfMeter`
-- Status: `PerfMeter.GetStatus()` or `PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot status)`
-- Metrics: `PerfMeter.GetLatestMetrics()` or `PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`
-- Lifecycle: `PerfMeter.EnsureRunning()` and `PerfMeter.Stop()`
-- Overlay: `PerfMeter.SetOverlayVisible(bool visible)`, `PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerfMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerfMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerfMeter.IsOverlayVisible`, `PerfMeter.OverlayCorner`, `PerfMeter.OverlayMode`, `PerfMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `TargetFps`
-- Overdraw: `PerfMeter.RequestOverdrawMeasurement(int frameCount = 60)` and `PerfMeter.CancelOverdrawMeasurement()`
+- Status: `PerformanceMeter.GetStatus()` or `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)`
+- Metrics: `PerformanceMeter.GetLatestMetrics()` or `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`
+- Lifecycle: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`
+- Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `TargetFps`
+- Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)` and `PerformanceMeter.CancelOverdrawMeasurement()`
 
 Queries are safe before the runtime is started: normal reads return a snapshot with `State = Stopped` and should not throw exceptions.
 
@@ -42,11 +42,11 @@ public static class PerfMeterBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void StartPerfMeter()
 	{
-		PerfMeter.EnsureRunning();
-		PerfMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
-		PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-		PerfMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-		PerfMeter.SetOverlayVisible(true);
+		PerformanceMeter.EnsureRunning();
+		PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
+		PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
+		PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
+		PerformanceMeter.SetOverlayVisible(true);
 	}
 }
 ```
@@ -83,8 +83,8 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - Text modes show current/min/max over the overlay's internal history window for timings, render counters, and memory.
 - Warnings are held briefly so transient GPU timing gaps do not blink on every refresh.
 - In `Full`, visible fields include state, bottleneck, FPS/lows/spikes, CPU/GPU timings, draw calls, SetPass, batches, vertices, SRP/BRG counters, index uploads, overdraw state/progress/ratio, memory, and warning text when present.
-- `PerfMeter.SetOverlayVisible(false)` hides the retained UI without stopping metric collection; `PerfMeter.SetOverlayVisible(true)` ensures the runtime is running and shows the overlay in Play Mode.
-- `PerfMeter.IsOverlayVisible` and `PerfMeterStatusSnapshot.OverlayVisible` report the actual visible overlay state.
+- `PerformanceMeter.SetOverlayVisible(false)` hides the retained UI without stopping metric collection; `PerformanceMeter.SetOverlayVisible(true)` ensures the runtime is running and shows the overlay in Play Mode.
+- `PerformanceMeter.IsOverlayVisible` and `PerfMeterStatusSnapshot.OverlayVisible` report the actual visible overlay state.
 
 ## URP Render Graph Renderer Feature
 
@@ -99,7 +99,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 
 ## Overdraw Measurement
 
-Overdraw measurement is opt-in and bounded. Call `PerfMeter.RequestOverdrawMeasurement()` to request the default 60-frame measurement window, or pass a custom positive frame count. Call `PerfMeter.CancelOverdrawMeasurement()` to stop the request early.
+Overdraw measurement is opt-in and bounded. Call `PerformanceMeter.RequestOverdrawMeasurement()` to request the default 60-frame measurement window, or pass a custom positive frame count. Call `PerformanceMeter.CancelOverdrawMeasurement()` to stop the request early.
 
 - The runtime is `Off` by default and does not record the overdraw pass until a request is active.
 - `PerfMeterRenderGraphFeature` must be added to the active URP renderer. During an active request it records a Render Graph raster pass with the profiling marker `SGG.PerfMeter.Overdraw`.
@@ -113,19 +113,19 @@ Overdraw measurement is opt-in and bounded. Call `PerfMeter.RequestOverdrawMeasu
 ```csharp
 using SGG.PerfMeter;
 
-PerfMeter.EnsureRunning();
-PerfMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
-PerfMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-PerfMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-PerfMeter.SetOverlayVisible(true);
-PerfMeter.RequestOverdrawMeasurement();
+PerformanceMeter.EnsureRunning();
+PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
+PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
+PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
+PerformanceMeter.SetOverlayVisible(true);
+PerformanceMeter.RequestOverdrawMeasurement();
 
-if (PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot status))
+if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status))
 {
 	UnityEngine.Debug.Log($"PerfMeter: {status.State}, overdraw {status.OverdrawState} {status.OverdrawProgress:P0}, {status.Warning}");
 }
 
-if (PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics))
+if (PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics))
 {
 	UnityEngine.Debug.Log($"GPU {metrics.GpuFrameTimeMs:0.00} ms, Draws {metrics.DrawCalls}, Overdraw {metrics.OverdrawRatio:0.00}");
 }

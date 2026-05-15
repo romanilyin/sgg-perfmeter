@@ -11,8 +11,8 @@ This file is the working implementation plan. Update readiness after every itera
 ## Agent-Facing Runtime API Contract
 - Public namespace: `SGG.PerfMeter`.
 - Agents must be able to query profiler state without reading UI or Unity logs.
-- Required status methods: `PerfMeter.GetStatus()`, `PerfMeter.TryGetStatus(out PerfMeterStatusSnapshot status)`, `PerfMeter.GetLatestMetrics()`, `PerfMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`.
-- Required lifecycle methods: `PerfMeter.EnsureRunning()` and `PerfMeter.Stop()`.
+- Required status methods: `PerformanceMeter.GetStatus()`, `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)`, `PerformanceMeter.GetLatestMetrics()`, `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`.
+- Required lifecycle methods: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`.
 - Status snapshots must include at least: state, availability, frame timing availability, graphics API warning, last sample frame, and last error.
 - Metrics snapshots must be immutable value snapshots so agents can safely cache and compare them between frames.
 
