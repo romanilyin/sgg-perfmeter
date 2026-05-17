@@ -41,6 +41,8 @@ This file is the working implementation plan. Update readiness after every itera
 | 19. Public runtime API rename | Done | Rename the public runtime entry point from `PerfMeter` to `PerformanceMeter` and update setup references. | Covered by later batchmode compile, `Logs/opencode-setup-discovery-compile.log`, exit code 0. | `363b184` |
 | 20. Active URP renderer discovery | Done | Discover active URP renderer assets from Graphics/Quality settings first, report active/package/editable status, and avoid modifying package-owned renderers. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-setup-discovery-compile.log`, exit code 0. | `c65e440` |
 | 21. Marker pass opt-in | Done | Keep the empty overlay Render Graph marker pass disabled by default while preserving overdraw pass recording during active measurements. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-marker-optin-compile.log`, exit code 0. | `839b84b` |
+| 22. PlayMode runtime smoke tests | Done | Add PlayMode tests for runtime/overlay object lifecycle, snapshot updates across frames, and overdraw terminal or actionable degraded states. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-playmode-smoke-compile.log`, exit code 0. | `4fc496d` |
+
 ## Current Notes
 - Unity executable verified at `/mnt/c/Program Files/Unity/Hub/Editor/6000.4.5f1/Editor/Unity.exe`.
 - Telegram notification workflow is repo-local at `Tools/TelegramNotify/telegram_notify.py`; messages for this work use prefix `Perf:`.
