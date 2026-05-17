@@ -1,0 +1,19 @@
+{
+    "name": "SGG.PerfMeter.Tests.PlayMode",
+    "rootNamespace": "SGG.PerfMeter.Tests.PlayMode",
+    "references": [
+        "SGG.PerfMeter"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

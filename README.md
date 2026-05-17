@@ -25,12 +25,12 @@ Implemented:
 - editor setup window;
 - MCP command definitions for setup, runtime control, metrics, overlay, and overdraw;
 - English and Russian package documentation;
-- edit-mode API safety tests.
+- edit-mode API safety tests and Play Mode runtime smoke tests.
 
 Still pending / needs validation:
 
 - target-device validation for GPU timings and counter availability;
-- Play Mode and player-build tests;
+- broader Play Mode coverage and player-build tests;
 - overdraw heatmap mode;
 - CSV/JSON session export;
 - fully validated self-overhead subtraction;

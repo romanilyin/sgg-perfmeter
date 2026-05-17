@@ -4,6 +4,7 @@
 
 - Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`.
 - Runtime API, metrics collection, UI Toolkit overlay with modes, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, and opt-in numerical overdraw measurement are present.
+- EditMode API/classifier tests and PlayMode runtime smoke tests are present; player-build smoke validation is still pending.
 - The package is ready for internal Unity 6000.4 / URP 17 validation, not for public release.
 
 ## Public Runtime API

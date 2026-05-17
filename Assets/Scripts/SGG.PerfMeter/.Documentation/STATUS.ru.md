@@ -4,6 +4,7 @@
 
 - Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`.
 - Реализованы runtime API, сбор метрик, UI Toolkit overlay с режимами, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs и opt-in численное измерение overdraw.
+- Есть EditMode API/classifier tests и PlayMode runtime smoke tests; player-build smoke validation еще pending.
 - Пакет готов для внутренней проверки в Unity 6000.4 / URP 17, но не для публичного релиза.
 
 ## Public Runtime API

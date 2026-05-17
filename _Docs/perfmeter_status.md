@@ -12,16 +12,17 @@
 - Runtime overlay corner placement is configurable through `PerformanceMeter.SetOverlayCorner(...)`; display mode is configurable through `PerformanceMeter.SetOverlayMode(...)` with `FpsOnly`, `TextCompact`, `Graphs`, and `Full`; target line budget is configurable through `PerformanceMeter.SetTargetFps(...)` for 15/30/60/90/120/144/240 FPS; default placement is `TopRight`/`Full`/`60 FPS`, with stacked CPU graph layout, softer colored graph legends, fixed-width graph numbers, placeholder formatting for unavailable samples/counters, text min/max history, and generated UI Toolkit theme/text settings for reliable runtime text rendering.
 - Editor setup window now has `Setup` and `Runtime` tabs under `SGG/Perfmeter/Setup`: setup discovers active URP renderers from Graphics/Quality settings first, falls back to renderer assets under `Assets`, marks renderer assets under `Packages` as not editable, installs into all or selected editable renderers, and exposes Play Mode runtime controls for target FPS, overlay mode/corner/visibility, and short overdraw capture.
 - `PerfMeterRenderGraphFeature` no longer enqueues an empty overlay marker pass by default; enable `Record Overlay Marker Pass` only for diagnostic/self-overhead measurement. Active overdraw requests still enqueue the needed Render Graph pass.
+- Tests include EditMode API/classifier coverage and PlayMode runtime smoke coverage for overlay lifecycle, snapshot updates, and overdraw terminal/degraded states.
 
 ## Verification Notes
 
 - Use Unity 6000.4.5f1 batchmode compile as the reliable local verification path.
-- Latest local verification passed with `Logs/opencode-docs-ignore-cleanup-compile.log`.
+- Latest local verification passed with `Logs/opencode-playmode-smoke-compile.log`.
 - Recent hardening compile logs: `Logs/opencode-iter2-setup-ui-compile.log`, `Logs/opencode-iter3-bottleneck-compile.log`, `Logs/opencode-iter4-collection-frame-compile.log`, `Logs/opencode-iter5-overdraw-unsupported-compile-2.log`, `Logs/opencode-setup-discovery-compile.log`, and `Logs/opencode-marker-optin-compile.log`.
 - Do not spend time on the known local `-runTests` issue unless the project verification setup changes.
 - Manual target-device validation is still needed for GPU timings, overdraw behavior, and platform-specific ProfilerRecorder counter availability.
 
 ## Handoff Notes
 
-- Next meaningful implementation work should focus on PlayMode/player smoke tests, target-device validation, overdraw heatmap output, or Render Graph analytics.
+- Next meaningful implementation work should focus on player-build smoke tests, target-device validation, overdraw heatmap output, or Render Graph analytics.
 - `ProjectSettings/ProjectSettings.asset` currently has `enableFrameTimingStats: 1`; keep it enabled before depending on `FrameTimingManager` in builds.
