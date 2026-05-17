@@ -13,7 +13,7 @@ This file is the working implementation plan. Update readiness after every itera
 - Agents must be able to query profiler state without reading UI or Unity logs.
 - Required status methods: `PerformanceMeter.GetStatus()`, `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)`, `PerformanceMeter.GetLatestMetrics()`, `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`.
 - Required lifecycle methods: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`.
-- Status snapshots must include at least: state, availability, frame timing availability, graphics API warning, last sample frame, and last error.
+- Status snapshots must include at least: state, availability, frame timing availability, graphics API warning, collection frame, and last error.
 - Metrics snapshots must be immutable value snapshots so agents can safely cache and compare them between frames.
 
 ## Iterations
@@ -32,13 +32,22 @@ This file is the working implementation plan. Update readiness after every itera
 | 10. Overlay corner placement | Done | Add configurable overlay corner placement, default the runtime overlay to `TopRight`, and configure UI Toolkit theme/text settings so overlay text renders reliably. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-overlay-text-compile.log`, exit code 0. | `a41aae5` |
 | 11. Overlay modes and graphs | Done | Add FPS/lows/spikes snapshots, overlay modes (`FpsOnly`, `TextCompact`, `Graphs`, `Full`), CPU/GPU UI Toolkit graphs, MCP mode control, and docs/tests. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-overlay-graphs-final-compile.log`, exit code 0. | `50b3161` |
 | 12. Stacked graph layout and setup runtime tab | Done | Refine graph scale/color/placeholder formatting, align legend order with stacked CPU order, add dynamic initialization code settings, and add Setup/Runtime tabs with Play Mode runtime controls. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-overlay-setup-tabs-compile-2.log`, exit code 0. | `5ee83c6` |
-| 13. Target FPS controls | In Progress | Add `PerfMeterTargetFps` API, target FPS setup/runtime controls, target-line graph budget updates, new `SGG/Perfmeter/Setup` menu path, and exact repository URLs in license files. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-target-fps-compile.log`, exit code 0. | Pending |
+| 13. Target FPS controls | Done | Add `PerfMeterTargetFps` API, target FPS setup/runtime controls, target-line graph budget updates, new `SGG/Perfmeter/Setup` menu path, and exact repository URLs in license files. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-target-fps-compile.log`, exit code 0. | `2b219ca` |
+| 14. Project identity and documentation backlog | Done | Update Unity project identity, package author, and documentation backlog for zero-allocation overlay work. | Settings/docs-only hardening; covered by later batchmode compiles. | `105249e` |
+| 15. Selectable renderer feature setup | Done | Let setup users select specific renderer assets, install all missing features, and select missing editable renderers. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-iter2-setup-ui-compile.log`, exit code 0. | `abb1f0d` |
+| 16. Bottleneck classification hardening | Done | Add `PresentLimited` classification, make classifier testable, and add EditMode classifier coverage. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-iter3-bottleneck-compile.log`, exit code 0. | `675d2e0` |
+| 17. Collection frame naming | Done | Replace misleading `LastSampleFrame` public naming with `CollectionFrame` and MCP `collection_frame`. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-iter4-collection-frame-compile.log`, exit code 0. | `0355fd9` |
+| 18. Overdraw capability gate | Done | Report unsupported overdraw targets as `Unsupported` before scheduling Render Graph work when required GPU/readback capabilities are missing. | First compile failed on an unsupported test constraint helper; rerun passed with `Logs/opencode-iter5-overdraw-unsupported-compile-2.log`, exit code 0. | `05a6520` |
+| 19. Public runtime API rename | Done | Rename the public runtime entry point from `PerfMeter` to `PerformanceMeter` and update setup references. | Covered by later batchmode compile, `Logs/opencode-setup-discovery-compile.log`, exit code 0. | `363b184` |
+| 20. Active URP renderer discovery | Done | Discover active URP renderer assets from Graphics/Quality settings first, report active/package/editable status, and avoid modifying package-owned renderers. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-setup-discovery-compile.log`, exit code 0. | `c65e440` |
+| 21. Marker pass opt-in | Done | Keep the empty overlay Render Graph marker pass disabled by default while preserving overdraw pass recording during active measurements. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-marker-optin-compile.log`, exit code 0. | `839b84b` |
 
 ## Current Notes
 - Unity executable verified at `/mnt/c/Program Files/Unity/Hub/Editor/6000.4.5f1/Editor/Unity.exe`.
 - Telegram notification workflow is repo-local at `Tools/TelegramNotify/telegram_notify.py`; messages for this work use prefix `Perf:`.
 - `Tools/TelegramNotify/.env` is intentionally ignored and must not be committed.
-- Latest local compile verification passed in `Logs/opencode-target-fps-compile.log`.
+- Latest local compile verification passed in `Logs/opencode-docs-ignore-cleanup-compile.log`.
+- `_Docs/temp_feedback_15_05_2026.md` is an untracked user feedback file; do not commit it unless explicitly requested.
 
 ## Known Verification Issues
 - Unity batchmode compile succeeds, but `-runTests -testPlatform EditMode` currently exits with code 0 without starting the Test Runner or writing XML results when launched through the local Windows Unity executable from WSL. Keep running compile batchmode for verification; revisit test execution before final packaging.
