@@ -58,8 +58,18 @@ namespace SGG.PerfMeter.Editor.Setup
 			{
 				PerfMeterSetupUtility.RendererSetupStatus renderer = status.Renderers[i];
 				builder.Append('\n');
-				builder.Append(renderer.HasPerfMeterFeature ? "OK " : "Missing ");
+				builder.Append(renderer.HasPerfMeterFeature ? "OK " : renderer.IsEditable ? "Missing " : "Not editable ");
 				builder.Append(string.IsNullOrEmpty(renderer.Name) ? "Renderer" : renderer.Name);
+				if (renderer.IsActive)
+				{
+					builder.Append(" (active)");
+				}
+
+				if (renderer.IsInPackage)
+				{
+					builder.Append(" (inside Packages)");
+				}
+
 				if (renderer.HasMissingFeatureReference)
 				{
 					builder.Append(" (has missing feature reference)");

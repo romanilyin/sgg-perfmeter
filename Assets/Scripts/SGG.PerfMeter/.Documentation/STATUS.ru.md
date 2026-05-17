@@ -20,7 +20,7 @@
 
 ## Setup
 
-- Откройте `SGG/Perfmeter/Setup` для проверки проекта, установки `PerfMeterRenderGraphFeature` во все или выбранные URP renderer assets и копирования bootstrap-кода.
+- Откройте `SGG/Perfmeter/Setup` для проверки проекта, списка active/discovered URP renderer assets, установки `PerfMeterRenderGraphFeature` во все или выбранные editable renderers и копирования bootstrap-кода.
 - Для headless/agent setup вызовите `SGG.PerfMeter.Editor.Setup.PerfMeterSetupActions.RunRecommendedSetup()` из Editor-контекста.
 - Добавьте `PerfMeterRenderGraphFeature` в активный URP renderer asset, если нужны Render Graph markers или численное измерение overdraw; setup window делает это автоматически для найденных URP renderer assets.
 - Включите Player Settings -> Rendering -> Frame Timing Stats перед использованием `FrameTimingManager` в билдах.

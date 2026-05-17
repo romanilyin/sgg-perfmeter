@@ -401,13 +401,17 @@ namespace SGG.PerfMeter.Editor.UI
 		private VisualElement CreateRendererRow(PerfMeterSetupUtility.RendererSetupStatus renderer)
 		{
 			string assetPath = renderer.AssetPath ?? string.Empty;
-			bool canInstall = !renderer.HasPerfMeterFeature && !string.IsNullOrEmpty(assetPath);
+			bool canInstall = !renderer.HasPerfMeterFeature && renderer.IsEditable && !string.IsNullOrEmpty(assetPath);
 
 			VisualElement row = new VisualElement();
 			row.AddToClassList("pm-renderer-row");
 			if (renderer.HasPerfMeterFeature)
 			{
 				row.AddToClassList("pm-renderer-row--installed");
+			}
+			else if (!renderer.IsEditable)
+			{
+				row.AddToClassList("pm-renderer-row--readonly");
 			}
 
 			Toggle toggle = new Toggle();
@@ -431,7 +435,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 			Label statusLabel = new Label(GetRendererStatusText(renderer));
 			statusLabel.AddToClassList("pm-renderer-status");
-			statusLabel.AddToClassList(renderer.HasPerfMeterFeature ? "pm-renderer-status--installed" : "pm-renderer-status--missing");
+			statusLabel.AddToClassList(renderer.HasPerfMeterFeature ? "pm-renderer-status--installed" : renderer.IsEditable ? "pm-renderer-status--missing" : "pm-renderer-status--readonly");
 			row.Add(statusLabel);
 
 			VisualElement textColumn = new VisualElement();
@@ -442,6 +446,14 @@ namespace SGG.PerfMeter.Editor.UI
 			pathLabel.AddToClassList("pm-renderer-path");
 			textColumn.Add(nameLabel);
 			textColumn.Add(pathLabel);
+			string details = GetRendererDetailsText(renderer);
+			if (!string.IsNullOrEmpty(details))
+			{
+				Label detailsLabel = new Label(details);
+				detailsLabel.AddToClassList("pm-renderer-details");
+				textColumn.Add(detailsLabel);
+			}
+
 			row.Add(textColumn);
 
 			return row;
@@ -467,7 +479,7 @@ namespace SGG.PerfMeter.Editor.UI
 			for (int i = 0; i < status.Renderers.Count; i++)
 			{
 				PerfMeterSetupUtility.RendererSetupStatus renderer = status.Renderers[i];
-				if (!renderer.HasPerfMeterFeature && !string.IsNullOrEmpty(renderer.AssetPath))
+				if (!renderer.HasPerfMeterFeature && renderer.IsEditable && !string.IsNullOrEmpty(renderer.AssetPath))
 				{
 					_selectedRendererPaths.Add(renderer.AssetPath);
 				}
@@ -492,7 +504,7 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			for (int i = 0; i < status.Renderers.Count; i++)
 			{
-				if (!status.Renderers[i].HasPerfMeterFeature)
+				if (!status.Renderers[i].HasPerfMeterFeature && status.Renderers[i].IsEditable)
 				{
 					return true;
 				}
@@ -508,7 +520,33 @@ namespace SGG.PerfMeter.Editor.UI
 				return renderer.HasMissingFeatureReference ? "Installed + broken refs" : "Installed";
 			}
 
+			if (!renderer.IsEditable)
+			{
+				return renderer.HasMissingFeatureReference ? "Not editable + broken refs" : "Not editable";
+			}
+
 			return renderer.HasMissingFeatureReference ? "Missing + broken refs" : "Missing";
+		}
+
+		private static string GetRendererDetailsText(PerfMeterSetupUtility.RendererSetupStatus renderer)
+		{
+			List<string> details = new List<string>();
+			if (renderer.IsActive)
+			{
+				details.Add("Active renderer");
+			}
+
+			if (renderer.IsInPackage)
+			{
+				details.Add("Inside Packages; setup will not modify it");
+			}
+
+			if (renderer.HasMissingFeatureReference)
+			{
+				details.Add("Missing renderer feature reference present");
+			}
+
+			return details.Count > 0 ? string.Join("; ", details) : string.Empty;
 		}
 
 		private void CopyInitializationCode()

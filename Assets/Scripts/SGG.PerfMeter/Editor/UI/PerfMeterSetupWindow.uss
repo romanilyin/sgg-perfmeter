@@ -151,6 +151,10 @@
     background-color: rgba(30, 60, 42, 0.35);
 }
 
+.pm-renderer-row--readonly {
+    background-color: rgba(58, 48, 28, 0.35);
+}
+
 .pm-renderer-toggle {
     width: 22px;
     min-width: 22px;
@@ -173,6 +177,10 @@
     color: #ffc107;
 }
 
+.pm-renderer-status--readonly {
+    color: #c8a667;
+}
+
 .pm-renderer-text {
     flex-grow: 1;
     min-width: 0;
@@ -185,6 +193,11 @@
 
 .pm-renderer-path {
     color: var(--pm-text-muted);
+    white-space: normal;
+}
+
+.pm-renderer-details {
+    color: #c8a667;
     white-space: normal;
 }
 

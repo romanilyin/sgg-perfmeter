@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
 using RuntimeRenderGraphFeature = SGG.PerfMeter.PerfMeterRenderGraphFeature;
@@ -84,7 +85,7 @@ public static class PerfMeterBootstrap
 			for (int i = 0; i < renderers.Count; i++)
 			{
 				RendererSetupStatus rendererStatus = renderers[i];
-				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature)
+				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature || !rendererStatus.IsEditable)
 				{
 					continue;
 				}
@@ -144,7 +145,7 @@ public static class PerfMeterBootstrap
 				}
 
 				matchedCount++;
-				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature)
+				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature || !rendererStatus.IsEditable)
 				{
 					continue;
 				}
@@ -165,7 +166,7 @@ public static class PerfMeterBootstrap
 
 			if (installedCount == 0)
 			{
-				return InstallResult.Ok("PerfMeter Render Graph feature is already installed in the selected URP renderer asset(s).");
+				return InstallResult.Ok("PerfMeter Render Graph feature is already installed or cannot be edited in the selected URP renderer asset(s).");
 			}
 
 			return InstallResult.Ok("Installed PerfMeter Render Graph feature in " + installedCount + " selected renderer asset(s).");
@@ -175,6 +176,8 @@ public static class PerfMeterBootstrap
 		{
 			List<RendererSetupStatus> result = new List<RendererSetupStatus>();
 			HashSet<string> seenRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			AddRendererStatusesFromActivePipelineAssets(result, seenRendererPaths);
+
 			string[] pipelineGuids = AssetDatabase.FindAssets("t:UniversalRenderPipelineAsset", new[] { "Assets" });
 			for (int i = 0; i < pipelineGuids.Length; i++)
 			{
@@ -185,7 +188,7 @@ public static class PerfMeterBootstrap
 					continue;
 				}
 
-				AddRendererStatusesFromPipeline(pipelineAsset, result, seenRendererPaths);
+				AddRendererStatusesFromPipeline(pipelineAsset, result, seenRendererPaths, false);
 			}
 
 			string[] rendererGuids = AssetDatabase.FindAssets("t:UniversalRendererData", new[] { "Assets" });
@@ -193,15 +196,26 @@ public static class PerfMeterBootstrap
 			{
 				string path = AssetDatabase.GUIDToAssetPath(rendererGuids[i]);
 				ScriptableRendererData rendererData = AssetDatabase.LoadAssetAtPath<ScriptableRendererData>(path);
-				AddRendererStatus(rendererData, result, seenRendererPaths);
+				AddRendererStatus(rendererData, result, seenRendererPaths, false);
 			}
 
 			result.Sort((left, right) => string.Compare(left.AssetPath, right.AssetPath, StringComparison.OrdinalIgnoreCase));
 			return result;
 		}
 
-		private static void AddRendererStatusesFromPipeline(UniversalRenderPipelineAsset pipelineAsset, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths)
+		private static void AddRendererStatusesFromActivePipelineAssets(List<RendererSetupStatus> result, HashSet<string> seenRendererPaths)
 		{
+			AddRendererStatusesFromPipeline(GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset, result, seenRendererPaths, true);
+			AddRendererStatusesFromPipeline(QualitySettings.renderPipeline as UniversalRenderPipelineAsset, result, seenRendererPaths, true);
+		}
+
+		private static void AddRendererStatusesFromPipeline(UniversalRenderPipelineAsset pipelineAsset, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths, bool isActive)
+		{
+			if (pipelineAsset == null)
+			{
+				return;
+			}
+
 			SerializedObject serializedPipeline = new SerializedObject(pipelineAsset);
 			SerializedProperty rendererDataList = serializedPipeline.FindProperty("m_RendererDataList");
 			if (rendererDataList != null && rendererDataList.isArray)
@@ -209,15 +223,15 @@ public static class PerfMeterBootstrap
 				for (int i = 0; i < rendererDataList.arraySize; i++)
 				{
 					ScriptableRendererData rendererData = rendererDataList.GetArrayElementAtIndex(i).objectReferenceValue as ScriptableRendererData;
-					AddRendererStatus(rendererData, result, seenRendererPaths);
+					AddRendererStatus(rendererData, result, seenRendererPaths, isActive);
 				}
 			}
 
 			SerializedProperty rendererDataProperty = serializedPipeline.FindProperty("m_RendererData");
-			AddRendererStatus(rendererDataProperty?.objectReferenceValue as ScriptableRendererData, result, seenRendererPaths);
+			AddRendererStatus(rendererDataProperty?.objectReferenceValue as ScriptableRendererData, result, seenRendererPaths, isActive);
 		}
 
-		private static void AddRendererStatus(ScriptableRendererData rendererData, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths)
+		private static void AddRendererStatus(ScriptableRendererData rendererData, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths, bool isActive)
 		{
 			if (rendererData == null)
 			{
@@ -225,24 +239,63 @@ public static class PerfMeterBootstrap
 			}
 
 			string assetPath = AssetDatabase.GetAssetPath(rendererData);
-			if (string.IsNullOrEmpty(assetPath) || !seenRendererPaths.Add(assetPath))
+			if (string.IsNullOrEmpty(assetPath))
 			{
 				return;
 			}
+
+			if (!seenRendererPaths.Add(assetPath))
+			{
+				MarkRendererActive(result, assetPath, isActive);
+				return;
+			}
+
+			bool isInPackage = IsPackageAssetPath(assetPath);
 
 			result.Add(new RendererSetupStatus
 			{
 				RendererData = rendererData,
 				Name = rendererData.name,
 				AssetPath = assetPath,
+				IsActive = isActive,
+				IsInPackage = isInPackage,
+				IsEditable = !isInPackage,
 				HasPerfMeterFeature = HasPerfMeterFeature(rendererData),
 				HasMissingFeatureReference = HasMissingFeatureReference(rendererData)
 			});
 		}
 
+		private static void MarkRendererActive(List<RendererSetupStatus> renderers, string assetPath, bool isActive)
+		{
+			if (!isActive)
+			{
+				return;
+			}
+
+			for (int i = 0; i < renderers.Count; i++)
+			{
+				if (string.Equals(renderers[i].AssetPath, assetPath, StringComparison.OrdinalIgnoreCase))
+				{
+					renderers[i].IsActive = true;
+					return;
+				}
+			}
+		}
+
+		private static bool IsPackageAssetPath(string assetPath)
+		{
+			return !string.IsNullOrEmpty(assetPath) && assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase);
+		}
+
 		private static bool AddRendererFeature(ScriptableRendererData rendererData)
 		{
 			if (rendererData == null || HasPerfMeterFeature(rendererData))
+			{
+				return false;
+			}
+
+			string assetPath = AssetDatabase.GetAssetPath(rendererData);
+			if (IsPackageAssetPath(assetPath))
 			{
 				return false;
 			}
@@ -344,7 +397,7 @@ public static class PerfMeterBootstrap
 				{
 					for (int i = 0; i < Renderers.Count; i++)
 					{
-						if (Renderers[i].HasMissingFeatureReference)
+						if (Renderers[i].HasMissingFeatureReference || !Renderers[i].IsEditable)
 						{
 							return true;
 						}
@@ -367,7 +420,7 @@ public static class PerfMeterBootstrap
 						return "No URP renderer assets were found from project URP assets.";
 					}
 
-					string warning = HasRendererWarnings ? " Missing renderer feature references exist; inspect the renderer asset if Unity reports compile issues." : string.Empty;
+					string warning = HasRendererWarnings ? " Missing feature references or package renderer assets require manual inspection." : string.Empty;
 					return InstalledRendererCount + " / " + Renderers.Count + " URP renderer asset(s) have PerfMeter Render Graph feature." + warning;
 				}
 			}
@@ -378,6 +431,9 @@ public static class PerfMeterBootstrap
 			internal ScriptableRendererData RendererData;
 			internal string Name = string.Empty;
 			internal string AssetPath = string.Empty;
+			internal bool IsActive;
+			internal bool IsInPackage;
+			internal bool IsEditable = true;
 			internal bool HasPerfMeterFeature;
 			internal bool HasMissingFeatureReference;
 		}
