@@ -33,5 +33,6 @@
 - Overdraw numeric measurement uses replacement shader rendering, atomic fragment counting, and `AsyncGPUReadback`; visual heatmap output is not implemented yet.
 - Overdraw measurement gates unsupported targets with `OverdrawState.Unsupported`; fragment UAV/storage buffer behavior still needs device validation on limited backends.
 - Render Graph pass/aliasing/merge analytics are not implemented.
+- The empty overlay marker pass is opt-in diagnostic mode; self-overhead subtraction is still pending.
 - Full zero-allocation overlay refresh is not implemented yet; the current overlay throttles text rebuilds and managed string assignment to the refresh interval.
 - Manual device validation is still pending, especially Android Vulkan/GLES GPU timing behavior.

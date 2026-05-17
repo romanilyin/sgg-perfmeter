@@ -33,5 +33,6 @@
 - Численное измерение overdraw использует replacement shader, atomic fragment counting и `AsyncGPUReadback`; visual heatmap output еще не реализован.
 - Overdraw measurement gate'ит неподдерживаемые targets через `OverdrawState.Unsupported`; поведение fragment UAV/storage buffer на ограниченных backend все еще требует проверки на устройствах.
 - Аналитика Render Graph passes/aliasing/merge еще не реализована.
+- Пустой overlay marker pass является opt-in diagnostic mode; self-overhead subtraction все еще pending.
 - Полный zero-allocation refresh overlay еще не реализован; текущий overlay throttles text rebuilds и managed string assignment до refresh interval.
 - Manual device validation еще требуется, особенно для поведения Android Vulkan/GLES GPU timing.

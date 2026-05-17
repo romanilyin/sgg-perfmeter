@@ -349,7 +349,7 @@ Manual installation:
 
 The feature currently provides:
 
-- a dedicated Render Graph marker pass;
+- an opt-in diagnostic Render Graph marker pass for future self-overhead measurement;
 - optional overdraw instrumentation pass while overdraw measurement is active;
 - hidden replacement shader lookup through `Shader.Find` / `Resources.Load`;
 - async readback of the numeric overdraw counter.
@@ -465,7 +465,7 @@ Recommended next verification targets:
 - GPU timings can be delayed or unavailable depending on platform and graphics API; `CollectionFrame` identifies when the snapshot was collected, not the original hardware timing frame.
 - Bottleneck classification is heuristic and should be validated against Unity Profiler captures before treating it as authoritative.
 - The overlay refresh is throttled, but text assignment still creates managed strings on refresh; full zero-allocation overlay refresh is tracked as a later optimization.
-- Self-overhead marker exists, but full overhead subtraction is not finalized.
+- Self-overhead marker pass is opt-in diagnostic mode, and full overhead subtraction is not finalized.
 - Overdraw heatmap output is not implemented yet.
 - CSV/JSON session export is not implemented yet.
 - CI is not configured yet.

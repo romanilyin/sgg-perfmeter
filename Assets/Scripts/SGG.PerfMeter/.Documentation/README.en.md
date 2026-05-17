@@ -88,7 +88,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 
 ## URP Render Graph Renderer Feature
 
-`PerfMeterRenderGraphFeature` adds a URP 17 Render Graph marker pass with a dedicated profiling sampler named `SGG.PerfMeter.Overlay` and an opt-in pass for numerical overdraw measurement. The overlay marker does not render heavy graphics; it is reserved for future `ProfilerRecorder`-based measurement and subtraction of the tool cost.
+`PerfMeterRenderGraphFeature` adds an opt-in URP 17 Render Graph marker pass with a dedicated profiling sampler named `SGG.PerfMeter.Overlay` and an opt-in pass for numerical overdraw measurement. The overlay marker is disabled by default because it is reserved for diagnostic/self-overhead measurement and future `ProfilerRecorder`-based subtraction of the tool cost.
 
 - Preferred installation: `SGG/Perfmeter/Setup` -> select missing renderers or use `Install All Missing`.
 - Renderer assets inside `Packages` are shown as not editable; copy/configure them manually if a package-owned renderer must include the feature.
@@ -96,6 +96,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - In the renderer asset Inspector, choose `Add Renderer Feature` -> `Perf Meter Render Graph Feature`.
 - Keep `Enabled` on, leave `Render Pass Event` at the default `AfterRenderingPostProcessing`, or switch it to `AfterRendering` if the marker must run after the whole frame.
 - `Marker Name` defaults to `SGG.PerfMeter.Overlay`; change it only if downstream `ProfilerRecorder` code will look for another marker name.
+- Enable `Record Overlay Marker Pass` only when diagnosing PerfMeter self-overhead; numerical overdraw measurement does not require the empty marker pass.
 - The feature uses `RecordRenderGraph(RenderGraph, ContextContainer)` and `AddRasterRenderPass`; no legacy-only path is used.
 
 ## Overdraw Measurement

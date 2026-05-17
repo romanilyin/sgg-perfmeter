@@ -41,6 +41,11 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			if (!_settings.RecordOverlayMarkerPass && !PerfMeterRuntime.IsOverdrawMeasurementActive)
+			{
+				return;
+			}
+
 			_overlayMarkerPass ??= new OverlayMarkerPass();
 			ApplySettingsToPass();
 			renderer.EnqueuePass(_overlayMarkerPass);
@@ -53,7 +58,7 @@ namespace SGG.PerfMeter
 				_settings = new Settings();
 			}
 
-			_overlayMarkerPass.Setup(_settings.RenderPassEvent, GetSafeMarkerName(_settings.MarkerName));
+			_overlayMarkerPass.Setup(_settings.RenderPassEvent, GetSafeMarkerName(_settings.MarkerName), _settings.RecordOverlayMarkerPass);
 		}
 
 		private static string GetSafeMarkerName(string markerName)
@@ -73,11 +78,16 @@ namespace SGG.PerfMeter
 			[SerializeField]
 			private string _markerName = DefaultMarkerName;
 
+			[SerializeField]
+			private bool _recordOverlayMarkerPass;
+
 			public bool Enabled => _enabled;
 
 			public RenderPassEvent RenderPassEvent => _renderPassEvent;
 
 			public string MarkerName => _markerName;
+
+			public bool RecordOverlayMarkerPass => _recordOverlayMarkerPass;
 		}
 
 		private sealed class OverlayMarkerPass : ScriptableRenderPass
@@ -96,12 +106,14 @@ namespace SGG.PerfMeter
 			};
 
 			private string _currentMarkerName;
+			private bool _recordOverlayMarkerPass;
 			private ProfilingSampler _overdrawProfilingSampler = new ProfilingSampler(DefaultOverdrawMarkerName);
 			private Material _overdrawMaterial;
 
-			internal void Setup(RenderPassEvent passEvent, string markerName)
+			internal void Setup(RenderPassEvent passEvent, string markerName, bool recordOverlayMarkerPass)
 			{
 				renderPassEvent = passEvent;
+				_recordOverlayMarkerPass = recordOverlayMarkerPass;
 
 				if (_currentMarkerName == markerName)
 				{
@@ -120,14 +132,17 @@ namespace SGG.PerfMeter
 					return;
 				}
 
-				using (IRasterRenderGraphBuilder builder = renderGraph.AddRasterRenderPass<MarkerPassData>(_currentMarkerName, out MarkerPassData passData, profilingSampler))
+				if (_recordOverlayMarkerPass)
 				{
-					builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
-					builder.AllowPassCulling(false);
-					builder.SetRenderFunc(static (MarkerPassData data, RasterGraphContext context) =>
+					using (IRasterRenderGraphBuilder builder = renderGraph.AddRasterRenderPass<MarkerPassData>(_currentMarkerName, out MarkerPassData passData, profilingSampler))
 					{
-						// Intentionally empty: this pass preserves a dedicated profiling marker for overhead subtraction.
-					});
+						builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
+						builder.AllowPassCulling(false);
+						builder.SetRenderFunc(static (MarkerPassData data, RasterGraphContext context) =>
+						{
+							// Intentionally empty: opt-in diagnostic marker for measuring PerfMeter overhead.
+						});
+					}
 				}
 
 				if (!PerfMeterRuntime.IsOverdrawMeasurementActive)
