@@ -5,12 +5,17 @@ using SGG.PerfMeter.Editor.Setup;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public static class PerfMeterAndroidBuild
 {
 	private const string DefaultOutputPath = "Builds/Android/SGGPerfMeter-S23-dev.apk";
 	private const string DefaultSdkRoot = "C:/Work/SDK/AndroidSDK";
 	private const string RequiredNdkVersion = "27.2.12479018";
+	private const string OutputPathVariable = "PERFMETER_ANDROID_APK";
+	private const string OutputPathArgument = "-perfMeterAndroidApk";
+	private const string GraphicsOverrideVariable = "PERFMETER_ANDROID_GRAPHICS";
+	private const string GraphicsOverrideArgument = "-perfMeterAndroidGraphics";
 
 	public static void BuildDevelopmentApk()
 	{
@@ -24,6 +29,7 @@ public static class PerfMeterAndroidBuild
 		EditorUserBuildSettings.buildAppBundle = false;
 		PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
 		PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+		ConfigureAndroidGraphicsApi();
 
 		PerfMeterSetupActionResult setupResult = PerfMeterSetupActions.RunRecommendedSetup();
 		if (!setupResult.Success)
@@ -87,7 +93,12 @@ public static class PerfMeterAndroidBuild
 
 	private static string GetOutputPath()
 	{
-		string outputPath = Environment.GetEnvironmentVariable("PERFMETER_ANDROID_APK");
+		string outputPath = GetCommandLineValue(OutputPathArgument);
+		if (string.IsNullOrEmpty(outputPath))
+		{
+			outputPath = Environment.GetEnvironmentVariable(OutputPathVariable);
+		}
+
 		return string.IsNullOrEmpty(outputPath) ? DefaultOutputPath : outputPath.Replace('\\', '/');
 	}
 
@@ -104,6 +115,59 @@ public static class PerfMeterAndroidBuild
 		EditorPrefs.SetString("AndroidSdkRoot", NormalizePath(sdkRoot));
 		EditorPrefs.SetString("AndroidNdkRoot", NormalizePath(ndkRoot));
 		EditorPrefs.SetString("JdkPath", NormalizePath(jdkRoot));
+	}
+
+	private static void ConfigureAndroidGraphicsApi()
+	{
+		string graphicsOverride = GetCommandLineValue(GraphicsOverrideArgument);
+		if (string.IsNullOrEmpty(graphicsOverride))
+		{
+			graphicsOverride = Environment.GetEnvironmentVariable(GraphicsOverrideVariable);
+		}
+
+		if (string.IsNullOrEmpty(graphicsOverride))
+		{
+			return;
+		}
+
+		GraphicsDeviceType graphicsApi = ParseGraphicsApi(graphicsOverride);
+		PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
+		PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { graphicsApi });
+		Debug.Log("SGG PerfMeter Android graphics API override: " + graphicsApi);
+	}
+
+	private static GraphicsDeviceType ParseGraphicsApi(string value)
+	{
+		switch (value.Trim().ToLowerInvariant())
+		{
+			case "gles3":
+			case "opengles3":
+				return GraphicsDeviceType.OpenGLES3;
+			case "vulkan":
+				return GraphicsDeviceType.Vulkan;
+			default:
+				throw new InvalidOperationException(GraphicsOverrideVariable + " must be 'vulkan' or 'gles3'.");
+		}
+	}
+
+	private static string GetCommandLineValue(string argumentName)
+	{
+		string[] args = Environment.GetCommandLineArgs();
+		for (int i = 0; i < args.Length; i++)
+		{
+			if (string.Equals(args[i], argumentName, StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+			{
+				return args[i + 1];
+			}
+
+			string prefix = argumentName + "=";
+			if (args[i].StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+			{
+				return args[i].Substring(prefix.Length);
+			}
+		}
+
+		return string.Empty;
 	}
 
 	private static string GetPathFromEnvironment(string variableName, string fallbackPath)
