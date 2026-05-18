@@ -13,13 +13,15 @@
 - Editor setup window now has `Setup` and `Runtime` tabs under `SGG/Perfmeter/Setup`: setup discovers active URP renderers from Graphics/Quality settings first, falls back to renderer assets under `Assets`, marks renderer assets under `Packages` as not editable, installs into all or selected editable renderers, and exposes Play Mode runtime controls for target FPS, overlay mode/corner/visibility, and short overdraw capture.
 - `PerfMeterRenderGraphFeature` no longer enqueues an empty overlay marker pass by default; enable `Record Overlay Marker Pass` only for diagnostic/self-overhead measurement. Active overdraw requests still enqueue the needed Render Graph pass.
 - Tests include EditMode API/classifier coverage and PlayMode runtime smoke coverage for overlay lifecycle, snapshot updates, and overdraw terminal/degraded states.
+- Bottleneck classification now uses main-thread work time after present wait, returns `Unknown` for significant present wait without GPU timing when CPU work is below budget, and picks the dominant CPU/GPU overshoot for mixed overloads.
+- Overdraw measurement defaults to Game cameras only, supports an optional camera-name filter, and ignores stale `AsyncGPUReadback` callbacks from older measurement sessions.
 
 ## Verification Notes
 
-- Use Unity 6000.4.5f1 batchmode compile as the reliable local verification path.
-- Latest local verification passed with `Logs/opencode-playmode-smoke-compile.log`.
+- Use Unity 6000.4.5f1 batchmode compile and `-runTests` without `-quit` as the reliable local verification path.
+- Latest local verification passed with `Logs/opencode-hardening-compile.log`, `Logs/opencode-hardening-editmode-results.xml`, and `Logs/opencode-hardening-playmode-results.xml`.
 - Recent hardening compile logs: `Logs/opencode-iter2-setup-ui-compile.log`, `Logs/opencode-iter3-bottleneck-compile.log`, `Logs/opencode-iter4-collection-frame-compile.log`, `Logs/opencode-iter5-overdraw-unsupported-compile-2.log`, `Logs/opencode-setup-discovery-compile.log`, and `Logs/opencode-marker-optin-compile.log`.
-- Do not spend time on the known local `-runTests` issue unless the project verification setup changes.
+- Do not add `-quit` to Unity `-runTests` commands; Unity writes XML results and exits after the run.
 - Manual target-device validation is still needed for GPU timings, overdraw behavior, and platform-specific ProfilerRecorder counter availability.
 
 ## Handoff Notes

@@ -4,7 +4,7 @@
 
 - Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`.
 - Реализованы runtime API, сбор метрик, UI Toolkit overlay с режимами, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs и opt-in численное измерение overdraw.
-- Есть EditMode API/classifier tests и PlayMode runtime smoke tests; player-build smoke validation еще pending.
+- Есть EditMode API/classifier tests и PlayMode runtime smoke tests; classifier mixed-load edge cases и overdraw stale-readback safety покрыты. Player-build smoke validation еще pending.
 - Пакет готов для внутренней проверки в Unity 6000.4 / URP 17, но не для публичного релиза.
 
 ## Public Runtime API
@@ -30,8 +30,9 @@
 
 ## Известные ограничения
 
-- Batchmode `-runTests` является известной локальной проблемой верификации; текущая надежная проверка - compile batchmode.
+- Локальный `-runTests` работает, если запускать его без `-quit`; Unity сама пишет XML results и выходит после run.
 - Численное измерение overdraw использует replacement shader, atomic fragment counting и `AsyncGPUReadback`; visual heatmap output еще не реализован.
+- Overdraw measurement по умолчанию ограничен Game cameras и может быть сужен через camera-name filter в настройках `PerfMeterRenderGraphFeature`.
 - Overdraw measurement gate'ит неподдерживаемые targets через `OverdrawState.Unsupported`; поведение fragment UAV/storage buffer на ограниченных backend все еще требует проверки на устройствах.
 - Аналитика Render Graph passes/aliasing/merge еще не реализована.
 - Пустой overlay marker pass является opt-in diagnostic mode; self-overhead subtraction все еще pending.

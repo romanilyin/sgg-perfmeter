@@ -143,29 +143,30 @@ namespace SGG.PerfMeter
 			RefreshStatusOverlayState();
 		}
 
-		internal static bool TryBeginOverdrawRenderGraphFrame(int unityFrame, int screenPixelCount, out GraphicsBuffer counterBuffer)
+		internal static bool TryBeginOverdrawRenderGraphFrame(int unityFrame, int screenPixelCount, out GraphicsBuffer counterBuffer, out int measurementId)
 		{
 			counterBuffer = null;
+			measurementId = -1;
 
 			if (_instance == null)
 			{
 				return false;
 			}
 
-			bool started = _instance._overdrawController.TryBeginRenderGraphFrame(unityFrame, screenPixelCount, out counterBuffer);
+			bool started = _instance._overdrawController.TryBeginRenderGraphFrame(unityFrame, screenPixelCount, out counterBuffer, out measurementId);
 			_instance._latestMetrics = _instance.WithOverdrawState(_instance._latestMetrics);
 			_instance.RefreshStatusOverlayState();
 			return started;
 		}
 
-		internal static void CompleteOverdrawCounterReadback(AsyncGPUReadbackRequest request)
+		internal static void CompleteOverdrawCounterReadback(int measurementId, AsyncGPUReadbackRequest request)
 		{
 			if (_instance == null)
 			{
 				return;
 			}
 
-			_instance._overdrawController.CompleteCounterReadback(request);
+			_instance._overdrawController.CompleteCounterReadback(measurementId, request);
 			_instance._latestMetrics = _instance.WithOverdrawState(_instance._latestMetrics);
 			_instance.RefreshStatusOverlayState();
 		}

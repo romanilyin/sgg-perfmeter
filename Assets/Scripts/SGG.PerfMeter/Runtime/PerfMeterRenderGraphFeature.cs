@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -58,7 +59,12 @@ namespace SGG.PerfMeter
 				_settings = new Settings();
 			}
 
-			_overlayMarkerPass.Setup(_settings.RenderPassEvent, GetSafeMarkerName(_settings.MarkerName), _settings.RecordOverlayMarkerPass);
+			_overlayMarkerPass.Setup(
+				_settings.RenderPassEvent,
+				GetSafeMarkerName(_settings.MarkerName),
+				_settings.RecordOverlayMarkerPass,
+				_settings.GameCamerasOnly,
+				_settings.CameraNameFilter);
 		}
 
 		private static string GetSafeMarkerName(string markerName)
@@ -81,6 +87,12 @@ namespace SGG.PerfMeter
 			[SerializeField]
 			private bool _recordOverlayMarkerPass;
 
+			[SerializeField]
+			private bool _gameCamerasOnly = true;
+
+			[SerializeField]
+			private string _cameraNameFilter = string.Empty;
+
 			public bool Enabled => _enabled;
 
 			public RenderPassEvent RenderPassEvent => _renderPassEvent;
@@ -88,6 +100,10 @@ namespace SGG.PerfMeter
 			public string MarkerName => _markerName;
 
 			public bool RecordOverlayMarkerPass => _recordOverlayMarkerPass;
+
+			public bool GameCamerasOnly => _gameCamerasOnly;
+
+			public string CameraNameFilter => _cameraNameFilter;
 		}
 
 		private sealed class OverlayMarkerPass : ScriptableRenderPass
@@ -107,13 +123,17 @@ namespace SGG.PerfMeter
 
 			private string _currentMarkerName;
 			private bool _recordOverlayMarkerPass;
+			private bool _gameCamerasOnly = true;
+			private string _cameraNameFilter = string.Empty;
 			private ProfilingSampler _overdrawProfilingSampler = new ProfilingSampler(DefaultOverdrawMarkerName);
 			private Material _overdrawMaterial;
 
-			internal void Setup(RenderPassEvent passEvent, string markerName, bool recordOverlayMarkerPass)
+			internal void Setup(RenderPassEvent passEvent, string markerName, bool recordOverlayMarkerPass, bool gameCamerasOnly, string cameraNameFilter)
 			{
 				renderPassEvent = passEvent;
 				_recordOverlayMarkerPass = recordOverlayMarkerPass;
+				_gameCamerasOnly = gameCamerasOnly;
+				_cameraNameFilter = cameraNameFilter ?? string.Empty;
 
 				if (_currentMarkerName == markerName)
 				{
@@ -161,6 +181,12 @@ namespace SGG.PerfMeter
 
 			private void RecordOverdrawPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData)
 			{
+				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
+				if (!ShouldMeasureCamera(cameraData))
+				{
+					return;
+				}
+
 				Material overdrawMaterial = GetOverdrawMaterial(out string materialError, out bool unsupported);
 				if (overdrawMaterial == null)
 				{
@@ -176,16 +202,15 @@ namespace SGG.PerfMeter
 					return;
 				}
 
-				RendererListHandle rendererListHandle = CreateOverdrawRendererList(renderGraph, frameData, overdrawMaterial);
+				RendererListHandle rendererListHandle = CreateOverdrawRendererList(renderGraph, frameData, cameraData, overdrawMaterial);
 				if (!rendererListHandle.IsValid())
 				{
 					PerfMeterRuntime.FailOverdrawMeasurement("PerfMeter overdraw renderer list could not be created.");
 					return;
 				}
 
-				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
 				int screenPixelCount = GetScreenPixelCount(cameraData);
-				if (!PerfMeterRuntime.TryBeginOverdrawRenderGraphFrame(Time.frameCount, screenPixelCount, out GraphicsBuffer counterBuffer))
+				if (!PerfMeterRuntime.TryBeginOverdrawRenderGraphFrame(Time.frameCount, screenPixelCount, out GraphicsBuffer counterBuffer, out int measurementId))
 				{
 					return;
 				}
@@ -210,19 +235,20 @@ namespace SGG.PerfMeter
 				using (IUnsafeRenderGraphBuilder builder = renderGraph.AddUnsafePass<OverdrawReadbackPassData>(DefaultOverdrawMarkerName + ".Readback", out OverdrawReadbackPassData passData))
 				{
 					passData.CounterBufferHandle = counterBufferHandle;
+					passData.MeasurementId = measurementId;
 					builder.UseBuffer(passData.CounterBufferHandle, AccessFlags.Read);
 					builder.AllowPassCulling(false);
 					builder.SetRenderFunc(static (OverdrawReadbackPassData data, UnsafeGraphContext context) =>
 					{
-						context.cmd.RequestAsyncReadback(data.CounterBufferHandle, PerfMeterRuntime.CompleteOverdrawCounterReadback);
+						int callbackMeasurementId = data.MeasurementId;
+						context.cmd.RequestAsyncReadback(data.CounterBufferHandle, request => PerfMeterRuntime.CompleteOverdrawCounterReadback(callbackMeasurementId, request));
 					});
 				}
 			}
 
-			private RendererListHandle CreateOverdrawRendererList(RenderGraph renderGraph, ContextContainer frameData, Material overdrawMaterial)
+			private RendererListHandle CreateOverdrawRendererList(RenderGraph renderGraph, ContextContainer frameData, UniversalCameraData cameraData, Material overdrawMaterial)
 			{
 				UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
-				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
 				UniversalLightData lightData = frameData.Get<UniversalLightData>();
 				DrawingSettings drawingSettings = RenderingUtils.CreateDrawingSettings(
 					_overdrawShaderTagIds,
@@ -242,6 +268,22 @@ namespace SGG.PerfMeter
 
 				RendererListParams rendererListParams = new RendererListParams(renderingData.cullResults, drawingSettings, filteringSettings);
 				return renderGraph.CreateRendererList(rendererListParams);
+			}
+
+			private bool ShouldMeasureCamera(UniversalCameraData cameraData)
+			{
+				Camera camera = cameraData.camera;
+				if (camera == null)
+				{
+					return false;
+				}
+
+				if (_gameCamerasOnly && camera.cameraType != CameraType.Game)
+				{
+					return false;
+				}
+
+				return string.IsNullOrWhiteSpace(_cameraNameFilter) || camera.name.IndexOf(_cameraNameFilter, StringComparison.OrdinalIgnoreCase) >= 0;
 			}
 
 			private Material GetOverdrawMaterial(out string error, out bool unsupported)
@@ -299,6 +341,7 @@ namespace SGG.PerfMeter
 		private sealed class OverdrawReadbackPassData
 		{
 			internal BufferHandle CounterBufferHandle;
+			internal int MeasurementId;
 		}
 	}
 }

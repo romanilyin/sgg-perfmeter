@@ -93,7 +93,7 @@ For a fixed version, pin a tag or commit:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#v0.1.0"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#v2026.5.15-1"
   }
 }
 ```
@@ -351,6 +351,7 @@ The feature currently provides:
 
 - an opt-in diagnostic Render Graph marker pass for future self-overhead measurement;
 - optional overdraw instrumentation pass while overdraw measurement is active;
+- overdraw camera filtering, defaulting to Game cameras only, with optional camera-name filtering in the renderer feature settings;
 - hidden replacement shader lookup through `Shader.Find` / `Resources.Load`;
 - async readback of the numeric overdraw counter.
 
@@ -382,6 +383,7 @@ Notes:
 - It can be expensive and should not be left on permanently.
 - It depends on graphics API and device support; unsupported targets return `OverdrawState = Unsupported` with a warning before scheduling the Render Graph pass.
 - Transparent objects, particles, UI, renderer queues, replacement-shader compatibility, and camera selection can affect the result.
+- Readbacks are tied to a measurement session id, so stale `AsyncGPUReadback` callbacks from a canceled or restarted measurement are ignored.
 - Visual heatmap output is not implemented yet.
 
 ## MCP commands
@@ -430,6 +432,7 @@ Assets/Scripts/SGG.PerfMeter/
     Mcp/
   Tests/
     EditMode/
+    PlayMode/
   .Documentation/
     README.en.md
     README.ru.md
@@ -447,6 +450,13 @@ Recommended local compile check:
 
 ```bash
 Unity.exe -batchmode -quit -projectPath <path-to-project> -logFile <path-to-log>
+```
+
+Recommended local Test Runner checks use `-runTests` without `-quit`, because Unity exits after the run and writes the XML results itself:
+
+```bash
+Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform EditMode -testResults <path-to-editmode-results.xml> -logFile <path-to-editmode-log>
+Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform PlayMode -testResults <path-to-playmode-results.xml> -logFile <path-to-playmode-log>
 ```
 
 Recommended next verification targets:

@@ -142,8 +142,25 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(controller.Progress, Is.EqualTo(0f));
 			Assert.That(controller.Ratio, Is.EqualTo(0d));
 			Assert.That(controller.Warning, Does.Contain("Unsupported test backend"));
-			Assert.That(controller.TryBeginRenderGraphFrame(1, 100, out UnityEngine.GraphicsBuffer counterBuffer), Is.False);
+			Assert.That(controller.TryBeginRenderGraphFrame(1, 100, out UnityEngine.GraphicsBuffer counterBuffer, out int measurementId), Is.False);
 			Assert.That(counterBuffer, Is.Null);
+			Assert.That(measurementId, Is.EqualTo(-1));
+		}
+
+		[Test]
+		public void StaleOverdrawReadbackDoesNotMutateNewMeasurementSession()
+		{
+			PerfMeterOverdrawController controller = new PerfMeterOverdrawController();
+			controller.RequestMeasurement(2, string.Empty);
+			int staleMeasurementId = controller.CurrentMeasurementId;
+
+			controller.RequestMeasurement(2, string.Empty);
+			Assert.That(controller.CurrentMeasurementId, Is.GreaterThan(staleMeasurementId));
+
+			controller.CompleteCounterReadback(staleMeasurementId, default);
+			Assert.That(controller.State, Is.EqualTo(PerfMeterOverdrawMeasurementState.Measuring));
+			Assert.That(controller.RecordedFrameCount, Is.EqualTo(0));
+			Assert.That(controller.Progress, Is.EqualTo(0f));
 		}
 	}
 }

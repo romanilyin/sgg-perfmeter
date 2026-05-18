@@ -97,6 +97,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - Keep `Enabled` on, leave `Render Pass Event` at the default `AfterRenderingPostProcessing`, or switch it to `AfterRendering` if the marker must run after the whole frame.
 - `Marker Name` defaults to `SGG.PerfMeter.Overlay`; change it only if downstream `ProfilerRecorder` code will look for another marker name.
 - Enable `Record Overlay Marker Pass` only when diagnosing PerfMeter self-overhead; numerical overdraw measurement does not require the empty marker pass.
+- Overdraw defaults to `Game Cameras Only`; set `Camera Name Filter` if a multi-camera project needs to restrict measurement to one camera.
 - The feature uses `RecordRenderGraph(RenderGraph, ContextContainer)` and `AddRasterRenderPass`; no legacy-only path is used.
 
 ## Overdraw Measurement
@@ -108,6 +109,7 @@ Overdraw measurement is opt-in and bounded. Call `PerformanceMeter.RequestOverdr
 - The pass redraws the scene renderer list with the hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`: `ZTest Always`, `ZWrite Off`, `ColorMask 0`.
 - The fragment shader atomically increments a GPU `GraphicsBuffer`, then a readback pass uses `AsyncGPUReadback` without a CPU stall.
 - `OverdrawRatio` is computed as `TotalFragments / RenderedCameraPixels` and averaged across completed readback samples.
+- Async readbacks are guarded by a measurement session id, so stale callbacks from canceled/restarted measurements are ignored.
 - The shader requires fragment UAV/storage buffer support, compute shader support, a supported graphics API, and `AsyncGPUReadback`; unsupported targets enter `Unsupported` with a warning before scheduling the Render Graph pass.
 - Visual heatmap output is not implemented yet.
 - Progress advances after async readback scheduled from the Render Graph overdraw pass. If progress stays at `0`, verify that the renderer feature is installed on the renderer used by the active camera and that the target backend supports shader instrumentation.

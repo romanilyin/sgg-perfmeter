@@ -37,6 +37,21 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SignificantPresentWaitWithoutGpuTimingReturnsUnknownWhenCpuWorkIsBelowBudget()
+		{
+			PerfMeterBottleneck bottleneck = Classify(
+				PerfMeterFrameTimingAvailability.Available,
+				26d,
+				22d,
+				5d,
+				10d,
+				0d,
+				false);
+
+			Assert.That(bottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+		}
+
+		[Test]
 		public void GpuOverBudgetReturnsGpuBoundWithoutPresentWaitRequirement()
 		{
 			PerfMeterBottleneck bottleneck = Classify(
@@ -67,6 +82,21 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void MainThreadBoundUsesWorkTimeWithoutPresentWait()
+		{
+			PerfMeterBottleneck bottleneck = Classify(
+				PerfMeterFrameTimingAvailability.Available,
+				32d,
+				30d,
+				8d,
+				10d,
+				8d,
+				true);
+
+			Assert.That(bottleneck, Is.EqualTo(PerfMeterBottleneck.CpuMainThreadBound));
+		}
+
+		[Test]
 		public void RenderThreadOverBudgetReturnsCpuRenderThreadBound()
 		{
 			PerfMeterBottleneck bottleneck = Classify(
@@ -79,6 +109,36 @@ namespace SGG.PerfMeter.Tests.EditMode
 				true);
 
 			Assert.That(bottleneck, Is.EqualTo(PerfMeterBottleneck.CpuRenderThreadBound));
+		}
+
+		[Test]
+		public void MixedOverBudgetReturnsDominantOvershoot()
+		{
+			PerfMeterBottleneck bottleneck = Classify(
+				PerfMeterFrameTimingAvailability.Available,
+				23d,
+				22d,
+				30d,
+				0d,
+				20d,
+				true);
+
+			Assert.That(bottleneck, Is.EqualTo(PerfMeterBottleneck.CpuRenderThreadBound));
+		}
+
+		[Test]
+		public void MixedOverBudgetReturnsGpuWhenGpuOvershootDominates()
+		{
+			PerfMeterBottleneck bottleneck = Classify(
+				PerfMeterFrameTimingAvailability.Available,
+				22d,
+				20d,
+				18d,
+				0d,
+				32d,
+				true);
+
+			Assert.That(bottleneck, Is.EqualTo(PerfMeterBottleneck.GpuBound));
 		}
 
 		[Test]

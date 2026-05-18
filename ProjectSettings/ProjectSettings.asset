@@ -164,9 +164,9 @@ PlayerSettings:
   androidMaxAspectRatio: 2.4
   androidMinAspectRatio: 1
   applicationIdentifier:
-    Android: com.UnityTechnologies.com.unity.template.urpblank
-    Standalone: com.Unity-Technologies.com.unity.template.urp-blank
-    iPhone: com.Unity-Technologies.com.unity.template.urp-blank
+    Android: com.sungeargames.perfmeter
+    Standalone: com.sungeargames.perfmeter
+    iPhone: com.sungeargames.perfmeter
   buildNumber:
     Standalone: 0
     VisionOS: 0

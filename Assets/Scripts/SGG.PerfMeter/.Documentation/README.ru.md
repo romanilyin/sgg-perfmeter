@@ -97,6 +97,7 @@ Runtime overlay создается программно на UI Toolkit (`UIDocu
 - Оставьте `Enabled` включенным, `Render Pass Event` по умолчанию `AfterRenderingPostProcessing` или переключите на `AfterRendering`, если нужен самый поздний marker после всего кадра.
 - `Marker Name` по умолчанию `SGG.PerfMeter.Overlay`; меняйте его только если downstream `ProfilerRecorder` будет искать другое имя.
 - Включайте `Record Overlay Marker Pass` только для диагностики self-overhead PerfMeter; численное измерение overdraw не требует пустой marker pass.
+- Overdraw по умолчанию ограничен `Game Cameras Only`; задайте `Camera Name Filter`, если в multi-camera проекте нужно мерить только одну камеру.
 - Feature использует `RecordRenderGraph(RenderGraph, ContextContainer)` и `AddRasterRenderPass`; legacy-only path не используется.
 
 ## Измерение Overdraw
@@ -108,6 +109,7 @@ Runtime overlay создается программно на UI Toolkit (`UIDocu
 - Pass повторно рендерит scene renderer list с hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`: `ZTest Always`, `ZWrite Off`, `ColorMask 0`.
 - Fragment shader выполняет atomic increment в GPU `GraphicsBuffer`, затем readback pass вызывает `AsyncGPUReadback` без CPU stall.
 - `OverdrawRatio` считается как `TotalFragments / RenderedCameraPixels` и усредняется по завершенным readback samples.
+- Async readbacks защищены measurement session id, поэтому stale callbacks от отмененного или перезапущенного измерения игнорируются.
 - Shader требует поддержку fragment UAV/storage buffer, compute shaders, поддерживаемый graphics API и `AsyncGPUReadback`; неподдерживаемые targets переходят в `Unsupported` с предупреждением до планирования Render Graph pass.
 - Visual heatmap output еще не реализован.
 - Progress растет после async readback, запланированного из Render Graph overdraw pass. Если progress остается `0`, проверьте, что renderer feature установлен в renderer, который использует активная камера, и что target backend поддерживает shader instrumentation.

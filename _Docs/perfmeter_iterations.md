@@ -47,9 +47,9 @@ This file is the working implementation plan. Update readiness after every itera
 - Unity executable verified at `/mnt/c/Program Files/Unity/Hub/Editor/6000.4.5f1/Editor/Unity.exe`.
 - Telegram notification workflow is repo-local at `Tools/TelegramNotify/telegram_notify.py`; messages for this work use prefix `Perf:`.
 - `Tools/TelegramNotify/.env` is intentionally ignored and must not be committed.
-- Latest local compile verification passed in `Logs/opencode-playmode-smoke-compile.log`.
+- Latest local compile verification passed in `Logs/opencode-hardening-compile.log`; latest Test Runner XML results passed in `Logs/opencode-hardening-editmode-results.xml` and `Logs/opencode-hardening-playmode-results.xml`.
 - `_Docs/temp_feedback_15_05_2026.md` is an untracked user feedback file; do not commit it unless explicitly requested.
 
 ## Known Verification Issues
-- Unity batchmode compile succeeds, but `-runTests -testPlatform EditMode` currently exits with code 0 without starting the Test Runner or writing XML results when launched through the local Windows Unity executable from WSL. Keep running compile batchmode for verification; revisit test execution before final packaging.
-- EditMode batchmode test commands have produced logs but no XML result files in this local setup.
+- Unity `-runTests` must be launched without `-quit`; adding `-quit` exits batchmode before Test Runner writes XML results.
+- Android player build validation is blocked until Android Build Support, SDK/NDK Tools, and OpenJDK are installed for Unity 6000.4.5f1.

@@ -26,7 +26,8 @@
 ## Commands
 - There are no repo-local build/test/lint scripts or CI workflows; validation normally requires the Unity editor/batchmode for this project.
 - Reliable local compile check: `<Unity> -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter-local -logFile C:\Work\Unity\sgg-perfmeter-local\Logs\opencode-compile.log`.
-- EditMode/PlayMode `-runTests` currently exits without XML results in this WSL/Windows Unity setup; use compile batchmode unless the verification setup changes.
+- Reliable local Test Runner checks: `<Unity> -batchmode -projectPath C:\Work\Unity\sgg-perfmeter -runTests -testPlatform EditMode -testResults C:\Work\Unity\sgg-perfmeter\Logs\editmode-results.xml -logFile C:\Work\Unity\sgg-perfmeter\Logs\editmode.log` and the same command with `-testPlatform PlayMode`.
+- Do not combine Unity `-runTests` with `-quit`; Unity exits by itself after tests and writes XML only without `-quit` in this setup.
 - Do not edit generated `*.csproj`, `*.sln`, or `*.slnx` as source; `.gitignore` excludes them.
 
 ## Style And Assets

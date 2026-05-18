@@ -13,6 +13,8 @@ namespace SGG.PerfMeter
 		private int _requestedFrameCount;
 		private int _recordedFrameCount;
 		private int _lastScheduledUnityFrame = -1;
+		private int _measurementId;
+		private int _pendingMeasurementId = -1;
 		private int _pendingScreenPixelCount;
 		private double _totalFragmentCount;
 		private double _totalScreenPixelCount;
@@ -22,6 +24,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverdrawMeasurementState _state = PerfMeterOverdrawMeasurementState.Off;
 
 		internal PerfMeterOverdrawMeasurementState State => _state;
+		internal int CurrentMeasurementId => _measurementId;
 		internal int RequestedFrameCount => _requestedFrameCount;
 		internal int RecordedFrameCount => _recordedFrameCount;
 		internal double Ratio => _ratio;
@@ -52,9 +55,12 @@ namespace SGG.PerfMeter
 
 		private void BeginMeasurement(int frameCount)
 		{
+			ReleaseCounterBuffer();
+			_measurementId++;
 			_requestedFrameCount = frameCount > 0 ? frameCount : DefaultFrameCount;
 			_recordedFrameCount = 0;
 			_lastScheduledUnityFrame = -1;
+			_pendingMeasurementId = -1;
 			_pendingScreenPixelCount = 0;
 			_totalFragmentCount = 0d;
 			_totalScreenPixelCount = 0d;
@@ -70,6 +76,7 @@ namespace SGG.PerfMeter
 			_requestedFrameCount = 0;
 			_recordedFrameCount = 0;
 			_lastScheduledUnityFrame = -1;
+			_pendingMeasurementId = -1;
 			_pendingScreenPixelCount = 0;
 			_totalFragmentCount = 0d;
 			_totalScreenPixelCount = 0d;
@@ -85,6 +92,7 @@ namespace SGG.PerfMeter
 			_requestedFrameCount = 0;
 			_recordedFrameCount = 0;
 			_lastScheduledUnityFrame = -1;
+			_pendingMeasurementId = -1;
 			_pendingScreenPixelCount = 0;
 			_totalFragmentCount = 0d;
 			_totalScreenPixelCount = 0d;
@@ -94,9 +102,10 @@ namespace SGG.PerfMeter
 			_state = PerfMeterOverdrawMeasurementState.Off;
 		}
 
-		internal bool TryBeginRenderGraphFrame(int unityFrame, int screenPixelCount, out GraphicsBuffer counterBuffer)
+		internal bool TryBeginRenderGraphFrame(int unityFrame, int screenPixelCount, out GraphicsBuffer counterBuffer, out int measurementId)
 		{
 			counterBuffer = null;
+			measurementId = -1;
 
 			if (!IsMeasuring || _readbackPending || unityFrame == _lastScheduledUnityFrame)
 			{
@@ -109,8 +118,10 @@ namespace SGG.PerfMeter
 
 			_pendingScreenPixelCount = Mathf.Max(1, screenPixelCount);
 			_lastScheduledUnityFrame = unityFrame;
+			_pendingMeasurementId = _measurementId;
 			_readbackPending = true;
 			counterBuffer = _counterBuffer;
+			measurementId = _pendingMeasurementId;
 			return true;
 		}
 
@@ -123,13 +134,20 @@ namespace SGG.PerfMeter
 
 			_lastError = string.IsNullOrEmpty(error) ? WaitingForRenderGraphPassWarning : error;
 			_state = PerfMeterOverdrawMeasurementState.Error;
+			_pendingMeasurementId = -1;
 			_readbackPending = false;
 			ReleaseCounterBuffer();
 		}
 
-		internal void CompleteCounterReadback(AsyncGPUReadbackRequest request)
+		internal void CompleteCounterReadback(int measurementId, AsyncGPUReadbackRequest request)
 		{
+			if (measurementId != _pendingMeasurementId)
+			{
+				return;
+			}
+
 			_readbackPending = false;
+			_pendingMeasurementId = -1;
 
 			if (!IsMeasuring)
 			{
@@ -185,6 +203,7 @@ namespace SGG.PerfMeter
 			_requestedFrameCount = 0;
 			_recordedFrameCount = 0;
 			_lastScheduledUnityFrame = -1;
+			_pendingMeasurementId = -1;
 			_pendingScreenPixelCount = 0;
 			_totalFragmentCount = 0d;
 			_totalScreenPixelCount = 0d;

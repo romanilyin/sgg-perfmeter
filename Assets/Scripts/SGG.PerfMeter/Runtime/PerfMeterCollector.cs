@@ -238,27 +238,41 @@ namespace SGG.PerfMeter
 				return PerfMeterBottleneck.Unknown;
 			}
 
-			bool mainOverBudget = cpuMainThreadFrameTimeMs > frameBudgetMs;
+			double cpuMainWorkTimeMs = System.Math.Max(0d, cpuMainThreadFrameTimeMs - cpuMainThreadPresentWaitTimeMs);
+			bool mainOverBudget = cpuMainWorkTimeMs > frameBudgetMs;
 			bool renderOverBudget = cpuRenderThreadFrameTimeMs > frameBudgetMs;
 			bool gpuOverBudget = gpuFrameTimeAvailable && gpuFrameTimeMs > frameBudgetMs;
 			bool hasSignificantPresentWait = cpuMainThreadPresentWaitTimeMs > 1d ||
 				(cpuFrameTimeMs > 0d && cpuMainThreadPresentWaitTimeMs / cpuFrameTimeMs >= 0.25d);
-			double cpuMainWorkTimeMs = System.Math.Max(0d, cpuMainThreadFrameTimeMs - cpuMainThreadPresentWaitTimeMs);
 			bool workBelowBudget = cpuMainWorkTimeMs < frameBudgetMs * 0.85d &&
 				cpuRenderThreadFrameTimeMs < frameBudgetMs * 0.85d &&
-				(!gpuFrameTimeAvailable || gpuFrameTimeMs < frameBudgetMs * 0.85d);
+				gpuFrameTimeAvailable && gpuFrameTimeMs < frameBudgetMs * 0.85d;
+
+			if (hasSignificantPresentWait && !gpuFrameTimeAvailable && !mainOverBudget && !renderOverBudget)
+			{
+				return PerfMeterBottleneck.Unknown;
+			}
 
 			if (hasSignificantPresentWait && workBelowBudget)
 			{
 				return PerfMeterBottleneck.PresentLimited;
 			}
 
-			if (gpuOverBudget)
+			if (!gpuOverBudget && !mainOverBudget && !renderOverBudget)
+			{
+				return PerfMeterBottleneck.Balanced;
+			}
+
+			double gpuOverBudgetMs = gpuOverBudget ? gpuFrameTimeMs - frameBudgetMs : double.NegativeInfinity;
+			double mainOverBudgetMs = mainOverBudget ? cpuMainWorkTimeMs - frameBudgetMs : double.NegativeInfinity;
+			double renderOverBudgetMs = renderOverBudget ? cpuRenderThreadFrameTimeMs - frameBudgetMs : double.NegativeInfinity;
+
+			if (gpuOverBudgetMs >= mainOverBudgetMs && gpuOverBudgetMs >= renderOverBudgetMs)
 			{
 				return PerfMeterBottleneck.GpuBound;
 			}
 
-			if (mainOverBudget)
+			if (mainOverBudgetMs >= renderOverBudgetMs)
 			{
 				return PerfMeterBottleneck.CpuMainThreadBound;
 			}
