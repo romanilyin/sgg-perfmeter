@@ -108,6 +108,7 @@ namespace SGG.PerfMeter
 			PerfMeterOverdrawMeasurementState overdrawState = PerfMeterOverdrawMeasurementState.Off,
 			float overdrawProgress = 0f,
 			double overdrawRatio = 0d,
+			bool overdrawHeatmapVisible = false,
 			PerfMeterOverlayCorner overlayCorner = PerfMeterOverlayCorner.TopRight,
 			PerfMeterOverlayMode overlayMode = PerfMeterOverlayMode.Full,
 			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60)
@@ -130,6 +131,7 @@ namespace SGG.PerfMeter
 			OverdrawState = overdrawState;
 			OverdrawProgress = Mathf.Clamp01(overdrawProgress);
 			OverdrawRatio = overdrawRatio;
+			OverdrawHeatmapVisible = overdrawHeatmapVisible;
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -150,6 +152,7 @@ namespace SGG.PerfMeter
 		public PerfMeterOverdrawMeasurementState OverdrawState { get; }
 		public float OverdrawProgress { get; }
 		public double OverdrawRatio { get; }
+		public bool OverdrawHeatmapVisible { get; }
 	}
 
 	public readonly struct PerfMeterMetricsSnapshot

@@ -60,6 +60,25 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static bool IsOverdrawHeatmapVisible
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null && PerfMeterRuntime.IsOverdrawHeatmapVisible;
+			}
+		}
+
+		public static void SetOverdrawHeatmapVisible(bool visible)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverdrawHeatmapVisible(visible);
+			}
+		}
+
 		public static bool IsOverlayVisible
 		{
 			get

@@ -163,6 +163,25 @@
         "properties": {},
         "additionalProperties": false
       }
+    },
+    {
+      "id": "perfmeter.overdraw.heatmap.set",
+      "title": "Set PerfMeter overdraw heatmap",
+      "description": "Show or hide the SGG PerfMeter visual overdraw heatmap.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverdrawHeatmapSet",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "overdraw", "heatmap"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "visible": { "type": "boolean" }
+        },
+        "required": ["visible"],
+        "additionalProperties": false
+      }
     }
   ]
 }

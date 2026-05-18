@@ -8,13 +8,14 @@ using UnityEngine.Rendering.Universal;
 namespace SGG.PerfMeter
 {
 	/// <summary>
-	/// URP Render Graph feature that exposes PerfMeter markers and optional overdraw instrumentation.
+	/// URP Render Graph feature that exposes PerfMeter markers, overdraw measurement, and heatmap passes.
 	/// </summary>
 	[DisallowMultipleRendererFeature("SGG PerfMeter")]
 	public sealed class PerfMeterRenderGraphFeature : ScriptableRendererFeature
 	{
 		public const string DefaultMarkerName = "SGG.PerfMeter.Overlay";
 		public const string DefaultOverdrawMarkerName = "SGG.PerfMeter.Overdraw";
+		public const string DefaultOverdrawHeatmapMarkerName = "SGG.PerfMeter.OverdrawHeatmap";
 
 		[SerializeField]
 		private Settings _settings = new Settings();
@@ -42,7 +43,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			if (!_settings.RecordOverlayMarkerPass && !PerfMeterRuntime.IsOverdrawMeasurementActive)
+			if (!_settings.RecordOverlayMarkerPass && !PerfMeterRuntime.IsOverdrawMeasurementActive && !PerfMeterRuntime.IsOverdrawHeatmapVisible)
 			{
 				return;
 			}
@@ -110,6 +111,8 @@ namespace SGG.PerfMeter
 		{
 			private const string OverdrawShaderName = "Hidden/SGG/PerfMeter/OverdrawCounter";
 			private const string OverdrawShaderResourcePath = "SGGPerfMeterOverdrawCounter";
+			private const string OverdrawHeatmapShaderName = "Hidden/SGG/PerfMeter/OverdrawHeatmap";
+			private const string OverdrawHeatmapShaderResourcePath = "SGGPerfMeterOverdrawHeatmap";
 			private const int OverdrawCounterUavIndex = 1;
 
 			private readonly List<ShaderTagId> _overdrawShaderTagIds = new List<ShaderTagId>
@@ -126,7 +129,9 @@ namespace SGG.PerfMeter
 			private bool _gameCamerasOnly = true;
 			private string _cameraNameFilter = string.Empty;
 			private ProfilingSampler _overdrawProfilingSampler = new ProfilingSampler(DefaultOverdrawMarkerName);
+			private ProfilingSampler _overdrawHeatmapProfilingSampler = new ProfilingSampler(DefaultOverdrawHeatmapMarkerName);
 			private Material _overdrawMaterial;
+			private Material _overdrawHeatmapMaterial;
 
 			internal void Setup(RenderPassEvent passEvent, string markerName, bool recordOverlayMarkerPass, bool gameCamerasOnly, string cameraNameFilter)
 			{
@@ -156,7 +161,7 @@ namespace SGG.PerfMeter
 				{
 					using (IRasterRenderGraphBuilder builder = renderGraph.AddRasterRenderPass<MarkerPassData>(_currentMarkerName, out MarkerPassData passData, profilingSampler))
 					{
-						builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
+						builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.ReadWrite);
 						builder.AllowPassCulling(false);
 						builder.SetRenderFunc(static (MarkerPassData data, RasterGraphContext context) =>
 						{
@@ -165,7 +170,7 @@ namespace SGG.PerfMeter
 					}
 				}
 
-				if (!PerfMeterRuntime.IsOverdrawMeasurementActive)
+				if (!PerfMeterRuntime.IsOverdrawMeasurementActive && !PerfMeterRuntime.IsOverdrawHeatmapVisible)
 				{
 					return;
 				}
@@ -177,6 +182,8 @@ namespace SGG.PerfMeter
 			{
 				CoreUtils.Destroy(_overdrawMaterial);
 				_overdrawMaterial = null;
+				CoreUtils.Destroy(_overdrawHeatmapMaterial);
+				_overdrawHeatmapMaterial = null;
 			}
 
 			private void RecordOverdrawPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData)
@@ -187,6 +194,19 @@ namespace SGG.PerfMeter
 					return;
 				}
 
+				if (PerfMeterRuntime.IsOverdrawMeasurementActive)
+				{
+					RecordOverdrawCounterPass(renderGraph, frameData, resourceData, cameraData);
+				}
+
+				if (PerfMeterRuntime.IsOverdrawHeatmapVisible)
+				{
+					RecordOverdrawHeatmapPass(renderGraph, frameData, resourceData, cameraData);
+				}
+			}
+
+			private void RecordOverdrawCounterPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData, UniversalCameraData cameraData)
+			{
 				Material overdrawMaterial = GetOverdrawMaterial(out string materialError, out bool unsupported);
 				if (overdrawMaterial == null)
 				{
@@ -222,7 +242,7 @@ namespace SGG.PerfMeter
 					passData.RendererListHandle = rendererListHandle;
 					passData.CounterBufferHandle = counterBufferHandle;
 
-					builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
+					builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.ReadWrite);
 					builder.UseRendererList(passData.RendererListHandle);
 					builder.UseBufferRandomAccess(passData.CounterBufferHandle, OverdrawCounterUavIndex, AccessFlags.ReadWrite);
 					builder.AllowPassCulling(false);
@@ -242,6 +262,33 @@ namespace SGG.PerfMeter
 					{
 						int callbackMeasurementId = data.MeasurementId;
 						context.cmd.RequestAsyncReadback(data.CounterBufferHandle, request => PerfMeterRuntime.CompleteOverdrawCounterReadback(callbackMeasurementId, request));
+					});
+				}
+			}
+
+			private void RecordOverdrawHeatmapPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData, UniversalCameraData cameraData)
+			{
+				Material heatmapMaterial = GetOverdrawHeatmapMaterial();
+				if (heatmapMaterial == null)
+				{
+					return;
+				}
+
+				RendererListHandle rendererListHandle = CreateOverdrawRendererList(renderGraph, frameData, cameraData, heatmapMaterial);
+				if (!rendererListHandle.IsValid())
+				{
+					return;
+				}
+
+				using (IRasterRenderGraphBuilder builder = renderGraph.AddRasterRenderPass<OverdrawHeatmapPassData>(DefaultOverdrawHeatmapMarkerName, out OverdrawHeatmapPassData passData, _overdrawHeatmapProfilingSampler))
+				{
+					passData.RendererListHandle = rendererListHandle;
+					builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.ReadWrite);
+					builder.UseRendererList(passData.RendererListHandle);
+					builder.AllowPassCulling(false);
+					builder.SetRenderFunc(static (OverdrawHeatmapPassData data, RasterGraphContext context) =>
+					{
+						context.cmd.DrawRendererList(data.RendererListHandle);
 					});
 				}
 			}
@@ -320,6 +367,29 @@ namespace SGG.PerfMeter
 				return _overdrawMaterial;
 			}
 
+			private Material GetOverdrawHeatmapMaterial()
+			{
+				if (_overdrawHeatmapMaterial != null)
+				{
+					return _overdrawHeatmapMaterial;
+				}
+
+				Shader heatmapShader = Shader.Find(OverdrawHeatmapShaderName);
+				if (heatmapShader == null)
+				{
+					heatmapShader = Resources.Load<Shader>(OverdrawHeatmapShaderResourcePath);
+				}
+
+				if (heatmapShader == null || !heatmapShader.isSupported)
+				{
+					return null;
+				}
+
+				_overdrawHeatmapMaterial = CoreUtils.CreateEngineMaterial(heatmapShader);
+				_overdrawHeatmapMaterial.hideFlags = HideFlags.HideAndDontSave;
+				return _overdrawHeatmapMaterial;
+			}
+
 			private static int GetScreenPixelCount(UniversalCameraData cameraData)
 			{
 				int width = cameraData.scaledWidth > 0 ? cameraData.scaledWidth : Screen.width;
@@ -336,6 +406,11 @@ namespace SGG.PerfMeter
 		{
 			internal RendererListHandle RendererListHandle;
 			internal BufferHandle CounterBufferHandle;
+		}
+
+		private sealed class OverdrawHeatmapPassData
+		{
+			internal RendererListHandle RendererListHandle;
 		}
 
 		private sealed class OverdrawReadbackPassData

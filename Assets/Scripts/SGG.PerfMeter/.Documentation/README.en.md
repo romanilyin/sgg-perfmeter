@@ -9,7 +9,7 @@ SGG PerfMeter exposes a public runtime API for safely reading profiler status an
 - Metrics: `PerformanceMeter.GetLatestMetrics()` or `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`
 - Lifecycle: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`
 - Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `TargetFps`
-- Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)` and `PerformanceMeter.CancelOverdrawMeasurement()`
+- Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)`, `PerformanceMeter.CancelOverdrawMeasurement()`, `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)`, and `PerformanceMeter.IsOverdrawHeatmapVisible`
 
 Queries are safe before the runtime is started: normal reads return a snapshot with `State = Stopped` and should not throw exceptions.
 
@@ -20,7 +20,7 @@ Open `SGG/Perfmeter/Setup` to prepare the project without editing URP renderer a
 - `Project Settings` shows `Frame Timing Stats` status and can enable the Player Setting with `Enable Frame Timing`.
 - `URP Renderer Features` lists active Graphics/Quality URP renderer assets first, then renderer assets discovered under `Assets`, with installed/missing/not-editable status; it can add `PerfMeterRenderGraphFeature` to all editable missing renderers or only selected renderers without creating duplicates.
 - `Initialization Code` shows the runtime overlay bootstrap; `Overlay Visible`, `Target FPS`, `Overlay Corner`, and `Overlay Mode` options immediately update the code copied by `Copy Init Code`.
-- The `Runtime` tab is for Play Mode: buttons are disabled in Edit Mode, and in Play Mode they switch target FPS, overlay mode/corner, show or hide the overlay, and start a short overdraw measurement.
+- The `Runtime` tab is for Play Mode: buttons are disabled in Edit Mode, and in Play Mode they switch target FPS, overlay mode/corner, show or hide the overlay, start a short overdraw measurement, and toggle the overdraw heatmap.
 
 The same actions are available to agents and Editor scripts without opening the window through the public Editor API:
 
@@ -63,7 +63,7 @@ The runtime singleton updates snapshots in `Update()` with real values from `Fra
 - BRG/GRD counters when available: `BrgDrawCalls`, `BrgInstances`, `IndexBufferUploadInFrameBytes` through `PerfMeterStatusSnapshot.AvailableCounters` / `UnavailableCounters`.
 - Memory counters: `SystemUsedMemoryBytes`, `GcReservedMemoryBytes`, `GpuMemoryBytes`.
 - Classification: `Bottleneck` (`GpuBound`, `CpuMainThreadBound`, `CpuRenderThreadBound`, `PresentLimited`, `Balanced`, `Unknown`) with the current `FrameBudgetMs`, derived from `PerfMeterTargetFps`; `PresentLimited` indicates significant present/VSync/frame pacing wait while CPU/GPU work is below budget.
-- Numerical overdraw measurement: `OverdrawState`, `OverdrawProgress`, and `OverdrawRatio` are available in status/metrics snapshots for agent-readable measurement control.
+- Overdraw: `OverdrawState`, `OverdrawProgress`, and `OverdrawRatio` are available in status/metrics snapshots; `OverdrawHeatmapVisible` is available in status snapshots for agent-readable visual heatmap control.
 
 On OpenGL/OpenGLES, hardware GPU timing may be unavailable or unreliable. In that case `GpuFrameTimeAvailable` is `false` and `PerfMeterStatusSnapshot.Warning` contains a warning; Vulkan is preferred on Android.
 
@@ -88,7 +88,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 
 ## URP Render Graph Renderer Feature
 
-`PerfMeterRenderGraphFeature` adds an opt-in URP 17 Render Graph marker pass with a dedicated profiling sampler named `SGG.PerfMeter.Overlay` and an opt-in pass for numerical overdraw measurement. The overlay marker is disabled by default because it is reserved for diagnostic/self-overhead measurement and future `ProfilerRecorder`-based subtraction of the tool cost.
+`PerfMeterRenderGraphFeature` adds an opt-in URP 17 Render Graph marker pass with a dedicated profiling sampler named `SGG.PerfMeter.Overlay`, an opt-in pass for numerical overdraw measurement, and a visual overdraw heatmap pass. The overlay marker is disabled by default because it is reserved for diagnostic/self-overhead measurement and future `ProfilerRecorder`-based subtraction of the tool cost.
 
 - Preferred installation: `SGG/Perfmeter/Setup` -> select missing renderers or use `Install All Missing`.
 - Renderer assets inside `Packages` are shown as not editable; copy/configure them manually if a package-owned renderer must include the feature.
@@ -104,14 +104,15 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 
 Overdraw measurement is opt-in and bounded. Call `PerformanceMeter.RequestOverdrawMeasurement()` to request the default 60-frame measurement window, or pass a custom positive frame count. Call `PerformanceMeter.CancelOverdrawMeasurement()` to stop the request early.
 
-- The runtime is `Off` by default and does not record the overdraw pass until a request is active.
+- The runtime is `Off` by default and does not record the numerical overdraw pass until a request is active.
 - `PerfMeterRenderGraphFeature` must be added to the active URP renderer. During an active request it records a Render Graph raster pass with the profiling marker `SGG.PerfMeter.Overdraw`.
 - The pass redraws the scene renderer list with the hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`: `ZTest Always`, `ZWrite Off`, `ColorMask 0`.
 - The fragment shader atomically increments a GPU `GraphicsBuffer`, then a readback pass uses `AsyncGPUReadback` without a CPU stall.
 - `OverdrawRatio` is computed as `TotalFragments / RenderedCameraPixels` and averaged across completed readback samples.
 - Async readbacks are guarded by a measurement session id, so stale callbacks from canceled/restarted measurements are ignored.
 - The shader requires fragment UAV/storage buffer support, compute shader support, a supported graphics API, and `AsyncGPUReadback`; unsupported targets enter `Unsupported` with a warning before scheduling the Render Graph pass.
-- Visual heatmap output is not implemented yet.
+- Visual heatmap is controlled separately through `PerformanceMeter.SetOverdrawHeatmapVisible(true/false)`. It redraws the scene renderer list with `Hidden/SGG/PerfMeter/OverdrawHeatmap` using `ZTest Always`, `ZWrite Off`, and additive blending directly over the active camera color target. Hotter/brighter pixels indicate more repeated fragment coverage.
+- The heatmap pass is visual only: it does not update `OverdrawRatio` and can remain enabled while no numerical measurement is running.
 - Progress advances after async readback scheduled from the Render Graph overdraw pass. If progress stays at `0`, verify that the renderer feature is installed on the renderer used by the active camera and that the target backend supports shader instrumentation.
 
 ```csharp
@@ -122,11 +123,12 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
 PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
 PerformanceMeter.SetOverlayVisible(true);
+PerformanceMeter.SetOverdrawHeatmapVisible(true);
 PerformanceMeter.RequestOverdrawMeasurement();
 
 if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status))
 {
-	UnityEngine.Debug.Log($"PerfMeter: {status.State}, overdraw {status.OverdrawState} {status.OverdrawProgress:P0}, {status.Warning}");
+	UnityEngine.Debug.Log($"PerfMeter: {status.State}, overdraw {status.OverdrawState} {status.OverdrawProgress:P0}, heatmap {status.OverdrawHeatmapVisible}, {status.Warning}");
 }
 
 if (PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics))

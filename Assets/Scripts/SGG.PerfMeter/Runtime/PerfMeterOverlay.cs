@@ -633,7 +633,7 @@ namespace SGG.PerfMeter
 			AppendIntPairWithRanges("Draw/SetPass", metrics.DrawCalls, _history.DrawCalls, HasCounter(status, PerfMeterCounterAvailability.DrawCalls), metrics.SetPassCalls, _history.SetPassCalls, HasCounter(status, PerfMeterCounterAvailability.SetPassCalls));
 			AppendIntPairWithRanges("Batches/Verts", metrics.Batches, _history.Batches, HasCounter(status, PerfMeterCounterAvailability.Batches), metrics.Vertices, _history.Vertices, HasCounter(status, PerfMeterCounterAvailability.Vertices));
 			AppendLine("SRP/BRG", FormatIntWithRange(metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances)) + " / " + FormatIntWithRange(metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls)) + ":" + FormatIntWithRange(metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances)));
-			AppendOverdraw(metrics);
+			AppendOverdraw(status, metrics);
 			AppendMemoryPairWithRanges("Mem/GPU", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory), metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
 			AppendGpuValidity(metrics);
 			AppendWarning(warning, 120);
@@ -672,7 +672,7 @@ namespace SGG.PerfMeter
 			AppendIntWithRange("SRP Instances", metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances));
 			AppendIntPairWithRanges("BRG Draw/Inst", metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls), metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances));
 			AppendMemoryWithRange("Index Upload", metrics.IndexBufferUploadInFrameBytes, _history.IndexUploadBytes, HasCounter(status, PerfMeterCounterAvailability.IndexBufferUploadInFrameBytes));
-			AppendOverdraw(metrics);
+			AppendOverdraw(status, metrics);
 			AppendMemoryWithRange("Memory", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory));
 			AppendMemoryWithRange("GC Reserved", metrics.GcReservedMemoryBytes, _history.GcReservedMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GcReservedMemory));
 			AppendMemoryWithRange("GPU Memory", metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
@@ -853,7 +853,7 @@ namespace SGG.PerfMeter
 			_builder.Append(" MB\n");
 		}
 
-		private void AppendOverdraw(PerfMeterMetricsSnapshot metrics)
+		private void AppendOverdraw(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics)
 		{
 			_builder.Append("Overdraw: ");
 			_builder.Append(metrics.OverdrawState.ToString());
@@ -861,6 +861,8 @@ namespace SGG.PerfMeter
 			_builder.Append((metrics.OverdrawProgress * 100f).ToString("0", CultureInfo.InvariantCulture));
 			_builder.Append("% ratio ");
 			_builder.Append(metrics.OverdrawRatio > 0d ? metrics.OverdrawRatio.ToString("0.00", CultureInfo.InvariantCulture) : "unknown");
+			_builder.Append(" heatmap ");
+			_builder.Append(status.OverdrawHeatmapVisible ? "on" : "off");
 			_builder.Append('\n');
 		}
 

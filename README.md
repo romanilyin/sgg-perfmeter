@@ -22,8 +22,9 @@ Implemented:
 - UI Toolkit overlay with compact, graph, and full modes;
 - URP Render Graph renderer feature;
 - bounded numerical overdraw measurement using a hidden replacement shader and `AsyncGPUReadback`;
+- visual overdraw heatmap using an additive replacement shader;
 - editor setup window;
-- MCP command definitions for setup, runtime control, metrics, overlay, and overdraw;
+- MCP command definitions for setup, runtime control, metrics, overlay, overdraw measurement, and overdraw heatmap;
 - English and Russian package documentation;
 - edit-mode API safety tests and Play Mode runtime smoke tests.
 
@@ -31,7 +32,6 @@ Still pending / needs validation:
 
 - target-device validation for GPU timings and counter availability;
 - broader Play Mode coverage and player-build tests;
-- overdraw heatmap mode;
 - CSV/JSON session export;
 - fully validated self-overhead subtraction;
 - full zero-allocation overlay refresh path with field labels, cached enum strings, custom numeric formatting, and no `StringBuilder` text rebuilds;
@@ -205,9 +205,10 @@ Overdraw:
 
 ```csharp
 PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
+PerformanceMeter.SetOverdrawHeatmapVisible(true);
 
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
-Debug.Log($"Overdraw: {status.OverdrawState}, {status.OverdrawProgress:P0}, ratio {status.OverdrawRatio:0.00}");
+Debug.Log($"Overdraw: {status.OverdrawState}, {status.OverdrawProgress:P0}, ratio {status.OverdrawRatio:0.00}, heatmap {status.OverdrawHeatmapVisible}");
 ```
 
 Cancel overdraw measurement:
@@ -351,6 +352,7 @@ The feature currently provides:
 
 - an opt-in diagnostic Render Graph marker pass for future self-overhead measurement;
 - optional overdraw instrumentation pass while overdraw measurement is active;
+- optional visual overdraw heatmap pass while heatmap visibility is enabled;
 - overdraw camera filtering, defaulting to Game cameras only, with optional camera-name filtering in the renderer feature settings;
 - hidden replacement shader lookup through `Shader.Find` / `Resources.Load`;
 - async readback of the numeric overdraw counter.
@@ -384,7 +386,23 @@ Notes:
 - It depends on graphics API and device support; unsupported targets return `OverdrawState = Unsupported` with a warning before scheduling the Render Graph pass.
 - Transparent objects, particles, UI, renderer queues, replacement-shader compatibility, and camera selection can affect the result.
 - Readbacks are tied to a measurement session id, so stale `AsyncGPUReadback` callbacks from a canceled or restarted measurement are ignored.
-- Visual heatmap output is not implemented yet.
+
+## Visual overdraw heatmap
+
+Visual overdraw heatmap is controlled separately from numerical measurement:
+
+```csharp
+PerformanceMeter.SetOverdrawHeatmapVisible(true);
+PerformanceMeter.SetOverdrawHeatmapVisible(false);
+```
+
+The heatmap pass redraws the scene renderer list with `Hidden/SGG/PerfMeter/OverdrawHeatmap` using `ZTest Always`, `ZWrite Off`, and additive blending over the active camera color target. Brighter red/orange areas indicate more repeated fragment coverage.
+
+Notes:
+
+- Heatmap visibility is exposed through `PerformanceMeter.IsOverdrawHeatmapVisible`, `PerfMeterStatusSnapshot.OverdrawHeatmapVisible`, overlay text, setup runtime controls, and MCP status JSON.
+- The heatmap is visual only; it does not update `OverdrawRatio`.
+- It uses the same renderer feature camera filtering and replacement-shader compatibility constraints as numerical overdraw.
 
 ## MCP commands
 
@@ -407,6 +425,7 @@ Available command IDs:
 | `perfmeter.overlay.set` | Show/hide overlay and set corner/mode/target FPS. |
 | `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
 | `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
+| `perfmeter.overdraw.heatmap.set` | Show or hide visual overdraw heatmap. |
 
 These commands are intended for Unity MCP / editor automation workflows where an agent needs structured JSON output instead of screenshots or log scraping.
 
@@ -467,7 +486,7 @@ Recommended next verification targets:
 - macOS/iOS Player: Metal.
 - Play Mode overlay stability.
 - Release Player metric availability.
-- Overdraw measurement behavior on real devices.
+- Overdraw measurement and heatmap behavior on real devices.
 
 ## Known limitations
 
@@ -476,7 +495,7 @@ Recommended next verification targets:
 - Bottleneck classification is heuristic and should be validated against Unity Profiler captures before treating it as authoritative.
 - The overlay refresh is throttled, but text assignment still creates managed strings on refresh; full zero-allocation overlay refresh is tracked as a later optimization.
 - Self-overhead marker pass is opt-in diagnostic mode, and full overhead subtraction is not finalized.
-- Overdraw heatmap output is not implemented yet.
+- Overdraw heatmap is diagnostic and uses an extra scene redraw while visible.
 - CSV/JSON session export is not implemented yet.
 - CI is not configured yet.
 

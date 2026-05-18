@@ -81,6 +81,12 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
+		public static string OverdrawHeatmapSet(string argsJson)
+		{
+			RuntimePerformanceMeter.SetOverdrawHeatmapVisible(RequireBool(argsJson, "visible"));
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
+		}
+
 		private static string StatusJson(PerfMeterStatusSnapshot status)
 		{
 			StringBuilder builder = new StringBuilder(768);
@@ -103,6 +109,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"overdraw_state\":").Append(JsonString(status.OverdrawState.ToString()));
 			builder.Append(",\"overdraw_progress\":").Append(JsonNumber(status.OverdrawProgress));
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(status.OverdrawRatio));
+			builder.Append(",\"overdraw_heatmap_visible\":").Append(JsonBool(status.OverdrawHeatmapVisible));
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();

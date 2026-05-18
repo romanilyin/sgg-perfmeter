@@ -228,6 +228,8 @@ namespace SGG.PerfMeter.Editor.UI
 			VisualElement overdrawActions = AddActions(runtimeSection);
 			AddRuntimeButton(overdrawActions, "Measure Overdraw 30f", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerformanceMeter.RequestOverdrawMeasurement(30)));
 			AddRuntimeButton(overdrawActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerformanceMeter.CancelOverdrawMeasurement));
+			AddRuntimeButton(overdrawActions, "Show Heatmap", () => RunRuntimeAction("Show Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(true)));
+			AddRuntimeButton(overdrawActions, "Hide Heatmap", () => RunRuntimeAction("Hide Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(false)));
 		}
 
 		private VisualElement AddSection(VisualElement parent, string caption)
@@ -670,7 +672,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeTargetFps.text = FormatTargetFps(status.TargetFps) + " / " + (1000d / (int)status.TargetFps).ToString("0.00") + " ms";
 			_runtimeOverlayCorner.text = status.OverlayCorner.ToString();
 			_runtimeOverlayMode.text = status.OverlayMode.ToString();
-			_runtimeOverdraw.text = status.OverdrawState + " " + (status.OverdrawProgress * 100f).ToString("0") + "%";
+			_runtimeOverdraw.text = status.OverdrawState + " " + (status.OverdrawProgress * 100f).ToString("0") + "% / heatmap " + (status.OverdrawHeatmapVisible ? "on" : "off");
 		}
 
 		private void SetRuntimeButtonsEnabled(bool enabled)

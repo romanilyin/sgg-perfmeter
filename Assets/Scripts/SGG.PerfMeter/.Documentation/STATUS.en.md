@@ -3,8 +3,8 @@
 ## Current Readiness
 
 - Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`.
-- Runtime API, metrics collection, UI Toolkit overlay with modes, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, and opt-in numerical overdraw measurement are present.
-- EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases and overdraw stale-readback safety are covered. Player-build smoke validation is still pending.
+- Runtime API, metrics collection, UI Toolkit overlay with modes, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
+- EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases, overdraw stale-readback safety, and heatmap toggles are covered. Android S23 Vulkan/GLES smoke validation has passed; broader player-build validation is still pending.
 - The package is ready for internal Unity 6000.4 / URP 17 validation, not for public release.
 
 ## Public Runtime API
@@ -17,13 +17,14 @@
 - `PerfMeterBottleneck.PresentLimited` separates present/VSync/frame pacing waits from balanced frames and CPU/GPU-bound frames.
 - `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, and `PerformanceMeter.TargetFps` control the runtime overlay and target line.
 - `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)` / `PerformanceMeter.CancelOverdrawMeasurement()` control the bounded numerical overdraw measurement.
+- `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)` and `PerformanceMeter.IsOverdrawHeatmapVisible` control the visual overdraw heatmap.
 - Editor setup actions for agents: `PerfMeterSetupActions.GetStatusReport()`, `PerfMeterSetupActions.EnableFrameTimingStats()`, `PerfMeterSetupActions.InstallRendererFeatures()`, `PerfMeterSetupActions.RunRecommendedSetup()`.
 
 ## Setup
 
 - Open `SGG/Perfmeter/Setup` to inspect the project, list active/discovered URP renderer assets, install `PerfMeterRenderGraphFeature` into all or selected editable renderers, and copy bootstrap code.
 - For headless/agent setup, call `SGG.PerfMeter.Editor.Setup.PerfMeterSetupActions.RunRecommendedSetup()` from an Editor context.
-- Add `PerfMeterRenderGraphFeature` to the active URP renderer asset when Render Graph markers or numerical overdraw measurement are needed; the setup window does this automatically for discovered URP renderer assets.
+- Add `PerfMeterRenderGraphFeature` to the active URP renderer asset when Render Graph markers, numerical overdraw measurement, or visual overdraw heatmap are needed; the setup window does this automatically for discovered URP renderer assets.
 - Enable Player Settings -> Rendering -> Frame Timing Stats before relying on `FrameTimingManager` in builds.
 - Prefer Vulkan on Android when GPU frame timing matters; OpenGL ES timing may be unavailable or unreliable.
 - Call `PerformanceMeter.EnsureRunning()` from gameplay/bootstrap code, then query snapshots from agents, diagnostics, or tests.
@@ -31,10 +32,10 @@
 ## Known Limitations
 
 - Local `-runTests` works when launched without `-quit`; Unity writes XML results and exits after the run.
-- Overdraw numeric measurement uses replacement shader rendering, atomic fragment counting, and `AsyncGPUReadback`; visual heatmap output is not implemented yet.
+- Overdraw numeric measurement uses replacement shader rendering, atomic fragment counting, and `AsyncGPUReadback`; visual heatmap uses a separate additive replacement shader and an extra scene redraw while visible.
 - Overdraw measurement defaults to Game cameras only and can be restricted by camera-name filter in `PerfMeterRenderGraphFeature` settings.
 - Overdraw measurement gates unsupported targets with `OverdrawState.Unsupported`; fragment UAV/storage buffer behavior still needs device validation on limited backends.
 - Render Graph pass/aliasing/merge analytics are not implemented.
 - The empty overlay marker pass is opt-in diagnostic mode; self-overhead subtraction is still pending.
 - Full zero-allocation overlay refresh is not implemented yet; the current overlay throttles text rebuilds and managed string assignment to the refresh interval.
-- Manual device validation is still pending, especially Android Vulkan/GLES GPU timing behavior.
+- Broader manual device validation is still useful beyond the current Android S23 Vulkan/GLES smoke coverage.

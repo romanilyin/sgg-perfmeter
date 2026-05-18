@@ -19,6 +19,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayMode _overlayMode = PerfMeterOverlayMode.Full;
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
 		private bool _overlayRequestedVisible = true;
+		private bool _overdrawHeatmapVisible;
 
 		internal static PerfMeterRuntime Instance => _instance;
 		internal PerfMeterStatusSnapshot Status => _status;
@@ -28,6 +29,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
+		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
 		internal static PerfMeterOverdrawMeasurementState OverdrawState => _instance != null ? _instance._overdrawController.State : PerfMeterOverdrawMeasurementState.Off;
 
 		internal static void EnsureRunning()
@@ -61,6 +63,7 @@ namespace SGG.PerfMeter
 			runtime._collector.Stop();
 			runtime._frameStatsSampler.Reset();
 			runtime._overdrawController.Reset();
+			runtime._overdrawHeatmapVisible = false;
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			_instance = null;
@@ -124,6 +127,7 @@ namespace SGG.PerfMeter
 				_overdrawController.State,
 				_overdrawController.Progress,
 				_overdrawController.Ratio,
+				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
 				_targetFps);
@@ -140,6 +144,12 @@ namespace SGG.PerfMeter
 		{
 			_overdrawController.CancelMeasurement();
 			_latestMetrics = WithOverdrawState(_latestMetrics);
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetOverdrawHeatmapVisible(bool visible)
+		{
+			_overdrawHeatmapVisible = visible;
 			RefreshStatusOverlayState();
 		}
 
@@ -260,6 +270,7 @@ namespace SGG.PerfMeter
 				_collector.Stop();
 				_frameStatsSampler.Reset();
 				_overdrawController.Reset();
+				_overdrawHeatmapVisible = false;
 				_status = CreateStoppedStatus();
 				_latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			}
@@ -290,6 +301,7 @@ namespace SGG.PerfMeter
 				_overdrawController.State,
 				_overdrawController.Progress,
 				_overdrawController.Ratio,
+				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
 				_targetFps);
@@ -336,6 +348,7 @@ namespace SGG.PerfMeter
 				PerfMeterOverdrawMeasurementState.Off,
 				0f,
 				0d,
+				false,
 				PerfMeterOverlayCorner.TopRight,
 				PerfMeterOverlayMode.Full,
 				PerfMeterTargetFps.Fps60);
@@ -354,6 +367,7 @@ namespace SGG.PerfMeter
 			PerfMeterOverdrawMeasurementState overdrawState = PerfMeterOverdrawMeasurementState.Off,
 			float overdrawProgress = 0f,
 			double overdrawRatio = 0d,
+			bool overdrawHeatmapVisible = false,
 			PerfMeterOverlayCorner overlayCorner = PerfMeterOverlayCorner.TopRight,
 			PerfMeterOverlayMode overlayMode = PerfMeterOverlayMode.Full,
 			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60)
@@ -374,6 +388,7 @@ namespace SGG.PerfMeter
 				overdrawState,
 				overdrawProgress,
 				overdrawRatio,
+				overdrawHeatmapVisible,
 				overlayCorner,
 				overlayMode,
 				NormalizeTargetFps(targetFps));
@@ -522,6 +537,7 @@ namespace SGG.PerfMeter
 				_overdrawController.State,
 				_overdrawController.Progress,
 				_overdrawController.Ratio,
+				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
 				_targetFps);

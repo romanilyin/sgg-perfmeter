@@ -44,7 +44,7 @@
 - Runtime snapshots expose render, SRP Batcher, BRG/GRD, index upload, memory, timing, and overdraw counters; use `AvailableCounters` / `UnavailableCounters` when a platform lacks a recorder.
 - Avoid uGUI/IMGUI runtime overlays for this profiler; the theory doc calls for low-overhead UI Toolkit plus Render Graph integration.
 - For URP 17.4 renderer features, implement Render Graph paths (`RecordRenderGraph`/`AddRasterRenderPass`) instead of assuming legacy-only render passes.
-- Overdraw measurement is opt-in and uses `PerfMeterRenderGraphFeature`, hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`, fragment atomic counter, and `AsyncGPUReadback`; visual heatmap output is still pending.
+- Overdraw measurement is opt-in and uses `PerfMeterRenderGraphFeature`, hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`, fragment atomic counter, and `AsyncGPUReadback`; visual heatmap uses `Hidden/SGG/PerfMeter/OverdrawHeatmap` as a separate additive Render Graph pass.
 
 ## User Notifications
 - Use `python3 Tools/TelegramNotify/telegram_notify.py --message "Perf: ..."` after each committed iteration or when user attention is required.

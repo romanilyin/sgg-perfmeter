@@ -29,6 +29,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.GraphicsDeviceName, Is.Not.Null);
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(status.OverdrawHeatmapVisible, Is.False);
 			Assert.That(PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot tryStatus), Is.True);
 			Assert.That(tryStatus.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 		}
@@ -87,6 +88,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(PerformanceMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(true));
 
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
@@ -107,6 +109,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(PerformanceMeter.GetStatus().TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(PerformanceMeter.GetLatestMetrics().FrameBudgetMs, Is.EqualTo(1000d / 120d).Within(0.001d));
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetOverdrawHeatmapVisible(true));
+			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.True);
+			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.True);
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetOverdrawHeatmapVisible(false));
+			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
+			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.False);
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(false));
 			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
