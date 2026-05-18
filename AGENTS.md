@@ -30,6 +30,7 @@
 - Reliable local Test Runner checks: `<Unity> -batchmode -projectPath C:\Work\Unity\sgg-perfmeter -runTests -testPlatform EditMode -testResults C:\Work\Unity\sgg-perfmeter\Logs\editmode-results.xml -logFile C:\Work\Unity\sgg-perfmeter\Logs\editmode.log` and the same command with `-testPlatform PlayMode`.
 - Do not combine Unity `-runTests` with `-quit`; Unity exits by itself after tests and writes XML only without `-quit` in this setup.
 - Android smoke build check: `Unity.exe -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter -executeMethod PerfMeterAndroidBuild.BuildDevelopmentApk -logFile C:\Work\Unity\sgg-perfmeter\Logs\opencode-android-s23-build.log`.
+- Android GLES fallback build check: add `-perfMeterAndroidGraphics gles3 -perfMeterAndroidApk Builds/Android/SGGPerfMeter-S23-gles-dev.apk` to the Android smoke build command.
 - Android validation SDK is `C:/Work/SDK/AndroidSDK`; Unity `6000.4.7f1` requires NDK `27.2.12479018`.
 - Do not edit generated `*.csproj`, `*.sln`, or `*.slnx` as source; `.gitignore` excludes them.
 
