@@ -1,7 +1,8 @@
 # AGENTS.md
 
 ## Project Snapshot
-- Unity project, not a standalone .NET/npm repo; target editor is Unity `6000.4.5f1` with URP `17.4.0`.
+- Unity project, not a standalone .NET/npm repo; project version is Unity `6000.4.5f1` with URP `17.4.0`.
+- Current Android validation uses Unity `6000.4.7f1` because that installed editor has Android Build Support.
 - Main build scene is `Assets/Scenes/SampleScene.unity`.
 - Read `_Docs/perfmeter_theory.md` before implementing profiler features; it is the current product/architecture spec.
 - Chat with the user in Russian.
@@ -28,6 +29,8 @@
 - Reliable local compile check: `<Unity> -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter-local -logFile C:\Work\Unity\sgg-perfmeter-local\Logs\opencode-compile.log`.
 - Reliable local Test Runner checks: `<Unity> -batchmode -projectPath C:\Work\Unity\sgg-perfmeter -runTests -testPlatform EditMode -testResults C:\Work\Unity\sgg-perfmeter\Logs\editmode-results.xml -logFile C:\Work\Unity\sgg-perfmeter\Logs\editmode.log` and the same command with `-testPlatform PlayMode`.
 - Do not combine Unity `-runTests` with `-quit`; Unity exits by itself after tests and writes XML only without `-quit` in this setup.
+- Android smoke build check: `Unity.exe -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter -executeMethod PerfMeterAndroidBuild.BuildDevelopmentApk -logFile C:\Work\Unity\sgg-perfmeter\Logs\opencode-android-s23-build.log`.
+- Android validation SDK is `C:/Work/SDK/AndroidSDK`; Unity `6000.4.7f1` requires NDK `27.2.12479018`.
 - Do not edit generated `*.csproj`, `*.sln`, or `*.slnx` as source; `.gitignore` excludes them.
 
 ## Style And Assets

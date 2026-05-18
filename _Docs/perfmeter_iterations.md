@@ -43,14 +43,17 @@ This file is the working implementation plan. Update readiness after every itera
 | 21. Marker pass opt-in | Done | Keep the empty overlay Render Graph marker pass disabled by default while preserving overdraw pass recording during active measurements. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-marker-optin-compile.log`, exit code 0. | `839b84b` |
 | 22. PlayMode runtime smoke tests | Done | Add PlayMode tests for runtime/overlay object lifecycle, snapshot updates across frames, and overdraw terminal or actionable degraded states. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-playmode-smoke-compile.log`, exit code 0. | `4fc496d` |
 | 23. Runtime safety hardening | Done | Harden bottleneck classification, add mixed-load tests, guard stale overdraw readbacks by measurement session, filter overdraw to Game cameras by default, update package pin docs, application identifiers, and local Test Runner commands. | `Unity.exe -batchmode -quit` passed, `Logs/opencode-hardening-compile.log`; EditMode `18/18` passed in `Logs/opencode-hardening-editmode-results.xml`; PlayMode `2/2` passed in `Logs/opencode-hardening-playmode-results.xml`. | `d4b6380` |
+| 24. Android S23 player validation | Done | Add Android-only smoke bootstrap and batchmode APK builder, then install/run a Development APK on Galaxy S23 to validate runtime, frame timing, GPU timing, and overdraw markers. | Unity `6000.4.7f1` compile passed in `Logs/opencode-android-smoke-compile-6000.4.7.log`; Android build passed in `Logs/opencode-android-s23-build-terminal.log`; S23 `SM-S911B` Android 16/Vulkan logcat reported `gpu_available=True` and `overdraw_state=Completed` with no `AndroidRuntime` fatal output. | `fe9b5ee` |
 
 ## Current Notes
-- Unity executable verified at `/mnt/c/Program Files/Unity/Hub/Editor/6000.4.5f1/Editor/Unity.exe`.
+- Project version remains Unity `6000.4.5f1`; current installed validation editor is `/mnt/c/Program Files/Unity/Hub/Editor/6000.4.7f1/Editor/Unity.exe`.
+- Android SDK is `C:/Work/SDK/AndroidSDK`; Unity `6000.4.7f1` requires NDK `27.2.12479018` for this project.
 - Telegram notification workflow is repo-local at `Tools/TelegramNotify/telegram_notify.py`; messages for this work use prefix `Perf:`.
 - `Tools/TelegramNotify/.env` is intentionally ignored and must not be committed.
-- Latest local compile verification passed in `Logs/opencode-hardening-compile.log`; latest Test Runner XML results passed in `Logs/opencode-hardening-editmode-results.xml` and `Logs/opencode-hardening-playmode-results.xml`.
+- Latest local package hardening verification passed in `Logs/opencode-hardening-compile.log`; latest Test Runner XML results passed in `Logs/opencode-hardening-editmode-results.xml` and `Logs/opencode-hardening-playmode-results.xml`.
+- Latest Android player validation passed in `Logs/opencode-android-s23-build-terminal.log` plus filtered S23 logcat smoke markers.
 - `_Docs/temp_feedback_15_05_2026.md` is an untracked user feedback file; do not commit it unless explicitly requested.
 
 ## Known Verification Issues
 - Unity `-runTests` must be launched without `-quit`; adding `-quit` exits batchmode before Test Runner writes XML results.
-- Android player build validation is blocked until Android Build Support, SDK/NDK Tools, and OpenJDK are installed for Unity 6000.4.5f1.
+- Android player validation requires an editor install with Android Build Support/OpenJDK and NDK `27.2.12479018`; current successful validation used Unity `6000.4.7f1` with external SDK `C:/Work/SDK/AndroidSDK`.
