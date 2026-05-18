@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/romanilyin/sgg-perfmeter/security/advisories/new
+    about: Report project mutation, command policy, secret/log exposure, workflow, or release security issues privately.

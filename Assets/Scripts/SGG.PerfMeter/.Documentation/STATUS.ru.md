@@ -2,10 +2,10 @@
 
 ## Текущая готовность
 
-- Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`.
+- Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`; текущая private release candidate версия - `2026.5.18-1`.
 - Реализованы runtime API, сбор метрик, UI Toolkit overlay с режимами, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
 - Есть EditMode API/classifier tests и PlayMode runtime smoke tests; classifier mixed-load edge cases, overdraw stale-readback safety и heatmap toggles покрыты. Android S23 Vulkan/GLES smoke validation пройдена; более широкая player-build validation еще pending.
-- Пакет готов для внутренней проверки в Unity 6000.4 / URP 17, но не для публичного релиза.
+- Пакет подготовлен как private/internal release candidate для проверки в Unity 6000.4 / URP 17; публичный релиз остается отложенным.
 
 ## Public Runtime API
 
@@ -39,3 +39,11 @@
 - Пустой overlay marker pass является opt-in diagnostic mode; self-overhead subtraction все еще pending.
 - Полный zero-allocation refresh overlay еще не реализован; текущий overlay throttles text rebuilds и managed string assignment до refresh interval.
 - Более широкая manual device validation все еще полезна за пределами текущей Android S23 Vulkan/GLES smoke coverage.
+
+## Release Readiness
+
+- Root release plan: `docs/release-2026.5.18-1.md`.
+- Release notes draft: `docs/release-notes-2026.5.18-1.md`.
+- Release process: `docs/release-process.md`.
+- Local/manual gates: Unity compile, EditMode tests, PlayMode tests, `git diff --check` и optional Android Vulkan/GLES smoke builds.
+- GitHub release workflow manual-only (`workflow_dispatch`) и не публикует packages.

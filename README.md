@@ -10,9 +10,11 @@ It is designed for builds and Play Mode where you need fast answers to practical
 
 The package is intentionally focused on runtime metrics. It does not replace Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
 
+Target private release candidate: `2026.5.18-1`. The repository remains private until the release preparation is reviewed; the release plan is tracked in `docs/release-2026.5.18-1.md`, and release notes are drafted in `docs/release-notes-2026.5.18-1.md`.
+
 ## Status
 
-Current state: **early runtime package / active development**.
+Current state: **private release candidate / internal validation**.
 
 Implemented:
 
@@ -26,11 +28,12 @@ Implemented:
 - editor setup window;
 - MCP command definitions for setup, runtime control, metrics, overlay, overdraw measurement, and overdraw heatmap;
 - English and Russian package documentation;
+- release readiness docs, changelog, security policy, contributing policy, and a manual-only release workflow;
 - edit-mode API safety tests and Play Mode runtime smoke tests.
 
 Still pending / needs validation:
 
-- target-device validation for GPU timings and counter availability;
+- broader target-device validation for GPU timings and counter availability;
 - broader Play Mode coverage and player-build tests;
 - CSV/JSON session export;
 - fully validated self-overhead subtraction;
@@ -68,7 +71,7 @@ The package lives inside this repository under:
 Assets/Scripts/SGG.PerfMeter
 ```
 
-Add the package to your Unity project's `Packages/manifest.json`:
+While the repository is private, use SSH or an authenticated HTTPS Git dependency. Add the package to your Unity project's `Packages/manifest.json`:
 
 ```json
 {
@@ -93,7 +96,7 @@ For a fixed version, pin a tag or commit:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#v2026.5.15-1"
+    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.18-1"
   }
 }
 ```
@@ -434,6 +437,8 @@ These commands are intended for Unity MCP / editor automation workflows where an
 ```text
 Assets/Scripts/SGG.PerfMeter/
   package.json
+  README.md
+  CHANGELOG.md
   Runtime/
     PerformanceMeter.cs
     PerfMeterRuntime.cs
@@ -445,6 +450,7 @@ Assets/Scripts/SGG.PerfMeter/
     PerfMeterSnapshots.cs
     Resources/
       SGGPerfMeterOverdrawCounter.shader
+      SGGPerfMeterOverdrawHeatmap.shader
   Editor/
     Setup/
     UI/
@@ -477,6 +483,14 @@ Recommended local Test Runner checks use `-runTests` without `-quit`, because Un
 Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform EditMode -testResults <path-to-editmode-results.xml> -logFile <path-to-editmode-log>
 Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform PlayMode -testResults <path-to-playmode-results.xml> -logFile <path-to-playmode-log>
 ```
+
+Release-readiness docs:
+
+- `docs/release-2026.5.18-1.md`
+- `docs/release-notes-2026.5.18-1.md`
+- `docs/release-process.md`
+- `docs/manual-checks.md`
+- `docs/versioning.md`
 
 Recommended next verification targets:
 

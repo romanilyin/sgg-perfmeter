@@ -1,0 +1,13 @@
+* @romanilyin
+
+.github/workflows/* @romanilyin
+Assets/Scripts/SGG.PerfMeter/Runtime/** @romanilyin
+Assets/Scripts/SGG.PerfMeter/Editor/** @romanilyin
+Assets/Scripts/SGG.PerfMeter/Tests/** @romanilyin
+Assets/Scripts/SGG.PerfMeter/package.json @romanilyin
+Assets/Scripts/SGG.PerfMeter/CHANGELOG.md @romanilyin
+docs/** @romanilyin
+_Docs/** @romanilyin
+LICENSE* @romanilyin
+NOTICE* @romanilyin
+SECURITY* @romanilyin

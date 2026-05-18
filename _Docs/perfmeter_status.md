@@ -2,7 +2,7 @@
 
 ## Package State
 
-- Package metadata is `com.sungeargames.perfmeter` / `SGG PerfMeter`; no `sky` or `weather` package identity remnants were found under `Assets/Scripts/SGG.PerfMeter/`.
+- Package metadata is `com.sungeargames.perfmeter` / `SGG PerfMeter` at private release candidate version `2026.5.18-1`; no `sky` or `weather` package identity remnants were found under `Assets/Scripts/SGG.PerfMeter/`.
 - User-facing docs are maintained in English and Russian under `Assets/Scripts/SGG.PerfMeter/.Documentation/`.
 - Public runtime API entry point is `SGG.PerfMeter.PerformanceMeter`; snapshots use `CollectionFrame` and MCP JSON uses `collection_frame` to avoid implying exact `FrameTimingManager` sample-frame identity.
 - Runtime now includes opt-in numerical overdraw measurement through a hidden replacement shader, fragment-stage atomic counter buffer, and `AsyncGPUReadback`, plus a separate additive visual overdraw heatmap pass.
@@ -16,10 +16,12 @@
 - Tests include EditMode API/classifier coverage and PlayMode runtime smoke coverage for overlay lifecycle, snapshot updates, heatmap toggles, and overdraw terminal/degraded states.
 - Bottleneck classification now uses main-thread work time after present wait, returns `Unknown` for significant present wait without GPU timing when CPU work is below budget, and picks the dominant CPU/GPU overshoot for mixed overloads.
 - Overdraw measurement and heatmap rendering default to Game cameras only, support an optional camera-name filter, and the numerical path ignores stale `AsyncGPUReadback` callbacks from older measurement sessions.
+- Release-readiness docs are present under `docs/`: versioning, manual checks, release process, release plan, and release notes for `2026.5.18-1`; root/package-local changelogs and package-local README are present for Git UPM consumers.
 
 ## Verification Notes
 
 - Use Unity batchmode compile and `-runTests` without `-quit` as the reliable local verification path. The project version remains `6000.4.5f1`; current Android validation used installed Unity `6000.4.7f1` because that editor has Android Build Support.
+- Latest release-docs verification passed with `Logs/opencode-release-docs-compile.log`, `Logs/opencode-release-docs-editmode-results.xml`, and `Logs/opencode-release-docs-playmode-results.xml`.
 - Latest overdraw heatmap verification passed with `Logs/opencode-overdraw-heatmap-compile.log`, `Logs/opencode-overdraw-heatmap-editmode-results.xml`, and `Logs/opencode-overdraw-heatmap-playmode-results.xml`.
 - Latest package hardening verification passed with `Logs/opencode-hardening-compile.log`, `Logs/opencode-hardening-editmode-results.xml`, and `Logs/opencode-hardening-playmode-results.xml`.
 - Latest Unity `6000.4.7f1` checks passed with `Logs/opencode-6000.4.7-compile-2.log`, `Logs/opencode-6000.4.7-editmode-results.xml`, `Logs/opencode-6000.4.7-playmode-results.xml`, and `Logs/opencode-android-smoke-compile-6000.4.7.log`.
@@ -29,8 +31,9 @@
 - Recent hardening compile logs: `Logs/opencode-iter2-setup-ui-compile.log`, `Logs/opencode-iter3-bottleneck-compile.log`, `Logs/opencode-iter4-collection-frame-compile.log`, `Logs/opencode-iter5-overdraw-unsupported-compile-2.log`, `Logs/opencode-setup-discovery-compile.log`, and `Logs/opencode-marker-optin-compile.log`.
 - Do not add `-quit` to Unity `-runTests` commands; Unity writes XML results and exits after the run.
 - Broader target-device validation is still useful for older GPUs/OS versions and platform-specific ProfilerRecorder counter availability.
+- Public release is explicitly deferred; `.github/workflows/release.yml` is manual-only and should stay free of `push`/`pull_request` triggers while the repository remains private.
 
 ## Handoff Notes
 
-- Next meaningful implementation work should focus on broader device matrix coverage, heatmap device validation, or Render Graph analytics.
+- Next meaningful implementation work should focus on private release tag gating, broader device matrix coverage, heatmap device validation, or Render Graph analytics.
 - `ProjectSettings/ProjectSettings.asset` currently has `enableFrameTimingStats: 1`; keep it enabled before depending on `FrameTimingManager` in builds.

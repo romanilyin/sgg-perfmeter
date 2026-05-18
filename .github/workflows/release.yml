@@ -1,0 +1,71 @@
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-readiness:
+    name: manual release readiness check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Validate release metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          version = "2026.5.18-1"
+          package_path = Path("Assets/Scripts/SGG.PerfMeter/package.json")
+          package = json.loads(package_path.read_text(encoding="utf-8"))
+          assert package["name"] == "com.sungeargames.perfmeter"
+          assert package["version"] == version
+          assert package["license"] == "LicenseRef-Stinger-Royalty-Free-EULA-1.0"
+
+          required = [
+              "README.md",
+              "CHANGELOG.md",
+              "LICENSE.md",
+              "LICENSE.ru.md",
+              "NOTICE.md",
+              "NOTICE.ru.md",
+              "SECURITY.md",
+              "SECURITY.ru.md",
+              "CONTRIBUTING.md",
+              "CONTRIBUTING.ru.md",
+              "docs/release-process.md",
+              f"docs/release-{version}.md",
+              f"docs/release-notes-{version}.md",
+              "docs/manual-checks.md",
+              "docs/versioning.md",
+              "Assets/Scripts/SGG.PerfMeter/README.md",
+              "Assets/Scripts/SGG.PerfMeter/README.md.meta",
+              "Assets/Scripts/SGG.PerfMeter/CHANGELOG.md",
+              "Assets/Scripts/SGG.PerfMeter/CHANGELOG.md.meta",
+              "Assets/Scripts/SGG.PerfMeter/.Documentation/README.en.md",
+              "Assets/Scripts/SGG.PerfMeter/.Documentation/README.ru.md",
+              "Assets/Scripts/SGG.PerfMeter/.Documentation/STATUS.en.md",
+              "Assets/Scripts/SGG.PerfMeter/.Documentation/STATUS.ru.md",
+          ]
+          missing = [path for path in required if not Path(path).exists()]
+          assert not missing, "Missing release files: " + ", ".join(missing)
+
+          readme = Path("README.md").read_text(encoding="utf-8")
+          assert f"#{version}" in readme
+          assert f"docs/release-{version}.md" in readme
+          assert f"docs/release-notes-{version}.md" in readme
+
+          workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
+          assert "workflow_dispatch:" in workflow
+          forbidden = [name + ":" for name in ("pull_request", "push", "schedule", "workflow_run")]
+          found = [trigger for trigger in forbidden if trigger in workflow]
+          assert not found, "Automatic triggers are not allowed while private: " + ", ".join(found)
+          PY
+      - name: Check whitespace
+        run: git diff --check HEAD~1..HEAD

@@ -2,6 +2,8 @@
 
 SGG PerfMeter предоставляет публичный runtime API для безопасного чтения статуса и последних метрик производительности без обращения к UI или Unity Console.
 
+Текущая версия пакета: `2026.5.18-1`. Это private release candidate; репозиторий остается приватным до явного решения о public switch.
+
 ## API для агентов
 
 - Namespace: `SGG.PerfMeter`

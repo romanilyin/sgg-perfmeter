@@ -2,6 +2,8 @@
 
 SGG PerfMeter exposes a public runtime API for safely reading profiler status and the latest performance metrics without scraping UI or Unity Console output.
 
+Current package version: `2026.5.18-1`. This is a private release candidate; the repository remains private until the public switch is explicitly approved.
+
 ## Agent API
 
 - Namespace: `SGG.PerfMeter`
