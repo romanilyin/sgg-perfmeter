@@ -3,7 +3,7 @@
 ## Current Readiness
 
 - Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`; current private release candidate version is `2026.5.18-1`.
-- Runtime API, device/environment snapshot with monitor names, JSON settings for zero-code setup, the `Presets` tab, metrics collection, UI Toolkit overlay with modes, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
+- Runtime API, device/environment snapshot with monitor names, camera snapshot for reproducible captures, JSON settings for zero-code setup, the `Presets` tab, metrics collection, UI Toolkit overlay with modes, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
 - EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases, overdraw stale-readback safety, and heatmap toggles are covered. Android S23 Vulkan/GLES smoke validation has passed; broader player-build validation is still pending.
 - The package is prepared as a private/internal release candidate for Unity 6000.4 / URP 17 validation; public release remains deferred.
 
@@ -14,6 +14,7 @@
 - `PerformanceMeter.GetStatus()` / `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)` return agent-readable status.
 - `PerformanceMeter.GetLatestMetrics()` / `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)` return immutable metric snapshots with FPS/lows/spikes, render, SRP Batcher, BRG/GRD, index upload, memory, timing, and overdraw values.
 - `PerformanceMeter.GetDeviceInfo()` / `PerformanceMeter.TryGetDeviceInfo(out PerfMeterDeviceSnapshot deviceInfo)` return an immutable device/environment snapshot with Unity/platform/CPU/GPU/screen/display/monitor info without starting the runtime.
+- `PerformanceMeter.GetCameraSnapshot(...)` / `PerformanceMeter.TryGetCameraSnapshot(...)` return an immutable camera snapshot with transform/projection/clip/pixel rect/target display/URP camera settings without starting the runtime.
 - `PerformanceMeter.GetSettings()` returns the zero-code JSON settings snapshot or safe defaults when the JSON file is missing.
 - `CollectionFrame` identifies the Unity frame where the snapshot was collected; `FrameTimingManager` values can be delayed relative to that frame.
 - `PerfMeterBottleneck.PresentLimited` separates present/VSync/frame pacing waits from balanced frames and CPU/GPU-bound frames.

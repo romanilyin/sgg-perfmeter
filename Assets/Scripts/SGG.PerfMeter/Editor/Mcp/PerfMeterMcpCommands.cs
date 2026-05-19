@@ -51,6 +51,18 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return DeviceInfoJson(RuntimePerformanceMeter.GetDeviceInfo());
 		}
 
+		public static string CameraSnapshot(string argsJson)
+		{
+			PerfMeterCameraSource source = PerfMeterCameraSource.Auto;
+			if (TryExtractString(argsJson, "source", out string sourceValue))
+			{
+				source = ParseCameraSource(sourceValue);
+			}
+
+			TryExtractString(argsJson, "camera_name_filter", out string cameraNameFilter);
+			return CameraSnapshotJson(RuntimePerformanceMeter.GetCameraSnapshot(source, cameraNameFilter));
+		}
+
 		public static string OverlaySet(string argsJson)
 		{
 			bool visible = RequireBool(argsJson, "visible");
@@ -255,6 +267,86 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"quality_render_pipeline_type\":").Append(JsonString(qualityAsset != null ? qualityAsset.GetType().FullName : string.Empty));
 		}
 
+		private static string CameraSnapshotJson(PerfMeterCameraSnapshot camera)
+		{
+			StringBuilder builder = new StringBuilder(1536);
+			builder.Append("{\"schema_version\":1");
+			builder.Append(",\"is_available\":").Append(JsonBool(camera.IsAvailable));
+			builder.Append(",\"warning\":").Append(JsonString(camera.Warning));
+			builder.Append(",\"source\":").Append(JsonString(camera.Source.ToString()));
+			builder.Append(",\"detected_game_camera_count\":").Append(camera.DetectedGameCameraCount);
+			builder.Append(",\"camera_name\":").Append(JsonString(camera.CameraName));
+			builder.Append(",\"camera_instance_id\":").Append(camera.CameraInstanceId);
+			builder.Append(",\"scene_name\":").Append(JsonString(camera.SceneName));
+			builder.Append(",\"scene_path\":").Append(JsonString(camera.ScenePath));
+			builder.Append(",\"enabled\":").Append(JsonBool(camera.Enabled));
+			builder.Append(",\"is_active_and_enabled\":").Append(JsonBool(camera.IsActiveAndEnabled));
+			builder.Append(",\"camera_type\":").Append(JsonString(camera.CameraType.ToString()));
+			builder.Append(",\"projection\":").Append(JsonString(camera.Projection.ToString()));
+			AppendVector3(builder, "position", camera.Position);
+			AppendQuaternion(builder, "rotation", camera.Rotation);
+			AppendVector3(builder, "euler_angles", camera.EulerAngles);
+			AppendVector3(builder, "forward", camera.Forward);
+			AppendVector3(builder, "up", camera.Up);
+			builder.Append(",\"field_of_view\":").Append(JsonNumber(camera.FieldOfView));
+			builder.Append(",\"orthographic_size\":").Append(JsonNumber(camera.OrthographicSize));
+			builder.Append(",\"near_clip_plane\":").Append(JsonNumber(camera.NearClipPlane));
+			builder.Append(",\"far_clip_plane\":").Append(JsonNumber(camera.FarClipPlane));
+			builder.Append(",\"aspect\":").Append(JsonNumber(camera.Aspect));
+			AppendRect(builder, "pixel_rect", camera.PixelRect);
+			builder.Append(",\"target_display\":").Append(camera.TargetDisplay);
+			builder.Append(",\"depth\":").Append(JsonNumber(camera.Depth));
+			builder.Append(",\"clear_flags\":").Append(JsonString(camera.ClearFlags.ToString()));
+			builder.Append(",\"culling_mask\":").Append(camera.CullingMask);
+			builder.Append(",\"allow_hdr\":").Append(JsonBool(camera.AllowHdr));
+			builder.Append(",\"allow_msaa\":").Append(JsonBool(camera.AllowMsaa));
+			builder.Append(",\"actual_rendering_path\":").Append(JsonString(camera.ActualRenderingPath.ToString()));
+			builder.Append(",\"has_urp_additional_camera_data\":").Append(JsonBool(camera.HasUniversalAdditionalCameraData));
+			builder.Append(",\"urp_render_type\":").Append(JsonString(camera.UrpRenderType));
+			builder.Append(",\"urp_render_post_processing\":").Append(JsonBool(camera.UrpRenderPostProcessing));
+			builder.Append(",\"urp_antialiasing\":").Append(JsonString(camera.UrpAntialiasing));
+			builder.Append(",\"urp_antialiasing_quality\":").Append(JsonString(camera.UrpAntialiasingQuality));
+			builder.Append(",\"urp_stop_nan\":").Append(JsonBool(camera.UrpStopNaN));
+			builder.Append(",\"urp_render_shadows\":").Append(JsonBool(camera.UrpRenderShadows));
+			builder.Append(",\"urp_clear_depth\":").Append(JsonBool(camera.UrpClearDepth));
+			builder.Append(",\"urp_requires_depth_option\":").Append(JsonString(camera.UrpRequiresDepthOption));
+			builder.Append(",\"urp_requires_color_option\":").Append(JsonString(camera.UrpRequiresColorOption));
+			builder.Append(",\"urp_requires_depth_texture\":").Append(JsonBool(camera.UrpRequiresDepthTexture));
+			builder.Append(",\"urp_requires_color_texture\":").Append(JsonBool(camera.UrpRequiresColorTexture));
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static void AppendVector3(StringBuilder builder, string name, Vector3 value)
+		{
+			builder.Append(",\"").Append(name).Append("\":{");
+			builder.Append("\"x\":").Append(JsonNumber(value.x));
+			builder.Append(",\"y\":").Append(JsonNumber(value.y));
+			builder.Append(",\"z\":").Append(JsonNumber(value.z));
+			builder.Append('}');
+		}
+
+		private static void AppendQuaternion(StringBuilder builder, string name, Quaternion value)
+		{
+			builder.Append(",\"").Append(name).Append("\":{");
+			builder.Append("\"x\":").Append(JsonNumber(value.x));
+			builder.Append(",\"y\":").Append(JsonNumber(value.y));
+			builder.Append(",\"z\":").Append(JsonNumber(value.z));
+			builder.Append(",\"w\":").Append(JsonNumber(value.w));
+			builder.Append('}');
+		}
+
+		private static void AppendRect(StringBuilder builder, string name, Rect value)
+		{
+			builder.Append(",\"").Append(name).Append("\":{");
+			builder.Append("\"x\":").Append(JsonNumber(value.x));
+			builder.Append(",\"y\":").Append(JsonNumber(value.y));
+			builder.Append(",\"width\":").Append(JsonNumber(value.width));
+			builder.Append(",\"height\":").Append(JsonNumber(value.height));
+			builder.Append('}');
+		}
+
 		private static void AppendEditorState(StringBuilder builder)
 		{
 			builder.Append(",\"is_playing\":").Append(JsonBool(EditorApplication.isPlaying));
@@ -451,6 +543,32 @@ namespace SGG.PerfMeter.Editor.Mcp
 				default:
 					throw new InvalidOperationException("schema_validation_failed\nArgument target_fps must be 15, 30, 60, 90, 120, 144, or 240");
 			}
+		}
+
+		private static PerfMeterCameraSource ParseCameraSource(string value)
+		{
+			string normalized = (value ?? string.Empty).Replace("_", string.Empty).Replace("-", string.Empty).Trim();
+			if (string.Equals(normalized, "Auto", StringComparison.OrdinalIgnoreCase))
+			{
+				return PerfMeterCameraSource.Auto;
+			}
+
+			if (string.Equals(normalized, "MainCamera", StringComparison.OrdinalIgnoreCase))
+			{
+				return PerfMeterCameraSource.MainCamera;
+			}
+
+			if (string.Equals(normalized, "NameFilter", StringComparison.OrdinalIgnoreCase))
+			{
+				return PerfMeterCameraSource.NameFilter;
+			}
+
+			if (string.Equals(normalized, "FirstGameCamera", StringComparison.OrdinalIgnoreCase))
+			{
+				return PerfMeterCameraSource.FirstGameCamera;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument source must be Auto, MainCamera, NameFilter, or FirstGameCamera");
 		}
 
 		private static int FindPropertyColon(string json, string property)

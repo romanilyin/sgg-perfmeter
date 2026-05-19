@@ -72,6 +72,37 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator CameraSnapshotCapturesNamedCameraTransform()
+		{
+			GameObject cameraObject = new GameObject("PerfMeter Camera Snapshot Test");
+			Camera camera = cameraObject.AddComponent<Camera>();
+			camera.transform.position = new Vector3(3f, 4f, 5f);
+			camera.transform.rotation = Quaternion.Euler(20f, 35f, 5f);
+			camera.fieldOfView = 47f;
+			camera.nearClipPlane = 0.2f;
+			camera.farClipPlane = 321f;
+			camera.depth = 7f;
+
+			yield return null;
+
+			Assert.That(PerformanceMeter.TryGetCameraSnapshot(out PerfMeterCameraSnapshot snapshot, PerfMeterCameraSource.NameFilter, "Snapshot Test"), Is.True);
+			Assert.That(snapshot.CameraName, Is.EqualTo(cameraObject.name));
+			Assert.That(snapshot.Source, Is.EqualTo(PerfMeterCameraSource.NameFilter));
+			Assert.That(snapshot.Projection, Is.EqualTo(PerfMeterCameraProjection.Perspective));
+			Assert.That(snapshot.Position.x, Is.EqualTo(3f).Within(0.001f));
+			Assert.That(snapshot.Position.y, Is.EqualTo(4f).Within(0.001f));
+			Assert.That(snapshot.Position.z, Is.EqualTo(5f).Within(0.001f));
+			Assert.That(snapshot.FieldOfView, Is.EqualTo(47f).Within(0.001f));
+			Assert.That(snapshot.NearClipPlane, Is.EqualTo(0.2f).Within(0.001f));
+			Assert.That(snapshot.FarClipPlane, Is.EqualTo(321f).Within(0.001f));
+			Assert.That(snapshot.Depth, Is.EqualTo(7f).Within(0.001f));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+
+			UnityEngine.Object.Destroy(cameraObject);
+			yield return null;
+		}
+
+		[UnityTest]
 		public IEnumerator OverdrawRequestReportsTerminalOrActionableWaitingState()
 		{
 			PerformanceMeter.EnsureRunning();

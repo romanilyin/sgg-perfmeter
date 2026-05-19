@@ -20,6 +20,7 @@ Implemented:
 
 - runtime public API for status and latest metrics snapshots;
 - device/environment snapshots with screen, display, and monitor-name information;
+- camera snapshots with transform, projection, clipping, target display, and URP camera settings for reproducible captures;
 - `FrameTimingManager`-based CPU/GPU timing collection;
 - `ProfilerRecorder`-based render, memory, SRP Batcher, BRG/GRD, and upload counters;
 - UI Toolkit overlay with compact, graph, and full modes;
@@ -428,6 +429,7 @@ Available command IDs:
 | `perfmeter.runtime.stop` | Stop runtime. |
 | `perfmeter.metrics.latest` | Read latest metrics snapshot. |
 | `perfmeter.device.info` | Read device, graphics, display, monitor, render pipeline, and Unity environment info. |
+| `perfmeter.camera.snapshot` | Read camera transform/projection/URP settings for reproducible captures. |
 | `perfmeter.overlay.set` | Show/hide overlay and set corner/mode/target FPS. |
 | `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
 | `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
@@ -444,6 +446,8 @@ Assets/Scripts/SGG.PerfMeter/
   CHANGELOG.md
   Runtime/
     PerformanceMeter.cs
+    PerfMeterCameraSnapshot.cs
+    PerfMeterCameraSnapshotProvider.cs
     PerfMeterDeviceInfoProvider.cs
     PerfMeterRuntime.cs
     PerfMeterCollector.cs

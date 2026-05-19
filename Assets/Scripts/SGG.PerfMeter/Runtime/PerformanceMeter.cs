@@ -42,6 +42,17 @@ namespace SGG.PerfMeter
 			return !string.IsNullOrEmpty(deviceInfo.UnityVersion);
 		}
 
+		public static PerfMeterCameraSnapshot GetCameraSnapshot(PerfMeterCameraSource source = PerfMeterCameraSource.Auto, string cameraNameFilter = null)
+		{
+			return PerfMeterCameraSnapshotProvider.CreateSnapshot(source, cameraNameFilter);
+		}
+
+		public static bool TryGetCameraSnapshot(out PerfMeterCameraSnapshot cameraSnapshot, PerfMeterCameraSource source = PerfMeterCameraSource.Auto, string cameraNameFilter = null)
+		{
+			cameraSnapshot = GetCameraSnapshot(source, cameraNameFilter);
+			return cameraSnapshot.IsAvailable;
+		}
+
 		public static PerfMeterSettingsSnapshot GetSettings()
 		{
 			return PerfMeterSettingsStore.LoadFromResources();

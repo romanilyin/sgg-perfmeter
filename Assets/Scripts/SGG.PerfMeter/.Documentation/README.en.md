@@ -10,6 +10,7 @@ Current package version: `2026.5.18-1`. This is a private release candidate; the
 - Status: `PerformanceMeter.GetStatus()` or `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)`
 - Metrics: `PerformanceMeter.GetLatestMetrics()` or `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)`
 - Device/environment: `PerformanceMeter.GetDeviceInfo()` or `PerformanceMeter.TryGetDeviceInfo(out PerfMeterDeviceSnapshot deviceInfo)` returns a Unity/platform/CPU/GPU/screen/monitor snapshot without starting the runtime.
+- Camera snapshot: `PerformanceMeter.GetCameraSnapshot(...)` or `PerformanceMeter.TryGetCameraSnapshot(out PerfMeterCameraSnapshot snapshot, ...)` returns camera position, orientation, and parameters for reproducible performance captures.
 - Settings: `PerformanceMeter.GetSettings()` returns the zero-code JSON settings snapshot or safe defaults when the JSON file is missing.
 - Lifecycle: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`
 - Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `TargetFps`
@@ -74,6 +75,7 @@ The runtime singleton updates snapshots in `Update()` with real values from `Fra
 - Classification: `Bottleneck` (`GpuBound`, `CpuMainThreadBound`, `CpuRenderThreadBound`, `PresentLimited`, `Balanced`, `Unknown`) with the current `FrameBudgetMs`, derived from `PerfMeterTargetFps`; `PresentLimited` indicates significant present/VSync/frame pacing wait while CPU/GPU work is below budget.
 - Overdraw: `OverdrawState`, `OverdrawProgress`, and `OverdrawRatio` are available in status/metrics snapshots; `OverdrawHeatmapVisible` is available in status snapshots for agent-readable visual heatmap control.
 - Device/environment snapshot: `PerfMeterDeviceSnapshot` includes Unity version, platform, OS, CPU/RAM, GPU/API/capabilities, screen/current resolution/fullscreen state, main window position, render-safe display layout state, and `PerfMeterDisplaySnapshot` entries with system monitor names from `Screen.GetDisplayLayout(List<DisplayInfo>)`. If layout is unavailable, it falls back to `Screen.currentResolution`.
+- Camera snapshot: `PerfMeterCameraSnapshot` includes camera name/id, scene name/path, position, rotation quaternion, Euler angles, forward/up vectors, projection, FOV/orthographic size, clip planes, aspect, pixel rect, target display, depth, clear flags, culling mask, HDR/MSAA flags, and URP `UniversalAdditionalCameraData` fields when that component already exists on the camera.
 
 On OpenGL/OpenGLES, hardware GPU timing may be unavailable or unreliable. In that case `GpuFrameTimeAvailable` is `false` and `PerfMeterStatusSnapshot.Warning` contains a warning; Vulkan is preferred on Android.
 

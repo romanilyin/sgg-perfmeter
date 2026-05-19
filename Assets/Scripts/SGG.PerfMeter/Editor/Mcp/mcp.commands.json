@@ -116,6 +116,28 @@
       }
     },
     {
+      "id": "perfmeter.camera.snapshot",
+      "title": "PerfMeter camera snapshot",
+      "description": "Read camera transform, projection, and URP camera settings for reproducible performance captures.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CameraSnapshot",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "camera", "snapshot"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["Auto", "MainCamera", "NameFilter", "FirstGameCamera"]
+          },
+          "camera_name_filter": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
       "description": "Show or hide the SGG PerfMeter overlay and optionally set its screen corner, display mode, and target FPS.",

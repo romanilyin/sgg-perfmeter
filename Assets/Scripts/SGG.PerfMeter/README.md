@@ -37,6 +37,7 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 PerformanceMeter.SetOverlayVisible(true);
 
 PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
+PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 ```

@@ -60,5 +60,27 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("\"risk\": \"read\""));
 			Assert.That(metadata, Does.Contain("\"idempotency\": \"safe\""));
 		}
+
+		[Test]
+		public void CameraSnapshotMcpCommandDoesNotStartRuntime()
+		{
+			string json = PerfMeterMcpCommands.CameraSnapshot("{}");
+
+			Assert.That(json, Does.StartWith("{"));
+			Assert.That(json, Does.Contain("\"schema_version\":1"));
+			Assert.That(json, Does.Contain("\"is_available\":"));
+			Assert.That(json, Does.Contain("\"position\":"));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+		}
+
+		[Test]
+		public void CameraSnapshotMcpCommandMetadataIsRegistered()
+		{
+			string metadata = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json").text;
+
+			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.camera.snapshot\""));
+			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CameraSnapshot"));
+			Assert.That(metadata, Does.Contain("\"camera_name_filter\""));
+		}
 	}
 }
