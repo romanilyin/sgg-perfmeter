@@ -10,8 +10,11 @@ namespace SGG.PerfMeter
 	internal sealed class PerfMeterOverlay : MonoBehaviour
 	{
 		private const float RefreshIntervalSeconds = 0.25f;
+		private const int TextFieldCapacity = 32;
 		private const float GraphBlockWidth = 780f;
 		private const float TextBlockWidth = 520f;
+		private const float TextFieldNameWidth = 118f;
+		private const float TextFieldNameGap = 8f;
 		private const float ScaleLabelWidth = 64f;
 		private const float ScaleLabelGap = 6f;
 		private const float ScaleLabelHeight = 13f;
@@ -38,7 +41,9 @@ namespace SGG.PerfMeter
 		private static readonly Color GpuColor = new Color(0.62f, 0.24f, 0.34f, 1f);
 		private static readonly Color UnavailableColor = new Color(0.34f, 0.38f, 0.42f, 1f);
 
-		private readonly StringBuilder _builder = new StringBuilder(1024);
+		private readonly StringBuilder _valueBuilder = new StringBuilder(256);
+		private readonly char[] _numberBuffer = new char[64];
+		private readonly PerfMeterOverlayTextField[] _textFields = new PerfMeterOverlayTextField[TextFieldCapacity];
 		private readonly PerfMeterOverlayHistory _history = new PerfMeterOverlayHistory();
 		private UIDocument _document;
 		private PanelSettings _panelSettings;
@@ -48,8 +53,8 @@ namespace SGG.PerfMeter
 		private VisualElement _container;
 		private VisualElement _graphBlock;
 		private VisualElement _textBlock;
+		private VisualElement _textRows;
 		private VisualElement _graphs;
-		private Label _label;
 		private Label _cpuFrameLegend;
 		private Label _cpuMainLegend;
 		private Label _cpuRenderLegend;
@@ -60,12 +65,16 @@ namespace SGG.PerfMeter
 		private float _nextRefreshTime;
 		private float _warningVisibleUntil;
 		private string _heldWarning = string.Empty;
+		private string _pendingTextFieldName = string.Empty;
 		private PerfMeterOverlayCorner _corner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _mode = PerfMeterOverlayMode.Full;
 		private PerfMeterOverlayModule _modules = PerfMeterOverlayModule.All;
+		private int _textFieldCount;
+		private int _lastVisibleTextFieldCount;
 		private bool _isVisible = true;
 
 		internal bool IsVisible => _isVisible && isActiveAndEnabled;
+		internal int ActiveTextFieldCount => _textFieldCount;
 
 		private void Awake()
 		{
@@ -248,19 +257,17 @@ namespace SGG.PerfMeter
 			_graphBlock.Add(_graphs);
 
 			_textBlock = CreateBlock("sgg-perfmeter-text-block", TextBlockWidth);
-			_label = new Label
+			_textRows = new VisualElement
 			{
 				name = "sgg-perfmeter-metrics",
 				pickingMode = PickingMode.Ignore
 			};
-			_label.style.width = Length.Percent(100f);
-			_label.style.color = TextColor;
-			_label.style.fontSize = 12f;
-			_label.style.unityFont = GetRuntimeFont();
-			_label.style.unityFontStyleAndWeight = FontStyle.Normal;
-			_label.style.unityTextAlign = TextAnchor.UpperLeft;
-			_label.style.whiteSpace = WhiteSpace.Normal;
-			_textBlock.Add(_label);
+			_textRows.style.width = Length.Percent(100f);
+			_textRows.style.flexGrow = 1f;
+			_textRows.style.flexDirection = FlexDirection.Column;
+			_textRows.style.unityFont = GetRuntimeFont();
+			_textRows.style.unityFontStyleAndWeight = FontStyle.Normal;
+			_textBlock.Add(_textRows);
 
 			_container.Add(_graphBlock);
 			_container.Add(_textBlock);
@@ -441,6 +448,35 @@ namespace SGG.PerfMeter
 			return label;
 		}
 
+		private PerfMeterOverlayTextField CreateTextField(int index)
+		{
+			VisualElement row = new VisualElement
+			{
+				name = "sgg-perfmeter-field-" + index.ToString(CultureInfo.InvariantCulture),
+				pickingMode = PickingMode.Ignore
+			};
+			row.style.flexDirection = FlexDirection.Row;
+			row.style.width = Length.Percent(100f);
+			row.style.minHeight = 16f;
+
+			Label nameLabel = CreateSmallLabel(string.Empty, MutedTextColor, TextAnchor.UpperLeft);
+			nameLabel.style.width = TextFieldNameWidth;
+			nameLabel.style.marginRight = TextFieldNameGap;
+			nameLabel.style.flexShrink = 0f;
+
+			Label valueLabel = CreateSmallLabel(string.Empty, TextColor, TextAnchor.UpperLeft);
+			valueLabel.style.flexGrow = 1f;
+			valueLabel.style.whiteSpace = WhiteSpace.Normal;
+
+			row.Add(nameLabel);
+			row.Add(valueLabel);
+			_textRows.Add(row);
+
+			PerfMeterOverlayTextField field = new PerfMeterOverlayTextField(row, nameLabel, valueLabel);
+			field.SetFontSize(GetTextFontSize());
+			return field;
+		}
+
 		private void ApplyModeLayout()
 		{
 			if (_container == null)
@@ -464,20 +500,27 @@ namespace SGG.PerfMeter
 				_graphBlock.style.height = 0f;
 			}
 
-			if (_mode == PerfMeterOverlayMode.FpsOnly)
+
+			if (_textRows != null)
 			{
-				_label.style.fontSize = 13f;
-				_label.style.flexGrow = 1f;
-				_label.style.unityTextAlign = TextAnchor.MiddleLeft;
-			}
-			else
-			{
-				_label.style.fontSize = _mode == PerfMeterOverlayMode.Full ? 12f : 13f;
-				_label.style.flexGrow = 1f;
-				_label.style.unityTextAlign = TextAnchor.UpperLeft;
+				_textRows.style.justifyContent = _mode == PerfMeterOverlayMode.FpsOnly ? Justify.Center : Justify.FlexStart;
+				SetTextFieldFontSize(GetTextFontSize());
 			}
 
 			ApplyBlockAlignment();
+		}
+
+		private float GetTextFontSize()
+		{
+			return _mode == PerfMeterOverlayMode.Full ? 12f : 13f;
+		}
+
+		private void SetTextFieldFontSize(float fontSize)
+		{
+			for (int i = 0; i < _textFields.Length; i++)
+			{
+				_textFields[i]?.SetFontSize(fontSize);
+			}
 		}
 
 		private float GetTextBlockHeight()
@@ -551,7 +594,7 @@ namespace SGG.PerfMeter
 
 		private void RefreshText(bool force)
 		{
-			if (_label == null)
+			if (_textRows == null)
 			{
 				return;
 			}
@@ -572,7 +615,7 @@ namespace SGG.PerfMeter
 				UpdateGraphs(status, metrics);
 			}
 
-			_builder.Length = 0;
+			_textFieldCount = 0;
 			switch (_mode)
 			{
 				case PerfMeterOverlayMode.FpsOnly:
@@ -589,7 +632,7 @@ namespace SGG.PerfMeter
 					break;
 			}
 
-			_label.text = _builder.ToString();
+			HideUnusedTextFields();
 		}
 
 		private void UpdateGraphs(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics)
@@ -637,27 +680,27 @@ namespace SGG.PerfMeter
 		{
 			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
-				AppendFpsSummary(metrics);
+				BeginTextField("FPS");
+				AppendFpsSummary(_valueBuilder, metrics);
+				EndTextField();
 			}
 
 			if (!string.IsNullOrEmpty(warning) && HasModule(PerfMeterOverlayModule.Warnings))
 			{
-				if (_builder.Length > 0)
-				{
-					_builder.Append(" | ");
-				}
-
-				_builder.Append("Warn");
+				BeginTextField("Warn");
+				_valueBuilder.Append("active");
+				EndTextField();
 			}
 		}
 
 		private void BuildTextCompactText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
 		{
-			_builder.Append("SGG PerfMeter ");
-			_builder.Append(status.State.ToString());
-			_builder.Append(" / ");
-			_builder.Append(metrics.Bottleneck.ToString());
-			_builder.Append('\n');
+			BeginTextField("SGG PerfMeter");
+			AppendRuntimeState(_valueBuilder, status.State);
+			_valueBuilder.Append(" / ");
+			AppendBottleneck(_valueBuilder, metrics.Bottleneck);
+			EndTextField();
+
 			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
 				AppendFpsLine(metrics);
@@ -665,7 +708,18 @@ namespace SGG.PerfMeter
 
 			if (HasModule(PerfMeterOverlayModule.Timing))
 			{
-				AppendTimingLineWithRanges(metrics);
+				BeginTextField("CPU/GPU ms");
+				AppendMsWithRange(_valueBuilder, metrics.CpuFrameTimeMs, _history.CpuFrameTimeMs);
+				_valueBuilder.Append(" / ");
+				AppendMsWithRange(_valueBuilder, GetDisplayGpuFrameTime(metrics), _history.GpuFrameTimeMs, true, metrics.GpuFrameTimeAvailable);
+				EndTextField();
+
+				BeginTextField("main/render");
+				AppendMsWithRange(_valueBuilder, metrics.CpuMainThreadFrameTimeMs, _history.CpuMainThreadFrameTimeMs);
+				_valueBuilder.Append(" / ");
+				AppendMsWithRange(_valueBuilder, metrics.CpuRenderThreadFrameTimeMs, _history.CpuRenderThreadFrameTimeMs);
+				EndTextField();
+
 				AppendGpuValidity(metrics);
 			}
 
@@ -677,7 +731,13 @@ namespace SGG.PerfMeter
 
 			if (HasModule(PerfMeterOverlayModule.SrpBatcher) || HasModule(PerfMeterOverlayModule.Brg))
 			{
-				AppendLine("SRP/BRG", FormatIntWithRange(metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances)) + " / " + FormatIntWithRange(metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls)) + ":" + FormatIntWithRange(metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances)));
+				BeginTextField("SRP/BRG");
+				AppendIntWithRange(_valueBuilder, metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances));
+				_valueBuilder.Append(" / ");
+				AppendIntWithRange(_valueBuilder, metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls));
+				_valueBuilder.Append(':');
+				AppendIntWithRange(_valueBuilder, metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances));
+				EndTextField();
 			}
 
 			if (HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap))
@@ -698,15 +758,19 @@ namespace SGG.PerfMeter
 
 		private void BuildGraphsText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
 		{
-			_builder.Append("SGG PerfMeter Graphs ");
-			_builder.Append(status.State.ToString());
-			_builder.Append('\n');
+			BeginTextField("SGG PerfMeter Graphs");
+			AppendRuntimeState(_valueBuilder, status.State);
+			EndTextField();
+
 			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
 				AppendFpsLine(metrics);
 			}
 
-			AppendLine("Bottleneck", metrics.Bottleneck.ToString());
+			BeginTextField("Bottleneck");
+			AppendBottleneck(_valueBuilder, metrics.Bottleneck);
+			EndTextField();
+
 			if (HasModule(PerfMeterOverlayModule.Timing))
 			{
 				AppendGpuValidity(metrics);
@@ -720,15 +784,20 @@ namespace SGG.PerfMeter
 
 		private void BuildFullText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
 		{
-			_builder.Append("SGG PerfMeter ");
-			_builder.Append(status.State.ToString());
-			_builder.Append(" / ");
-			_builder.Append(metrics.Bottleneck.ToString());
-			_builder.Append('\n');
+			BeginTextField("SGG PerfMeter");
+			AppendRuntimeState(_valueBuilder, status.State);
+			_valueBuilder.Append(" / ");
+			AppendBottleneck(_valueBuilder, metrics.Bottleneck);
+			EndTextField();
+
 			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
 				AppendFpsLine(metrics);
-				AppendLine("Spikes", metrics.FrameSpikeCount.ToString(CultureInfo.InvariantCulture) + " / severe " + metrics.SevereFrameSpikeCount.ToString(CultureInfo.InvariantCulture));
+				BeginTextField("Spikes");
+				AppendInt(_valueBuilder, metrics.FrameSpikeCount);
+				_valueBuilder.Append(" / severe ");
+				AppendInt(_valueBuilder, metrics.SevereFrameSpikeCount);
+				EndTextField();
 			}
 
 			if (HasModule(PerfMeterOverlayModule.Timing))
@@ -876,105 +945,97 @@ namespace SGG.PerfMeter
 
 		private void AppendFpsLine(PerfMeterMetricsSnapshot metrics)
 		{
-			AppendFpsSummary(metrics);
-			_builder.Append(" | samples ");
-			_builder.Append(metrics.FrameSampleCount.ToString(CultureInfo.InvariantCulture));
-			_builder.Append('\n');
+			BeginTextField("FPS");
+			AppendFpsSummary(_valueBuilder, metrics);
+			_valueBuilder.Append(" | samples ");
+			AppendInt(_valueBuilder, metrics.FrameSampleCount);
+			EndTextField();
 		}
 
-		private void AppendFpsSummary(PerfMeterMetricsSnapshot metrics)
+		private void AppendFpsSummary(StringBuilder builder, PerfMeterMetricsSnapshot metrics)
 		{
 			double currentFps = FpsFromFrameMs(metrics.CpuFrameTimeMs);
 			double averageFps = metrics.AverageFps > 1d ? metrics.AverageFps : currentFps;
 			double onePercentLowFps = metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps;
 			double pointOnePercentLowFps = metrics.PointOnePercentLowFps > 1d ? metrics.PointOnePercentLowFps : onePercentLowFps;
 
-			_builder.Append("FPS ");
-			_builder.Append(FormatFpsValue(averageFps));
-			_builder.Append(" | 1% ");
-			_builder.Append(FormatFpsValue(onePercentLowFps));
-			_builder.Append(" | 0.1% ");
-			_builder.Append(FormatFpsValue(pointOnePercentLowFps));
-		}
-
-		private void AppendTimingLineWithRanges(PerfMeterMetricsSnapshot metrics)
-		{
-			_builder.Append("CPU/GPU ms: ");
-			_builder.Append(FormatMsWithRange(metrics.CpuFrameTimeMs, _history.CpuFrameTimeMs));
-			_builder.Append(" / ");
-			_builder.Append(FormatMsWithRange(GetDisplayGpuFrameTime(metrics), _history.GpuFrameTimeMs, true, metrics.GpuFrameTimeAvailable));
-			_builder.Append('\n');
-			_builder.Append("main/render: ");
-			_builder.Append(FormatMsWithRange(metrics.CpuMainThreadFrameTimeMs, _history.CpuMainThreadFrameTimeMs));
-			_builder.Append(" / ");
-			_builder.Append(FormatMsWithRange(metrics.CpuRenderThreadFrameTimeMs, _history.CpuRenderThreadFrameTimeMs));
-			_builder.Append('\n');
+			AppendFpsValue(builder, averageFps);
+			builder.Append(" | 1% ");
+			AppendFpsValue(builder, onePercentLowFps);
+			builder.Append(" | 0.1% ");
+			AppendFpsValue(builder, pointOnePercentLowFps);
 		}
 
 		private void AppendGpuValidity(PerfMeterMetricsSnapshot metrics)
 		{
-			_builder.Append("GPU valid: ");
-			_builder.Append(metrics.GpuValidSampleCount.ToString(CultureInfo.InvariantCulture));
-			_builder.Append("/");
-			_builder.Append(metrics.FrameSampleCount.ToString(CultureInfo.InvariantCulture));
-			_builder.Append('\n');
+			BeginTextField("GPU valid");
+			AppendInt(_valueBuilder, metrics.GpuValidSampleCount);
+			_valueBuilder.Append('/');
+			AppendInt(_valueBuilder, metrics.FrameSampleCount);
+			EndTextField();
 		}
 
 		private void AppendMsWithRange(string name, double value, PerfMeterHistorySeries series, bool available = true, bool currentAvailable = true)
 		{
-			_builder.Append(name);
-			_builder.Append(": ");
-			_builder.Append(FormatMsWithRange(value, series, available, currentAvailable));
-			_builder.Append(" ms\n");
+			BeginTextField(name);
+			AppendMsWithRange(_valueBuilder, value, series, available, currentAvailable);
+			_valueBuilder.Append(" ms");
+			EndTextField();
 		}
 
 		private void AppendIntWithRange(string name, int value, PerfMeterHistorySeries series, bool available = true)
 		{
-			_builder.Append(name);
-			_builder.Append(": ");
-			_builder.Append(FormatIntWithRange(value, series, available));
-			_builder.Append('\n');
+			BeginTextField(name);
+			AppendIntWithRange(_valueBuilder, value, series, available);
+			EndTextField();
 		}
 
 		private void AppendMemoryWithRange(string name, long bytes, PerfMeterHistorySeries series, bool available = true)
 		{
-			_builder.Append(name);
-			_builder.Append(": ");
-			_builder.Append(FormatMemoryWithRange(bytes, series, available));
-			_builder.Append(" MB\n");
+			BeginTextField(name);
+			AppendMemoryWithRange(_valueBuilder, bytes, series, available);
+			_valueBuilder.Append(" MB");
+			EndTextField();
 		}
 
 		private void AppendIntPairWithRanges(string name, int first, PerfMeterHistorySeries firstSeries, bool firstAvailable, int second, PerfMeterHistorySeries secondSeries, bool secondAvailable)
 		{
-			_builder.Append(name);
-			_builder.Append(": ");
-			_builder.Append(FormatIntWithRange(first, firstSeries, firstAvailable));
-			_builder.Append(" / ");
-			_builder.Append(FormatIntWithRange(second, secondSeries, secondAvailable));
-			_builder.Append('\n');
+			BeginTextField(name);
+			AppendIntWithRange(_valueBuilder, first, firstSeries, firstAvailable);
+			_valueBuilder.Append(" / ");
+			AppendIntWithRange(_valueBuilder, second, secondSeries, secondAvailable);
+			EndTextField();
 		}
 
 		private void AppendMemoryPairWithRanges(string name, long firstBytes, PerfMeterHistorySeries firstSeries, bool firstAvailable, long secondBytes, PerfMeterHistorySeries secondSeries, bool secondAvailable)
 		{
-			_builder.Append(name);
-			_builder.Append(": ");
-			_builder.Append(FormatMemoryWithRange(firstBytes, firstSeries, firstAvailable));
-			_builder.Append(" / ");
-			_builder.Append(FormatMemoryWithRange(secondBytes, secondSeries, secondAvailable));
-			_builder.Append(" MB\n");
+			BeginTextField(name);
+			AppendMemoryWithRange(_valueBuilder, firstBytes, firstSeries, firstAvailable);
+			_valueBuilder.Append(" / ");
+			AppendMemoryWithRange(_valueBuilder, secondBytes, secondSeries, secondAvailable);
+			_valueBuilder.Append(" MB");
+			EndTextField();
 		}
 
 		private void AppendOverdraw(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics)
 		{
-			_builder.Append("Overdraw: ");
-			_builder.Append(metrics.OverdrawState.ToString());
-			_builder.Append(" ");
-			_builder.Append((metrics.OverdrawProgress * 100f).ToString("0", CultureInfo.InvariantCulture));
-			_builder.Append("% ratio ");
-			_builder.Append(metrics.OverdrawRatio > 0d ? metrics.OverdrawRatio.ToString("0.00", CultureInfo.InvariantCulture) : "unknown");
-			_builder.Append(" heatmap ");
-			_builder.Append(status.OverdrawHeatmapVisible ? "on" : "off");
-			_builder.Append('\n');
+			BeginTextField("Overdraw");
+			AppendOverdrawState(_valueBuilder, metrics.OverdrawState);
+			_valueBuilder.Append(' ');
+			AppendDouble(_valueBuilder, metrics.OverdrawProgress * 100f, "0");
+			_valueBuilder.Append("% ratio ");
+			if (metrics.OverdrawRatio > 0d)
+			{
+				AppendDouble(_valueBuilder, metrics.OverdrawRatio, "0.00");
+			}
+			else
+			{
+				_valueBuilder.Append("unknown");
+			}
+
+			_valueBuilder.Append(" heatmap ");
+			_valueBuilder.Append(status.OverdrawHeatmapVisible ? "on" : "off");
+			EndTextField();
 		}
 
 		private void AppendWarning(string warning, int maxLength)
@@ -984,24 +1045,324 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			_builder.Append("Warn: ");
+			BeginTextField("Warn");
 			if (warning.Length <= maxLength)
 			{
-				_builder.Append(warning);
+				_valueBuilder.Append(warning);
 			}
 			else
 			{
-				_builder.Append(warning.Substring(0, maxLength - 3));
-				_builder.Append("...");
+				_valueBuilder.Append(warning, 0, maxLength - 3);
+				_valueBuilder.Append("...");
+			}
+
+			EndTextField();
+		}
+
+		private void BeginTextField(string name)
+		{
+			_pendingTextFieldName = name ?? string.Empty;
+			_valueBuilder.Length = 0;
+		}
+
+		private void EndTextField()
+		{
+			if (_textFieldCount >= _textFields.Length)
+			{
+				return;
+			}
+
+			PerfMeterOverlayTextField field = _textFields[_textFieldCount];
+			if (field == null)
+			{
+				field = CreateTextField(_textFieldCount);
+				_textFields[_textFieldCount] = field;
+			}
+
+			field.SetName(_pendingTextFieldName);
+			field.SetValue(_valueBuilder);
+			field.SetVisible(true);
+			_textFieldCount++;
+		}
+
+		private void HideUnusedTextFields()
+		{
+			for (int i = _textFieldCount; i < _lastVisibleTextFieldCount; i++)
+			{
+				_textFields[i]?.SetVisible(false);
+			}
+
+			_lastVisibleTextFieldCount = _textFieldCount;
+		}
+
+		private void AppendMsWithRange(StringBuilder builder, double value, PerfMeterHistorySeries series, bool available = true, bool currentAvailable = true)
+		{
+			PerfMeterHistoryRange range = series.GetRange();
+			if (!available)
+			{
+				AppendMsPlaceholder(builder, range.Max);
+				if (range.Count > 0)
+				{
+					builder.Append(" (");
+					AppendMsPlaceholder(builder, range.Min);
+					builder.Append('-');
+					AppendMsPlaceholder(builder, range.Max);
+					builder.Append(')');
+				}
+
+				return;
+			}
+
+			if (range.Count <= 0)
+			{
+				if (currentAvailable)
+				{
+					AppendMsValue(builder, value);
+				}
+				else
+				{
+					AppendMsPlaceholder(builder, value);
+				}
+
+				return;
+			}
+
+			if (currentAvailable)
+			{
+				AppendMsValue(builder, value);
+			}
+			else
+			{
+				AppendMsPlaceholder(builder, range.Max);
+			}
+
+			builder.Append(" (");
+			AppendMsValue(builder, range.Min);
+			builder.Append('-');
+			AppendMsValue(builder, range.Max);
+			builder.Append(')');
+		}
+
+		private void AppendIntWithRange(StringBuilder builder, int value, PerfMeterHistorySeries series, bool available = true)
+		{
+			PerfMeterHistoryRange range = series.GetRange();
+			if (!available)
+			{
+				AppendIntPlaceholder(builder, range.Max);
+				if (range.Count > 0)
+				{
+					builder.Append(" (");
+					AppendIntPlaceholder(builder, range.Min);
+					builder.Append('-');
+					AppendIntPlaceholder(builder, range.Max);
+					builder.Append(')');
+				}
+
+				return;
+			}
+
+			AppendInt(builder, value);
+			if (range.Count <= 0)
+			{
+				return;
+			}
+
+			builder.Append(" (");
+			AppendWholeValue(builder, range.Min);
+			builder.Append('-');
+			AppendWholeValue(builder, range.Max);
+			builder.Append(')');
+		}
+
+		private void AppendMemoryWithRange(StringBuilder builder, long bytes, PerfMeterHistorySeries series, bool available = true)
+		{
+			PerfMeterHistoryRange range = series.GetRange();
+			if (!available)
+			{
+				AppendMemoryPlaceholder(builder, range.Max);
+				if (range.Count > 0)
+				{
+					builder.Append(" (");
+					AppendMemoryPlaceholder(builder, range.Min);
+					builder.Append('-');
+					AppendMemoryPlaceholder(builder, range.Max);
+					builder.Append(')');
+				}
+
+				return;
+			}
+
+			AppendMemoryValue(builder, bytes);
+			if (range.Count <= 0)
+			{
+				return;
+			}
+
+			builder.Append(" (");
+			AppendMemoryValue(builder, range.Min);
+			builder.Append('-');
+			AppendMemoryValue(builder, range.Max);
+			builder.Append(')');
+		}
+
+		private void AppendFpsValue(StringBuilder builder, double value)
+		{
+			if (value > 0d)
+			{
+				AppendDouble(builder, value, "0.0");
+			}
+			else
+			{
+				builder.Append("--");
 			}
 		}
 
-		private void AppendLine(string name, string value)
+		private void AppendMsValue(StringBuilder builder, double value)
 		{
-			_builder.Append(name);
-			_builder.Append(": ");
-			_builder.Append(value);
-			_builder.Append('\n');
+			if (value > 0d)
+			{
+				AppendDouble(builder, value, "0.00");
+			}
+			else
+			{
+				builder.Append("--");
+			}
+		}
+
+		private void AppendMsPlaceholder(StringBuilder builder, double referenceMaxMs)
+		{
+			int digits = GetIntegralDigitCount(Math.Max(1d, referenceMaxMs));
+			AppendRepeated(builder, '_', digits);
+			builder.Append(".__");
+		}
+
+		private static void AppendIntPlaceholder(StringBuilder builder, double referenceValue)
+		{
+			AppendRepeated(builder, '_', GetIntegralDigitCount(Math.Max(1d, referenceValue)));
+		}
+
+		private void AppendMemoryPlaceholder(StringBuilder builder, double referenceBytes)
+		{
+			double megabytes = Math.Max(0d, referenceBytes / 1048576d);
+			AppendRepeated(builder, '_', GetIntegralDigitCount(Math.Max(1d, megabytes)));
+			builder.Append("._");
+		}
+
+		private void AppendMemoryValue(StringBuilder builder, double bytes)
+		{
+			AppendDouble(builder, bytes / 1048576d, "0.0");
+		}
+
+		private void AppendWholeValue(StringBuilder builder, double value)
+		{
+			AppendDouble(builder, Math.Round(value), "0");
+		}
+
+		private void AppendInt(StringBuilder builder, int value)
+		{
+			if (value.TryFormat(_numberBuffer, out int written, default, CultureInfo.InvariantCulture))
+			{
+				builder.Append(_numberBuffer, 0, written);
+				return;
+			}
+
+			builder.Append(value.ToString(CultureInfo.InvariantCulture));
+		}
+
+		private void AppendDouble(StringBuilder builder, double value, string format)
+		{
+			if (value.TryFormat(_numberBuffer, out int written, format, CultureInfo.InvariantCulture))
+			{
+				builder.Append(_numberBuffer, 0, written);
+				return;
+			}
+
+			builder.Append(value.ToString(format, CultureInfo.InvariantCulture));
+		}
+
+		private void AppendRuntimeState(StringBuilder builder, PerfMeterRuntimeState state)
+		{
+			builder.Append(GetRuntimeStateText(state));
+		}
+
+		private void AppendBottleneck(StringBuilder builder, PerfMeterBottleneck bottleneck)
+		{
+			builder.Append(GetBottleneckText(bottleneck));
+		}
+
+		private void AppendOverdrawState(StringBuilder builder, PerfMeterOverdrawMeasurementState state)
+		{
+			builder.Append(GetOverdrawStateText(state));
+		}
+
+		internal static string GetRuntimeStateText(PerfMeterRuntimeState state)
+		{
+			switch (state)
+			{
+				case PerfMeterRuntimeState.Stopped:
+					return "Stopped";
+				case PerfMeterRuntimeState.Starting:
+					return "Starting";
+				case PerfMeterRuntimeState.Running:
+					return "Running";
+				case PerfMeterRuntimeState.Error:
+					return "Error";
+				default:
+					return "Unknown";
+			}
+		}
+
+		internal static string GetBottleneckText(PerfMeterBottleneck bottleneck)
+		{
+			switch (bottleneck)
+			{
+				case PerfMeterBottleneck.Balanced:
+					return "Balanced";
+				case PerfMeterBottleneck.GpuBound:
+					return "GpuBound";
+				case PerfMeterBottleneck.CpuMainThreadBound:
+					return "CpuMainThreadBound";
+				case PerfMeterBottleneck.CpuRenderThreadBound:
+					return "CpuRenderThreadBound";
+				case PerfMeterBottleneck.PresentLimited:
+					return "PresentLimited";
+				default:
+					return "Unknown";
+			}
+		}
+
+		internal static string GetOverdrawStateText(PerfMeterOverdrawMeasurementState state)
+		{
+			switch (state)
+			{
+				case PerfMeterOverdrawMeasurementState.Off:
+					return "Off";
+				case PerfMeterOverdrawMeasurementState.Measuring:
+					return "Measuring";
+				case PerfMeterOverdrawMeasurementState.Completed:
+					return "Completed";
+				case PerfMeterOverdrawMeasurementState.Canceled:
+					return "Canceled";
+				case PerfMeterOverdrawMeasurementState.Error:
+					return "Error";
+				case PerfMeterOverdrawMeasurementState.Unsupported:
+					return "Unsupported";
+				default:
+					return "Unknown";
+			}
+		}
+
+		private static int GetIntegralDigitCount(double value)
+		{
+			return Math.Max(1, (int)Math.Floor(Math.Log10(Math.Max(1d, value))) + 1);
+		}
+
+		private static void AppendRepeated(StringBuilder builder, char character, int count)
+		{
+			for (int i = 0; i < count; i++)
+			{
+				builder.Append(character);
+			}
 		}
 
 		private static void SetLegendLine(Label label, string text, Color background)
@@ -1181,6 +1542,91 @@ namespace SGG.PerfMeter
 		{
 			float luminance = 0.2126f * background.r + 0.7152f * background.g + 0.0722f * background.b;
 			return luminance > 0.58f ? new Color(0.04f, 0.055f, 0.065f, 1f) : new Color(0.92f, 0.96f, 1f, 1f);
+		}
+
+		private sealed class PerfMeterOverlayTextField
+		{
+			private readonly VisualElement _row;
+			private readonly Label _nameLabel;
+			private readonly Label _valueLabel;
+			private readonly PerfMeterOverlayCachedText _valueCache = new PerfMeterOverlayCachedText();
+			private string _name = string.Empty;
+
+			internal PerfMeterOverlayTextField(VisualElement row, Label nameLabel, Label valueLabel)
+			{
+				_row = row;
+				_nameLabel = nameLabel;
+				_valueLabel = valueLabel;
+			}
+
+			internal void SetName(string name)
+			{
+				string safeName = name ?? string.Empty;
+				if (_name == safeName)
+				{
+					return;
+				}
+
+				_name = safeName;
+				_nameLabel.text = safeName;
+			}
+
+			internal void SetValue(StringBuilder builder)
+			{
+				if (_valueCache.TryUpdate(builder, out string text))
+				{
+					_valueLabel.text = text;
+				}
+			}
+
+			internal void SetFontSize(float fontSize)
+			{
+				_nameLabel.style.fontSize = fontSize;
+				_valueLabel.style.fontSize = fontSize;
+			}
+
+			internal void SetVisible(bool visible)
+			{
+				_row.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+		}
+
+		internal sealed class PerfMeterOverlayCachedText
+		{
+			private string _text = string.Empty;
+
+			internal string Text => _text;
+
+			internal bool TryUpdate(StringBuilder builder, out string text)
+			{
+				if (Matches(builder))
+				{
+					text = _text;
+					return false;
+				}
+
+				_text = builder.ToString();
+				text = _text;
+				return true;
+			}
+
+			private bool Matches(StringBuilder builder)
+			{
+				if (builder.Length != _text.Length)
+				{
+					return false;
+				}
+
+				for (int i = 0; i < builder.Length; i++)
+				{
+					if (builder[i] != _text[i])
+					{
+						return false;
+					}
+				}
+
+				return true;
+			}
 		}
 
 		private readonly struct LegendToken

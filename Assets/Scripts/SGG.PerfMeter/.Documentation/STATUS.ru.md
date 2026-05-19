@@ -3,7 +3,7 @@
 ## Текущая готовность
 
 - Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`; текущая private release candidate версия - `2026.5.18-1`.
-- Реализованы runtime API, collection modes, device/environment snapshot с monitor names, camera snapshot для воспроизводимых captures, session recorder с bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata и JSON/CSV export, rule/alert engine с MCP alert commands, JSON settings для zero-code setup, вкладка `Presets` с overlay presets/modules, сбор метрик, UI Toolkit overlay с режимами, module filtering, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
+- Реализованы runtime API, collection modes, device/environment snapshot с monitor names, camera snapshot для воспроизводимых captures, session recorder с bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata и JSON/CSV export, rule/alert engine с MCP alert commands, JSON settings для zero-code setup, вкладка `Presets` с overlay presets/modules, сбор метрик, UI Toolkit overlay с режимами, module filtering, allocation-conscious text field refresh, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
 - Есть EditMode API/classifier tests и PlayMode runtime smoke tests; classifier mixed-load edge cases, overdraw stale-readback safety и heatmap toggles покрыты. Android S23 Vulkan/GLES smoke validation пройдена; более широкая player-build validation еще pending.
 - Пакет подготовлен как private/internal release candidate для проверки в Unity 6000.4 / URP 17; публичный релиз остается отложенным.
 
@@ -49,7 +49,7 @@
 - Editor warning alerts имеют отдельный JSON-настраиваемый cooldown и не пишут warning каждый кадр.
 - Session start принимает warm-up seconds и scene-load reset/ignore overrides; summary/export output содержит whole-run/current-scene и worst-frame data.
 - Пустой overlay marker pass является opt-in diagnostic mode; self-overhead subtraction все еще pending.
-- Полный zero-allocation refresh overlay еще не реализован; текущий overlay throttles text rebuilds и managed string assignment до refresh interval.
+- Overlay text refresh теперь использует стабильные field labels, cached enum strings, переиспользуемые buffers для чисел и dirty assignment для value labels; изменившиеся числовые values и graph legend labels все еще могут materialize managed strings на throttled refresh interval.
 - Более широкая manual device validation все еще полезна за пределами текущей Android S23 Vulkan/GLES smoke coverage.
 
 ## Release Readiness

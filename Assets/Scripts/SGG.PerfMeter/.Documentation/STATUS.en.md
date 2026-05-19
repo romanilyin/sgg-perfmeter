@@ -3,7 +3,7 @@
 ## Current Readiness
 
 - Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`; current private release candidate version is `2026.5.18-1`.
-- Runtime API, collection modes, device/environment snapshot with monitor names, camera snapshot for reproducible captures, session recorder with bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata, JSON/CSV export, rule/alert engine with MCP alert commands, JSON settings for zero-code setup, the `Presets` tab with overlay presets/modules, metrics collection, UI Toolkit overlay with modes, module filtering, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
+- Runtime API, collection modes, device/environment snapshot with monitor names, camera snapshot for reproducible captures, session recorder with bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata, JSON/CSV export, rule/alert engine with MCP alert commands, JSON settings for zero-code setup, the `Presets` tab with overlay presets/modules, metrics collection, UI Toolkit overlay with modes, module filtering, allocation-conscious text field refresh, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
 - EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases, overdraw stale-readback safety, and heatmap toggles are covered. Android S23 Vulkan/GLES smoke validation has passed; broader player-build validation is still pending.
 - The package is prepared as a private/internal release candidate for Unity 6000.4 / URP 17 validation; public release remains deferred.
 
@@ -49,7 +49,7 @@
 - Editor warning alerts have a separate JSON-tunable cooldown and do not write warnings every frame.
 - Session start accepts warm-up seconds plus scene-load reset/ignore overrides; summary/export output includes whole-run/current-scene and worst-frame data.
 - The empty overlay marker pass is opt-in diagnostic mode; self-overhead subtraction is still pending.
-- Full zero-allocation overlay refresh is not implemented yet; the current overlay throttles text rebuilds and managed string assignment to the refresh interval.
+- Overlay text refresh now uses stable field labels, cached enum strings, reusable numeric formatting buffers, and dirty value-label assignment; changed numeric values and graph legend labels can still materialize managed strings at the throttled refresh interval.
 - Broader manual device validation is still useful beyond the current Android S23 Vulkan/GLES smoke coverage.
 
 ## Release Readiness

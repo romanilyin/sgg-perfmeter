@@ -65,7 +65,7 @@ public static class PerfMeterBootstrap
 
 ## Runtime-метрики
 
-Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder`. Путь сбора метрик избегает per-frame allocation со стороны PerfMeter; overlay text refresh throttled и пока пересобирает managed strings с частотой обновления overlay.
+Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder`. Путь сбора метрик избегает per-frame allocation со стороны PerfMeter; overlay text refresh throttled и использует переиспользуемые field rows, поэтому неизменившиеся labels не получают новые managed strings.
 
 `CollectionFrame` - это `Time.frameCount`, на котором PerfMeter собрал snapshot. Это не гарантированно тот же кадр, который описывает `FrameTimingManager`, потому что Unity frame timings могут приходить с задержкой в несколько кадров.
 
@@ -103,8 +103,8 @@ Runtime overlay создается программно на UI Toolkit (`UIDocu
 - По умолчанию overlay находится в правом верхнем углу (`TopRight`) и режиме `Full`; доступные углы: `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`.
 - Режимы: `FpsOnly` показывает одну строку FPS/1%/0.1%, `TextCompact` показывает компактную текстовую сводку, `Graphs` показывает FPS и CPU/GPU графики, `Full` добавляет счетчики render/memory/overdraw.
 - Presets группируют режим и набор module flags: `Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug` и `Custom`. Module flags (`Fps`, `Timing`, `Graphs`, `Rendering`, `SrpBatcher`, `Brg`, `Uploads`, `Memory`, `Gc`, `GpuMemory`, `Overdraw`, `Heatmap`, `Warnings`) фильтруют строки overlay и скрывают graph block, когда `Graphs` отключен.
-- Label обновляется максимум 4 раза в секунду из последних runtime snapshots, а не каждый кадр.
-- Полный zero-allocation refresh overlay остается в backlog: разбить text block на стабильные field labels, закэшировать enum strings, форматировать числа в переиспользуемые buffers и обновлять только изменившиеся labels вместо пересборки текста через `StringBuilder`.
+- Text fields обновляются максимум 4 раза в секунду из последних runtime snapshots, а не каждый кадр.
+- Text block разбит на стабильные labels с именами полей и value labels; enum names кэшируются, числа форматируются через переиспользуемый buffer, а value label получает новое значение только при изменении текста вместо пересборки одного большого `StringBuilder.ToString()` block.
 - Графики рисуются через UI Toolkit `generateVisualContent`; CPU-граф использует stacked area для `render`, `main` и остатка до `frame`, а `frame` рисуется верхней границей без суммирования `frame + main + render`.
 - Справа от графиков выводятся цветные подписи-плашки `frame`, `other`, `main`, `render` и `gpu` с текущим значением, средним, худшими 1% и 0.1% по времени кадра; числа имеют фиксированную ширину относительно текущего масштаба/максимума.
 - Если GPU timing временно недоступен, GPU-плашка становится серой, текущее значение заменяется underscore placeholder, а средние/история используют только валидные samples.

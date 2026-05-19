@@ -65,7 +65,7 @@ public static class PerfMeterBootstrap
 
 ## Runtime Metrics
 
-The runtime singleton updates snapshots in `Update()` with real values from `FrameTimingManager` and `ProfilerRecorder`. The metric collection path avoids PerfMeter-side per-frame allocations; the overlay text refresh is throttled and still rebuilds managed strings at the refresh interval.
+The runtime singleton updates snapshots in `Update()` with real values from `FrameTimingManager` and `ProfilerRecorder`. The metric collection path avoids PerfMeter-side per-frame allocations; the overlay text refresh is throttled and uses reusable field rows so unchanged labels do not receive new managed strings.
 
 `CollectionFrame` is the `Time.frameCount` when PerfMeter collected the snapshot. It is not guaranteed to be the exact frame represented by `FrameTimingManager`, because Unity frame timings can arrive delayed by a few frames.
 
@@ -103,8 +103,8 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - The overlay defaults to the top-right corner (`TopRight`) and `Full` mode; available corners are `TopLeft`, `TopRight`, `BottomLeft`, and `BottomRight`.
 - Modes: `FpsOnly` shows one FPS/1%/0.1% line, `TextCompact` shows a compact text summary, `Graphs` shows FPS plus CPU/GPU graphs, and `Full` adds render/memory/overdraw counters.
 - Presets group a display mode and module flags: `Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, and `Custom`. Module flags (`Fps`, `Timing`, `Graphs`, `Rendering`, `SrpBatcher`, `Brg`, `Uploads`, `Memory`, `Gc`, `GpuMemory`, `Overdraw`, `Heatmap`, `Warnings`) filter overlay rows and hide the graph block when `Graphs` is disabled.
-- The label is refreshed at most 4 times per second from the latest runtime snapshots, not every frame.
-- Full zero-allocation overlay refresh is backlog work: split the text block into stable field labels, cache enum strings, use custom numeric formatting into reusable buffers, and update only changed labels instead of rebuilding text with `StringBuilder`.
+- Text fields are refreshed at most 4 times per second from the latest runtime snapshots, not every frame.
+- The text block is split into stable field-name labels plus value labels; enum names are cached, numbers format through a reusable buffer, and each value label is assigned only when its text changed instead of rebuilding one large `StringBuilder.ToString()` block.
 - Graphs are drawn through UI Toolkit `generateVisualContent`; the CPU graph uses stacked areas for `render`, `main`, and the remainder up to `frame`, while `frame` is drawn as the upper boundary without summing `frame + main + render`.
 - The right side of the graphs shows colored label badges for `frame`, `other`, `main`, `render`, and `gpu` with current, average, worst 1%, and worst 0.1% timings; numbers use fixed width relative to the current graph scale/maximum.
 - If GPU timing is temporarily unavailable, the GPU badge turns gray, the current value uses an underscore placeholder, and averages/history use valid samples only.

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
 using UnityEngine;
@@ -141,6 +142,33 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
+		}
+
+		[Test]
+		public void OverlayTextCacheSkipsUnchangedStringMaterialization()
+		{
+			PerfMeterOverlay.PerfMeterOverlayCachedText cache = new PerfMeterOverlay.PerfMeterOverlayCachedText();
+			StringBuilder builder = new StringBuilder("FPS 60.0");
+
+			Assert.That(cache.TryUpdate(builder, out string firstText), Is.True);
+			Assert.That(cache.TryUpdate(builder, out string secondText), Is.False);
+			Assert.That(secondText, Is.SameAs(firstText));
+
+			builder.Append(" | 1% 59.9");
+			Assert.That(cache.TryUpdate(builder, out string thirdText), Is.True);
+			Assert.That(thirdText, Is.Not.SameAs(firstText));
+		}
+
+		[Test]
+		public void OverlayEnumTextUsesCachedNames()
+		{
+			string first = PerfMeterOverlay.GetBottleneckText(PerfMeterBottleneck.GpuBound);
+			string second = PerfMeterOverlay.GetBottleneckText(PerfMeterBottleneck.GpuBound);
+
+			Assert.That(first, Is.EqualTo("GpuBound"));
+			Assert.That(second, Is.SameAs(first));
+			Assert.That(PerfMeterOverlay.GetRuntimeStateText(PerfMeterRuntimeState.Running), Is.EqualTo("Running"));
+			Assert.That(PerfMeterOverlay.GetOverdrawStateText(PerfMeterOverdrawMeasurementState.Unsupported), Is.EqualTo("Unsupported"));
 		}
 
 		[Test]
