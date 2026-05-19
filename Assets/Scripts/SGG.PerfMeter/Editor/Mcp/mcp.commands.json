@@ -84,6 +84,22 @@
       }
     },
     {
+      "id": "perfmeter.runtime.reset_stats",
+      "title": "Reset PerfMeter runtime stats",
+      "description": "Reset SGG PerfMeter rolling runtime stats, alert counters, and active session counters without stopping the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeResetStats",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "runtime", "reset"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.metrics.latest",
       "title": "PerfMeter latest metrics",
       "description": "Read the latest SGG PerfMeter metrics snapshot.",
@@ -269,7 +285,7 @@
     {
       "id": "perfmeter.session.start",
       "title": "Start PerfMeter session recording",
-      "description": "Start bounded SGG PerfMeter session recording with optional warmup, sample interval, and max sample overrides.",
+      "description": "Start bounded SGG PerfMeter session recording with optional warmup, scene-load handling, sample interval, and max sample overrides.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SessionStart",
       "risk": "write",
       "idempotency": "unsafe",
@@ -280,8 +296,12 @@
         "type": "object",
         "properties": {
           "warmup_frames": { "type": "integer", "minimum": 0 },
+          "warmup_seconds": { "type": "number", "minimum": 0 },
           "sample_interval_seconds": { "type": "number", "exclusiveMinimum": 0 },
-          "max_samples": { "type": "integer", "minimum": 1 }
+          "max_samples": { "type": "integer", "minimum": 1 },
+          "reset_on_scene_load": { "type": "boolean" },
+          "scene_load_ignore_frames": { "type": "integer", "minimum": 0 },
+          "scene_load_ignore_seconds": { "type": "number", "minimum": 0 }
         },
         "additionalProperties": false
       }

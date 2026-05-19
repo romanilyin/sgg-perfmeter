@@ -312,26 +312,49 @@ namespace SGG.PerfMeter
 
 	public readonly struct PerfMeterSessionOptions
 	{
+		public const float DefaultWarmupSeconds = 0f;
 		public const float DefaultSampleIntervalSeconds = 0.25f;
 		public const int DefaultMaxSamples = 4096;
+		public const int DefaultSceneLoadIgnoreFrames = 0;
+		public const float DefaultSceneLoadIgnoreSeconds = 0f;
 
 		public PerfMeterSessionOptions(int warmupFrames, float sampleIntervalSeconds, int maxSamples)
+			: this(warmupFrames, DefaultWarmupSeconds, sampleIntervalSeconds, maxSamples, false, DefaultSceneLoadIgnoreFrames, DefaultSceneLoadIgnoreSeconds)
 		{
-			WarmupFrames = Mathf.Max(0, warmupFrames);
-			SampleIntervalSeconds = sampleIntervalSeconds > 0f ? sampleIntervalSeconds : DefaultSampleIntervalSeconds;
-			MaxSamples = Mathf.Max(1, maxSamples);
 		}
 
-		public static PerfMeterSessionOptions Default => new PerfMeterSessionOptions(0, DefaultSampleIntervalSeconds, DefaultMaxSamples);
+		public PerfMeterSessionOptions(int warmupFrames, float warmupSeconds, float sampleIntervalSeconds, int maxSamples, bool resetOnSceneLoad, int sceneLoadIgnoreFrames, float sceneLoadIgnoreSeconds)
+		{
+			WarmupFrames = Mathf.Max(0, warmupFrames);
+			WarmupSeconds = Mathf.Max(0f, warmupSeconds);
+			SampleIntervalSeconds = sampleIntervalSeconds > 0f ? sampleIntervalSeconds : DefaultSampleIntervalSeconds;
+			MaxSamples = Mathf.Max(1, maxSamples);
+			ResetOnSceneLoad = resetOnSceneLoad;
+			SceneLoadIgnoreFrames = Mathf.Max(0, sceneLoadIgnoreFrames);
+			SceneLoadIgnoreSeconds = Mathf.Max(0f, sceneLoadIgnoreSeconds);
+		}
+
+		public static PerfMeterSessionOptions Default => new PerfMeterSessionOptions(0, DefaultWarmupSeconds, DefaultSampleIntervalSeconds, DefaultMaxSamples, false, DefaultSceneLoadIgnoreFrames, DefaultSceneLoadIgnoreSeconds);
 
 		public static PerfMeterSessionOptions FromSettings(PerfMeterSettingsSnapshot settings)
 		{
-			return new PerfMeterSessionOptions(settings.SessionWarmupFrames, settings.SessionSampleIntervalSeconds, settings.SessionMaxSamples);
+			return new PerfMeterSessionOptions(
+				settings.SessionWarmupFrames,
+				settings.SessionWarmupSeconds,
+				settings.SessionSampleIntervalSeconds,
+				settings.SessionMaxSamples,
+				settings.SessionResetOnSceneLoad,
+				settings.SessionSceneLoadIgnoreFrames,
+				settings.SessionSceneLoadIgnoreSeconds);
 		}
 
 		public int WarmupFrames { get; }
+		public float WarmupSeconds { get; }
 		public float SampleIntervalSeconds { get; }
 		public int MaxSamples { get; }
+		public bool ResetOnSceneLoad { get; }
+		public int SceneLoadIgnoreFrames { get; }
+		public float SceneLoadIgnoreSeconds { get; }
 	}
 
 	public readonly struct PerfMeterSessionSampleSnapshot
@@ -348,6 +371,119 @@ namespace SGG.PerfMeter
 		public double CollectionTimeSeconds { get; }
 		public string SceneName { get; }
 		public PerfMeterMetricsSnapshot Metrics { get; }
+	}
+
+	public readonly struct PerfMeterSessionWorstFrameSnapshot
+	{
+		public PerfMeterSessionWorstFrameSnapshot(int collectionFrame, double collectionTimeSeconds, string sceneName, double frameTimeMs, double fps, PerfMeterBottleneck bottleneck)
+		{
+			CollectionFrame = collectionFrame;
+			CollectionTimeSeconds = collectionTimeSeconds;
+			SceneName = sceneName ?? string.Empty;
+			FrameTimeMs = frameTimeMs;
+			Fps = fps;
+			Bottleneck = bottleneck;
+		}
+
+		public static PerfMeterSessionWorstFrameSnapshot Empty => new PerfMeterSessionWorstFrameSnapshot(-1, 0d, string.Empty, 0d, 0d, PerfMeterBottleneck.Unknown);
+
+		public bool IsAvailable => CollectionFrame >= 0;
+		public int CollectionFrame { get; }
+		public double CollectionTimeSeconds { get; }
+		public string SceneName { get; }
+		public double FrameTimeMs { get; }
+		public double Fps { get; }
+		public PerfMeterBottleneck Bottleneck { get; }
+	}
+
+	public readonly struct PerfMeterSessionScopeSummarySnapshot
+	{
+		public PerfMeterSessionScopeSummarySnapshot(
+			string sceneName,
+			int sampleCount,
+			int firstFrame,
+			int lastFrame,
+			double startTimeSeconds,
+			double lastSampleTimeSeconds,
+			double durationSeconds,
+			double averageFrameTimeMs,
+			double minFrameTimeMs,
+			double maxFrameTimeMs,
+			double averageFps,
+			double minFps,
+			double maxFps,
+			int gpuBoundSampleCount,
+			int cpuMainThreadBoundSampleCount,
+			int cpuRenderThreadBoundSampleCount,
+			int presentLimitedSampleCount,
+			int frameSpikeCount,
+			int severeFrameSpikeCount,
+			PerfMeterSessionWorstFrameSnapshot worstFrame)
+		{
+			SceneName = sceneName ?? string.Empty;
+			SampleCount = Mathf.Max(0, sampleCount);
+			FirstFrame = firstFrame;
+			LastFrame = lastFrame;
+			StartTimeSeconds = startTimeSeconds;
+			LastSampleTimeSeconds = lastSampleTimeSeconds;
+			DurationSeconds = durationSeconds;
+			AverageFrameTimeMs = averageFrameTimeMs;
+			MinFrameTimeMs = minFrameTimeMs;
+			MaxFrameTimeMs = maxFrameTimeMs;
+			AverageFps = averageFps;
+			MinFps = minFps;
+			MaxFps = maxFps;
+			GpuBoundSampleCount = Mathf.Max(0, gpuBoundSampleCount);
+			CpuMainThreadBoundSampleCount = Mathf.Max(0, cpuMainThreadBoundSampleCount);
+			CpuRenderThreadBoundSampleCount = Mathf.Max(0, cpuRenderThreadBoundSampleCount);
+			PresentLimitedSampleCount = Mathf.Max(0, presentLimitedSampleCount);
+			FrameSpikeCount = Mathf.Max(0, frameSpikeCount);
+			SevereFrameSpikeCount = Mathf.Max(0, severeFrameSpikeCount);
+			WorstFrame = worstFrame;
+		}
+
+		public static PerfMeterSessionScopeSummarySnapshot Empty => new PerfMeterSessionScopeSummarySnapshot(
+			string.Empty,
+			0,
+			-1,
+			-1,
+			0d,
+			0d,
+			0d,
+			0d,
+			0d,
+			0d,
+			0d,
+			0d,
+			0d,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			PerfMeterSessionWorstFrameSnapshot.Empty);
+
+		public string SceneName { get; }
+		public int SampleCount { get; }
+		public int FirstFrame { get; }
+		public int LastFrame { get; }
+		public double StartTimeSeconds { get; }
+		public double LastSampleTimeSeconds { get; }
+		public double DurationSeconds { get; }
+		public double AverageFrameTimeMs { get; }
+		public double MinFrameTimeMs { get; }
+		public double MaxFrameTimeMs { get; }
+		public double AverageFps { get; }
+		public double MinFps { get; }
+		public double MaxFps { get; }
+		public int GpuBoundSampleCount { get; }
+		public int CpuMainThreadBoundSampleCount { get; }
+		public int CpuRenderThreadBoundSampleCount { get; }
+		public int PresentLimitedSampleCount { get; }
+		public int FrameSpikeCount { get; }
+		public int SevereFrameSpikeCount { get; }
+		public PerfMeterSessionWorstFrameSnapshot WorstFrame { get; }
 	}
 
 	public readonly struct PerfMeterSessionSummarySnapshot
@@ -379,7 +515,9 @@ namespace SGG.PerfMeter
 			PerfMeterCameraSnapshot camera,
 			PerfMeterSettingsSnapshot settings,
 			string startSceneName,
-			string lastSceneName)
+			string lastSceneName,
+			PerfMeterSessionScopeSummarySnapshot wholeRun,
+			PerfMeterSessionScopeSummarySnapshot currentScene)
 		{
 			State = state;
 			Options = options;
@@ -408,6 +546,8 @@ namespace SGG.PerfMeter
 			Settings = settings;
 			StartSceneName = startSceneName ?? string.Empty;
 			LastSceneName = lastSceneName ?? string.Empty;
+			WholeRun = wholeRun;
+			CurrentScene = currentScene;
 		}
 
 		public static PerfMeterSessionSummarySnapshot Empty => new PerfMeterSessionSummarySnapshot(
@@ -437,7 +577,9 @@ namespace SGG.PerfMeter
 			default,
 			PerfMeterSettingsStore.Defaults,
 			string.Empty,
-			string.Empty);
+			string.Empty,
+			PerfMeterSessionScopeSummarySnapshot.Empty,
+			PerfMeterSessionScopeSummarySnapshot.Empty);
 
 		public PerfMeterSessionState State { get; }
 		public PerfMeterSessionOptions Options { get; }
@@ -466,6 +608,10 @@ namespace SGG.PerfMeter
 		public PerfMeterSettingsSnapshot Settings { get; }
 		public string StartSceneName { get; }
 		public string LastSceneName { get; }
+		public PerfMeterSessionScopeSummarySnapshot WholeRun { get; }
+		public PerfMeterSessionScopeSummarySnapshot CurrentScene { get; }
+		public PerfMeterSessionWorstFrameSnapshot WorstFrame => WholeRun.WorstFrame;
+		public PerfMeterSessionWorstFrameSnapshot CurrentSceneWorstFrame => CurrentScene.WorstFrame;
 	}
 
 	public readonly struct PerfMeterMetricsSnapshot

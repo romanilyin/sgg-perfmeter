@@ -2,6 +2,7 @@ using System.Collections;
 using System.IO;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace SGG.PerfMeter.Tests.PlayMode
@@ -149,6 +150,34 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(File.Exists(csvPath), Is.True);
 			Assert.That(File.ReadAllText(jsonPath), Does.Contain("\"samples\""));
 			Assert.That(File.ReadAllText(csvPath), Does.StartWith("frame,time_seconds,scene,bottleneck"));
+		}
+
+		[UnityTest]
+		public IEnumerator SessionRecorderTracksCurrentSceneScopeAfterSceneSwitch()
+		{
+			Scene originalScene = SceneManager.GetActiveScene();
+			Scene scopeScene = SceneManager.CreateScene("PerfMeter Scope Smoke");
+
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.001f, 16, false, 1, 0f));
+			yield return null;
+
+			SceneManager.SetActiveScene(scopeScene);
+			yield return null;
+			yield return null;
+			yield return null;
+
+			PerfMeterSessionSummarySnapshot summary = PerformanceMeter.GetSessionSummary();
+			Assert.That(summary.WholeRun.SampleCount, Is.GreaterThanOrEqualTo(1));
+			Assert.That(summary.CurrentScene.SceneName, Is.EqualTo(scopeScene.name));
+			Assert.That(summary.CurrentScene.SampleCount, Is.GreaterThanOrEqualTo(1));
+			Assert.That(summary.CurrentSceneWorstFrame.IsAvailable, Is.True);
+
+			SceneManager.SetActiveScene(originalScene);
+			AsyncOperation unload = SceneManager.UnloadSceneAsync(scopeScene);
+			while (unload != null && !unload.isDone)
+			{
+				yield return null;
+			}
 		}
 
 		[UnityTest]

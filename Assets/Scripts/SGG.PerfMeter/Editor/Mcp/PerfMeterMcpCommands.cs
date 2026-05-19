@@ -43,6 +43,12 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
+		public static string RuntimeResetStats()
+		{
+			RuntimePerformanceMeter.ResetStats();
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
+		}
+
 		public static string MetricsLatest()
 		{
 			return MetricsJson(RuntimePerformanceMeter.GetLatestMetrics());
@@ -131,9 +137,13 @@ namespace SGG.PerfMeter.Editor.Mcp
 		{
 			PerfMeterSessionOptions settingsOptions = PerfMeterSessionOptions.FromSettings(RuntimePerformanceMeter.GetSettings());
 			int warmupFrames = ExtractInt(argsJson, "warmup_frames", settingsOptions.WarmupFrames);
+			float warmupSeconds = ExtractFloat(argsJson, "warmup_seconds", settingsOptions.WarmupSeconds);
 			float sampleIntervalSeconds = ExtractFloat(argsJson, "sample_interval_seconds", settingsOptions.SampleIntervalSeconds);
 			int maxSamples = ExtractInt(argsJson, "max_samples", settingsOptions.MaxSamples);
-			RuntimePerformanceMeter.StartSession(new PerfMeterSessionOptions(warmupFrames, sampleIntervalSeconds, maxSamples));
+			bool resetOnSceneLoad = TryExtractBool(argsJson, "reset_on_scene_load", out bool resetOnSceneLoadValue) ? resetOnSceneLoadValue : settingsOptions.ResetOnSceneLoad;
+			int sceneLoadIgnoreFrames = ExtractInt(argsJson, "scene_load_ignore_frames", settingsOptions.SceneLoadIgnoreFrames);
+			float sceneLoadIgnoreSeconds = ExtractFloat(argsJson, "scene_load_ignore_seconds", settingsOptions.SceneLoadIgnoreSeconds);
+			RuntimePerformanceMeter.StartSession(new PerfMeterSessionOptions(warmupFrames, warmupSeconds, sampleIntervalSeconds, maxSamples, resetOnSceneLoad, sceneLoadIgnoreFrames, sceneLoadIgnoreSeconds));
 			return SessionCommandJson(true, string.Empty, string.Empty, "recording", RuntimePerformanceMeter.GetSessionSummary());
 		}
 
@@ -294,11 +304,63 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"warning\":").Append(JsonString(summary.Warning));
 			builder.Append(",\"start_scene_name\":").Append(JsonString(summary.StartSceneName));
 			builder.Append(",\"last_scene_name\":").Append(JsonString(summary.LastSceneName));
+			builder.Append(",\"worst_frame\":");
+			AppendWorstFrame(builder, summary.WorstFrame);
+			builder.Append(",\"current_scene_worst_frame\":");
+			AppendWorstFrame(builder, summary.CurrentSceneWorstFrame);
+			builder.Append(",\"whole_run\":");
+			AppendSessionScopeSummary(builder, summary.WholeRun);
+			builder.Append(",\"current_scene\":");
+			AppendSessionScopeSummary(builder, summary.CurrentScene);
 			builder.Append(",\"options\":{");
 			builder.Append("\"warmup_frames\":").Append(summary.Options.WarmupFrames);
+			builder.Append(",\"warmup_seconds\":").Append(JsonNumber(summary.Options.WarmupSeconds));
 			builder.Append(",\"sample_interval_seconds\":").Append(JsonNumber(summary.Options.SampleIntervalSeconds));
 			builder.Append(",\"max_samples\":").Append(summary.Options.MaxSamples);
+			builder.Append(",\"reset_on_scene_load\":").Append(JsonBool(summary.Options.ResetOnSceneLoad));
+			builder.Append(",\"scene_load_ignore_frames\":").Append(summary.Options.SceneLoadIgnoreFrames);
+			builder.Append(",\"scene_load_ignore_seconds\":").Append(JsonNumber(summary.Options.SceneLoadIgnoreSeconds));
 			builder.Append("}}");
+		}
+
+		private static void AppendSessionScopeSummary(StringBuilder builder, PerfMeterSessionScopeSummarySnapshot scope)
+		{
+			builder.Append('{');
+			builder.Append("\"scene_name\":").Append(JsonString(scope.SceneName));
+			builder.Append(",\"sample_count\":").Append(scope.SampleCount);
+			builder.Append(",\"first_frame\":").Append(scope.FirstFrame);
+			builder.Append(",\"last_frame\":").Append(scope.LastFrame);
+			builder.Append(",\"start_time_seconds\":").Append(JsonNumber(scope.StartTimeSeconds));
+			builder.Append(",\"last_sample_time_seconds\":").Append(JsonNumber(scope.LastSampleTimeSeconds));
+			builder.Append(",\"duration_seconds\":").Append(JsonNumber(scope.DurationSeconds));
+			builder.Append(",\"average_frame_time_ms\":").Append(JsonNumber(scope.AverageFrameTimeMs));
+			builder.Append(",\"min_frame_time_ms\":").Append(JsonNumber(scope.MinFrameTimeMs));
+			builder.Append(",\"max_frame_time_ms\":").Append(JsonNumber(scope.MaxFrameTimeMs));
+			builder.Append(",\"average_fps\":").Append(JsonNumber(scope.AverageFps));
+			builder.Append(",\"min_fps\":").Append(JsonNumber(scope.MinFps));
+			builder.Append(",\"max_fps\":").Append(JsonNumber(scope.MaxFps));
+			builder.Append(",\"gpu_bound_sample_count\":").Append(scope.GpuBoundSampleCount);
+			builder.Append(",\"cpu_main_thread_bound_sample_count\":").Append(scope.CpuMainThreadBoundSampleCount);
+			builder.Append(",\"cpu_render_thread_bound_sample_count\":").Append(scope.CpuRenderThreadBoundSampleCount);
+			builder.Append(",\"present_limited_sample_count\":").Append(scope.PresentLimitedSampleCount);
+			builder.Append(",\"frame_spike_count\":").Append(scope.FrameSpikeCount);
+			builder.Append(",\"severe_frame_spike_count\":").Append(scope.SevereFrameSpikeCount);
+			builder.Append(",\"worst_frame\":");
+			AppendWorstFrame(builder, scope.WorstFrame);
+			builder.Append('}');
+		}
+
+		private static void AppendWorstFrame(StringBuilder builder, PerfMeterSessionWorstFrameSnapshot worstFrame)
+		{
+			builder.Append('{');
+			builder.Append("\"available\":").Append(JsonBool(worstFrame.IsAvailable));
+			builder.Append(",\"collection_frame\":").Append(worstFrame.CollectionFrame);
+			builder.Append(",\"time_seconds\":").Append(JsonNumber(worstFrame.CollectionTimeSeconds));
+			builder.Append(",\"scene_name\":").Append(JsonString(worstFrame.SceneName));
+			builder.Append(",\"frame_time_ms\":").Append(JsonNumber(worstFrame.FrameTimeMs));
+			builder.Append(",\"fps\":").Append(JsonNumber(worstFrame.Fps));
+			builder.Append(",\"bottleneck\":").Append(JsonString(worstFrame.Bottleneck.ToString()));
+			builder.Append('}');
 		}
 
 		private static string MetricsJson(PerfMeterMetricsSnapshot metrics)

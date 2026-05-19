@@ -18,8 +18,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(settings.ActivePreset, Is.EqualTo(PerfMeterSettingsStore.DefaultPresetId));
 			Assert.That(settings.SessionWarmupFrames, Is.EqualTo(0));
+			Assert.That(settings.SessionWarmupSeconds, Is.EqualTo(0f).Within(0.001f));
 			Assert.That(settings.SessionSampleIntervalSeconds, Is.EqualTo(0.25f).Within(0.001f));
 			Assert.That(settings.SessionMaxSamples, Is.EqualTo(4096));
+			Assert.That(settings.SessionResetOnSceneLoad, Is.False);
+			Assert.That(settings.SessionSceneLoadIgnoreFrames, Is.EqualTo(0));
+			Assert.That(settings.SessionSceneLoadIgnoreSeconds, Is.EqualTo(0f).Within(0.001f));
 			Assert.That(settings.EditorWarningCooldownSeconds, Is.EqualTo(8f).Within(0.001f));
 			Assert.That(settings.StructuredLogCooldownSeconds, Is.EqualTo(2f).Within(0.001f));
 			Assert.That(settings.CallbackCooldownSeconds, Is.EqualTo(0.5f).Within(0.001f));
@@ -40,8 +44,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 				"Timing",
 				PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs,
 				3,
+				1.25f,
 				0.5f,
 				128,
+				true,
+				2,
+				0.75f,
 				9f,
 				3f,
 				1f,
@@ -59,8 +67,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(loaded.ActivePreset, Is.EqualTo("Timing"));
 			Assert.That(loaded.SessionWarmupFrames, Is.EqualTo(3));
+			Assert.That(loaded.SessionWarmupSeconds, Is.EqualTo(1.25f).Within(0.001f));
 			Assert.That(loaded.SessionSampleIntervalSeconds, Is.EqualTo(0.5f).Within(0.001f));
 			Assert.That(loaded.SessionMaxSamples, Is.EqualTo(128));
+			Assert.That(loaded.SessionResetOnSceneLoad, Is.True);
+			Assert.That(loaded.SessionSceneLoadIgnoreFrames, Is.EqualTo(2));
+			Assert.That(loaded.SessionSceneLoadIgnoreSeconds, Is.EqualTo(0.75f).Within(0.001f));
 			Assert.That(loaded.EditorWarningCooldownSeconds, Is.EqualTo(9f).Within(0.001f));
 			Assert.That(loaded.StructuredLogCooldownSeconds, Is.EqualTo(3f).Within(0.001f));
 			Assert.That(loaded.CallbackCooldownSeconds, Is.EqualTo(1f).Within(0.001f));

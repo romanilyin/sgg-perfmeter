@@ -7,6 +7,7 @@
 - Added camera snapshots with transform/projection/URP camera settings and `perfmeter.camera.snapshot` MCP output.
 - Added session recorder APIs with bounded in-memory samples, safe sample-copy access, session summaries, status fields, settings/device/camera metadata capture, JSON/CSV export, and MCP session start/stop/summary/export commands.
 - Added rule-based alerts with active/fired alert status, separate structured-log/callback/Editor-warning cooldowns, callback events, and MCP `perfmeter.alerts.latest/clear` commands.
+- Added session warm-up seconds, runtime `ResetStats`, scene-load reset/ignore options, whole-run/current-scene summaries, worst-frame summaries, and MCP `perfmeter.runtime.reset_stats`.
 
 ## 2026.5.18-1
 

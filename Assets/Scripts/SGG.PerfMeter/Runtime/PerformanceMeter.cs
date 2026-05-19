@@ -85,6 +85,15 @@ namespace SGG.PerfMeter
 			PerfMeterRuntime.StopRunning();
 		}
 
+		public static void ResetStats()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.ResetStats();
+			}
+		}
+
 		public static bool IsSessionRecording
 		{
 			get

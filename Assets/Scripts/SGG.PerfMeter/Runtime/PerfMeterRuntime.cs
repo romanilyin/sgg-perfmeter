@@ -166,6 +166,15 @@ namespace SGG.PerfMeter
 			RefreshStatusOverlayState();
 		}
 
+		internal void ResetStats()
+		{
+			_frameStatsSampler.Reset();
+			_sessionRecorder.ResetStats(Time.frameCount, Time.realtimeSinceStartupAsDouble, _latestMetrics);
+			_alertEngine.Clear();
+			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
+			RefreshStatusOverlayState();
+		}
+
 		internal void StartSession(PerfMeterSessionOptions options)
 		{
 			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();

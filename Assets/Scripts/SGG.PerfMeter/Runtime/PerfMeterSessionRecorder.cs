@@ -12,30 +12,18 @@ namespace SGG.PerfMeter
 		private PerfMeterCameraSnapshot _camera;
 		private PerfMeterSettingsSnapshot _settings;
 		private PerfMeterSessionSummarySnapshot _summary = PerfMeterSessionSummarySnapshot.Empty;
+		private SessionStats _wholeRunStats;
+		private SessionStats _currentSceneStats;
 		private string _startSceneName = string.Empty;
 		private string _lastSceneName = string.Empty;
 		private double _startTimeSeconds;
 		private double _stopTimeSeconds;
 		private double _nextSampleTimeSeconds;
-		private double _frameTimeTotalMs;
-		private double _minFrameTimeMs;
-		private double _maxFrameTimeMs;
-		private double _fpsTotal;
-		private double _minFps;
-		private double _maxFps;
+		private double _sceneIgnoreUntilTimeSeconds;
 		private int _sampleCount;
 		private int _droppedSampleCount;
 		private int _startFrame = -1;
-		private int _firstFrame = -1;
-		private int _lastFrame = -1;
-		private int _gpuBoundSampleCount;
-		private int _cpuMainThreadBoundSampleCount;
-		private int _cpuRenderThreadBoundSampleCount;
-		private int _presentLimitedSampleCount;
-		private int _frameSpikeBaseline;
-		private int _severeFrameSpikeBaseline;
-		private int _latestFrameSpikeCount;
-		private int _latestSevereFrameSpikeCount;
+		private int _sceneIgnoreUntilFrame = -1;
 
 		internal PerfMeterSessionState State => _state;
 		internal bool IsRecording => _state == PerfMeterSessionState.Recording;
@@ -50,30 +38,7 @@ namespace SGG.PerfMeter
 			_device = device;
 			_camera = camera;
 			_settings = settings;
-			_startSceneName = SceneManager.GetActiveScene().name;
-			_lastSceneName = _startSceneName;
-			_startTimeSeconds = timeSeconds;
-			_startFrame = frame;
-			_stopTimeSeconds = 0d;
-			_nextSampleTimeSeconds = timeSeconds;
-			_frameTimeTotalMs = 0d;
-			_minFrameTimeMs = double.MaxValue;
-			_maxFrameTimeMs = 0d;
-			_fpsTotal = 0d;
-			_minFps = double.MaxValue;
-			_maxFps = 0d;
-			_sampleCount = 0;
-			_droppedSampleCount = 0;
-			_firstFrame = -1;
-			_lastFrame = -1;
-			_gpuBoundSampleCount = 0;
-			_cpuMainThreadBoundSampleCount = 0;
-			_cpuRenderThreadBoundSampleCount = 0;
-			_presentLimitedSampleCount = 0;
-			_frameSpikeBaseline = latestMetrics.FrameSpikeCount;
-			_severeFrameSpikeBaseline = latestMetrics.SevereFrameSpikeCount;
-			_latestFrameSpikeCount = 0;
-			_latestSevereFrameSpikeCount = 0;
+			ResetRecordingWindow(GetActiveSceneName(), frame, timeSeconds, latestMetrics);
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
@@ -92,10 +57,30 @@ namespace SGG.PerfMeter
 		internal void Reset()
 		{
 			_state = PerfMeterSessionState.Idle;
+			_options = PerfMeterSessionOptions.Default;
 			_samples = System.Array.Empty<PerfMeterSessionSampleSnapshot>();
 			_sampleCount = 0;
 			_droppedSampleCount = 0;
+			_startFrame = -1;
+			_sceneIgnoreUntilFrame = -1;
+			_sceneIgnoreUntilTimeSeconds = 0d;
+			_startSceneName = string.Empty;
+			_lastSceneName = string.Empty;
+			_wholeRunStats = default;
+			_currentSceneStats = default;
 			_summary = PerfMeterSessionSummarySnapshot.Empty;
+		}
+
+		internal void ResetStats(int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics)
+		{
+			if (_state != PerfMeterSessionState.Recording)
+			{
+				Reset();
+				return;
+			}
+
+			ResetRecordingWindow(GetActiveSceneName(), frame, timeSeconds, latestMetrics);
+			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
 		internal void Update(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds)
@@ -105,12 +90,28 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			if (frame < 0 || frame < _lastFrame)
+			if (frame < 0 || frame < _wholeRunStats.LastFrame)
 			{
 				return;
 			}
 
+			string activeSceneName = GetActiveSceneName();
+			if (!string.Equals(activeSceneName, _lastSceneName, System.StringComparison.Ordinal))
+			{
+				HandleSceneChanged(activeSceneName, frame, timeSeconds, metrics);
+			}
+
 			if (frame - _startFrame < _options.WarmupFrames)
+			{
+				return;
+			}
+
+			if (timeSeconds - _startTimeSeconds < _options.WarmupSeconds)
+			{
+				return;
+			}
+
+			if ((_sceneIgnoreUntilFrame >= 0 && frame < _sceneIgnoreUntilFrame) || timeSeconds < _sceneIgnoreUntilTimeSeconds)
 			{
 				return;
 			}
@@ -121,7 +122,6 @@ namespace SGG.PerfMeter
 			}
 
 			_nextSampleTimeSeconds = timeSeconds + _options.SampleIntervalSeconds;
-			_lastSceneName = SceneManager.GetActiveScene().name;
 
 			if (_sampleCount >= _samples.Length)
 			{
@@ -133,14 +133,8 @@ namespace SGG.PerfMeter
 			PerfMeterSessionSampleSnapshot sample = new PerfMeterSessionSampleSnapshot(frame, timeSeconds, _lastSceneName, metrics);
 			_samples[_sampleCount] = sample;
 			_sampleCount++;
-
-			if (_firstFrame < 0)
-			{
-				_firstFrame = frame;
-			}
-
-			_lastFrame = frame;
-			AddMetrics(metrics);
+			_wholeRunStats.Add(sample, metrics);
+			_currentSceneStats.Add(sample, metrics);
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
@@ -161,36 +155,37 @@ namespace SGG.PerfMeter
 			return copy;
 		}
 
-		private void AddMetrics(PerfMeterMetricsSnapshot metrics)
+		private void ResetRecordingWindow(string sceneName, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics)
 		{
-			double frameTimeMs = metrics.CpuFrameTimeMs > 0d ? metrics.CpuFrameTimeMs : metrics.FrameBudgetMs;
-			double fps = frameTimeMs > 0d ? 1000d / frameTimeMs : 0d;
+			_startSceneName = sceneName;
+			_lastSceneName = sceneName;
+			_startTimeSeconds = timeSeconds;
+			_startFrame = frame;
+			_stopTimeSeconds = 0d;
+			_nextSampleTimeSeconds = timeSeconds;
+			_sceneIgnoreUntilFrame = -1;
+			_sceneIgnoreUntilTimeSeconds = 0d;
+			_sampleCount = 0;
+			_droppedSampleCount = 0;
+			_wholeRunStats.Reset(sceneName, frame, timeSeconds, latestMetrics.FrameSpikeCount, latestMetrics.SevereFrameSpikeCount);
+			_currentSceneStats.Reset(sceneName, frame, timeSeconds, latestMetrics.FrameSpikeCount, latestMetrics.SevereFrameSpikeCount);
+		}
 
-			_frameTimeTotalMs += frameTimeMs;
-			_minFrameTimeMs = System.Math.Min(_minFrameTimeMs, frameTimeMs);
-			_maxFrameTimeMs = System.Math.Max(_maxFrameTimeMs, frameTimeMs);
-			_fpsTotal += fps;
-			_minFps = System.Math.Min(_minFps, fps);
-			_maxFps = System.Math.Max(_maxFps, fps);
-
-			switch (metrics.Bottleneck)
+		private void HandleSceneChanged(string sceneName, int frame, double timeSeconds, PerfMeterMetricsSnapshot metrics)
+		{
+			if (_options.ResetOnSceneLoad)
 			{
-				case PerfMeterBottleneck.GpuBound:
-					_gpuBoundSampleCount++;
-					break;
-				case PerfMeterBottleneck.CpuMainThreadBound:
-					_cpuMainThreadBoundSampleCount++;
-					break;
-				case PerfMeterBottleneck.CpuRenderThreadBound:
-					_cpuRenderThreadBoundSampleCount++;
-					break;
-				case PerfMeterBottleneck.PresentLimited:
-					_presentLimitedSampleCount++;
-					break;
+				ResetRecordingWindow(sceneName, frame, timeSeconds, metrics);
+			}
+			else
+			{
+				_lastSceneName = sceneName;
+				_currentSceneStats.Reset(sceneName, frame, timeSeconds, metrics.FrameSpikeCount, metrics.SevereFrameSpikeCount);
 			}
 
-			_latestFrameSpikeCount = Mathf.Max(0, metrics.FrameSpikeCount - _frameSpikeBaseline);
-			_latestSevereFrameSpikeCount = Mathf.Max(0, metrics.SevereFrameSpikeCount - _severeFrameSpikeBaseline);
+			_sceneIgnoreUntilFrame = _options.SceneLoadIgnoreFrames > 0 ? frame + _options.SceneLoadIgnoreFrames : -1;
+			_sceneIgnoreUntilTimeSeconds = _options.SceneLoadIgnoreSeconds > 0f ? timeSeconds + _options.SceneLoadIgnoreSeconds : 0d;
+			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
 		private PerfMeterSessionSummarySnapshot CreateSummary(double currentTimeSeconds, string warning)
@@ -198,42 +193,175 @@ namespace SGG.PerfMeter
 			string summaryWarning = !string.IsNullOrEmpty(warning) || _droppedSampleCount == 0
 				? warning
 				: "Session sample buffer is full; additional samples are dropped.";
-			double duration = _sampleCount > 0 ? System.Math.Max(0d, (_state == PerfMeterSessionState.Stopped ? _stopTimeSeconds : currentTimeSeconds) - _startTimeSeconds) : 0d;
-			double averageFrameTimeMs = _sampleCount > 0 ? _frameTimeTotalMs / _sampleCount : 0d;
-			double minFrameTimeMs = _sampleCount > 0 ? _minFrameTimeMs : 0d;
-			double maxFrameTimeMs = _sampleCount > 0 ? _maxFrameTimeMs : 0d;
-			double averageFps = _sampleCount > 0 ? _fpsTotal / _sampleCount : 0d;
-			double minFps = _sampleCount > 0 ? _minFps : 0d;
-			double maxFps = _sampleCount > 0 ? _maxFps : 0d;
+			bool stopped = _state == PerfMeterSessionState.Stopped;
+			PerfMeterSessionScopeSummarySnapshot wholeRun = _wholeRunStats.ToSnapshot(currentTimeSeconds, stopped, _stopTimeSeconds, _startSceneName);
+			PerfMeterSessionScopeSummarySnapshot currentScene = _currentSceneStats.ToSnapshot(currentTimeSeconds, stopped, _stopTimeSeconds, _lastSceneName);
 
 			return new PerfMeterSessionSummarySnapshot(
 				_state,
 				_options,
 				_sampleCount,
 				_droppedSampleCount,
-				_firstFrame,
-				_lastFrame,
+				wholeRun.FirstFrame,
+				wholeRun.LastFrame,
 				_startTimeSeconds,
 				_stopTimeSeconds,
-				duration,
-				averageFrameTimeMs,
-				minFrameTimeMs,
-				maxFrameTimeMs,
-				averageFps,
-				minFps,
-				maxFps,
-				_gpuBoundSampleCount,
-				_cpuMainThreadBoundSampleCount,
-				_cpuRenderThreadBoundSampleCount,
-				_presentLimitedSampleCount,
-				_latestFrameSpikeCount,
-				_latestSevereFrameSpikeCount,
+				wholeRun.DurationSeconds,
+				wholeRun.AverageFrameTimeMs,
+				wholeRun.MinFrameTimeMs,
+				wholeRun.MaxFrameTimeMs,
+				wholeRun.AverageFps,
+				wholeRun.MinFps,
+				wholeRun.MaxFps,
+				wholeRun.GpuBoundSampleCount,
+				wholeRun.CpuMainThreadBoundSampleCount,
+				wholeRun.CpuRenderThreadBoundSampleCount,
+				wholeRun.PresentLimitedSampleCount,
+				wholeRun.FrameSpikeCount,
+				wholeRun.SevereFrameSpikeCount,
 				summaryWarning,
 				_device,
 				_camera,
 				_settings,
 				_startSceneName,
-				_lastSceneName);
+				_lastSceneName,
+				wholeRun,
+				currentScene);
+		}
+
+		private static string GetActiveSceneName()
+		{
+			Scene scene = SceneManager.GetActiveScene();
+			return string.IsNullOrEmpty(scene.name) ? scene.path : scene.name;
+		}
+
+		private struct SessionStats
+		{
+			private double _frameTimeTotalMs;
+			private double _fpsTotal;
+
+			public string SceneName;
+			public int SampleCount;
+			public int FirstFrame;
+			public int LastFrame;
+			public double StartTimeSeconds;
+			public double LastSampleTimeSeconds;
+			public double MinFrameTimeMs;
+			public double MaxFrameTimeMs;
+			public double MinFps;
+			public double MaxFps;
+			public int GpuBoundSampleCount;
+			public int CpuMainThreadBoundSampleCount;
+			public int CpuRenderThreadBoundSampleCount;
+			public int PresentLimitedSampleCount;
+			public int FrameSpikeBaseline;
+			public int SevereFrameSpikeBaseline;
+			public int LatestFrameSpikeCount;
+			public int LatestSevereFrameSpikeCount;
+			public PerfMeterSessionWorstFrameSnapshot WorstFrame;
+
+			public void Reset(string sceneName, int frame, double timeSeconds, int frameSpikeBaseline, int severeFrameSpikeBaseline)
+			{
+				SceneName = sceneName ?? string.Empty;
+				SampleCount = 0;
+				FirstFrame = -1;
+				LastFrame = -1;
+				StartTimeSeconds = timeSeconds;
+				LastSampleTimeSeconds = timeSeconds;
+				_frameTimeTotalMs = 0d;
+				_fpsTotal = 0d;
+				MinFrameTimeMs = double.MaxValue;
+				MaxFrameTimeMs = 0d;
+				MinFps = double.MaxValue;
+				MaxFps = 0d;
+				GpuBoundSampleCount = 0;
+				CpuMainThreadBoundSampleCount = 0;
+				CpuRenderThreadBoundSampleCount = 0;
+				PresentLimitedSampleCount = 0;
+				FrameSpikeBaseline = frameSpikeBaseline;
+				SevereFrameSpikeBaseline = severeFrameSpikeBaseline;
+				LatestFrameSpikeCount = 0;
+				LatestSevereFrameSpikeCount = 0;
+				WorstFrame = PerfMeterSessionWorstFrameSnapshot.Empty;
+			}
+
+			public void Add(PerfMeterSessionSampleSnapshot sample, PerfMeterMetricsSnapshot metrics)
+			{
+				double frameTimeMs = GetFrameTimeMs(metrics);
+				double fps = frameTimeMs > 0d ? 1000d / frameTimeMs : 0d;
+
+				if (SampleCount == 0)
+				{
+					FirstFrame = sample.CollectionFrame;
+				}
+
+				SampleCount++;
+				LastFrame = sample.CollectionFrame;
+				LastSampleTimeSeconds = sample.CollectionTimeSeconds;
+				_frameTimeTotalMs += frameTimeMs;
+				_fpsTotal += fps;
+				MinFrameTimeMs = System.Math.Min(MinFrameTimeMs, frameTimeMs);
+				MaxFrameTimeMs = System.Math.Max(MaxFrameTimeMs, frameTimeMs);
+				MinFps = System.Math.Min(MinFps, fps);
+				MaxFps = System.Math.Max(MaxFps, fps);
+
+				switch (metrics.Bottleneck)
+				{
+					case PerfMeterBottleneck.GpuBound:
+						GpuBoundSampleCount++;
+						break;
+					case PerfMeterBottleneck.CpuMainThreadBound:
+						CpuMainThreadBoundSampleCount++;
+						break;
+					case PerfMeterBottleneck.CpuRenderThreadBound:
+						CpuRenderThreadBoundSampleCount++;
+						break;
+					case PerfMeterBottleneck.PresentLimited:
+						PresentLimitedSampleCount++;
+						break;
+				}
+
+				LatestFrameSpikeCount = Mathf.Max(0, metrics.FrameSpikeCount - FrameSpikeBaseline);
+				LatestSevereFrameSpikeCount = Mathf.Max(0, metrics.SevereFrameSpikeCount - SevereFrameSpikeBaseline);
+
+				if (!WorstFrame.IsAvailable || frameTimeMs > WorstFrame.FrameTimeMs)
+				{
+					WorstFrame = new PerfMeterSessionWorstFrameSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, frameTimeMs, fps, metrics.Bottleneck);
+				}
+			}
+
+			public PerfMeterSessionScopeSummarySnapshot ToSnapshot(double currentTimeSeconds, bool stopped, double stopTimeSeconds, string fallbackSceneName)
+			{
+				string sceneName = string.IsNullOrEmpty(SceneName) ? fallbackSceneName : SceneName;
+				double endTimeSeconds = stopped ? stopTimeSeconds : currentTimeSeconds;
+				double durationSeconds = SampleCount > 0 ? System.Math.Max(0d, endTimeSeconds - StartTimeSeconds) : 0d;
+				return new PerfMeterSessionScopeSummarySnapshot(
+					sceneName,
+					SampleCount,
+					FirstFrame,
+					LastFrame,
+					StartTimeSeconds,
+					LastSampleTimeSeconds,
+					durationSeconds,
+					SampleCount > 0 ? _frameTimeTotalMs / SampleCount : 0d,
+					SampleCount > 0 ? MinFrameTimeMs : 0d,
+					SampleCount > 0 ? MaxFrameTimeMs : 0d,
+					SampleCount > 0 ? _fpsTotal / SampleCount : 0d,
+					SampleCount > 0 ? MinFps : 0d,
+					SampleCount > 0 ? MaxFps : 0d,
+					GpuBoundSampleCount,
+					CpuMainThreadBoundSampleCount,
+					CpuRenderThreadBoundSampleCount,
+					PresentLimitedSampleCount,
+					LatestFrameSpikeCount,
+					LatestSevereFrameSpikeCount,
+					WorstFrame);
+			}
+		}
+
+		private static double GetFrameTimeMs(PerfMeterMetricsSnapshot metrics)
+		{
+			return metrics.CpuFrameTimeMs > 0d ? metrics.CpuFrameTimeMs : metrics.FrameBudgetMs;
 		}
 
 	}

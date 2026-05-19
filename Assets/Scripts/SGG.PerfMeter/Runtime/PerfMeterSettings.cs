@@ -24,8 +24,12 @@ namespace SGG.PerfMeter
 			string activePreset,
 			PerfMeterOverlayModule overlayModules,
 			int sessionWarmupFrames,
+			float sessionWarmupSeconds,
 			float sessionSampleIntervalSeconds,
 			int sessionMaxSamples,
+			bool sessionResetOnSceneLoad,
+			int sessionSceneLoadIgnoreFrames,
+			float sessionSceneLoadIgnoreSeconds,
 			float editorWarningCooldownSeconds,
 			float structuredLogCooldownSeconds,
 			float callbackCooldownSeconds,
@@ -41,8 +45,12 @@ namespace SGG.PerfMeter
 			ActivePreset = string.IsNullOrEmpty(activePreset) ? PerfMeterSettingsStore.DefaultPresetId : activePreset;
 			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(PerfMeterSettingsStore.ParseOverlayPreset(ActivePreset)) : overlayModules;
 			SessionWarmupFrames = Mathf.Max(0, sessionWarmupFrames);
+			SessionWarmupSeconds = Mathf.Max(0f, sessionWarmupSeconds);
 			SessionSampleIntervalSeconds = sessionSampleIntervalSeconds > 0f ? sessionSampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds;
 			SessionMaxSamples = Mathf.Max(1, sessionMaxSamples);
+			SessionResetOnSceneLoad = sessionResetOnSceneLoad;
+			SessionSceneLoadIgnoreFrames = Mathf.Max(0, sessionSceneLoadIgnoreFrames);
+			SessionSceneLoadIgnoreSeconds = Mathf.Max(0f, sessionSceneLoadIgnoreSeconds);
 			EditorWarningCooldownSeconds = Mathf.Max(1f, editorWarningCooldownSeconds);
 			StructuredLogCooldownSeconds = Mathf.Max(0f, structuredLogCooldownSeconds);
 			CallbackCooldownSeconds = Mathf.Max(0f, callbackCooldownSeconds);
@@ -59,8 +67,12 @@ namespace SGG.PerfMeter
 		public string ActivePreset { get; }
 		public PerfMeterOverlayModule OverlayModules { get; }
 		public int SessionWarmupFrames { get; }
+		public float SessionWarmupSeconds { get; }
 		public float SessionSampleIntervalSeconds { get; }
 		public int SessionMaxSamples { get; }
+		public bool SessionResetOnSceneLoad { get; }
+		public int SessionSceneLoadIgnoreFrames { get; }
+		public float SessionSceneLoadIgnoreSeconds { get; }
 		public float EditorWarningCooldownSeconds { get; }
 		public float StructuredLogCooldownSeconds { get; }
 		public float CallbackCooldownSeconds { get; }
@@ -107,8 +119,12 @@ namespace SGG.PerfMeter
 	internal sealed class PerfMeterSessionSettingsJson
 	{
 		public int warmupFrames = 0;
+		public float warmupSeconds = 0f;
 		public float sampleIntervalSeconds = 0.25f;
 		public int maxSamples = 4096;
+		public bool resetOnSceneLoad = false;
+		public int sceneLoadIgnoreFrames = 0;
+		public float sceneLoadIgnoreSeconds = 0f;
 	}
 
 	[Serializable]
@@ -157,8 +173,12 @@ namespace SGG.PerfMeter
 			settings.targetFps = (int)snapshot.TargetFps;
 			settings.activePreset = string.IsNullOrEmpty(snapshot.ActivePreset) ? DefaultPresetId : snapshot.ActivePreset;
 			settings.session.warmupFrames = snapshot.SessionWarmupFrames;
+			settings.session.warmupSeconds = snapshot.SessionWarmupSeconds;
 			settings.session.sampleIntervalSeconds = snapshot.SessionSampleIntervalSeconds;
 			settings.session.maxSamples = snapshot.SessionMaxSamples;
+			settings.session.resetOnSceneLoad = snapshot.SessionResetOnSceneLoad;
+			settings.session.sceneLoadIgnoreFrames = snapshot.SessionSceneLoadIgnoreFrames;
+			settings.session.sceneLoadIgnoreSeconds = snapshot.SessionSceneLoadIgnoreSeconds;
 			settings.ruleDefaults.editorWarningCooldownSeconds = snapshot.EditorWarningCooldownSeconds;
 			settings.ruleDefaults.structuredLogCooldownSeconds = snapshot.StructuredLogCooldownSeconds;
 			settings.ruleDefaults.callbackCooldownSeconds = snapshot.CallbackCooldownSeconds;
@@ -269,8 +289,12 @@ namespace SGG.PerfMeter
 				settings.activePreset,
 				overlayModules,
 				settings.session != null ? settings.session.warmupFrames : 0,
+				settings.session != null ? settings.session.warmupSeconds : PerfMeterSessionOptions.DefaultWarmupSeconds,
 				settings.session != null ? settings.session.sampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds,
 				settings.session != null ? settings.session.maxSamples : PerfMeterSessionOptions.DefaultMaxSamples,
+				settings.session != null && settings.session.resetOnSceneLoad,
+				settings.session != null ? settings.session.sceneLoadIgnoreFrames : PerfMeterSessionOptions.DefaultSceneLoadIgnoreFrames,
+				settings.session != null ? settings.session.sceneLoadIgnoreSeconds : PerfMeterSessionOptions.DefaultSceneLoadIgnoreSeconds,
 				settings.ruleDefaults != null ? settings.ruleDefaults.editorWarningCooldownSeconds : 8f,
 				settings.ruleDefaults != null ? settings.ruleDefaults.structuredLogCooldownSeconds : 2f,
 				settings.ruleDefaults != null ? settings.ruleDefaults.callbackCooldownSeconds : 0.5f,
@@ -529,8 +553,11 @@ namespace SGG.PerfMeter
 			}
 
 			settings.session.warmupFrames = Mathf.Max(0, settings.session.warmupFrames);
+			settings.session.warmupSeconds = Mathf.Max(0f, settings.session.warmupSeconds);
 			settings.session.sampleIntervalSeconds = Mathf.Max(0.02f, settings.session.sampleIntervalSeconds);
 			settings.session.maxSamples = Mathf.Clamp(settings.session.maxSamples, 1, 100000);
+			settings.session.sceneLoadIgnoreFrames = Mathf.Max(0, settings.session.sceneLoadIgnoreFrames);
+			settings.session.sceneLoadIgnoreSeconds = Mathf.Max(0f, settings.session.sceneLoadIgnoreSeconds);
 
 			if (settings.overdraw == null)
 			{

@@ -230,6 +230,47 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SessionRecorderHonorsWarmupSecondsAndTracksWorstFrames()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
+			recorder.Start(new PerfMeterSessionOptions(1, 0.5f, 0.01f, 4, false, 0, 0f), default, default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+
+			recorder.Update(CreateMetrics(11, 20d, PerfMeterBottleneck.CpuMainThreadBound), 11, 1.2d);
+			recorder.Update(CreateMetrics(12, 18d, PerfMeterBottleneck.GpuBound), 12, 1.5d);
+			recorder.Update(CreateMetrics(13, 30d, PerfMeterBottleneck.PresentLimited), 13, 1.6d);
+
+			PerfMeterSessionSummarySnapshot summary = recorder.GetSummary();
+			Assert.That(summary.SampleCount, Is.EqualTo(2));
+			Assert.That(summary.FirstFrame, Is.EqualTo(12));
+			Assert.That(summary.MaxFrameTimeMs, Is.EqualTo(30d).Within(0.001d));
+			Assert.That(summary.WorstFrame.CollectionFrame, Is.EqualTo(13));
+			Assert.That(summary.WorstFrame.Bottleneck, Is.EqualTo(PerfMeterBottleneck.PresentLimited));
+			Assert.That(summary.WholeRun.SampleCount, Is.EqualTo(2));
+			Assert.That(summary.CurrentScene.SampleCount, Is.EqualTo(2));
+			Assert.That(summary.CurrentSceneWorstFrame.CollectionFrame, Is.EqualTo(13));
+		}
+
+		[Test]
+		public void SessionRecorderResetStatsKeepsActiveSessionAndClearsSamples()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 4), default, default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d);
+
+			recorder.ResetStats(20, 2d, CreateMetrics(20, 12d, PerfMeterBottleneck.Balanced));
+			recorder.Update(CreateMetrics(21, 14d, PerfMeterBottleneck.CpuRenderThreadBound), 21, 2.01d);
+
+			PerfMeterSessionSummarySnapshot summary = recorder.GetSummary();
+			Assert.That(summary.State, Is.EqualTo(PerfMeterSessionState.Recording));
+			Assert.That(summary.SampleCount, Is.EqualTo(1));
+			Assert.That(summary.FirstFrame, Is.EqualTo(21));
+			Assert.That(summary.StartTimeSeconds, Is.EqualTo(2d).Within(0.001d));
+			Assert.That(summary.CpuRenderThreadBoundSampleCount, Is.EqualTo(1));
+		}
+
+		[Test]
 		public void SessionExportFormatsJsonAndCsv()
 		{
 			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
@@ -246,6 +287,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"summary\""));
 			Assert.That(json, Does.Contain("\"metadata\""));
 			Assert.That(json, Does.Contain("\"samples\""));
+			Assert.That(json, Does.Contain("\"whole_run\""));
+			Assert.That(json, Does.Contain("\"current_scene\""));
+			Assert.That(json, Does.Contain("\"worst_frame\""));
 			Assert.That(json, Does.Contain("\"cpu_frame_ms\":16"));
 			Assert.That(csv, Does.StartWith("frame,time_seconds,scene,bottleneck,cpu_frame_ms"));
 			Assert.That(csv, Does.Contain("GpuBound"));
@@ -320,8 +364,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PerfMeterSettingsStore.DefaultPresetId,
 				PerfMeterOverlayModule.All,
 				0,
+				0f,
 				0.25f,
 				4096,
+				false,
+				0,
+				0f,
 				5f,
 				0f,
 				0f,
@@ -374,19 +422,26 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
 			string metadata = File.ReadAllText(metadataPath);
+			Assert.That(metadata, Does.Contain("perfmeter.runtime.reset_stats"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.start"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.stop"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.summary"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.export"));
 
-			string startJson = PerfMeterMcpCommands.SessionStart("{\"warmup_frames\":0,\"sample_interval_seconds\":0.01,\"max_samples\":2}");
+			string resetJson = PerfMeterMcpCommands.RuntimeResetStats();
+			Assert.That(resetJson, Does.Contain("\"state\""));
+
+			string startJson = PerfMeterMcpCommands.SessionStart("{\"warmup_frames\":0,\"warmup_seconds\":0,\"sample_interval_seconds\":0.01,\"max_samples\":2,\"reset_on_scene_load\":true,\"scene_load_ignore_frames\":1,\"scene_load_ignore_seconds\":0}");
 			Assert.That(startJson, Does.Contain("\"success\":true"));
 			Assert.That(startJson, Does.Contain("\"status\":\"recording\""));
 			Assert.That(startJson, Does.Contain("\"max_samples\":2"));
+			Assert.That(startJson, Does.Contain("\"reset_on_scene_load\":true"));
+			Assert.That(startJson, Does.Contain("\"scene_load_ignore_frames\":1"));
 
 			string summaryJson = PerfMeterMcpCommands.SessionSummary();
 			Assert.That(summaryJson, Does.Contain("\"summary\""));
 			Assert.That(summaryJson, Does.Contain("\"state\":\"Recording\""));
+			Assert.That(summaryJson, Does.Contain("\"whole_run\""));
 
 			string stopJson = PerfMeterMcpCommands.SessionStop();
 			Assert.That(stopJson, Does.Contain("\"status\":\"stopped\""));
