@@ -27,7 +27,7 @@
 
 ## Verification Notes
 
-- Use Unity batchmode compile and `-runTests` without `-quit` as the reliable local verification path. The project version remains `6000.4.5f1`; current Android validation used installed Unity `6000.4.7f1` because that editor has Android Build Support.
+- Use Unity batchmode compile and `-runTests` without `-quit` as the reliable local verification path. The project version is now `6000.4.7f1`; current Android validation uses this installed editor because it has Android Build Support.
 - Latest release-docs verification passed with `Logs/opencode-release-docs-compile.log`, `Logs/opencode-release-docs-editmode-results.xml`, and `Logs/opencode-release-docs-playmode-results.xml`.
 - Latest JSON settings verification passed with `Logs/opencode-iter28-settings-compile.log`, `Logs/opencode-iter28-settings-editmode-results.xml`, and `Logs/opencode-iter28-settings-playmode-results.xml`.
 - Latest device snapshot verification passed with `Logs/opencode-iter29-device-compile.log`, `Logs/opencode-iter29-device-editmode-results.xml`, and `Logs/opencode-iter29-device-playmode-results.xml`.
@@ -46,5 +46,6 @@
 
 ## Handoff Notes
 
-- Next meaningful implementation work should focus on private release tag gating, broader device matrix coverage, heatmap device validation, or Render Graph analytics.
+- Next implementation work follows `_Docs/sgg-perfmeter-roadmap-from-competitors.ru.md`: session recorder core, JSON/CSV export plus MCP, rule/alert system without sound/audio actions, warm-up/reset/scene scope, background/headless collection mode, zero-allocation overlay refresh, samples, JSON tunables, and custom metric providers.
+- `_Docs/sgg-perfmeter-competitor-comparison-updated.md` is a local reference source and must remain uncommitted by user request.
 - `ProjectSettings/ProjectSettings.asset` currently has `enableFrameTimingStats: 1`; keep it enabled before depending on `FrameTimingManager` in builds.

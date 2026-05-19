@@ -1,8 +1,8 @@
 # План развития SGG PerfMeter по итогам сравнения с AFPS и Graphy
 
-Источник: `_Docs/sgg-perfmeter-competitor-comparison.md`  
+Источник: исходное сравнение `_Docs/sgg-perfmeter-competitor-comparison.md` и актуализированный локальный reference от 2026-05-19.
 Дата: 2026-05-19  
-Статус: черновик для обсуждения и корректировок
+Статус: актуализированный roadmap после iterations 28-31
 
 ## Главный вывод
 
@@ -17,7 +17,7 @@ SGG PerfMeter не должен превращаться в еще один ун
 - rule/debug alerts;
 - примеры и быстрый bootstrap.
 
-Хоткеи пока не добавляем.
+Хоткеи не добавляем. Звук/audio alerts/modules не добавляем.
 
 ## Что уже есть и сохраняется как база
 
@@ -25,13 +25,17 @@ SGG PerfMeter не должен превращаться в еще один ун
 - Метрики: FPS/lows/spikes, CPU/GPU timings, render counters, SRP Batcher, BRG/GRD, index upload, memory.
 - Bottleneck classification: GPU, CPU main, CPU render, present/VSync limited, balanced/unknown.
 - UI Toolkit overlay с режимами `FpsOnly`, `TextCompact`, `Graphs`, `Full`.
+- JSON-backed overlay presets/modules: `Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, `Custom`.
+- Project-owned JSON settings и zero-code auto-start через `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
+- Device/environment snapshot с monitor names.
+- Camera snapshot для воспроизводимых performance captures.
 - URP Render Graph feature.
 - Численное overdraw measurement и visual heatmap.
-- MCP команды для setup/runtime/status/metrics/overlay/overdraw.
+- MCP команды для setup/runtime/status/metrics/device/camera/overlay/overdraw.
 
-## P0: добавить в первую очередь
+## P0: текущий фокус после iterations 28-31
 
-### 1. JSON-настройки PerfMeter и вкладка Presets
+### 1. [Done] JSON-настройки PerfMeter и вкладка Presets
 
 `ScriptableObject` для настроек не используем. Нужен JSON-конфиг, который редактируется через существующее окно `SGG/Perfmeter/Setup` в отдельной вкладке `Presets`.
 
@@ -104,7 +108,7 @@ MCP:
 
 Важно: запись должна иметь sample interval и max samples, чтобы не создать бесконечный рост памяти. Export может аллоцировать при завершении, но runtime collection должен оставаться легким.
 
-### 3. Camera snapshot для воспроизводимых тестов
+### 3. [Done] Camera snapshot для воспроизводимых тестов
 
 В каждый snapshot сессии нужно добавлять состояние камеры, чтобы позже можно было воспроизвести тест в той же точке.
 
@@ -137,7 +141,7 @@ MCP:
 
 Назначение: session export должен позволять агенту или тестовому bootstrap вернуть сцену и камеру в нужное положение перед повторным измерением.
 
-### 4. Rule/alert system
+### 4. Rule/alert system без audio
 
 Берем идею Graphy Debugger, но адаптируем под структурированные метрики SGG.
 
@@ -180,9 +184,9 @@ Editor warning обязательно должен иметь cooldown. Нель
 
 Для cooldown хранить last-fired time per rule/action. Желательно разделить cooldown для `EditorWarning`, `StructuredLog` и `Callback`, чтобы частые callbacks не включали спам в Console.
 
-Не добавлять по умолчанию: звук, `Debug.Break()`, тяжелые side effects.
+Не добавлять: звук/audio actions. Не добавлять по умолчанию: `Debug.Break()`, screenshot/debug-break alerts, тяжелые side effects.
 
-### 5. Overlay presets и module visibility
+### 5. [Done] Overlay presets и module visibility
 
 Текущие режимы отвечают за плотность/вид layout. Нужно добавить presets, которые отвечают за смысловой набор модулей.
 
@@ -207,7 +211,7 @@ MCP должен зеркалировать это, чтобы агент мог
 
 Настройка presets идет через вкладку `Presets` в setup window и сохраняется в JSON. `ScriptableObject` для presets не используем.
 
-### 6. Device/environment snapshot
+### 6. [Done] Device/environment snapshot
 
 AFPS и Graphy хорошо показывают device info. Добавляем это как structured snapshot.
 
@@ -259,7 +263,7 @@ MCP:
 - optional overlay module;
 - MCP output.
 
-## P1: после P0
+## P0 continuation: recorder/runtime hardening
 
 ### 7. Warm-up, reset, min/max и scene scope
 
@@ -312,11 +316,40 @@ MCP:
 
 Лучшее место: `Samples~/...` внутри пакета.
 
+### 11. JSON-tunable UI/rule/session settings
+
+Расширять JSON постепенно, без `ScriptableObject` settings:
+
+- overlay scale;
+- opacity/background;
+- font size;
+- refresh interval;
+- graph history length;
+- warning thresholds;
+- default rule set;
+- session sample interval/max samples;
+- overdraw default/max frame count.
+
+### 12. Custom metric providers
+
+Опциональная extension point для project-specific counters без форка PerfMeter:
+
+```csharp
+public interface IPerfMeterCustomMetricProvider
+{
+    string Id { get; }
+    bool TryCollect(out PerfMeterCustomMetric metric);
+}
+```
+
+Сначала выводить custom metrics в session export и MCP. Overlay support может быть ограниченным.
+
 ## P2: опционально
 
 - World-space/XR overlay, только если появится явный XR target.
 - Alternative graph backend, только если UI Toolkit graph cost станет проблемой.
-- Custom metric providers, если нужно расширять PerfMeter без превращения в generic dashboard.
+- Web/server export target только после стабильного file export.
+- CI artifacts integration только после стабильного session export.
 - Render Graph pass/aliasing/merge analytics оставить отдельной архитектурной задачей из `_Docs/perfmeter_theory.md`; это не заимствование у AFPS/Graphy.
 
 ## Что не добавляем
@@ -324,8 +357,9 @@ MCP:
 - uGUI overlay architecture.
 - IMGUI runtime overlay.
 - Audio/spectrum module.
+- Sound alerts/audio actions.
 - Circle gesture toggles.
-- Player hotkeys на данном этапе.
+- Player hotkeys.
 - `ScriptableObject` settings/presets.
 - Поддержку старых Unity версий ради широты.
 - Built-in/HDRP как равноправные targets.
@@ -376,15 +410,15 @@ MCP:
 
 ## Рекомендуемый порядок итераций
 
-1. JSON settings + вкладка `Presets` + zero-code setup через setup window.
-2. Device/environment snapshot, включая системные названия мониторов.
-3. Camera snapshot в runtime/session snapshots.
-4. Overlay presets/modules, привязанные к JSON settings.
-5. Session recorder + JSON/CSV export + MCP.
-6. Rule/alert system + MCP alerts + обязательный cooldown для Editor warning.
-7. Warm-up/reset/background mode.
-8. Zero-allocation overlay refresh.
-9. Samples and bilingual documentation.
+1. Session recorder core: start/stop, bounded samples, summary snapshot, device/camera/settings metadata.
+2. Session JSON/CSV export + MCP `perfmeter.session.*`.
+3. Rule/alert system + MCP alerts + обязательный cooldown для Editor warning; без sound/audio actions.
+4. Session warm-up, reset APIs, scene scope и worst-frame summaries.
+5. Explicit background/headless collection mode: `Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic`.
+6. Zero-allocation overlay refresh path и GC Alloc validation checklist/test scene.
+7. `Samples~` workflows и bilingual documentation для bootstrap/settings/session/alerts/overdraw/MCP.
+8. JSON-tunable UI/rule/session settings.
+9. Custom metric providers для export/MCP-first extension point.
 
 ## Документация и проверки
 
