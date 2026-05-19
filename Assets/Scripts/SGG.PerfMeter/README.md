@@ -25,7 +25,7 @@ Root repository release docs, outside this package path:
 2. Open `SGG/Perfmeter/Setup`.
 3. Enable `Frame Timing Stats`.
 4. Install `PerfMeterRenderGraphFeature` into the active URP renderer.
-5. Add the generated initialization snippet to project-owned runtime code.
+5. Save JSON settings from the `Presets` tab for zero-code setup, or add the generated initialization snippet to project-owned runtime code.
 
 Minimal runtime API:
 

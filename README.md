@@ -25,7 +25,7 @@ Implemented:
 - URP Render Graph renderer feature;
 - bounded numerical overdraw measurement using a hidden replacement shader and `AsyncGPUReadback`;
 - visual overdraw heatmap using an additive replacement shader;
-- editor setup window;
+- editor setup window with JSON `Presets` and zero-code setup;
 - MCP command definitions for setup, runtime control, metrics, overlay, overdraw measurement, and overdraw heatmap;
 - English and Russian package documentation;
 - release readiness docs, changelog, security policy, contributing policy, and a manual-only release workflow;
@@ -123,7 +123,7 @@ Run the recommended setup:
 
 1. Enable **Frame Timing Stats**.
 2. Review active and discovered URP renderer assets, then install `PerfMeterRenderGraphFeature` into all editable missing renderers or only the selected ones.
-3. Copy or add the initialization snippet.
+3. Open the **Presets** tab and save JSON settings to `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` for zero-code setup, or copy the initialization snippet if you prefer manual bootstrap code.
 4. Enter Play Mode and verify the overlay.
 
 Minimal runtime bootstrap:
@@ -154,6 +154,7 @@ using UnityEngine;
 
 Debug.Log(PerfMeterSetupActions.GetStatusReport());
 Debug.Log(PerfMeterSetupActions.RunRecommendedSetup());
+Debug.Log(PerfMeterSetupActions.CreateDefaultSettings());
 Debug.Log(PerfMeterSetupActions.CopyInitializationSnippetToClipboard());
 ```
 

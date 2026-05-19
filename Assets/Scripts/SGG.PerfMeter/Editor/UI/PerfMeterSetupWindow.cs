@@ -14,8 +14,10 @@ namespace SGG.PerfMeter.Editor.UI
 		private readonly List<Button> _runtimeButtons = new List<Button>();
 		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private VisualElement _setupPanel;
+		private VisualElement _presetsPanel;
 		private VisualElement _runtimePanel;
 		private ToolbarToggle _setupTab;
+		private ToolbarToggle _presetsTab;
 		private ToolbarToggle _runtimeTab;
 
 		private Label _projectStatus;
@@ -35,6 +37,16 @@ namespace SGG.PerfMeter.Editor.UI
 		private EnumField _initTargetFps;
 		private EnumField _initOverlayCorner;
 		private EnumField _initOverlayMode;
+		private Label _settingsStatus;
+		private Label _settingsPath;
+		private Label _settingsResourcesPath;
+		private Toggle _settingsEnabled;
+		private Toggle _settingsAutoStart;
+		private Toggle _settingsOverlayVisible;
+		private EnumField _settingsTargetFps;
+		private EnumField _settingsOverlayCorner;
+		private EnumField _settingsOverlayMode;
+		private TextField _settingsActivePreset;
 		private Label _lastActionLabel;
 		private Label _runtimePlayModeInfo;
 		private Label _runtimeStatus;
@@ -76,11 +88,14 @@ namespace SGG.PerfMeter.Editor.UI
 			rootVisualElement.Add(scroll);
 
 			_setupPanel = new VisualElement();
+			_presetsPanel = new VisualElement();
 			_runtimePanel = new VisualElement();
 			scroll.Add(_setupPanel);
+			scroll.Add(_presetsPanel);
 			scroll.Add(_runtimePanel);
 
 			BuildSetupPanel();
+			BuildPresetsPanel();
 			BuildRuntimePanel();
 
 			_lastActionLabel = new Label();
@@ -96,14 +111,23 @@ namespace SGG.PerfMeter.Editor.UI
 			Toolbar toolbar = new Toolbar();
 			toolbar.AddToClassList("pm-tabs");
 			_setupTab = new ToolbarToggle { text = "Setup" };
+			_presetsTab = new ToolbarToggle { text = "Presets" };
 			_runtimeTab = new ToolbarToggle { text = "Runtime" };
 			_setupTab.AddToClassList("pm-tab");
+			_presetsTab.AddToClassList("pm-tab");
 			_runtimeTab.AddToClassList("pm-tab");
 			_setupTab.RegisterValueChangedCallback(evt =>
 			{
 				if (evt.newValue)
 				{
 					SelectSetupTab();
+				}
+			});
+			_presetsTab.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue)
+				{
+					SelectPresetsTab();
 				}
 			});
 			_runtimeTab.RegisterValueChangedCallback(evt =>
@@ -114,6 +138,7 @@ namespace SGG.PerfMeter.Editor.UI
 				}
 			});
 			toolbar.Add(_setupTab);
+			toolbar.Add(_presetsTab);
 			toolbar.Add(_runtimeTab);
 			rootVisualElement.Add(toolbar);
 		}
@@ -155,7 +180,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void BuildInitializationSection(VisualElement parent)
 		{
 			VisualElement section = AddSection(parent, "Initialization Code");
-			AddInfo(section, "Copy this code into your gameplay bootstrap or another project-owned runtime script. The setup window does not create this file automatically.");
+			AddInfo(section, "Manual bootstrap code remains available for projects that do not want JSON zero-code setup. Use the Presets tab to save project-owned JSON settings that auto-start PerfMeter without writing code.");
 
 			_initOverlayVisible = new Toggle { value = true };
 			_initOverlayVisible.RegisterValueChangedCallback(_ => RefreshInitializationCode());
@@ -184,6 +209,47 @@ namespace SGG.PerfMeter.Editor.UI
 
 			VisualElement actions = AddActions(section);
 			AddButton(actions, "Copy Init Code", CopyInitializationCode);
+		}
+
+		private void BuildPresetsPanel()
+		{
+			VisualElement section = AddSection(_presetsPanel, "JSON Settings and Zero-Code Setup");
+			AddInfo(section, "Settings are stored as project-owned JSON under Assets/Resources and loaded at runtime through Resources. ScriptableObject settings are intentionally not used.");
+
+			_settingsStatus = AddRow(section, "Status");
+			_settingsPath = AddRow(section, "JSON Path");
+			_settingsResourcesPath = AddRow(section, "Resources Path");
+
+			_settingsEnabled = new Toggle();
+			AddControlRow(section, "Enabled", _settingsEnabled);
+
+			_settingsAutoStart = new Toggle();
+			AddControlRow(section, "Auto Start", _settingsAutoStart);
+
+			_settingsOverlayVisible = new Toggle();
+			AddControlRow(section, "Overlay Visible", _settingsOverlayVisible);
+
+			_settingsTargetFps = new EnumField(PerfMeterTargetFps.Fps60);
+			AddControlRow(section, "Target FPS", _settingsTargetFps);
+
+			_settingsOverlayCorner = new EnumField(PerfMeterOverlayCorner.TopRight);
+			AddControlRow(section, "Overlay Corner", _settingsOverlayCorner);
+
+			_settingsOverlayMode = new EnumField(PerfMeterOverlayMode.Full);
+			AddControlRow(section, "Overlay Mode", _settingsOverlayMode);
+
+			_settingsActivePreset = new TextField();
+			AddControlRow(section, "Active Preset", _settingsActivePreset);
+
+			VisualElement actions = AddActions(section);
+			AddButton(actions, "Create Defaults", () => RunAction("Create Defaults", PerfMeterSetupActions.CreateDefaultSettings));
+			AddButton(actions, "Load JSON", () =>
+			{
+				LoadSettingsIntoControls(PerfMeterSetupActions.LoadSettings());
+				_lastActionLabel.text = "Load JSON: settings loaded from project JSON or defaults.";
+			});
+			AddButton(actions, "Save JSON", () => RunAction("Save JSON", SaveSettingsFromControls));
+			AddButton(actions, "Apply In Play Mode", () => RunAction("Apply Settings", PerfMeterSetupActions.ApplySettingsToRuntime));
 		}
 
 		private void BuildRuntimePanel()
@@ -356,8 +422,51 @@ namespace SGG.PerfMeter.Editor.UI
 			BuildRendererList(status);
 			RefreshRendererButtons(status);
 			SetIndicator(_rendererIndicator, status.AllRenderersConfigured, status.Renderers.Count > 0 && !status.AllRenderersConfigured);
+			RefreshSettingsPanel(status);
 			RefreshInitializationCode();
 			RefreshRuntimePanel();
+		}
+
+		private void RefreshSettingsPanel(PerfMeterSetupUtility.PerfMeterSetupStatus status)
+		{
+			if (_settingsStatus == null)
+			{
+				return;
+			}
+
+			_settingsStatus.text = status.Settings.Message;
+			_settingsPath.text = status.Settings.AssetPath;
+			_settingsResourcesPath.text = status.Settings.ResourcesLoadPath;
+			LoadSettingsIntoControls(status.Settings.Snapshot);
+		}
+
+		private void LoadSettingsIntoControls(PerfMeterSettingsSnapshot settings)
+		{
+			_settingsEnabled?.SetValueWithoutNotify(settings.Enabled);
+			_settingsAutoStart?.SetValueWithoutNotify(settings.AutoStart);
+			_settingsOverlayVisible?.SetValueWithoutNotify(settings.OverlayVisible);
+			_settingsTargetFps?.SetValueWithoutNotify(settings.TargetFps);
+			_settingsOverlayCorner?.SetValueWithoutNotify(settings.OverlayCorner);
+			_settingsOverlayMode?.SetValueWithoutNotify(settings.OverlayMode);
+			if (_settingsActivePreset != null)
+			{
+				_settingsActivePreset.SetValueWithoutNotify(settings.ActivePreset);
+			}
+		}
+
+		private PerfMeterSetupActionResult SaveSettingsFromControls()
+		{
+			PerfMeterSettingsSnapshot settings = new PerfMeterSettingsSnapshot(
+				_settingsEnabled == null || _settingsEnabled.value,
+				_settingsAutoStart == null || _settingsAutoStart.value,
+				_settingsOverlayVisible == null || _settingsOverlayVisible.value,
+				_settingsOverlayCorner != null && _settingsOverlayCorner.value is PerfMeterOverlayCorner corner ? corner : PerfMeterOverlayCorner.TopRight,
+				_settingsOverlayMode != null && _settingsOverlayMode.value is PerfMeterOverlayMode mode ? mode : PerfMeterOverlayMode.Full,
+				_settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps targetFps ? targetFps : PerfMeterTargetFps.Fps60,
+				_settingsActivePreset != null ? _settingsActivePreset.value : string.Empty,
+				PerfMeterSettingsLoadState.Loaded,
+				string.Empty);
+			return PerfMeterSetupActions.SaveSettings(settings);
 		}
 
 		private void BuildRendererList(PerfMeterSetupUtility.PerfMeterSetupStatus status)
@@ -592,9 +701,52 @@ namespace SGG.PerfMeter.Editor.UI
 				_runtimeTab.SetValueWithoutNotify(false);
 			}
 
+			if (_presetsTab != null)
+			{
+				_presetsTab.SetValueWithoutNotify(false);
+			}
+
 			if (_setupPanel != null)
 			{
 				_setupPanel.style.display = DisplayStyle.Flex;
+			}
+
+			if (_presetsPanel != null)
+			{
+				_presetsPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_runtimePanel != null)
+			{
+				_runtimePanel.style.display = DisplayStyle.None;
+			}
+		}
+
+		private void SelectPresetsTab()
+		{
+			if (_setupTab != null)
+			{
+				_setupTab.SetValueWithoutNotify(false);
+			}
+
+			if (_presetsTab != null)
+			{
+				_presetsTab.SetValueWithoutNotify(true);
+			}
+
+			if (_runtimeTab != null)
+			{
+				_runtimeTab.SetValueWithoutNotify(false);
+			}
+
+			if (_setupPanel != null)
+			{
+				_setupPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_presetsPanel != null)
+			{
+				_presetsPanel.style.display = DisplayStyle.Flex;
 			}
 
 			if (_runtimePanel != null)
@@ -615,9 +767,19 @@ namespace SGG.PerfMeter.Editor.UI
 				_runtimeTab.SetValueWithoutNotify(true);
 			}
 
+			if (_presetsTab != null)
+			{
+				_presetsTab.SetValueWithoutNotify(false);
+			}
+
 			if (_setupPanel != null)
 			{
 				_setupPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_presetsPanel != null)
+			{
+				_presetsPanel.style.display = DisplayStyle.None;
 			}
 
 			if (_runtimePanel != null)

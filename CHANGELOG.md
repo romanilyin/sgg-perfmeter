@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- No unreleased changes.
+- Added project-owned JSON settings, a setup-window `Presets` tab, and zero-code runtime auto-start through `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
 
 ## 2026.5.18-1
 

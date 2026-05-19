@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -54,11 +55,60 @@ public static class PerfMeterBootstrap
 			PerfMeterSetupStatus status = new PerfMeterSetupStatus
 			{
 				FrameTimingStatsEnabled = PlayerSettings.enableFrameTimingStats,
-				PackageAssetPath = PackageAssetPath
+				PackageAssetPath = PackageAssetPath,
+				Settings = GetSettingsStatus()
 			};
 
 			status.Renderers.AddRange(FindRendererStatuses());
 			return status;
+		}
+
+		internal static PerfMeterSettingsSnapshot LoadSettingsSnapshot()
+		{
+			string path = PerfMeterSettingsStore.ResourcesAssetPath;
+			if (!File.Exists(path))
+			{
+				return PerfMeterSettingsStore.Defaults;
+			}
+
+			string json = File.ReadAllText(path);
+			PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot snapshot);
+			return snapshot;
+		}
+
+		internal static InstallResult CreateDefaultSettings()
+		{
+			return SaveSettingsSnapshot(PerfMeterSettingsStore.ToSnapshot(PerfMeterSettingsStore.CreateDefault(), PerfMeterSettingsLoadState.Loaded, string.Empty));
+		}
+
+		internal static InstallResult SaveSettingsSnapshot(PerfMeterSettingsSnapshot snapshot)
+		{
+			try
+			{
+				EnsureSettingsFolder();
+				PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateFromSnapshot(snapshot);
+				string json = PerfMeterSettingsStore.ToJson(settings);
+				File.WriteAllText(PerfMeterSettingsStore.ResourcesAssetPath, json);
+				AssetDatabase.ImportAsset(PerfMeterSettingsStore.ResourcesAssetPath);
+				AssetDatabase.Refresh();
+				return InstallResult.Ok("PerfMeter JSON settings saved to " + PerfMeterSettingsStore.ResourcesAssetPath + ". Runtime zero-code setup will use Resources path " + PerfMeterSettingsStore.ResourcesLoadPath + ".");
+			}
+			catch (Exception exception)
+			{
+				return InstallResult.Fail("Failed to save PerfMeter JSON settings: " + exception.Message);
+			}
+		}
+
+		internal static InstallResult ApplySettingsToRuntime()
+		{
+			if (!EditorApplication.isPlaying)
+			{
+				return InstallResult.Fail("Enter Play Mode to apply PerfMeter settings to the active runtime session.");
+			}
+
+			PerfMeterSettingsSnapshot settings = LoadSettingsSnapshot();
+			RuntimePerformanceMeter.ApplySettings(settings);
+			return InstallResult.Ok("PerfMeter JSON settings applied to the active Play Mode session.");
 		}
 
 		internal static InstallResult EnableFrameTimingStats()
@@ -201,6 +251,31 @@ public static class PerfMeterBootstrap
 
 			result.Sort((left, right) => string.Compare(left.AssetPath, right.AssetPath, StringComparison.OrdinalIgnoreCase));
 			return result;
+		}
+
+		private static PerfMeterSettingsSetupStatus GetSettingsStatus()
+		{
+			PerfMeterSettingsSnapshot snapshot = LoadSettingsSnapshot();
+			return new PerfMeterSettingsSetupStatus
+			{
+				AssetPath = PerfMeterSettingsStore.ResourcesAssetPath,
+				ResourcesLoadPath = PerfMeterSettingsStore.ResourcesLoadPath,
+				FileExists = File.Exists(PerfMeterSettingsStore.ResourcesAssetPath),
+				Snapshot = snapshot
+			};
+		}
+
+		private static void EnsureSettingsFolder()
+		{
+			if (!AssetDatabase.IsValidFolder("Assets/Resources"))
+			{
+				AssetDatabase.CreateFolder("Assets", "Resources");
+			}
+
+			if (!AssetDatabase.IsValidFolder("Assets/Resources/SGG.PerfMeter"))
+			{
+				AssetDatabase.CreateFolder("Assets/Resources", "SGG.PerfMeter");
+			}
 		}
 
 		private static void AddRendererStatusesFromActivePipelineAssets(List<RendererSetupStatus> result, HashSet<string> seenRendererPaths)
@@ -370,6 +445,7 @@ public static class PerfMeterBootstrap
 		{
 			internal bool FrameTimingStatsEnabled;
 			internal string PackageAssetPath = string.Empty;
+			internal PerfMeterSettingsSetupStatus Settings = new PerfMeterSettingsSetupStatus();
 			internal readonly List<RendererSetupStatus> Renderers = new List<RendererSetupStatus>();
 
 			internal int InstalledRendererCount
@@ -422,6 +498,28 @@ public static class PerfMeterBootstrap
 
 					string warning = HasRendererWarnings ? " Missing feature references or package renderer assets require manual inspection." : string.Empty;
 					return InstalledRendererCount + " / " + Renderers.Count + " URP renderer asset(s) have PerfMeter Render Graph feature." + warning;
+				}
+			}
+		}
+
+		internal sealed class PerfMeterSettingsSetupStatus
+		{
+			internal bool FileExists;
+			internal string AssetPath = PerfMeterSettingsStore.ResourcesAssetPath;
+			internal string ResourcesLoadPath = PerfMeterSettingsStore.ResourcesLoadPath;
+			internal PerfMeterSettingsSnapshot Snapshot = PerfMeterSettingsStore.Defaults;
+
+			internal string Message
+			{
+				get
+				{
+					if (!FileExists)
+					{
+						return "No JSON settings file. Zero-code setup is disabled until settings are saved.";
+					}
+
+					string warning = string.IsNullOrEmpty(Snapshot.Warning) ? string.Empty : " Warning: " + Snapshot.Warning;
+					return "JSON settings " + Snapshot.LoadState + ": " + (Snapshot.Enabled ? "enabled" : "disabled") + ", auto-start " + (Snapshot.AutoStart ? "on" : "off") + ", preset " + Snapshot.ActivePreset + "." + warning;
 				}
 			}
 		}

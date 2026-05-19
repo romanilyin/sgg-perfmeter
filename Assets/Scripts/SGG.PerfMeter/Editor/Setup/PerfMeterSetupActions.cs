@@ -32,12 +32,33 @@ namespace SGG.PerfMeter.Editor.Setup
 			return PerfMeterSetupActionResult.Ok("Initialization code copied to clipboard.");
 		}
 
+		public static PerfMeterSettingsSnapshot LoadSettings()
+		{
+			return PerfMeterSetupUtility.LoadSettingsSnapshot();
+		}
+
+		public static PerfMeterSetupActionResult CreateDefaultSettings()
+		{
+			return ToPublicResult(PerfMeterSetupUtility.CreateDefaultSettings());
+		}
+
+		public static PerfMeterSetupActionResult SaveSettings(PerfMeterSettingsSnapshot settings)
+		{
+			return ToPublicResult(PerfMeterSetupUtility.SaveSettingsSnapshot(settings));
+		}
+
+		public static PerfMeterSetupActionResult ApplySettingsToRuntime()
+		{
+			return ToPublicResult(PerfMeterSetupUtility.ApplySettingsToRuntime());
+		}
+
 		public static PerfMeterSetupActionResult RunRecommendedSetup()
 		{
 			PerfMeterSetupActionResult frameTimingResult = EnableFrameTimingStats();
 			PerfMeterSetupActionResult rendererResult = InstallRendererFeatures();
-			bool success = frameTimingResult.Success && rendererResult.Success;
-			string message = frameTimingResult.Message + "\n" + rendererResult.Message;
+			PerfMeterSetupActionResult settingsResult = CreateDefaultSettings();
+			bool success = frameTimingResult.Success && rendererResult.Success && settingsResult.Success;
+			string message = frameTimingResult.Message + "\n" + rendererResult.Message + "\n" + settingsResult.Message;
 			return success ? PerfMeterSetupActionResult.Ok(message) : PerfMeterSetupActionResult.Fail(message);
 		}
 
@@ -51,6 +72,12 @@ namespace SGG.PerfMeter.Editor.Setup
 			builder.Append('\n');
 			builder.Append("Package Path: ");
 			builder.Append(string.IsNullOrEmpty(status.PackageAssetPath) ? "Not found" : status.PackageAssetPath);
+			builder.Append('\n');
+			builder.Append("Settings: ");
+			builder.Append(status.Settings.Message);
+			builder.Append('\n');
+			builder.Append("Settings Path: ");
+			builder.Append(status.Settings.AssetPath);
 			builder.Append('\n');
 			builder.Append(status.RendererMessage);
 

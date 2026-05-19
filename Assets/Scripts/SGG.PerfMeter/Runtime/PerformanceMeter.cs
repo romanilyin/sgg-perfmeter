@@ -31,6 +31,11 @@ namespace SGG.PerfMeter
 			return metrics.Availability != PerfMeterAvailability.Unknown;
 		}
 
+		public static PerfMeterSettingsSnapshot GetSettings()
+		{
+			return PerfMeterSettingsStore.LoadFromResources();
+		}
+
 		public static void EnsureRunning()
 		{
 			PerfMeterRuntime.EnsureRunning();
@@ -153,6 +158,11 @@ namespace SGG.PerfMeter
 			{
 				runtime.SetTargetFps(targetFps);
 			}
+		}
+
+		internal static void ApplySettings(PerfMeterSettingsSnapshot settings)
+		{
+			PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
 		}
 	}
 }
