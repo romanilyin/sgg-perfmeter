@@ -133,6 +133,24 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static PerfMeterOverlayPreset OverlayPreset
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.OverlayPreset : PerfMeterOverlayPreset.FullDiagnostics;
+			}
+		}
+
+		public static PerfMeterOverlayModule OverlayModules
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.OverlayModules : PerfMeterOverlayModule.All;
+			}
+		}
+
 		public static PerfMeterTargetFps TargetFps
 		{
 			get
@@ -169,6 +187,36 @@ namespace SGG.PerfMeter
 			if (runtime != null)
 			{
 				runtime.SetOverlayMode(mode);
+			}
+		}
+
+		public static void SetOverlayPreset(PerfMeterOverlayPreset preset)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayPreset(preset);
+			}
+		}
+
+		public static void SetOverlayModules(PerfMeterOverlayModule modules)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayModules(modules);
+			}
+		}
+
+		public static void SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayModuleVisible(module, visible);
 			}
 		}
 

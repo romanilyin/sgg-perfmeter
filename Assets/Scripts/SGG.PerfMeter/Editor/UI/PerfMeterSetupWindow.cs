@@ -12,6 +12,7 @@ namespace SGG.PerfMeter.Editor.UI
 	public sealed class PerfMeterSetupWindow : EditorWindow
 	{
 		private readonly List<Button> _runtimeButtons = new List<Button>();
+		private readonly List<OverlayModuleToggle> _settingsModuleToggles = new List<OverlayModuleToggle>();
 		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private VisualElement _setupPanel;
 		private VisualElement _presetsPanel;
@@ -46,11 +47,13 @@ namespace SGG.PerfMeter.Editor.UI
 		private EnumField _settingsTargetFps;
 		private EnumField _settingsOverlayCorner;
 		private EnumField _settingsOverlayMode;
-		private TextField _settingsActivePreset;
+		private EnumField _settingsActivePreset;
 		private Label _lastActionLabel;
 		private Label _runtimePlayModeInfo;
 		private Label _runtimeStatus;
 		private Label _runtimeOverlayVisible;
+		private Label _runtimeOverlayPreset;
+		private Label _runtimeOverlayModules;
 		private Label _runtimeTargetFps;
 		private Label _runtimeOverlayCorner;
 		private Label _runtimeOverlayMode;
@@ -68,6 +71,7 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			rootVisualElement.Clear();
 			_runtimeButtons.Clear();
+			_settingsModuleToggles.Clear();
 			rootVisualElement.AddToClassList("pm-window");
 
 			string stylePath = PerfMeterSetupUtility.PackageAssetPath + "/Editor/UI/PerfMeterSetupWindow.uss";
@@ -238,8 +242,32 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayMode = new EnumField(PerfMeterOverlayMode.Full);
 			AddControlRow(section, "Overlay Mode", _settingsOverlayMode);
 
-			_settingsActivePreset = new TextField();
+			_settingsActivePreset = new EnumField(PerfMeterOverlayPreset.FullDiagnostics);
+			_settingsActivePreset.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue is PerfMeterOverlayPreset preset)
+				{
+					ApplyPresetDefaultsToSettingsControls(preset);
+				}
+			});
 			AddControlRow(section, "Active Preset", _settingsActivePreset);
+
+			VisualElement moduleList = new VisualElement();
+			moduleList.AddToClassList("pm-module-list");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Fps, "FPS");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Timing, "CPU/GPU timings");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Graphs, "Graphs");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Rendering, "Rendering counters");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.SrpBatcher, "SRP Batcher");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Brg, "BRG/GRD");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Uploads, "Index uploads");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Memory, "System memory");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Gc, "GC memory");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.GpuMemory, "GPU memory");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Overdraw, "Overdraw ratio");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Heatmap, "Heatmap state");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.Warnings, "Warnings");
+			AddControlRow(section, "Modules", moduleList);
 
 			VisualElement actions = AddActions(section);
 			AddButton(actions, "Create Defaults", () => RunAction("Create Defaults", PerfMeterSetupActions.CreateDefaultSettings));
@@ -260,6 +288,8 @@ namespace SGG.PerfMeter.Editor.UI
 			runtimeSection.Add(_runtimePlayModeInfo);
 			_runtimeStatus = AddRow(runtimeSection, "State");
 			_runtimeOverlayVisible = AddRow(runtimeSection, "Overlay Visible");
+			_runtimeOverlayPreset = AddRow(runtimeSection, "Overlay Preset");
+			_runtimeOverlayModules = AddRow(runtimeSection, "Overlay Modules");
 			_runtimeTargetFps = AddRow(runtimeSection, "Target FPS");
 			_runtimeOverlayCorner = AddRow(runtimeSection, "Overlay Corner");
 			_runtimeOverlayMode = AddRow(runtimeSection, "Overlay Mode");
@@ -450,12 +480,17 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayMode?.SetValueWithoutNotify(settings.OverlayMode);
 			if (_settingsActivePreset != null)
 			{
-				_settingsActivePreset.SetValueWithoutNotify(settings.ActivePreset);
+				_settingsActivePreset.SetValueWithoutNotify(PerfMeterSettingsStore.ParseOverlayPreset(settings.ActivePreset));
 			}
+
+			SetModuleToggles(settings.OverlayModules);
 		}
 
 		private PerfMeterSetupActionResult SaveSettingsFromControls()
 		{
+			PerfMeterOverlayPreset activePreset = _settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset
+				? preset
+				: PerfMeterOverlayPreset.FullDiagnostics;
 			PerfMeterSettingsSnapshot settings = new PerfMeterSettingsSnapshot(
 				_settingsEnabled == null || _settingsEnabled.value,
 				_settingsAutoStart == null || _settingsAutoStart.value,
@@ -463,10 +498,55 @@ namespace SGG.PerfMeter.Editor.UI
 				_settingsOverlayCorner != null && _settingsOverlayCorner.value is PerfMeterOverlayCorner corner ? corner : PerfMeterOverlayCorner.TopRight,
 				_settingsOverlayMode != null && _settingsOverlayMode.value is PerfMeterOverlayMode mode ? mode : PerfMeterOverlayMode.Full,
 				_settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps targetFps ? targetFps : PerfMeterTargetFps.Fps60,
-				_settingsActivePreset != null ? _settingsActivePreset.value : string.Empty,
+				activePreset.ToString(),
+				GetSelectedOverlayModules(activePreset),
 				PerfMeterSettingsLoadState.Loaded,
 				string.Empty);
 			return PerfMeterSetupActions.SaveSettings(settings);
+		}
+
+		private void AddModuleToggle(VisualElement parent, PerfMeterOverlayModule module, string label)
+		{
+			Toggle toggle = new Toggle(label);
+			toggle.AddToClassList("pm-module-toggle");
+			_settingsModuleToggles.Add(new OverlayModuleToggle(module, toggle));
+			parent.Add(toggle);
+		}
+
+		private void ApplyPresetDefaultsToSettingsControls(PerfMeterOverlayPreset preset)
+		{
+			if (preset == PerfMeterOverlayPreset.Custom)
+			{
+				return;
+			}
+
+			_settingsOverlayMode?.SetValueWithoutNotify(PerfMeterSettingsStore.GetPresetMode(preset));
+			SetModuleToggles(PerfMeterSettingsStore.GetPresetModules(preset));
+		}
+
+		private void SetModuleToggles(PerfMeterOverlayModule modules)
+		{
+			PerfMeterOverlayModule normalized = modules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : modules;
+			for (int i = 0; i < _settingsModuleToggles.Count; i++)
+			{
+				OverlayModuleToggle entry = _settingsModuleToggles[i];
+				entry.Toggle.SetValueWithoutNotify((normalized & entry.Module) != 0);
+			}
+		}
+
+		private PerfMeterOverlayModule GetSelectedOverlayModules(PerfMeterOverlayPreset activePreset)
+		{
+			PerfMeterOverlayModule modules = PerfMeterOverlayModule.None;
+			for (int i = 0; i < _settingsModuleToggles.Count; i++)
+			{
+				OverlayModuleToggle entry = _settingsModuleToggles[i];
+				if (entry.Toggle.value)
+				{
+					modules |= entry.Module;
+				}
+			}
+
+			return modules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(activePreset) : modules;
 		}
 
 		private void BuildRendererList(PerfMeterSetupUtility.PerfMeterSetupStatus status)
@@ -831,6 +911,8 @@ namespace SGG.PerfMeter.Editor.UI
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			_runtimeStatus.text = status.State + " / " + status.Bottleneck;
 			_runtimeOverlayVisible.text = status.OverlayVisible ? "Visible" : "Hidden";
+			_runtimeOverlayPreset.text = status.OverlayPreset.ToString();
+			_runtimeOverlayModules.text = status.OverlayModules.ToString();
 			_runtimeTargetFps.text = FormatTargetFps(status.TargetFps) + " / " + (1000d / (int)status.TargetFps).ToString("0.00") + " ms";
 			_runtimeOverlayCorner.text = status.OverlayCorner.ToString();
 			_runtimeOverlayMode.text = status.OverlayMode.ToString();
@@ -872,6 +954,18 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				indicator.AddToClassList("pm-indicator--error");
 			}
+		}
+
+		private readonly struct OverlayModuleToggle
+		{
+			internal OverlayModuleToggle(PerfMeterOverlayModule module, Toggle toggle)
+			{
+				Module = module;
+				Toggle = toggle;
+			}
+
+			internal PerfMeterOverlayModule Module { get; }
+			internal Toggle Toggle { get; }
 		}
 	}
 }

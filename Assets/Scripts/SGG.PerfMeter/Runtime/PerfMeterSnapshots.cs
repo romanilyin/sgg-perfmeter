@@ -62,6 +62,38 @@ namespace SGG.PerfMeter
 		Full = 3
 	}
 
+	public enum PerfMeterOverlayPreset
+	{
+		Custom = 0,
+		Minimal = 1,
+		Timing = 2,
+		Rendering = 3,
+		Memory = 4,
+		Overdraw = 5,
+		FullDiagnostics = 6,
+		AgentDebug = 7
+	}
+
+	[System.Flags]
+	public enum PerfMeterOverlayModule
+	{
+		None = 0,
+		Fps = 1 << 0,
+		Timing = 1 << 1,
+		Graphs = 1 << 2,
+		Rendering = 1 << 3,
+		SrpBatcher = 1 << 4,
+		Brg = 1 << 5,
+		Uploads = 1 << 6,
+		Memory = 1 << 7,
+		Gc = 1 << 8,
+		GpuMemory = 1 << 9,
+		Overdraw = 1 << 10,
+		Heatmap = 1 << 11,
+		Warnings = 1 << 12,
+		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings
+	}
+
 	public enum PerfMeterTargetFps
 	{
 		Fps15 = 15,
@@ -111,7 +143,9 @@ namespace SGG.PerfMeter
 			bool overdrawHeatmapVisible = false,
 			PerfMeterOverlayCorner overlayCorner = PerfMeterOverlayCorner.TopRight,
 			PerfMeterOverlayMode overlayMode = PerfMeterOverlayMode.Full,
-			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60)
+			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60,
+			PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics,
+			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.All)
 		{
 			State = state;
 			Availability = availability;
@@ -128,6 +162,8 @@ namespace SGG.PerfMeter
 			OverlayCorner = overlayCorner;
 			OverlayMode = overlayMode;
 			TargetFps = targetFps;
+			OverlayPreset = overlayPreset;
+			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : overlayModules;
 			OverdrawState = overdrawState;
 			OverdrawProgress = Mathf.Clamp01(overdrawProgress);
 			OverdrawRatio = overdrawRatio;
@@ -149,6 +185,8 @@ namespace SGG.PerfMeter
 		public PerfMeterOverlayCorner OverlayCorner { get; }
 		public PerfMeterOverlayMode OverlayMode { get; }
 		public PerfMeterTargetFps TargetFps { get; }
+		public PerfMeterOverlayPreset OverlayPreset { get; }
+		public PerfMeterOverlayModule OverlayModules { get; }
 		public PerfMeterOverdrawMeasurementState OverdrawState { get; }
 		public float OverdrawProgress { get; }
 		public double OverdrawRatio { get; }

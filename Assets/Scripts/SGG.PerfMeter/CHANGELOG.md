@@ -5,6 +5,7 @@
 - Added project-owned JSON settings, a setup-window `Presets` tab, and zero-code runtime auto-start through `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
 - Added device/environment snapshots with display layout, monitor names, and `perfmeter.device.info` MCP output.
 - Added camera snapshots with transform/projection/URP camera settings and `perfmeter.camera.snapshot` MCP output.
+- Added JSON-backed overlay presets/modules, module-filtered overlay output, setup-window module toggles, and MCP `overlay_preset` / `overlay_modules` support.
 
 ## 2026.5.18-1
 

@@ -22,6 +22,7 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayMode overlayMode,
 			PerfMeterTargetFps targetFps,
 			string activePreset,
+			PerfMeterOverlayModule overlayModules,
 			PerfMeterSettingsLoadState loadState,
 			string warning)
 		{
@@ -32,6 +33,7 @@ namespace SGG.PerfMeter
 			OverlayMode = overlayMode;
 			TargetFps = targetFps;
 			ActivePreset = string.IsNullOrEmpty(activePreset) ? PerfMeterSettingsStore.DefaultPresetId : activePreset;
+			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(PerfMeterSettingsStore.ParseOverlayPreset(ActivePreset)) : overlayModules;
 			LoadState = loadState;
 			Warning = warning ?? string.Empty;
 		}
@@ -43,6 +45,7 @@ namespace SGG.PerfMeter
 		public PerfMeterOverlayMode OverlayMode { get; }
 		public PerfMeterTargetFps TargetFps { get; }
 		public string ActivePreset { get; }
+		public PerfMeterOverlayModule OverlayModules { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
 	}
@@ -213,38 +216,103 @@ namespace SGG.PerfMeter
 		internal static PerfMeterSettingsSnapshot ToSnapshot(PerfMeterSettingsJson settings, PerfMeterSettingsLoadState loadState, string warning)
 		{
 			Normalize(settings, out string normalizeWarning);
+			PerfMeterPresetSettingsJson activePreset = FindPreset(settings, settings.activePreset);
+			string moduleWarning = string.Empty;
+			PerfMeterOverlayMode overlayMode = ParseOverlayMode(settings.overlayMode);
+			PerfMeterTargetFps targetFps = ParseTargetFps(settings.targetFps);
+			bool overlayVisible = settings.overlayVisible;
+			PerfMeterOverlayModule overlayModules = GetPresetModules(ParseOverlayPreset(settings.activePreset));
+
+			if (activePreset != null)
+			{
+				overlayVisible = activePreset.overlayVisible;
+				overlayMode = ParseOverlayMode(activePreset.overlayMode);
+				targetFps = ParseTargetFps(activePreset.targetFps);
+				overlayModules = ParseModules(activePreset.modules, out moduleWarning);
+			}
+			else
+			{
+				moduleWarning = "Active overlay preset was not found; top-level overlay settings are used.";
+			}
+
 			return new PerfMeterSettingsSnapshot(
 				settings.enabled,
 				settings.autoStart,
-				settings.overlayVisible,
+				overlayVisible,
 				ParseOverlayCorner(settings.overlayCorner),
-				ParseOverlayMode(settings.overlayMode),
-				ParseTargetFps(settings.targetFps),
+				overlayMode,
+				targetFps,
 				settings.activePreset,
+				overlayModules,
 				loadState,
-				CombineWarnings(warning, normalizeWarning));
+				CombineWarnings(CombineWarnings(warning, normalizeWarning), moduleWarning));
 		}
 
 		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
 		{
 			PerformanceMeter.EnsureRunning();
+			PerformanceMeter.SetOverlayPreset(ParseOverlayPreset(settings.ActivePreset));
+			PerformanceMeter.SetOverlayModules(settings.OverlayModules);
 			PerformanceMeter.SetTargetFps(settings.TargetFps);
 			PerformanceMeter.SetOverlayCorner(settings.OverlayCorner);
 			PerformanceMeter.SetOverlayMode(settings.OverlayMode);
 			PerformanceMeter.SetOverlayVisible(settings.OverlayVisible);
 		}
 
+		internal static PerfMeterOverlayPreset ParseOverlayPreset(string value)
+		{
+			return Enum.TryParse(value, true, out PerfMeterOverlayPreset preset) && Enum.IsDefined(typeof(PerfMeterOverlayPreset), preset)
+				? preset
+				: PerfMeterOverlayPreset.FullDiagnostics;
+		}
+
+		internal static PerfMeterOverlayModule GetPresetModules(PerfMeterOverlayPreset preset)
+		{
+			switch (preset)
+			{
+				case PerfMeterOverlayPreset.Minimal:
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Warnings;
+				case PerfMeterOverlayPreset.Timing:
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Warnings;
+				case PerfMeterOverlayPreset.Rendering:
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Warnings;
+				case PerfMeterOverlayPreset.Memory:
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Warnings;
+				case PerfMeterOverlayPreset.Overdraw:
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings;
+				case PerfMeterOverlayPreset.AgentDebug:
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings;
+				default:
+					return PerfMeterOverlayModule.All;
+			}
+		}
+
+		internal static PerfMeterOverlayMode GetPresetMode(PerfMeterOverlayPreset preset)
+		{
+			switch (preset)
+			{
+				case PerfMeterOverlayPreset.Minimal:
+					return PerfMeterOverlayMode.FpsOnly;
+				case PerfMeterOverlayPreset.Timing:
+					return PerfMeterOverlayMode.Graphs;
+				case PerfMeterOverlayPreset.AgentDebug:
+					return PerfMeterOverlayMode.TextCompact;
+				default:
+					return PerfMeterOverlayMode.Full;
+			}
+		}
+
 		private static PerfMeterPresetSettingsJson[] CreateDefaultPresets()
 		{
 			return new[]
 			{
-				CreatePreset("Minimal", true, PerfMeterOverlayMode.FpsOnly, PerfMeterTargetFps.Fps60, "Fps", "Bottleneck"),
-				CreatePreset("Timing", true, PerfMeterOverlayMode.Graphs, PerfMeterTargetFps.Fps60, "Fps", "Timing", "Graphs"),
-				CreatePreset("Rendering", true, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60, "Rendering", "SrpBatcher", "Brg", "Uploads"),
-				CreatePreset("Memory", true, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60, "Memory", "Gc", "GpuMemory"),
-				CreatePreset("Overdraw", true, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60, "Overdraw", "Heatmap"),
-				CreatePreset(DefaultPresetId, true, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60, "Fps", "Timing", "Rendering", "Memory", "Overdraw"),
-				CreatePreset("AgentDebug", true, PerfMeterOverlayMode.TextCompact, PerfMeterTargetFps.Fps60, "Fps", "Timing", "Rendering", "Overdraw", "Warnings")
+				CreatePreset("Minimal", true, GetPresetMode(PerfMeterOverlayPreset.Minimal), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Minimal))),
+				CreatePreset("Timing", true, GetPresetMode(PerfMeterOverlayPreset.Timing), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Timing))),
+				CreatePreset("Rendering", true, GetPresetMode(PerfMeterOverlayPreset.Rendering), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Rendering))),
+				CreatePreset("Memory", true, GetPresetMode(PerfMeterOverlayPreset.Memory), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Memory))),
+				CreatePreset("Overdraw", true, GetPresetMode(PerfMeterOverlayPreset.Overdraw), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Overdraw))),
+				CreatePreset(DefaultPresetId, true, GetPresetMode(PerfMeterOverlayPreset.FullDiagnostics), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics))),
+				CreatePreset("AgentDebug", true, GetPresetMode(PerfMeterOverlayPreset.AgentDebug), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.AgentDebug)))
 			};
 		}
 
@@ -275,9 +343,94 @@ namespace SGG.PerfMeter
 					preset.overlayVisible = snapshot.OverlayVisible;
 					preset.overlayMode = snapshot.OverlayMode.ToString();
 					preset.targetFps = (int)snapshot.TargetFps;
+					preset.modules = ModulesToNames(snapshot.OverlayModules);
 					return;
 				}
 			}
+		}
+
+		private static PerfMeterPresetSettingsJson FindPreset(PerfMeterSettingsJson settings, string presetId)
+		{
+			if (settings.presets == null)
+			{
+				return null;
+			}
+
+			for (int i = 0; i < settings.presets.Length; i++)
+			{
+				PerfMeterPresetSettingsJson preset = settings.presets[i];
+				if (preset != null && string.Equals(preset.id, presetId, StringComparison.OrdinalIgnoreCase))
+				{
+					return preset;
+				}
+			}
+
+			return null;
+		}
+
+		private static PerfMeterOverlayModule ParseModules(string[] modules, out string warning)
+		{
+			warning = string.Empty;
+			if (modules == null || modules.Length == 0)
+			{
+				return PerfMeterOverlayModule.All;
+			}
+
+			PerfMeterOverlayModule result = PerfMeterOverlayModule.None;
+			for (int i = 0; i < modules.Length; i++)
+			{
+				if (Enum.TryParse(modules[i], true, out PerfMeterOverlayModule module) && module != PerfMeterOverlayModule.None && (module & ~PerfMeterOverlayModule.All) == 0)
+				{
+					result |= module;
+				}
+				else
+				{
+					warning = CombineWarnings(warning, "Unknown overlay module '" + modules[i] + "' was ignored.");
+				}
+			}
+
+			return result == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : result;
+		}
+
+		private static string[] ModulesToNames(PerfMeterOverlayModule modules)
+		{
+			PerfMeterOverlayModule normalized = modules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : modules;
+			PerfMeterOverlayModule[] values =
+			{
+				PerfMeterOverlayModule.Fps,
+				PerfMeterOverlayModule.Timing,
+				PerfMeterOverlayModule.Graphs,
+				PerfMeterOverlayModule.Rendering,
+				PerfMeterOverlayModule.SrpBatcher,
+				PerfMeterOverlayModule.Brg,
+				PerfMeterOverlayModule.Uploads,
+				PerfMeterOverlayModule.Memory,
+				PerfMeterOverlayModule.Gc,
+				PerfMeterOverlayModule.GpuMemory,
+				PerfMeterOverlayModule.Overdraw,
+				PerfMeterOverlayModule.Heatmap,
+				PerfMeterOverlayModule.Warnings
+			};
+			int count = 0;
+			for (int i = 0; i < values.Length; i++)
+			{
+				if ((normalized & values[i]) != 0)
+				{
+					count++;
+				}
+			}
+
+			string[] names = new string[count];
+			int index = 0;
+			for (int i = 0; i < values.Length; i++)
+			{
+				if ((normalized & values[i]) != 0)
+				{
+					names[index++] = values[i].ToString();
+				}
+			}
+
+			return names;
 		}
 
 		private static void Normalize(PerfMeterSettingsJson settings, out string warning)

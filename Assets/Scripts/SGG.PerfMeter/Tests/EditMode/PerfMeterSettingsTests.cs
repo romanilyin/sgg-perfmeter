@@ -17,6 +17,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(settings.ActivePreset, Is.EqualTo(PerfMeterSettingsStore.DefaultPresetId));
+			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
+			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 		}
 
 		[Test]
@@ -30,6 +32,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PerfMeterOverlayMode.Graphs,
 				PerfMeterTargetFps.Fps120,
 				"Timing",
+				PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs,
 				PerfMeterSettingsLoadState.Loaded,
 				string.Empty);
 
@@ -43,6 +46,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
 			Assert.That(loaded.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(loaded.ActivePreset, Is.EqualTo("Timing"));
+			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Graphs);
+			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Timing);
+		}
+
+		[Test]
+		public void ActivePresetControlsOverlayModules()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.activePreset = "Memory";
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Memory);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Gc);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Warnings);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.Overdraw);
 		}
 
 		[Test]
@@ -65,6 +85,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Invalid));
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(settings.Warning, Does.Contain("empty"));
+		}
+
+		private static void AssertHasModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)
+		{
+			Assert.That((actual & expected) == expected, Is.True);
+		}
+
+		private static void AssertDoesNotHaveModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)
+		{
+			Assert.That((actual & expected) == 0, Is.True);
 		}
 	}
 }

@@ -140,7 +140,7 @@
     {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
-      "description": "Show or hide the SGG PerfMeter overlay and optionally set its screen corner, display mode, and target FPS.",
+      "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, display mode, and target FPS.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverlaySet",
       "risk": "write",
       "idempotency": "idempotent",
@@ -151,6 +151,10 @@
         "type": "object",
         "properties": {
           "visible": { "type": "boolean" },
+          "preset": {
+            "type": "string",
+            "enum": ["Custom", "Minimal", "Timing", "Rendering", "Memory", "Overdraw", "FullDiagnostics", "AgentDebug"]
+          },
           "corner": {
             "type": "string",
             "enum": ["TopLeft", "TopRight", "BottomLeft", "BottomRight"]
@@ -162,6 +166,15 @@
           "target_fps": {
             "type": "integer",
             "enum": [15, 30, 60, 90, 120, 144, 240]
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["None", "All", "Fps", "Timing", "Graphs", "Rendering", "SrpBatcher", "Brg", "Uploads", "Memory", "Gc", "GpuMemory", "Overdraw", "Heatmap", "Warnings"]
+            },
+            "minItems": 1,
+            "uniqueItems": true
           }
         },
         "required": ["visible"],

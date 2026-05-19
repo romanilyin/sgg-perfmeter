@@ -98,6 +98,18 @@
     min-width: 0;
 }
 
+.pm-module-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.pm-module-toggle {
+    width: 160px;
+    min-width: 160px;
+    margin-right: 6px;
+    margin-bottom: 3px;
+}
+
 .pm-info {
     white-space: normal;
     color: var(--pm-text-muted);

@@ -33,6 +33,7 @@ Minimal runtime API:
 using SGG.PerfMeter;
 
 PerformanceMeter.EnsureRunning();
+PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.FullDiagnostics);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 PerformanceMeter.SetOverlayVisible(true);
 

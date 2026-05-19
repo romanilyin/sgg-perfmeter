@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using SGG.PerfMeter.Editor.Setup;
@@ -66,6 +67,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 		public static string OverlaySet(string argsJson)
 		{
 			bool visible = RequireBool(argsJson, "visible");
+			if (TryExtractString(argsJson, "preset", out string preset))
+			{
+				RuntimePerformanceMeter.SetOverlayPreset(ParseOverlayPreset(preset));
+			}
+
 			if (TryExtractString(argsJson, "corner", out string corner))
 			{
 				RuntimePerformanceMeter.SetOverlayCorner(ParseOverlayCorner(corner));
@@ -79,6 +85,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			if (TryExtractInt(argsJson, "target_fps", out int targetFps))
 			{
 				RuntimePerformanceMeter.SetTargetFps(ParseTargetFps(targetFps));
+			}
+
+			if (TryExtractStringArray(argsJson, "modules", out string[] modules))
+			{
+				RuntimePerformanceMeter.SetOverlayModules(ParseOverlayModules(modules));
 			}
 
 			RuntimePerformanceMeter.SetOverlayVisible(visible);
@@ -121,6 +132,9 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"overlay_visible\":").Append(JsonBool(status.OverlayVisible));
 			builder.Append(",\"overlay_corner\":").Append(JsonString(status.OverlayCorner.ToString()));
 			builder.Append(",\"overlay_mode\":").Append(JsonString(status.OverlayMode.ToString()));
+			builder.Append(",\"overlay_preset\":").Append(JsonString(status.OverlayPreset.ToString()));
+			builder.Append(",\"overlay_modules\":");
+			AppendOverlayModules(builder, status.OverlayModules);
 			builder.Append(",\"target_fps\":").Append((int)status.TargetFps);
 			builder.Append(",\"target_frame_budget_ms\":").Append(JsonNumber(1000d / (int)status.TargetFps));
 			builder.Append(",\"overdraw_state\":").Append(JsonString(status.OverdrawState.ToString()));
@@ -170,6 +184,46 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static void AppendOverlayModules(StringBuilder builder, PerfMeterOverlayModule modules)
+		{
+			PerfMeterOverlayModule normalized = modules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : modules;
+			PerfMeterOverlayModule[] values =
+			{
+				PerfMeterOverlayModule.Fps,
+				PerfMeterOverlayModule.Timing,
+				PerfMeterOverlayModule.Graphs,
+				PerfMeterOverlayModule.Rendering,
+				PerfMeterOverlayModule.SrpBatcher,
+				PerfMeterOverlayModule.Brg,
+				PerfMeterOverlayModule.Uploads,
+				PerfMeterOverlayModule.Memory,
+				PerfMeterOverlayModule.Gc,
+				PerfMeterOverlayModule.GpuMemory,
+				PerfMeterOverlayModule.Overdraw,
+				PerfMeterOverlayModule.Heatmap,
+				PerfMeterOverlayModule.Warnings
+			};
+			builder.Append('[');
+			bool needsComma = false;
+			for (int i = 0; i < values.Length; i++)
+			{
+				if ((normalized & values[i]) == 0)
+				{
+					continue;
+				}
+
+				if (needsComma)
+				{
+					builder.Append(',');
+				}
+
+				builder.Append(JsonString(values[i].ToString()));
+				needsComma = true;
+			}
+
+			builder.Append(']');
 		}
 
 		private static string DeviceInfoJson(PerfMeterDeviceSnapshot device)
@@ -448,13 +502,88 @@ namespace SGG.PerfMeter.Editor.Mcp
 				return false;
 			}
 
+			int nextIndex;
+			return TryReadJsonString(json, index, out value, out nextIndex);
+		}
+
+		private static bool TryExtractStringArray(string json, string property, out string[] values)
+		{
+			values = Array.Empty<string>();
+			int colon = FindPropertyColon(json, property);
+			if (colon < 0)
+			{
+				return false;
+			}
+
+			int index = IndexOfNextNonWhitespace(json, colon + 1);
+			if (index < 0 || json[index] != '[')
+			{
+				return false;
+			}
+
+			List<string> result = new List<string>();
+			index++;
+			while (index < json.Length)
+			{
+				index = IndexOfNextNonWhitespace(json, index);
+				if (index < 0)
+				{
+					return false;
+				}
+
+				if (json[index] == ']')
+				{
+					values = result.ToArray();
+					return true;
+				}
+
+				if (json[index] != '"' || !TryReadJsonString(json, index, out string value, out int nextIndex))
+				{
+					return false;
+				}
+
+				result.Add(value);
+				index = IndexOfNextNonWhitespace(json, nextIndex);
+				if (index < 0)
+				{
+					return false;
+				}
+
+				if (json[index] == ',')
+				{
+					index++;
+					continue;
+				}
+
+				if (json[index] == ']')
+				{
+					values = result.ToArray();
+					return true;
+				}
+
+				return false;
+			}
+
+			return false;
+		}
+
+		private static bool TryReadJsonString(string json, int quoteIndex, out string value, out int nextIndex)
+		{
+			value = string.Empty;
+			nextIndex = quoteIndex;
+			if (string.IsNullOrEmpty(json) || quoteIndex < 0 || quoteIndex >= json.Length || json[quoteIndex] != '"')
+			{
+				return false;
+			}
+
 			StringBuilder builder = new StringBuilder();
-			for (index++; index < json.Length; index++)
+			for (int index = quoteIndex + 1; index < json.Length; index++)
 			{
 				char character = json[index];
 				if (character == '"')
 				{
 					value = builder.ToString();
+					nextIndex = index + 1;
 					return true;
 				}
 
@@ -470,9 +599,52 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return false;
 		}
 
+		private static PerfMeterOverlayPreset ParseOverlayPreset(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterOverlayPreset preset) && Enum.IsDefined(typeof(PerfMeterOverlayPreset), preset))
+			{
+				return preset;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument preset must be Custom, Minimal, Timing, Rendering, Memory, Overdraw, FullDiagnostics, or AgentDebug");
+		}
+
+		private static PerfMeterOverlayModule ParseOverlayModules(string[] values)
+		{
+			if (values == null || values.Length == 0)
+			{
+				return PerfMeterOverlayModule.None;
+			}
+
+			PerfMeterOverlayModule modules = PerfMeterOverlayModule.None;
+			for (int i = 0; i < values.Length; i++)
+			{
+				modules |= ParseOverlayModule(values[i]);
+			}
+
+			return modules;
+		}
+
+		private static PerfMeterOverlayModule ParseOverlayModule(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterOverlayModule module) && (module & ~PerfMeterOverlayModule.All) == 0)
+			{
+				return module;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument modules must contain only None, All, Fps, Timing, Graphs, Rendering, SrpBatcher, Brg, Uploads, Memory, Gc, GpuMemory, Overdraw, Heatmap, or Warnings");
+		}
+
+		private static string NormalizeEnumToken(string value)
+		{
+			return (value ?? string.Empty).Replace("_", string.Empty).Replace("-", string.Empty).Replace(" ", string.Empty).Trim();
+		}
+
 		private static PerfMeterOverlayCorner ParseOverlayCorner(string value)
 		{
-			string normalized = (value ?? string.Empty).Replace("_", string.Empty).Replace("-", string.Empty).Trim();
+			string normalized = NormalizeEnumToken(value);
 			if (string.Equals(normalized, "TopLeft", StringComparison.OrdinalIgnoreCase))
 			{
 				return PerfMeterOverlayCorner.TopLeft;
@@ -498,7 +670,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		private static PerfMeterOverlayMode ParseOverlayMode(string value)
 		{
-			string normalized = (value ?? string.Empty).Replace("_", string.Empty).Replace("-", string.Empty).Trim();
+			string normalized = NormalizeEnumToken(value);
 			if (string.Equals(normalized, "FpsOnly", StringComparison.OrdinalIgnoreCase))
 			{
 				return PerfMeterOverlayMode.FpsOnly;
@@ -547,7 +719,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		private static PerfMeterCameraSource ParseCameraSource(string value)
 		{
-			string normalized = (value ?? string.Empty).Replace("_", string.Empty).Replace("-", string.Empty).Trim();
+			string normalized = NormalizeEnumToken(value);
 			if (string.Equals(normalized, "Auto", StringComparison.OrdinalIgnoreCase))
 			{
 				return PerfMeterCameraSource.Auto;

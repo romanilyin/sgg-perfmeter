@@ -82,5 +82,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CameraSnapshot"));
 			Assert.That(metadata, Does.Contain("\"camera_name_filter\""));
 		}
+
+		[Test]
+		public void OverlaySetMcpCommandAppliesPresetAndModules()
+		{
+			string json = PerfMeterMcpCommands.OverlaySet("{\"visible\":true,\"preset\":\"Timing\",\"modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\"],\"target_fps\":30}");
+
+			Assert.That(json, Does.Contain("\"overlay_preset\":\"Timing\""));
+			Assert.That(json, Does.Contain("\"overlay_modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\"]"));
+			Assert.That(json, Does.Contain("\"target_fps\":30"));
+			Assert.That(PerformanceMeter.GetStatus().OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Timing));
+			Assert.That((PerformanceMeter.GetStatus().OverlayModules & PerfMeterOverlayModule.Graphs) == PerfMeterOverlayModule.Graphs, Is.True);
+		}
+
+		[Test]
+		public void OverlaySetMcpCommandMetadataIncludesPresetAndModules()
+		{
+			string metadata = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json").text;
+
+			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.overlay.set\""));
+			Assert.That(metadata, Does.Contain("\"preset\""));
+			Assert.That(metadata, Does.Contain("\"modules\""));
+			Assert.That(metadata, Does.Contain("\"AgentDebug\""));
+		}
 	}
 }

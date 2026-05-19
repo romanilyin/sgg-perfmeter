@@ -62,6 +62,7 @@ namespace SGG.PerfMeter
 		private string _heldWarning = string.Empty;
 		private PerfMeterOverlayCorner _corner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _mode = PerfMeterOverlayMode.Full;
+		private PerfMeterOverlayModule _modules = PerfMeterOverlayModule.All;
 		private bool _isVisible = true;
 
 		internal bool IsVisible => _isVisible && isActiveAndEnabled;
@@ -138,6 +139,23 @@ namespace SGG.PerfMeter
 			}
 
 			_mode = mode;
+			ApplyModeLayout();
+
+			if (_isVisible)
+			{
+				RefreshText(force: true);
+			}
+		}
+
+		internal void SetModules(PerfMeterOverlayModule modules)
+		{
+			PerfMeterOverlayModule normalized = modules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : modules;
+			if (_modules == normalized)
+			{
+				return;
+			}
+
+			_modules = normalized;
 			ApplyModeLayout();
 
 			if (_isVisible)
@@ -430,7 +448,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			bool showGraphs = _mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full;
+			bool showGraphs = (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
 
 			float containerWidth = showGraphs ? GraphBlockWidth : TextBlockWidth;
@@ -549,7 +567,10 @@ namespace SGG.PerfMeter
 			string warning = ResolveDisplayWarning(status.Warning);
 			_history.AddSample(metrics, status);
 
-			UpdateGraphs(status, metrics);
+			if (HasModule(PerfMeterOverlayModule.Graphs))
+			{
+				UpdateGraphs(status, metrics);
+			}
 
 			_builder.Length = 0;
 			switch (_mode)
@@ -614,10 +635,19 @@ namespace SGG.PerfMeter
 
 		private void BuildFpsOnlyText(PerfMeterMetricsSnapshot metrics, string warning)
 		{
-			AppendFpsSummary(metrics);
-			if (!string.IsNullOrEmpty(warning))
+			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
-				_builder.Append(" | Warn");
+				AppendFpsSummary(metrics);
+			}
+
+			if (!string.IsNullOrEmpty(warning) && HasModule(PerfMeterOverlayModule.Warnings))
+			{
+				if (_builder.Length > 0)
+				{
+					_builder.Append(" | ");
+				}
+
+				_builder.Append("Warn");
 			}
 		}
 
@@ -628,15 +658,42 @@ namespace SGG.PerfMeter
 			_builder.Append(" / ");
 			_builder.Append(metrics.Bottleneck.ToString());
 			_builder.Append('\n');
-			AppendFpsLine(metrics);
-			AppendTimingLineWithRanges(metrics);
-			AppendIntPairWithRanges("Draw/SetPass", metrics.DrawCalls, _history.DrawCalls, HasCounter(status, PerfMeterCounterAvailability.DrawCalls), metrics.SetPassCalls, _history.SetPassCalls, HasCounter(status, PerfMeterCounterAvailability.SetPassCalls));
-			AppendIntPairWithRanges("Batches/Verts", metrics.Batches, _history.Batches, HasCounter(status, PerfMeterCounterAvailability.Batches), metrics.Vertices, _history.Vertices, HasCounter(status, PerfMeterCounterAvailability.Vertices));
-			AppendLine("SRP/BRG", FormatIntWithRange(metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances)) + " / " + FormatIntWithRange(metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls)) + ":" + FormatIntWithRange(metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances)));
-			AppendOverdraw(status, metrics);
-			AppendMemoryPairWithRanges("Mem/GPU", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory), metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
-			AppendGpuValidity(metrics);
-			AppendWarning(warning, 120);
+			if (HasModule(PerfMeterOverlayModule.Fps))
+			{
+				AppendFpsLine(metrics);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Timing))
+			{
+				AppendTimingLineWithRanges(metrics);
+				AppendGpuValidity(metrics);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Rendering))
+			{
+				AppendIntPairWithRanges("Draw/SetPass", metrics.DrawCalls, _history.DrawCalls, HasCounter(status, PerfMeterCounterAvailability.DrawCalls), metrics.SetPassCalls, _history.SetPassCalls, HasCounter(status, PerfMeterCounterAvailability.SetPassCalls));
+				AppendIntPairWithRanges("Batches/Verts", metrics.Batches, _history.Batches, HasCounter(status, PerfMeterCounterAvailability.Batches), metrics.Vertices, _history.Vertices, HasCounter(status, PerfMeterCounterAvailability.Vertices));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.SrpBatcher) || HasModule(PerfMeterOverlayModule.Brg))
+			{
+				AppendLine("SRP/BRG", FormatIntWithRange(metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances)) + " / " + FormatIntWithRange(metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls)) + ":" + FormatIntWithRange(metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances)));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap))
+			{
+				AppendOverdraw(status, metrics);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Memory) || HasModule(PerfMeterOverlayModule.GpuMemory))
+			{
+				AppendMemoryPairWithRanges("Mem/GPU", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory), metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Warnings))
+			{
+				AppendWarning(warning, 120);
+			}
 		}
 
 		private void BuildGraphsText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
@@ -644,10 +701,21 @@ namespace SGG.PerfMeter
 			_builder.Append("SGG PerfMeter Graphs ");
 			_builder.Append(status.State.ToString());
 			_builder.Append('\n');
-			AppendFpsLine(metrics);
+			if (HasModule(PerfMeterOverlayModule.Fps))
+			{
+				AppendFpsLine(metrics);
+			}
+
 			AppendLine("Bottleneck", metrics.Bottleneck.ToString());
-			AppendGpuValidity(metrics);
-			AppendWarning(warning, 140);
+			if (HasModule(PerfMeterOverlayModule.Timing))
+			{
+				AppendGpuValidity(metrics);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Warnings))
+			{
+				AppendWarning(warning, 140);
+			}
 		}
 
 		private void BuildFullText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
@@ -657,26 +725,69 @@ namespace SGG.PerfMeter
 			_builder.Append(" / ");
 			_builder.Append(metrics.Bottleneck.ToString());
 			_builder.Append('\n');
-			AppendFpsLine(metrics);
-			AppendLine("Spikes", metrics.FrameSpikeCount.ToString(CultureInfo.InvariantCulture) + " / severe " + metrics.SevereFrameSpikeCount.ToString(CultureInfo.InvariantCulture));
-			AppendMsWithRange("CPU Frame", metrics.CpuFrameTimeMs, _history.CpuFrameTimeMs);
-			AppendMsWithRange("CPU Main", metrics.CpuMainThreadFrameTimeMs, _history.CpuMainThreadFrameTimeMs);
-			AppendMsWithRange("CPU Render", metrics.CpuRenderThreadFrameTimeMs, _history.CpuRenderThreadFrameTimeMs);
-			AppendMsWithRange("GPU", GetDisplayGpuFrameTime(metrics), _history.GpuFrameTimeMs, true, metrics.GpuFrameTimeAvailable);
-			AppendMsWithRange("Present Wait", metrics.CpuMainThreadPresentWaitTimeMs, _history.CpuPresentWaitTimeMs);
-			AppendGpuValidity(metrics);
-			AppendIntWithRange("Draw Calls", metrics.DrawCalls, _history.DrawCalls, HasCounter(status, PerfMeterCounterAvailability.DrawCalls));
-			AppendIntWithRange("SetPass", metrics.SetPassCalls, _history.SetPassCalls, HasCounter(status, PerfMeterCounterAvailability.SetPassCalls));
-			AppendIntWithRange("Batches", metrics.Batches, _history.Batches, HasCounter(status, PerfMeterCounterAvailability.Batches));
-			AppendIntWithRange("Vertices", metrics.Vertices, _history.Vertices, HasCounter(status, PerfMeterCounterAvailability.Vertices));
-			AppendIntWithRange("SRP Instances", metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances));
-			AppendIntPairWithRanges("BRG Draw/Inst", metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls), metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances));
-			AppendMemoryWithRange("Index Upload", metrics.IndexBufferUploadInFrameBytes, _history.IndexUploadBytes, HasCounter(status, PerfMeterCounterAvailability.IndexBufferUploadInFrameBytes));
-			AppendOverdraw(status, metrics);
-			AppendMemoryWithRange("Memory", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory));
-			AppendMemoryWithRange("GC Reserved", metrics.GcReservedMemoryBytes, _history.GcReservedMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GcReservedMemory));
-			AppendMemoryWithRange("GPU Memory", metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
-			AppendWarning(warning, 180);
+			if (HasModule(PerfMeterOverlayModule.Fps))
+			{
+				AppendFpsLine(metrics);
+				AppendLine("Spikes", metrics.FrameSpikeCount.ToString(CultureInfo.InvariantCulture) + " / severe " + metrics.SevereFrameSpikeCount.ToString(CultureInfo.InvariantCulture));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Timing))
+			{
+				AppendMsWithRange("CPU Frame", metrics.CpuFrameTimeMs, _history.CpuFrameTimeMs);
+				AppendMsWithRange("CPU Main", metrics.CpuMainThreadFrameTimeMs, _history.CpuMainThreadFrameTimeMs);
+				AppendMsWithRange("CPU Render", metrics.CpuRenderThreadFrameTimeMs, _history.CpuRenderThreadFrameTimeMs);
+				AppendMsWithRange("GPU", GetDisplayGpuFrameTime(metrics), _history.GpuFrameTimeMs, true, metrics.GpuFrameTimeAvailable);
+				AppendMsWithRange("Present Wait", metrics.CpuMainThreadPresentWaitTimeMs, _history.CpuPresentWaitTimeMs);
+				AppendGpuValidity(metrics);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Rendering))
+			{
+				AppendIntWithRange("Draw Calls", metrics.DrawCalls, _history.DrawCalls, HasCounter(status, PerfMeterCounterAvailability.DrawCalls));
+				AppendIntWithRange("SetPass", metrics.SetPassCalls, _history.SetPassCalls, HasCounter(status, PerfMeterCounterAvailability.SetPassCalls));
+				AppendIntWithRange("Batches", metrics.Batches, _history.Batches, HasCounter(status, PerfMeterCounterAvailability.Batches));
+				AppendIntWithRange("Vertices", metrics.Vertices, _history.Vertices, HasCounter(status, PerfMeterCounterAvailability.Vertices));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.SrpBatcher))
+			{
+				AppendIntWithRange("SRP Instances", metrics.SrpBatcherInstances, _history.SrpBatcherInstances, HasCounter(status, PerfMeterCounterAvailability.SrpBatcherInstances));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Brg))
+			{
+				AppendIntPairWithRanges("BRG Draw/Inst", metrics.BrgDrawCalls, _history.BrgDrawCalls, HasCounter(status, PerfMeterCounterAvailability.BrgDrawCalls), metrics.BrgInstances, _history.BrgInstances, HasCounter(status, PerfMeterCounterAvailability.BrgInstances));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Uploads))
+			{
+				AppendMemoryWithRange("Index Upload", metrics.IndexBufferUploadInFrameBytes, _history.IndexUploadBytes, HasCounter(status, PerfMeterCounterAvailability.IndexBufferUploadInFrameBytes));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap))
+			{
+				AppendOverdraw(status, metrics);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Memory))
+			{
+				AppendMemoryWithRange("Memory", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Gc))
+			{
+				AppendMemoryWithRange("GC Reserved", metrics.GcReservedMemoryBytes, _history.GcReservedMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GcReservedMemory));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.GpuMemory))
+			{
+				AppendMemoryWithRange("GPU Memory", metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Warnings))
+			{
+				AppendWarning(warning, 180);
+			}
 		}
 
 		private string ResolveDisplayWarning(string warning)
@@ -913,6 +1024,11 @@ namespace SGG.PerfMeter
 		private static bool HasCounter(PerfMeterStatusSnapshot status, PerfMeterCounterAvailability counter)
 		{
 			return (status.AvailableCounters & counter) != 0;
+		}
+
+		private bool HasModule(PerfMeterOverlayModule module)
+		{
+			return (_modules & module) != 0;
 		}
 
 		private static string FormatLegend(string name, PerfMeterSeriesStats stats, double scaleMs, bool currentAvailable = true)

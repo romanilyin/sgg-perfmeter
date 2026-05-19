@@ -13,7 +13,7 @@ Current package version: `2026.5.18-1`. This is a private release candidate; the
 - Camera snapshot: `PerformanceMeter.GetCameraSnapshot(...)` or `PerformanceMeter.TryGetCameraSnapshot(out PerfMeterCameraSnapshot snapshot, ...)` returns camera position, orientation, and parameters for reproducible performance captures.
 - Settings: `PerformanceMeter.GetSettings()` returns the zero-code JSON settings snapshot or safe defaults when the JSON file is missing.
 - Lifecycle: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`
-- Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `TargetFps`
+- Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset preset)`, `PerformanceMeter.SetOverlayModules(PerfMeterOverlayModule modules)`, `PerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.OverlayPreset`, `PerformanceMeter.OverlayModules`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `OverlayPreset` / `OverlayModules` / `TargetFps`
 - Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)`, `PerformanceMeter.CancelOverdrawMeasurement()`, `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)`, and `PerformanceMeter.IsOverdrawHeatmapVisible`
 
 Queries are safe before the runtime is started: normal reads return a snapshot with `State = Stopped` and should not throw exceptions.
@@ -24,7 +24,7 @@ Open `SGG/Perfmeter/Setup` to prepare the project without editing URP renderer a
 
 - `Project Settings` shows `Frame Timing Stats` status and can enable the Player Setting with `Enable Frame Timing`.
 - `URP Renderer Features` lists active Graphics/Quality URP renderer assets first, then renderer assets discovered under `Assets`, with installed/missing/not-editable status; it can add `PerfMeterRenderGraphFeature` to all editable missing renderers or only selected renderers without creating duplicates.
-- The `Presets` tab creates and edits project-owned JSON settings at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; runtime loads it with `Resources.Load<TextAsset>("SGG.PerfMeter/perfmeter-settings")`. `ScriptableObject` settings are intentionally not used.
+- The `Presets` tab creates and edits project-owned JSON settings at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; runtime loads it with `Resources.Load<TextAsset>("SGG.PerfMeter/perfmeter-settings")`. `ScriptableObject` settings are intentionally not used. The tab also chooses the active overlay preset (`Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, `Custom`) and saves selected overlay modules into JSON.
 - Zero-code setup is driven by this JSON: when `enabled` and `autoStart` are enabled, runtime auto-start applies overlay visible/corner/mode/target FPS without handwritten bootstrap code.
 - `Initialization Code` shows the runtime overlay bootstrap; `Overlay Visible`, `Target FPS`, `Overlay Corner`, and `Overlay Mode` options immediately update the code copied by `Copy Init Code`.
 - The `Runtime` tab is for Play Mode: buttons are disabled in Edit Mode, and in Play Mode they switch target FPS, overlay mode/corner, show or hide the overlay, start a short overdraw measurement, and toggle the overdraw heatmap.
@@ -86,6 +86,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - Layout is absolute with `PickingMode.Ignore`, so it does not intercept game input; in graph modes the overlay is split into a wider graph block on top and a narrower text block below.
 - The overlay defaults to the top-right corner (`TopRight`) and `Full` mode; available corners are `TopLeft`, `TopRight`, `BottomLeft`, and `BottomRight`.
 - Modes: `FpsOnly` shows one FPS/1%/0.1% line, `TextCompact` shows a compact text summary, `Graphs` shows FPS plus CPU/GPU graphs, and `Full` adds render/memory/overdraw counters.
+- Presets group a display mode and module flags: `Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, and `Custom`. Module flags (`Fps`, `Timing`, `Graphs`, `Rendering`, `SrpBatcher`, `Brg`, `Uploads`, `Memory`, `Gc`, `GpuMemory`, `Overdraw`, `Heatmap`, `Warnings`) filter overlay rows and hide the graph block when `Graphs` is disabled.
 - The label is refreshed at most 4 times per second from the latest runtime snapshots, not every frame.
 - Full zero-allocation overlay refresh is backlog work: split the text block into stable field labels, cache enum strings, use custom numeric formatting into reusable buffers, and update only changed labels instead of rebuilding text with `StringBuilder`.
 - Graphs are drawn through UI Toolkit `generateVisualContent`; the CPU graph uses stacked areas for `render`, `main`, and the remainder up to `frame`, while `frame` is drawn as the upper boundary without summing `frame + main + render`.
@@ -131,6 +132,7 @@ Overdraw measurement is opt-in and bounded. Call `PerformanceMeter.RequestOverdr
 using SGG.PerfMeter;
 
 PerformanceMeter.EnsureRunning();
+PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.FullDiagnostics);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
 PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);

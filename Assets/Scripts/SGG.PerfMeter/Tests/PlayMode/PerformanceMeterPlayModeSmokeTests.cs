@@ -26,6 +26,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		public IEnumerator OverlayLifecycleAndSnapshotsUpdateAcrossFrames()
 		{
 			PerformanceMeter.EnsureRunning();
+			PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.Memory);
 			PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft);
 			PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact);
 			PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps30);
@@ -49,6 +50,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(status.OverlayVisible, Is.True);
 			Assert.That(status.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
+			Assert.That(status.OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Memory));
+			Assert.That((status.OverlayModules & PerfMeterOverlayModule.Memory) == PerfMeterOverlayModule.Memory, Is.True);
+			Assert.That((status.OverlayModules & PerfMeterOverlayModule.Overdraw) == 0, Is.True);
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps30));
 			Assert.That(status.OverdrawHeatmapVisible, Is.True);
 			Assert.That(metrics.FrameBudgetMs, Is.EqualTo(1000d / 30d).Within(0.001d));

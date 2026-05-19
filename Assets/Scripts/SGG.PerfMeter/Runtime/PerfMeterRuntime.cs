@@ -17,6 +17,8 @@ namespace SGG.PerfMeter
 		private string _lastCollectorWarning = string.Empty;
 		private PerfMeterOverlayCorner _overlayCorner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _overlayMode = PerfMeterOverlayMode.Full;
+		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
+		private PerfMeterOverlayModule _overlayModules = PerfMeterOverlayModule.All;
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
 		private bool _overlayRequestedVisible = true;
 		private bool _overdrawHeatmapVisible;
@@ -27,6 +29,8 @@ namespace SGG.PerfMeter
 		internal bool IsOverlayVisible => _overlay != null && _overlay.IsVisible;
 		internal PerfMeterOverlayCorner OverlayCorner => _overlayCorner;
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
+		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
+		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
@@ -130,7 +134,9 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
-				_targetFps);
+				_targetFps,
+				_overlayPreset,
+				_overlayModules);
 		}
 
 		internal void RequestOverdrawMeasurement(int frameCount)
@@ -244,6 +250,48 @@ namespace SGG.PerfMeter
 			RefreshStatusOverlayState();
 		}
 
+		internal void SetOverlayPreset(PerfMeterOverlayPreset preset)
+		{
+			_overlayPreset = NormalizeOverlayPreset(preset);
+			_overlayModules = PerfMeterSettingsStore.GetPresetModules(_overlayPreset);
+			_overlayMode = PerfMeterSettingsStore.GetPresetMode(_overlayPreset);
+			EnsureOverlayState();
+
+			if (_overlay != null)
+			{
+				_overlay.SetMode(_overlayMode);
+				_overlay.SetModules(_overlayModules);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetOverlayModules(PerfMeterOverlayModule modules)
+		{
+			_overlayModules = NormalizeOverlayModules(modules, _overlayPreset);
+			EnsureOverlayState();
+
+			if (_overlay != null)
+			{
+				_overlay.SetModules(_overlayModules);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)
+		{
+			PerfMeterOverlayModule normalizedModule = module & PerfMeterOverlayModule.All;
+			if (normalizedModule == PerfMeterOverlayModule.None)
+			{
+				return;
+			}
+
+			_overlayPreset = PerfMeterOverlayPreset.Custom;
+			_overlayModules = visible ? _overlayModules | normalizedModule : _overlayModules & ~normalizedModule;
+			SetOverlayModules(_overlayModules);
+		}
+
 		internal void SetTargetFps(PerfMeterTargetFps targetFps)
 		{
 			_targetFps = NormalizeTargetFps(targetFps);
@@ -304,7 +352,9 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
-				_targetFps);
+				_targetFps,
+				_overlayPreset,
+				_overlayModules);
 
 			_latestMetrics = new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -351,7 +401,9 @@ namespace SGG.PerfMeter
 				false,
 				PerfMeterOverlayCorner.TopRight,
 				PerfMeterOverlayMode.Full,
-				PerfMeterTargetFps.Fps60);
+				PerfMeterTargetFps.Fps60,
+				PerfMeterOverlayPreset.FullDiagnostics,
+				PerfMeterOverlayModule.All);
 		}
 
 		private static PerfMeterStatusSnapshot CreateStatus(
@@ -370,7 +422,9 @@ namespace SGG.PerfMeter
 			bool overdrawHeatmapVisible = false,
 			PerfMeterOverlayCorner overlayCorner = PerfMeterOverlayCorner.TopRight,
 			PerfMeterOverlayMode overlayMode = PerfMeterOverlayMode.Full,
-			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60)
+			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60,
+			PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics,
+			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.All)
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -391,7 +445,9 @@ namespace SGG.PerfMeter
 				overdrawHeatmapVisible,
 				overlayCorner,
 				overlayMode,
-				NormalizeTargetFps(targetFps));
+				NormalizeTargetFps(targetFps),
+				NormalizeOverlayPreset(overlayPreset),
+				NormalizeOverlayModules(overlayModules, NormalizeOverlayPreset(overlayPreset)));
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -517,6 +573,7 @@ namespace SGG.PerfMeter
 
 			_overlay.SetCorner(_overlayCorner);
 			_overlay.SetMode(_overlayMode);
+			_overlay.SetModules(_overlayModules);
 			_overlay.SetTargetFps(_targetFps);
 			_overlay.SetVisible(_overlayRequestedVisible);
 			RefreshStatusOverlayState();
@@ -540,7 +597,33 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
-				_targetFps);
+				_targetFps,
+				_overlayPreset,
+				_overlayModules);
+		}
+
+		private static PerfMeterOverlayPreset NormalizeOverlayPreset(PerfMeterOverlayPreset preset)
+		{
+			switch (preset)
+			{
+				case PerfMeterOverlayPreset.Custom:
+				case PerfMeterOverlayPreset.Minimal:
+				case PerfMeterOverlayPreset.Timing:
+				case PerfMeterOverlayPreset.Rendering:
+				case PerfMeterOverlayPreset.Memory:
+				case PerfMeterOverlayPreset.Overdraw:
+				case PerfMeterOverlayPreset.FullDiagnostics:
+				case PerfMeterOverlayPreset.AgentDebug:
+					return preset;
+				default:
+					return PerfMeterOverlayPreset.FullDiagnostics;
+			}
+		}
+
+		private static PerfMeterOverlayModule NormalizeOverlayModules(PerfMeterOverlayModule modules, PerfMeterOverlayPreset preset)
+		{
+			PerfMeterOverlayModule normalized = modules & PerfMeterOverlayModule.All;
+			return normalized == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(preset) : normalized;
 		}
 
 		private static PerfMeterTargetFps NormalizeTargetFps(PerfMeterTargetFps targetFps)
