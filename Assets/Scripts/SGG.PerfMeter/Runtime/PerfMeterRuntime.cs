@@ -11,6 +11,7 @@ namespace SGG.PerfMeter
 		private readonly PerfMeterCollector _collector = new PerfMeterCollector();
 		private readonly PerfMeterFrameStatsSampler _frameStatsSampler = new PerfMeterFrameStatsSampler();
 		private readonly PerfMeterOverdrawController _overdrawController = new PerfMeterOverdrawController();
+		private readonly PerfMeterSessionRecorder _sessionRecorder = new PerfMeterSessionRecorder();
 		private PerfMeterStatusSnapshot _status;
 		private PerfMeterMetricsSnapshot _latestMetrics;
 		private PerfMeterOverlay _overlay;
@@ -32,6 +33,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
+		internal bool IsSessionRecording => _sessionRecorder.IsRecording;
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
 		internal static PerfMeterOverdrawMeasurementState OverdrawState => _instance != null ? _instance._overdrawController.State : PerfMeterOverdrawMeasurementState.Off;
@@ -67,6 +69,7 @@ namespace SGG.PerfMeter
 			runtime._collector.Stop();
 			runtime._frameStatsSampler.Reset();
 			runtime._overdrawController.Reset();
+			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
 			runtime._overdrawHeatmapVisible = false;
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
@@ -116,6 +119,7 @@ namespace SGG.PerfMeter
 			_latestMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning);
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
+			_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble);
 			_lastCollectorWarning = warning;
 			warning = CombineWarnings(warning, _overdrawController.Warning);
 			_status = CreateStatus(
@@ -136,7 +140,37 @@ namespace SGG.PerfMeter
 				_overlayMode,
 				_targetFps,
 				_overlayPreset,
-				_overlayModules);
+				_overlayModules,
+				_sessionRecorder.State,
+				_sessionRecorder.IsRecording,
+				_sessionRecorder.SampleCount,
+				_sessionRecorder.DroppedSampleCount);
+		}
+
+		internal void StartSession(PerfMeterSessionOptions options)
+		{
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
+			PerfMeterSessionOptions normalizedOptions = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(settings);
+			_sessionRecorder.Start(
+				normalizedOptions,
+				PerfMeterDeviceInfoProvider.CreateSnapshot(),
+				PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null),
+				settings,
+				Time.frameCount,
+				Time.realtimeSinceStartupAsDouble,
+				_latestMetrics);
+			RefreshStatusOverlayState();
+		}
+
+		internal void StopSession()
+		{
+			_sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+			RefreshStatusOverlayState();
+		}
+
+		internal PerfMeterSessionSummarySnapshot GetSessionSummary()
+		{
+			return _sessionRecorder.GetSummary();
 		}
 
 		internal void RequestOverdrawMeasurement(int frameCount)
@@ -403,7 +437,11 @@ namespace SGG.PerfMeter
 				PerfMeterOverlayMode.Full,
 				PerfMeterTargetFps.Fps60,
 				PerfMeterOverlayPreset.FullDiagnostics,
-				PerfMeterOverlayModule.All);
+				PerfMeterOverlayModule.All,
+				PerfMeterSessionState.Idle,
+				false,
+				0,
+				0);
 		}
 
 		private static PerfMeterStatusSnapshot CreateStatus(
@@ -424,7 +462,11 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayMode overlayMode = PerfMeterOverlayMode.Full,
 			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60,
 			PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics,
-			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.All)
+			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.All,
+			PerfMeterSessionState sessionState = PerfMeterSessionState.Idle,
+			bool sessionRecording = false,
+			int sessionSampleCount = 0,
+			int sessionDroppedSampleCount = 0)
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -447,7 +489,11 @@ namespace SGG.PerfMeter
 				overlayMode,
 				NormalizeTargetFps(targetFps),
 				NormalizeOverlayPreset(overlayPreset),
-				NormalizeOverlayModules(overlayModules, NormalizeOverlayPreset(overlayPreset)));
+				NormalizeOverlayModules(overlayModules, NormalizeOverlayPreset(overlayPreset)),
+				sessionState,
+				sessionRecording,
+				sessionSampleCount,
+				sessionDroppedSampleCount);
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -599,7 +645,11 @@ namespace SGG.PerfMeter
 				_overlayMode,
 				_targetFps,
 				_overlayPreset,
-				_overlayModules);
+				_overlayModules,
+				_sessionRecorder.State,
+				_sessionRecorder.IsRecording,
+				_sessionRecorder.SampleCount,
+				_sessionRecorder.DroppedSampleCount);
 		}
 
 		private static PerfMeterOverlayPreset NormalizeOverlayPreset(PerfMeterOverlayPreset preset)

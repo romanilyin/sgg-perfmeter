@@ -488,6 +488,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private PerfMeterSetupActionResult SaveSettingsFromControls()
 		{
+			PerfMeterSettingsSnapshot currentSettings = PerfMeterSetupActions.LoadSettings();
 			PerfMeterOverlayPreset activePreset = _settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset
 				? preset
 				: PerfMeterOverlayPreset.FullDiagnostics;
@@ -500,6 +501,9 @@ namespace SGG.PerfMeter.Editor.UI
 				_settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps targetFps ? targetFps : PerfMeterTargetFps.Fps60,
 				activePreset.ToString(),
 				GetSelectedOverlayModules(activePreset),
+				currentSettings.SessionWarmupFrames,
+				currentSettings.SessionSampleIntervalSeconds,
+				currentSettings.SessionMaxSamples,
 				PerfMeterSettingsLoadState.Loaded,
 				string.Empty);
 			return PerfMeterSetupActions.SaveSettings(settings);

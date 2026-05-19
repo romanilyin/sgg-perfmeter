@@ -3,7 +3,7 @@
 ## Current Readiness
 
 - Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`; current private release candidate version is `2026.5.18-1`.
-- Runtime API, device/environment snapshot with monitor names, camera snapshot for reproducible captures, JSON settings for zero-code setup, the `Presets` tab with overlay presets/modules, metrics collection, UI Toolkit overlay with modes, module filtering, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
+- Runtime API, device/environment snapshot with monitor names, camera snapshot for reproducible captures, session recorder core with bounded samples/summary metadata, JSON settings for zero-code setup, the `Presets` tab with overlay presets/modules, metrics collection, UI Toolkit overlay with modes, module filtering, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
 - EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases, overdraw stale-readback safety, and heatmap toggles are covered. Android S23 Vulkan/GLES smoke validation has passed; broader player-build validation is still pending.
 - The package is prepared as a private/internal release candidate for Unity 6000.4 / URP 17 validation; public release remains deferred.
 
@@ -16,6 +16,7 @@
 - `PerformanceMeter.GetDeviceInfo()` / `PerformanceMeter.TryGetDeviceInfo(out PerfMeterDeviceSnapshot deviceInfo)` return an immutable device/environment snapshot with Unity/platform/CPU/GPU/screen/display/monitor info without starting the runtime.
 - `PerformanceMeter.GetCameraSnapshot(...)` / `PerformanceMeter.TryGetCameraSnapshot(...)` return an immutable camera snapshot with transform/projection/clip/pixel rect/target display/URP camera settings without starting the runtime.
 - `PerformanceMeter.GetSettings()` returns the zero-code JSON settings snapshot or safe defaults when the JSON file is missing.
+- `PerformanceMeter.StartSession(...)`, `PerformanceMeter.StopSession()`, `PerformanceMeter.GetSessionSummary()`, and `PerformanceMeter.IsSessionRecording` control the session recorder core with `WarmupFrames`, `SampleIntervalSeconds`, `MaxSamples`, dropped-sample count, and metadata from settings/device/camera snapshots. JSON/CSV export is not implemented yet.
 - `CollectionFrame` identifies the Unity frame where the snapshot was collected; `FrameTimingManager` values can be delayed relative to that frame.
 - `PerfMeterBottleneck.PresentLimited` separates present/VSync/frame pacing waits from balanced frames and CPU/GPU-bound frames.
 - `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset preset)`, `PerformanceMeter.SetOverlayModules(PerfMeterOverlayModule modules)`, `PerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.OverlayPreset`, `PerformanceMeter.OverlayModules`, and `PerformanceMeter.TargetFps` control the runtime overlay, module filtering, and target line.
@@ -41,6 +42,7 @@
 - Overdraw measurement defaults to Game cameras only and can be restricted by camera-name filter in `PerfMeterRenderGraphFeature` settings.
 - Overdraw measurement gates unsupported targets with `OverdrawState.Unsupported`; fragment UAV/storage buffer behavior still needs device validation on limited backends.
 - Render Graph pass/aliasing/merge analytics are not implemented.
+- Session JSON/CSV export and MCP session commands are not implemented yet; this version keeps bounded samples in runtime memory only.
 - The empty overlay marker pass is opt-in diagnostic mode; self-overhead subtraction is still pending.
 - Full zero-allocation overlay refresh is not implemented yet; the current overlay throttles text rebuilds and managed string assignment to the refresh interval.
 - Broader manual device validation is still useful beyond the current Android S23 Vulkan/GLES smoke coverage.

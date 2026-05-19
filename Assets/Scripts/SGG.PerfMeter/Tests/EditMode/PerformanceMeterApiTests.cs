@@ -30,6 +30,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(status.OverdrawHeatmapVisible, Is.False);
+			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Idle));
+			Assert.That(status.IsSessionRecording, Is.False);
 			Assert.That(PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot tryStatus), Is.True);
 			Assert.That(tryStatus.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 		}
@@ -45,6 +47,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(status.Warning, Is.Not.Null);
 			Assert.That(status.Bottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Idle));
 		}
 
 		[Test]
@@ -171,6 +174,77 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(controller.State, Is.EqualTo(PerfMeterOverdrawMeasurementState.Measuring));
 			Assert.That(controller.RecordedFrameCount, Is.EqualTo(0));
 			Assert.That(controller.Progress, Is.EqualTo(0f));
+		}
+
+		[Test]
+		public void SessionApiStartsStopsAndCapturesMetadata()
+		{
+			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
+
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 2));
+
+			Assert.That(PerformanceMeter.IsSessionRecording, Is.True);
+			Assert.That(PerformanceMeter.GetStatus().SessionState, Is.EqualTo(PerfMeterSessionState.Recording));
+			PerfMeterSessionSummarySnapshot recordingSummary = PerformanceMeter.GetSessionSummary();
+			Assert.That(recordingSummary.State, Is.EqualTo(PerfMeterSessionState.Recording));
+			Assert.That(recordingSummary.Options.MaxSamples, Is.EqualTo(2));
+			Assert.That(recordingSummary.Settings.SessionMaxSamples, Is.GreaterThanOrEqualTo(1));
+			Assert.That(recordingSummary.Device.UnityVersion, Is.Not.Empty);
+
+			PerformanceMeter.StopSession();
+
+			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
+			Assert.That(PerformanceMeter.GetStatus().SessionState, Is.EqualTo(PerfMeterSessionState.Stopped));
+			Assert.That(PerformanceMeter.GetSessionSummary().State, Is.EqualTo(PerfMeterSessionState.Stopped));
+		}
+
+		[Test]
+		public void SessionRecorderUsesBoundedSampleStorage()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 2), default, default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+
+			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d);
+			recorder.Update(CreateMetrics(12, 20d, PerfMeterBottleneck.CpuMainThreadBound), 12, 1.02d);
+			recorder.Update(CreateMetrics(13, 25d, PerfMeterBottleneck.PresentLimited), 13, 1.03d);
+
+			PerfMeterSessionSummarySnapshot summary = recorder.GetSummary();
+			Assert.That(summary.SampleCount, Is.EqualTo(2));
+			Assert.That(summary.DroppedSampleCount, Is.EqualTo(1));
+			Assert.That(summary.FirstFrame, Is.EqualTo(11));
+			Assert.That(summary.LastFrame, Is.EqualTo(12));
+			Assert.That(summary.GpuBoundSampleCount, Is.EqualTo(1));
+			Assert.That(summary.CpuMainThreadBoundSampleCount, Is.EqualTo(1));
+			Assert.That(summary.Warning, Does.Contain("buffer is full"));
+			Assert.That(summary.AverageFrameTimeMs, Is.EqualTo(18d).Within(0.001d));
+		}
+
+		private static PerfMeterMetricsSnapshot CreateMetrics(int frame, double frameTimeMs, PerfMeterBottleneck bottleneck)
+		{
+			return new PerfMeterMetricsSnapshot(
+				PerfMeterRuntimeState.Running,
+				PerfMeterAvailability.Available,
+				frame,
+				bottleneck,
+				1000d / 60d,
+				true,
+				frameTimeMs,
+				frameTimeMs * 0.5d,
+				frameTimeMs * 0.25d,
+				0d,
+				frameTimeMs,
+				1,
+				1,
+				1,
+				1,
+				0,
+				0,
+				0L,
+				0L,
+				0L,
+				0L,
+				0d);
 		}
 	}
 }

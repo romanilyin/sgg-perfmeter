@@ -68,6 +68,45 @@ namespace SGG.PerfMeter
 			PerfMeterRuntime.StopRunning();
 		}
 
+		public static bool IsSessionRecording
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null && runtime.IsSessionRecording;
+			}
+		}
+
+		public static void StartSession()
+		{
+			StartSession(PerfMeterSessionOptions.FromSettings(GetSettings()));
+		}
+
+		public static void StartSession(PerfMeterSessionOptions options)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.StartSession(options);
+			}
+		}
+
+		public static void StopSession()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.StopSession();
+			}
+		}
+
+		public static PerfMeterSessionSummarySnapshot GetSessionSummary()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
+		}
+
 		public static void RequestOverdrawMeasurement(int frameCount = 60)
 		{
 			PerfMeterRuntime.EnsureRunning();

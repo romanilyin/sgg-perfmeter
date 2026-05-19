@@ -107,6 +107,31 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator SessionRecorderCollectsBoundedSamplesAcrossFrames()
+		{
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.001f, 2));
+
+			yield return null;
+			yield return null;
+			yield return null;
+
+			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
+			PerfMeterSessionSummarySnapshot recordingSummary = PerformanceMeter.GetSessionSummary();
+			Assert.That(status.IsSessionRecording, Is.True);
+			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Recording));
+			Assert.That(recordingSummary.SampleCount, Is.LessThanOrEqualTo(2));
+			Assert.That(recordingSummary.Options.MaxSamples, Is.EqualTo(2));
+
+			PerformanceMeter.StopSession();
+			yield return null;
+
+			PerfMeterSessionSummarySnapshot stoppedSummary = PerformanceMeter.GetSessionSummary();
+			Assert.That(stoppedSummary.State, Is.EqualTo(PerfMeterSessionState.Stopped));
+			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
+			Assert.That(stoppedSummary.Device.UnityVersion, Is.Not.Empty);
+		}
+
+		[UnityTest]
 		public IEnumerator OverdrawRequestReportsTerminalOrActionableWaitingState()
 		{
 			PerformanceMeter.EnsureRunning();

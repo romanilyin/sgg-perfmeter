@@ -23,6 +23,9 @@ namespace SGG.PerfMeter
 			PerfMeterTargetFps targetFps,
 			string activePreset,
 			PerfMeterOverlayModule overlayModules,
+			int sessionWarmupFrames,
+			float sessionSampleIntervalSeconds,
+			int sessionMaxSamples,
 			PerfMeterSettingsLoadState loadState,
 			string warning)
 		{
@@ -34,6 +37,9 @@ namespace SGG.PerfMeter
 			TargetFps = targetFps;
 			ActivePreset = string.IsNullOrEmpty(activePreset) ? PerfMeterSettingsStore.DefaultPresetId : activePreset;
 			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(PerfMeterSettingsStore.ParseOverlayPreset(ActivePreset)) : overlayModules;
+			SessionWarmupFrames = Mathf.Max(0, sessionWarmupFrames);
+			SessionSampleIntervalSeconds = sessionSampleIntervalSeconds > 0f ? sessionSampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds;
+			SessionMaxSamples = Mathf.Max(1, sessionMaxSamples);
 			LoadState = loadState;
 			Warning = warning ?? string.Empty;
 		}
@@ -46,6 +52,9 @@ namespace SGG.PerfMeter
 		public PerfMeterTargetFps TargetFps { get; }
 		public string ActivePreset { get; }
 		public PerfMeterOverlayModule OverlayModules { get; }
+		public int SessionWarmupFrames { get; }
+		public float SessionSampleIntervalSeconds { get; }
+		public int SessionMaxSamples { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
 	}
@@ -138,6 +147,9 @@ namespace SGG.PerfMeter
 			settings.overlayMode = snapshot.OverlayMode.ToString();
 			settings.targetFps = (int)snapshot.TargetFps;
 			settings.activePreset = string.IsNullOrEmpty(snapshot.ActivePreset) ? DefaultPresetId : snapshot.ActivePreset;
+			settings.session.warmupFrames = snapshot.SessionWarmupFrames;
+			settings.session.sampleIntervalSeconds = snapshot.SessionSampleIntervalSeconds;
+			settings.session.maxSamples = snapshot.SessionMaxSamples;
 			ApplySnapshotToPreset(settings, snapshot);
 			return settings;
 		}
@@ -244,6 +256,9 @@ namespace SGG.PerfMeter
 				targetFps,
 				settings.activePreset,
 				overlayModules,
+				settings.session != null ? settings.session.warmupFrames : 0,
+				settings.session != null ? settings.session.sampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds,
+				settings.session != null ? settings.session.maxSamples : PerfMeterSessionOptions.DefaultMaxSamples,
 				loadState,
 				CombineWarnings(CombineWarnings(warning, normalizeWarning), moduleWarning));
 		}

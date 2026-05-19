@@ -6,6 +6,7 @@
 - Added device/environment snapshots with display layout, monitor names, and `perfmeter.device.info` MCP output.
 - Added camera snapshots with transform/projection/URP camera settings and `perfmeter.camera.snapshot` MCP output.
 - Added JSON-backed overlay presets/modules, module-filtered overlay output, setup-window module toggles, and MCP `overlay_preset` / `overlay_modules` support.
+- Added session recorder core APIs with bounded in-memory samples, session summaries, status fields, and settings/device/camera metadata capture. JSON/CSV export is not included yet.
 
 ## 2026.5.18-1
 

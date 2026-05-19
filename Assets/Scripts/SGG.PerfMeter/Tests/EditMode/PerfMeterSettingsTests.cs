@@ -17,6 +17,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(settings.ActivePreset, Is.EqualTo(PerfMeterSettingsStore.DefaultPresetId));
+			Assert.That(settings.SessionWarmupFrames, Is.EqualTo(0));
+			Assert.That(settings.SessionSampleIntervalSeconds, Is.EqualTo(0.25f).Within(0.001f));
+			Assert.That(settings.SessionMaxSamples, Is.EqualTo(4096));
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 		}
@@ -33,6 +36,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PerfMeterTargetFps.Fps120,
 				"Timing",
 				PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs,
+				3,
+				0.5f,
+				128,
 				PerfMeterSettingsLoadState.Loaded,
 				string.Empty);
 
@@ -46,6 +52,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
 			Assert.That(loaded.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(loaded.ActivePreset, Is.EqualTo("Timing"));
+			Assert.That(loaded.SessionWarmupFrames, Is.EqualTo(3));
+			Assert.That(loaded.SessionSampleIntervalSeconds, Is.EqualTo(0.5f).Within(0.001f));
+			Assert.That(loaded.SessionMaxSamples, Is.EqualTo(128));
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Graphs);
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Timing);
 		}
