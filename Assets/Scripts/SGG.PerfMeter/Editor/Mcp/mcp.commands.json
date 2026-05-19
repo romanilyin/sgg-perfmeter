@@ -122,7 +122,7 @@
     {
       "id": "perfmeter.metrics.latest",
       "title": "PerfMeter latest metrics",
-      "description": "Read the latest SGG PerfMeter metrics snapshot.",
+      "description": "Read the latest SGG PerfMeter metrics snapshot, including registered custom metrics.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MetricsLatest",
       "risk": "read",
       "idempotency": "safe",

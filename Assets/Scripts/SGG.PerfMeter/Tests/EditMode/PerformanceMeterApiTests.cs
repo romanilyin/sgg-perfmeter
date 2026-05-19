@@ -12,6 +12,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[SetUp]
 		public void SetUp()
 		{
+			PerformanceMeter.ClearCustomMetricProviders();
 			PerformanceMeter.Stop();
 		}
 
@@ -19,6 +20,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerformanceMeter.ClearCustomMetricProviders();
 		}
 
 		[Test]
@@ -272,6 +274,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SessionSamplesCopyDoesNotShareCustomMetricArrays()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 2), default, default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d, new[]
+			{
+				new PerfMeterCustomMetricSnapshot("custom.test", "Custom Test", "tests", "count", 3d)
+			});
+
+			PerfMeterSessionSampleSnapshot[] samples = recorder.GetSamplesCopy();
+			samples[0].CustomMetrics[0] = new PerfMeterCustomMetricSnapshot("mutated", "Mutated", "tests", "count", 99d);
+
+			Assert.That(recorder.GetSamplesCopy()[0].CustomMetrics[0].Id, Is.EqualTo("custom.test"));
+		}
+
+		[Test]
 		public void SessionRecorderHonorsWarmupSecondsAndTracksWorstFrames()
 		{
 			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
@@ -318,7 +337,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
 			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
 			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 2), PerformanceMeter.GetDeviceInfo(), default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
-			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d);
+			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d, new[]
+			{
+				new PerfMeterCustomMetricSnapshot("combat.active_units", "Active Units", "combat", "count", 42d)
+			});
 			recorder.Stop(1.02d);
 
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
@@ -336,9 +358,60 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"current_scene\""));
 			Assert.That(json, Does.Contain("\"worst_frame\""));
 			Assert.That(json, Does.Contain("\"cpu_frame_ms\":16"));
+			Assert.That(json, Does.Contain("\"custom_metric_sample_count\":1"));
+			Assert.That(json, Does.Contain("\"custom_metrics\""));
+			Assert.That(json, Does.Contain("\"id\":\"combat.active_units\""));
+			Assert.That(json, Does.Contain("\"value\":42"));
 			Assert.That(csv, Does.StartWith("frame,time_seconds,scene,bottleneck,cpu_frame_ms"));
 			Assert.That(csv, Does.Contain("GpuBound"));
 			Assert.That(csv, Does.Contain("overdraw_ratio"));
+		}
+
+		[Test]
+		public void CustomMetricProvidersRegisterUnregisterAndCollectSafely()
+		{
+			TestCustomMetricProvider provider = new TestCustomMetricProvider("game.wave", 7d);
+
+			PerformanceMeter.RegisterCustomMetricProvider(provider);
+			PerformanceMeter.RegisterCustomMetricProvider(provider);
+			PerfMeterCustomMetricSnapshot[] metrics = PerformanceMeter.GetCustomMetrics();
+
+			Assert.That(metrics.Length, Is.EqualTo(1));
+			Assert.That(metrics[0].Id, Is.EqualTo("game.wave"));
+			Assert.That(metrics[0].Name, Is.EqualTo("Wave"));
+			Assert.That(metrics[0].Category, Is.EqualTo("gameplay"));
+			Assert.That(metrics[0].Unit, Is.EqualTo("index"));
+			Assert.That(metrics[0].Value, Is.EqualTo(7d));
+
+			PerformanceMeter.UnregisterCustomMetricProvider(provider);
+			Assert.That(PerformanceMeter.GetCustomMetrics(), Is.Empty);
+		}
+
+		[Test]
+		public void CustomMetricProviderExceptionsReturnUnavailableSnapshot()
+		{
+			PerformanceMeter.RegisterCustomMetricProvider(new ThrowingCustomMetricProvider());
+
+			PerfMeterCustomMetricSnapshot[] metrics = null;
+			Assert.DoesNotThrow(() => metrics = PerformanceMeter.GetCustomMetrics());
+
+			Assert.That(metrics, Is.Not.Null);
+			Assert.That(metrics.Length, Is.EqualTo(1));
+			Assert.That(metrics[0].Id, Is.EqualTo("broken.provider"));
+			Assert.That(metrics[0].Available, Is.False);
+			Assert.That(metrics[0].Warning, Does.Contain("InvalidOperationException"));
+		}
+
+		[Test]
+		public void McpLatestMetricsIncludesCustomMetrics()
+		{
+			PerformanceMeter.RegisterCustomMetricProvider(new TestCustomMetricProvider("economy.gold", 123d));
+
+			string json = PerfMeterMcpCommands.MetricsLatest();
+
+			Assert.That(json, Does.Contain("\"custom_metrics\""));
+			Assert.That(json, Does.Contain("\"id\":\"economy.gold\""));
+			Assert.That(json, Does.Contain("\"value\":123"));
 		}
 
 		[Test]
@@ -575,6 +648,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.Fail("Rule not found: " + id);
 			return default;
+		}
+
+		private sealed class TestCustomMetricProvider : IPerfMeterCustomMetricProvider
+		{
+			private readonly string _id;
+			private readonly double _value;
+
+			public TestCustomMetricProvider(string id, double value)
+			{
+				_id = id;
+				_value = value;
+			}
+
+			public string Id => _id;
+
+			public bool TryCollect(out PerfMeterCustomMetricSnapshot metric)
+			{
+				metric = new PerfMeterCustomMetricSnapshot(_id, "Wave", "gameplay", "index", _value);
+				return true;
+			}
+		}
+
+		private sealed class ThrowingCustomMetricProvider : IPerfMeterCustomMetricProvider
+		{
+			public string Id => "broken.provider";
+
+			public bool TryCollect(out PerfMeterCustomMetricSnapshot metric)
+			{
+				metric = default;
+				throw new System.InvalidOperationException("Provider failed.");
+			}
 		}
 	}
 }

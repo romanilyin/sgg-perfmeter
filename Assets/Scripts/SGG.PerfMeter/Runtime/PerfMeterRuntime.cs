@@ -15,6 +15,7 @@ namespace SGG.PerfMeter
 		private PerfMeterAlertEngine _alertEngine = new PerfMeterAlertEngine();
 		private PerfMeterStatusSnapshot _status;
 		private PerfMeterMetricsSnapshot _latestMetrics;
+		private PerfMeterCustomMetricSnapshot[] _latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 		private PerfMeterOverlay _overlay;
 		private string _lastCollectorWarning = string.Empty;
 		private PerfMeterOverlayCorner _overlayCorner = PerfMeterOverlayCorner.TopRight;
@@ -84,6 +85,7 @@ namespace SGG.PerfMeter
 			runtime._overdrawHeatmapVisible = false;
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
+			runtime._latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 			_instance = null;
 
 			if (Application.isPlaying)
@@ -131,7 +133,8 @@ namespace SGG.PerfMeter
 			_latestMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning);
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
-			_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble);
+			_latestCustomMetrics = PerfMeterCustomMetricRegistry.Collect();
+			_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics);
 			_alertEngine.Evaluate(_latestMetrics, Time.realtimeSinceStartupAsDouble);
 			_lastCollectorWarning = warning;
 			warning = CombineWarnings(warning, _overdrawController.Warning);
@@ -236,6 +239,18 @@ namespace SGG.PerfMeter
 		internal PerfMeterSessionSampleSnapshot[] GetSessionSamples()
 		{
 			return _sessionRecorder.GetSamplesCopy();
+		}
+
+		internal PerfMeterCustomMetricSnapshot[] GetLatestCustomMetrics()
+		{
+			if (_latestCustomMetrics.Length == 0)
+			{
+				return PerfMeterCustomMetricRegistry.Collect();
+			}
+
+			PerfMeterCustomMetricSnapshot[] copy = new PerfMeterCustomMetricSnapshot[_latestCustomMetrics.Length];
+			System.Array.Copy(_latestCustomMetrics, copy, _latestCustomMetrics.Length);
+			return copy;
 		}
 
 		internal void RequestOverdrawMeasurement(int frameCount)

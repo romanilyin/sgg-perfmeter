@@ -83,7 +83,7 @@ namespace SGG.PerfMeter
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
-		internal void Update(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds)
+		internal void Update(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricSnapshot[] customMetrics = null)
 		{
 			if (_state != PerfMeterSessionState.Recording)
 			{
@@ -130,7 +130,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			PerfMeterSessionSampleSnapshot sample = new PerfMeterSessionSampleSnapshot(frame, timeSeconds, _lastSceneName, metrics);
+			PerfMeterSessionSampleSnapshot sample = new PerfMeterSessionSampleSnapshot(frame, timeSeconds, _lastSceneName, metrics, CopyCustomMetrics(customMetrics));
 			_samples[_sampleCount] = sample;
 			_sampleCount++;
 			_wholeRunStats.Add(sample, metrics);
@@ -151,7 +151,12 @@ namespace SGG.PerfMeter
 			}
 
 			PerfMeterSessionSampleSnapshot[] copy = new PerfMeterSessionSampleSnapshot[_sampleCount];
-			System.Array.Copy(_samples, copy, _sampleCount);
+			for (int i = 0; i < _sampleCount; i++)
+			{
+				PerfMeterSessionSampleSnapshot sample = _samples[i];
+				copy[i] = new PerfMeterSessionSampleSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, sample.Metrics, CopyCustomMetrics(sample.CustomMetrics));
+			}
+
 			return copy;
 		}
 
@@ -233,6 +238,18 @@ namespace SGG.PerfMeter
 		{
 			Scene scene = SceneManager.GetActiveScene();
 			return string.IsNullOrEmpty(scene.name) ? scene.path : scene.name;
+		}
+
+		private static PerfMeterCustomMetricSnapshot[] CopyCustomMetrics(PerfMeterCustomMetricSnapshot[] customMetrics)
+		{
+			if (customMetrics == null || customMetrics.Length == 0)
+			{
+				return System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+			}
+
+			PerfMeterCustomMetricSnapshot[] copy = new PerfMeterCustomMetricSnapshot[customMetrics.Length];
+			System.Array.Copy(customMetrics, copy, customMetrics.Length);
+			return copy;
 		}
 
 		private struct SessionStats

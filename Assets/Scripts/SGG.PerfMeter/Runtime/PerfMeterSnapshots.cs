@@ -139,6 +139,34 @@ namespace SGG.PerfMeter
 		NotEqual = 5
 	}
 
+	public interface IPerfMeterCustomMetricProvider
+	{
+		string Id { get; }
+		bool TryCollect(out PerfMeterCustomMetricSnapshot metric);
+	}
+
+	public readonly struct PerfMeterCustomMetricSnapshot
+	{
+		public PerfMeterCustomMetricSnapshot(string id, string name, string category, string unit, double value, bool available = true, string warning = "")
+		{
+			Id = id ?? string.Empty;
+			Name = string.IsNullOrEmpty(name) ? Id : name;
+			Category = category ?? string.Empty;
+			Unit = unit ?? string.Empty;
+			Value = value;
+			Available = available;
+			Warning = warning ?? string.Empty;
+		}
+
+		public string Id { get; }
+		public string Name { get; }
+		public string Category { get; }
+		public string Unit { get; }
+		public double Value { get; }
+		public bool Available { get; }
+		public string Warning { get; }
+	}
+
 	[System.Flags]
 	public enum PerfMeterAlertAction
 	{
@@ -371,17 +399,24 @@ namespace SGG.PerfMeter
 	public readonly struct PerfMeterSessionSampleSnapshot
 	{
 		public PerfMeterSessionSampleSnapshot(int collectionFrame, double collectionTimeSeconds, string sceneName, PerfMeterMetricsSnapshot metrics)
+			: this(collectionFrame, collectionTimeSeconds, sceneName, metrics, System.Array.Empty<PerfMeterCustomMetricSnapshot>())
+		{
+		}
+
+		public PerfMeterSessionSampleSnapshot(int collectionFrame, double collectionTimeSeconds, string sceneName, PerfMeterMetricsSnapshot metrics, PerfMeterCustomMetricSnapshot[] customMetrics)
 		{
 			CollectionFrame = collectionFrame;
 			CollectionTimeSeconds = collectionTimeSeconds;
 			SceneName = sceneName ?? string.Empty;
 			Metrics = metrics;
+			CustomMetrics = customMetrics ?? System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 		}
 
 		public int CollectionFrame { get; }
 		public double CollectionTimeSeconds { get; }
 		public string SceneName { get; }
 		public PerfMeterMetricsSnapshot Metrics { get; }
+		public PerfMeterCustomMetricSnapshot[] CustomMetrics { get; }
 	}
 
 	public readonly struct PerfMeterSessionWorstFrameSnapshot

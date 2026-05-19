@@ -9,6 +9,27 @@ namespace SGG.PerfMeter
 	{
 		public static event System.Action<PerfMeterAlertSnapshot> AlertFired;
 
+		public static void RegisterCustomMetricProvider(IPerfMeterCustomMetricProvider provider)
+		{
+			PerfMeterCustomMetricRegistry.Register(provider);
+		}
+
+		public static void UnregisterCustomMetricProvider(IPerfMeterCustomMetricProvider provider)
+		{
+			PerfMeterCustomMetricRegistry.Unregister(provider);
+		}
+
+		public static void ClearCustomMetricProviders()
+		{
+			PerfMeterCustomMetricRegistry.Clear();
+		}
+
+		public static PerfMeterCustomMetricSnapshot[] GetCustomMetrics()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetLatestCustomMetrics() : PerfMeterCustomMetricRegistry.Collect();
+		}
+
 		public static PerfMeterStatusSnapshot GetStatus()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -363,6 +384,119 @@ namespace SGG.PerfMeter
 		internal static void RaiseAlertFired(PerfMeterAlertSnapshot alert)
 		{
 			AlertFired?.Invoke(alert);
+		}
+	}
+
+	internal static class PerfMeterCustomMetricRegistry
+	{
+		private static readonly System.Collections.Generic.List<IPerfMeterCustomMetricProvider> Providers = new System.Collections.Generic.List<IPerfMeterCustomMetricProvider>();
+		private static readonly object SyncRoot = new object();
+		private static IPerfMeterCustomMetricProvider[] _providerSnapshot = System.Array.Empty<IPerfMeterCustomMetricProvider>();
+
+		internal static void Register(IPerfMeterCustomMetricProvider provider)
+		{
+			if (provider == null)
+			{
+				throw new System.ArgumentNullException(nameof(provider));
+			}
+
+			lock (SyncRoot)
+			{
+				if (!Providers.Contains(provider))
+				{
+					Providers.Add(provider);
+					_providerSnapshot = Providers.ToArray();
+				}
+			}
+		}
+
+		internal static void Unregister(IPerfMeterCustomMetricProvider provider)
+		{
+			if (provider == null)
+			{
+				return;
+			}
+
+			lock (SyncRoot)
+			{
+				if (Providers.Remove(provider))
+				{
+					_providerSnapshot = Providers.ToArray();
+				}
+			}
+		}
+
+		internal static void Clear()
+		{
+			lock (SyncRoot)
+			{
+				Providers.Clear();
+				_providerSnapshot = System.Array.Empty<IPerfMeterCustomMetricProvider>();
+			}
+		}
+
+		internal static PerfMeterCustomMetricSnapshot[] Collect()
+		{
+			IPerfMeterCustomMetricProvider[] providers;
+			lock (SyncRoot)
+			{
+				providers = _providerSnapshot;
+				if (providers.Length == 0)
+				{
+					return System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+				}
+			}
+
+			PerfMeterCustomMetricSnapshot[] metrics = new PerfMeterCustomMetricSnapshot[providers.Length];
+			int count = 0;
+			for (int i = 0; i < providers.Length; i++)
+			{
+				IPerfMeterCustomMetricProvider provider = providers[i];
+				string providerId = GetProviderId(provider, i);
+				try
+				{
+					if (provider.TryCollect(out PerfMeterCustomMetricSnapshot metric))
+					{
+						metrics[count] = NormalizeMetric(metric, providerId);
+						count++;
+					}
+				}
+				catch (System.Exception exception)
+				{
+					metrics[count] = new PerfMeterCustomMetricSnapshot(providerId, providerId, "custom", string.Empty, 0d, false, exception.GetType().Name + ": " + exception.Message);
+					count++;
+				}
+			}
+
+			if (count == metrics.Length)
+			{
+				return metrics;
+			}
+
+			PerfMeterCustomMetricSnapshot[] compact = new PerfMeterCustomMetricSnapshot[count];
+			System.Array.Copy(metrics, compact, count);
+			return compact;
+		}
+
+		private static string GetProviderId(IPerfMeterCustomMetricProvider provider, int index)
+		{
+			try
+			{
+				string id = provider.Id;
+				return string.IsNullOrEmpty(id) ? "custom_metric_" + index : id;
+			}
+			catch (System.Exception)
+			{
+				return "custom_metric_" + index;
+			}
+		}
+
+		private static PerfMeterCustomMetricSnapshot NormalizeMetric(PerfMeterCustomMetricSnapshot metric, string providerId)
+		{
+			string id = string.IsNullOrEmpty(metric.Id) ? providerId : metric.Id;
+			string name = string.IsNullOrEmpty(metric.Name) ? id : metric.Name;
+			string category = string.IsNullOrEmpty(metric.Category) ? "custom" : metric.Category;
+			return new PerfMeterCustomMetricSnapshot(id, name, category, metric.Unit, metric.Value, metric.Available, metric.Warning);
 		}
 	}
 }

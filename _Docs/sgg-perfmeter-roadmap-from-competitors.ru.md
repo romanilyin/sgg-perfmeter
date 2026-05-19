@@ -330,7 +330,7 @@ MCP:
 - session sample interval/max samples;
 - overdraw default/max frame count.
 
-### 12. Custom metric providers
+### 12. [Done] Custom metric providers
 
 Опциональная extension point для project-specific counters без форка PerfMeter:
 
@@ -338,11 +338,11 @@ MCP:
 public interface IPerfMeterCustomMetricProvider
 {
     string Id { get; }
-    bool TryCollect(out PerfMeterCustomMetric metric);
+    bool TryCollect(out PerfMeterCustomMetricSnapshot metric);
 }
 ```
 
-Сначала выводить custom metrics в session export и MCP. Overlay support может быть ограниченным.
+Первый проход реализован как export/MCP-first extension point: API регистрации/снятия провайдеров, safe exception handling, `custom_metrics` в session JSON samples и MCP latest metrics output. Overlay support пока не входит в scope.
 
 ## P2: опционально
 
@@ -418,7 +418,7 @@ public interface IPerfMeterCustomMetricProvider
 6. Zero-allocation overlay refresh path и GC Alloc validation checklist/test scene.
 7. `Samples~` workflows и bilingual documentation для bootstrap/settings/session/alerts/overdraw/MCP.
 8. JSON-tunable UI/rule/session settings. `[Done]`
-9. Custom metric providers для export/MCP-first extension point.
+9. Custom metric providers для export/MCP-first extension point. `[Done]`
 
 ## Документация и проверки
 

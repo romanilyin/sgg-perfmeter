@@ -39,6 +39,7 @@ namespace SGG.PerfMeter
 			AppendDevice(builder, summary.Device);
 			builder.Append(",\"camera\":");
 			AppendCamera(builder, summary.Camera);
+			builder.Append(",\"custom_metric_sample_count\":").Append(CountCustomMetricSamples(safeSamples));
 			builder.Append(",\"settings\":");
 			AppendSettings(builder, summary.Settings);
 			builder.Append('}');
@@ -264,6 +265,51 @@ namespace SGG.PerfMeter
 			builder.Append(",\"time_seconds\":").Append(JsonNumber(sample.CollectionTimeSeconds));
 			builder.Append(",\"scene\":").Append(JsonString(sample.SceneName));
 			AppendMetrics(builder, metrics);
+			AppendCustomMetrics(builder, sample.CustomMetrics);
+			builder.Append('}');
+		}
+
+		private static int CountCustomMetricSamples(PerfMeterSessionSampleSnapshot[] samples)
+		{
+			int count = 0;
+			for (int i = 0; i < samples.Length; i++)
+			{
+				if (samples[i].CustomMetrics.Length > 0)
+				{
+					count++;
+				}
+			}
+
+			return count;
+		}
+
+		private static void AppendCustomMetrics(StringBuilder builder, PerfMeterCustomMetricSnapshot[] customMetrics)
+		{
+			PerfMeterCustomMetricSnapshot[] safeMetrics = customMetrics ?? Array.Empty<PerfMeterCustomMetricSnapshot>();
+			builder.Append(",\"custom_metrics\":[");
+			for (int i = 0; i < safeMetrics.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				AppendCustomMetric(builder, safeMetrics[i]);
+			}
+
+			builder.Append(']');
+		}
+
+		private static void AppendCustomMetric(StringBuilder builder, PerfMeterCustomMetricSnapshot metric)
+		{
+			builder.Append('{');
+			builder.Append("\"id\":").Append(JsonString(metric.Id));
+			builder.Append(",\"name\":").Append(JsonString(metric.Name));
+			builder.Append(",\"category\":").Append(JsonString(metric.Category));
+			builder.Append(",\"unit\":").Append(JsonString(metric.Unit));
+			builder.Append(",\"value\":").Append(JsonNumber(metric.Value));
+			builder.Append(",\"available\":").Append(JsonBool(metric.Available));
+			builder.Append(",\"warning\":").Append(JsonString(metric.Warning));
 			builder.Append('}');
 		}
 

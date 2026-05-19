@@ -380,6 +380,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		private static string MetricsJson(PerfMeterMetricsSnapshot metrics)
 		{
+			PerfMeterCustomMetricSnapshot[] customMetrics = RuntimePerformanceMeter.GetCustomMetrics();
 			StringBuilder builder = new StringBuilder(768);
 			builder.Append("{\"state\":").Append(JsonString(metrics.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(metrics.Availability.ToString()));
@@ -413,9 +414,34 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(metrics.OverdrawRatio));
 			builder.Append(",\"overdraw_state\":").Append(JsonString(metrics.OverdrawState.ToString()));
 			builder.Append(",\"overdraw_progress\":").Append(JsonNumber(metrics.OverdrawProgress));
+			AppendCustomMetrics(builder, customMetrics);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static void AppendCustomMetrics(StringBuilder builder, PerfMeterCustomMetricSnapshot[] customMetrics)
+		{
+			builder.Append(",\"custom_metrics\":[");
+			for (int i = 0; i < customMetrics.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				PerfMeterCustomMetricSnapshot metric = customMetrics[i];
+				builder.Append("{\"id\":").Append(JsonString(metric.Id));
+				builder.Append(",\"name\":").Append(JsonString(metric.Name));
+				builder.Append(",\"category\":").Append(JsonString(metric.Category));
+				builder.Append(",\"unit\":").Append(JsonString(metric.Unit));
+				builder.Append(",\"value\":").Append(JsonNumber(metric.Value));
+				builder.Append(",\"available\":").Append(JsonBool(metric.Available));
+				builder.Append(",\"warning\":").Append(JsonString(metric.Warning));
+				builder.Append('}');
+			}
+
+			builder.Append(']');
 		}
 
 		private static void AppendOverlayModules(StringBuilder builder, PerfMeterOverlayModule modules)
