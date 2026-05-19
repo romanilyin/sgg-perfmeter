@@ -1,4 +1,7 @@
+using System.IO;
 using NUnit.Framework;
+using SGG.PerfMeter.Editor.Mcp;
+using UnityEngine;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
@@ -218,6 +221,57 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(summary.CpuMainThreadBoundSampleCount, Is.EqualTo(1));
 			Assert.That(summary.Warning, Does.Contain("buffer is full"));
 			Assert.That(summary.AverageFrameTimeMs, Is.EqualTo(18d).Within(0.001d));
+
+			PerfMeterSessionSampleSnapshot[] samples = recorder.GetSamplesCopy();
+			Assert.That(samples.Length, Is.EqualTo(2));
+			samples[0] = default;
+			Assert.That(recorder.GetSamplesCopy()[0].CollectionFrame, Is.EqualTo(11));
+		}
+
+		[Test]
+		public void SessionExportFormatsJsonAndCsv()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 2), PerformanceMeter.GetDeviceInfo(), default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d);
+			recorder.Stop(1.02d);
+
+			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
+			string json = PerfMeterSessionExporter.BuildJson(recorder.GetSummary(), recorder.GetSamplesCopy(), status);
+			string csv = PerfMeterSessionExporter.BuildCsv(recorder.GetSummary(), recorder.GetSamplesCopy(), status);
+
+			Assert.That(json, Does.Contain("\"package\":\"com.sungeargames.perfmeter\""));
+			Assert.That(json, Does.Contain("\"summary\""));
+			Assert.That(json, Does.Contain("\"metadata\""));
+			Assert.That(json, Does.Contain("\"samples\""));
+			Assert.That(json, Does.Contain("\"cpu_frame_ms\":16"));
+			Assert.That(csv, Does.StartWith("frame,time_seconds,scene,bottleneck,cpu_frame_ms"));
+			Assert.That(csv, Does.Contain("GpuBound"));
+			Assert.That(csv, Does.Contain("overdraw_ratio"));
+		}
+
+		[Test]
+		public void McpSessionCommandsExposeMetadataAndBasicOutput()
+		{
+			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
+			string metadata = File.ReadAllText(metadataPath);
+			Assert.That(metadata, Does.Contain("perfmeter.session.start"));
+			Assert.That(metadata, Does.Contain("perfmeter.session.stop"));
+			Assert.That(metadata, Does.Contain("perfmeter.session.summary"));
+			Assert.That(metadata, Does.Contain("perfmeter.session.export"));
+
+			string startJson = PerfMeterMcpCommands.SessionStart("{\"warmup_frames\":0,\"sample_interval_seconds\":0.01,\"max_samples\":2}");
+			Assert.That(startJson, Does.Contain("\"success\":true"));
+			Assert.That(startJson, Does.Contain("\"status\":\"recording\""));
+			Assert.That(startJson, Does.Contain("\"max_samples\":2"));
+
+			string summaryJson = PerfMeterMcpCommands.SessionSummary();
+			Assert.That(summaryJson, Does.Contain("\"summary\""));
+			Assert.That(summaryJson, Does.Contain("\"state\":\"Recording\""));
+
+			string stopJson = PerfMeterMcpCommands.SessionStop();
+			Assert.That(stopJson, Does.Contain("\"status\":\"stopped\""));
 		}
 
 		private static PerfMeterMetricsSnapshot CreateMetrics(int frame, double frameTimeMs, PerfMeterBottleneck bottleneck)

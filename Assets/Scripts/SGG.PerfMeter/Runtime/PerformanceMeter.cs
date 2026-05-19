@@ -107,6 +107,28 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
 		}
 
+		public static PerfMeterSessionSampleSnapshot[] GetSessionSamples()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+		}
+
+		public static bool ExportSessionJson(string path)
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
+			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+			return PerfMeterSessionExporter.ExportJson(path, summary, samples, GetStatus());
+		}
+
+		public static bool ExportSessionCsv(string path)
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
+			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+			return PerfMeterSessionExporter.ExportCsv(path, summary, samples, GetStatus());
+		}
+
 		public static void RequestOverdrawMeasurement(int frameCount = 60)
 		{
 			PerfMeterRuntime.EnsureRunning();

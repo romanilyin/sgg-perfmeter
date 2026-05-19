@@ -5,7 +5,7 @@
 - Added project-owned JSON settings, a setup-window `Presets` tab, and zero-code runtime auto-start through `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
 - Added device/environment snapshots with display layout, monitor names, and `perfmeter.device.info` MCP output.
 - Added camera snapshots with transform/projection/URP camera settings and `perfmeter.camera.snapshot` MCP output.
-- Added session recorder core APIs with bounded in-memory samples, session summaries, status fields, and settings/device/camera metadata capture. JSON/CSV export is not included yet.
+- Added session recorder APIs with bounded in-memory samples, safe sample-copy access, session summaries, status fields, settings/device/camera metadata capture, JSON/CSV export, and MCP session start/stop/summary/export commands.
 
 ## 2026.5.18-1
 

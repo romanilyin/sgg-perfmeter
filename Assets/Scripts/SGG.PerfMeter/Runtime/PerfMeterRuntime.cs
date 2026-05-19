@@ -173,6 +173,11 @@ namespace SGG.PerfMeter
 			return _sessionRecorder.GetSummary();
 		}
 
+		internal PerfMeterSessionSampleSnapshot[] GetSessionSamples()
+		{
+			return _sessionRecorder.GetSamplesCopy();
+		}
+
 		internal void RequestOverdrawMeasurement(int frameCount)
 		{
 			_overdrawController.RequestMeasurement(frameCount);

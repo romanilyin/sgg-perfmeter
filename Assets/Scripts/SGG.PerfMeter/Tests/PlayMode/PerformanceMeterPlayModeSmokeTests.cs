@@ -1,4 +1,5 @@
 using System.Collections;
+using System.IO;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -129,6 +130,25 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(stoppedSummary.State, Is.EqualTo(PerfMeterSessionState.Stopped));
 			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
 			Assert.That(stoppedSummary.Device.UnityVersion, Is.Not.Empty);
+
+			string jsonPath = Path.Combine(Application.temporaryCachePath, "sgg-perfmeter-session-smoke.json");
+			string csvPath = Path.Combine(Application.temporaryCachePath, "sgg-perfmeter-session-smoke.csv");
+			if (File.Exists(jsonPath))
+			{
+				File.Delete(jsonPath);
+			}
+
+			if (File.Exists(csvPath))
+			{
+				File.Delete(csvPath);
+			}
+
+			Assert.That(PerformanceMeter.ExportSessionJson(jsonPath), Is.True);
+			Assert.That(PerformanceMeter.ExportSessionCsv(csvPath), Is.True);
+			Assert.That(File.Exists(jsonPath), Is.True);
+			Assert.That(File.Exists(csvPath), Is.True);
+			Assert.That(File.ReadAllText(jsonPath), Does.Contain("\"samples\""));
+			Assert.That(File.ReadAllText(csvPath), Does.StartWith("frame,time_seconds,scene,bottleneck"));
 		}
 
 		[UnityTest]

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using SGG.PerfMeter.Editor.Setup;
 using UnityEditor;
@@ -115,6 +116,54 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
+		public static string SessionStart(string argsJson)
+		{
+			PerfMeterSessionOptions settingsOptions = PerfMeterSessionOptions.FromSettings(RuntimePerformanceMeter.GetSettings());
+			int warmupFrames = ExtractInt(argsJson, "warmup_frames", settingsOptions.WarmupFrames);
+			float sampleIntervalSeconds = ExtractFloat(argsJson, "sample_interval_seconds", settingsOptions.SampleIntervalSeconds);
+			int maxSamples = ExtractInt(argsJson, "max_samples", settingsOptions.MaxSamples);
+			RuntimePerformanceMeter.StartSession(new PerfMeterSessionOptions(warmupFrames, sampleIntervalSeconds, maxSamples));
+			return SessionCommandJson(true, string.Empty, string.Empty, "recording", RuntimePerformanceMeter.GetSessionSummary());
+		}
+
+		public static string SessionStop()
+		{
+			RuntimePerformanceMeter.StopSession();
+			return SessionCommandJson(true, string.Empty, string.Empty, "stopped", RuntimePerformanceMeter.GetSessionSummary());
+		}
+
+		public static string SessionSummary()
+		{
+			return SessionCommandJson(true, string.Empty, string.Empty, RuntimePerformanceMeter.GetSessionSummary().State.ToString(), RuntimePerformanceMeter.GetSessionSummary());
+		}
+
+		public static string SessionExport(string argsJson)
+		{
+			string path = RequireString(argsJson, "path");
+			string format = RequireString(argsJson, "format");
+			string safePath = ResolveProjectLocalPath(path);
+			if (File.Exists(safePath))
+			{
+				return SessionCommandJson(false, safePath, "file_exists", "not_exported", RuntimePerformanceMeter.GetSessionSummary());
+			}
+
+			string normalizedFormat = NormalizeEnumToken(format);
+			if (string.Equals(normalizedFormat, "json", StringComparison.OrdinalIgnoreCase))
+			{
+				RuntimePerformanceMeter.ExportSessionJson(safePath);
+			}
+			else if (string.Equals(normalizedFormat, "csv", StringComparison.OrdinalIgnoreCase))
+			{
+				RuntimePerformanceMeter.ExportSessionCsv(safePath);
+			}
+			else
+			{
+				throw new InvalidOperationException("schema_validation_failed\nArgument format must be json or csv");
+			}
+
+			return SessionCommandJson(true, safePath, string.Empty, "exported", RuntimePerformanceMeter.GetSessionSummary());
+		}
+
 		private static string StatusJson(PerfMeterStatusSnapshot status)
 		{
 			StringBuilder builder = new StringBuilder(768);
@@ -141,9 +190,54 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"overdraw_progress\":").Append(JsonNumber(status.OverdrawProgress));
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(status.OverdrawRatio));
 			builder.Append(",\"overdraw_heatmap_visible\":").Append(JsonBool(status.OverdrawHeatmapVisible));
+			builder.Append(",\"session_state\":").Append(JsonString(status.SessionState.ToString()));
+			builder.Append(",\"session_recording\":").Append(JsonBool(status.IsSessionRecording));
+			builder.Append(",\"session_sample_count\":").Append(status.SessionSampleCount);
+			builder.Append(",\"session_dropped_sample_count\":").Append(status.SessionDroppedSampleCount);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static string SessionCommandJson(bool success, string path, string error, string status, PerfMeterSessionSummarySnapshot summary)
+		{
+			StringBuilder builder = new StringBuilder(1024);
+			builder.Append("{\"success\":").Append(JsonBool(success));
+			builder.Append(",\"path\":").Append(JsonString(path));
+			builder.Append(",\"error\":").Append(JsonString(error));
+			builder.Append(",\"status\":").Append(JsonString(status));
+			builder.Append(",\"summary\":");
+			AppendSessionSummary(builder, summary);
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static void AppendSessionSummary(StringBuilder builder, PerfMeterSessionSummarySnapshot summary)
+		{
+			builder.Append('{');
+			builder.Append("\"state\":").Append(JsonString(summary.State.ToString()));
+			builder.Append(",\"sample_count\":").Append(summary.SampleCount);
+			builder.Append(",\"dropped_sample_count\":").Append(summary.DroppedSampleCount);
+			builder.Append(",\"first_frame\":").Append(summary.FirstFrame);
+			builder.Append(",\"last_frame\":").Append(summary.LastFrame);
+			builder.Append(",\"duration_seconds\":").Append(JsonNumber(summary.DurationSeconds));
+			builder.Append(",\"average_frame_time_ms\":").Append(JsonNumber(summary.AverageFrameTimeMs));
+			builder.Append(",\"min_frame_time_ms\":").Append(JsonNumber(summary.MinFrameTimeMs));
+			builder.Append(",\"max_frame_time_ms\":").Append(JsonNumber(summary.MaxFrameTimeMs));
+			builder.Append(",\"average_fps\":").Append(JsonNumber(summary.AverageFps));
+			builder.Append(",\"min_fps\":").Append(JsonNumber(summary.MinFps));
+			builder.Append(",\"max_fps\":").Append(JsonNumber(summary.MaxFps));
+			builder.Append(",\"frame_spike_count\":").Append(summary.FrameSpikeCount);
+			builder.Append(",\"severe_frame_spike_count\":").Append(summary.SevereFrameSpikeCount);
+			builder.Append(",\"warning\":").Append(JsonString(summary.Warning));
+			builder.Append(",\"start_scene_name\":").Append(JsonString(summary.StartSceneName));
+			builder.Append(",\"last_scene_name\":").Append(JsonString(summary.LastSceneName));
+			builder.Append(",\"options\":{");
+			builder.Append("\"warmup_frames\":").Append(summary.Options.WarmupFrames);
+			builder.Append(",\"sample_interval_seconds\":").Append(JsonNumber(summary.Options.SampleIntervalSeconds));
+			builder.Append(",\"max_samples\":").Append(summary.Options.MaxSamples);
+			builder.Append("}}");
 		}
 
 		private static string MetricsJson(PerfMeterMetricsSnapshot metrics)
@@ -418,6 +512,16 @@ namespace SGG.PerfMeter.Editor.Mcp
 			throw new InvalidOperationException("schema_validation_failed\nArgument " + property + " is required");
 		}
 
+		private static string RequireString(string json, string property)
+		{
+			if (TryExtractString(json, property, out string value) && !string.IsNullOrWhiteSpace(value))
+			{
+				return value;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument " + property + " is required");
+		}
+
 		private static bool TryExtractBool(string json, string property, out bool value)
 		{
 			value = false;
@@ -451,6 +555,40 @@ namespace SGG.PerfMeter.Editor.Mcp
 		private static int ExtractInt(string json, string property, int defaultValue)
 		{
 			return TryExtractInt(json, property, out int value) ? value : defaultValue;
+		}
+
+		private static float ExtractFloat(string json, string property, float defaultValue)
+		{
+			return TryExtractFloat(json, property, out float value) ? value : defaultValue;
+		}
+
+		private static bool TryExtractFloat(string json, string property, out float value)
+		{
+			value = 0f;
+			int colon = FindPropertyColon(json, property);
+			if (colon < 0)
+			{
+				return false;
+			}
+
+			int index = IndexOfNextNonWhitespace(json, colon + 1);
+			if (index < 0)
+			{
+				return false;
+			}
+
+			int start = index;
+			if (json[index] == '-')
+			{
+				index++;
+			}
+
+			while (index < json.Length && (char.IsDigit(json[index]) || json[index] == '.'))
+			{
+				index++;
+			}
+
+			return index > start && float.TryParse(json.Substring(start, index - start), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
 		}
 
 		private static bool TryExtractInt(string json, string property, out int value)
@@ -741,6 +879,20 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument source must be Auto, MainCamera, NameFilter, or FirstGameCamera");
+		}
+
+		private static string ResolveProjectLocalPath(string path)
+		{
+			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+			string combinedPath = Path.IsPathRooted(path) ? path : Path.Combine(projectRoot, path);
+			string fullPath = Path.GetFullPath(combinedPath);
+			string normalizedRoot = projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+			if (!fullPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+			{
+				throw new InvalidOperationException("schema_validation_failed\nArgument path must stay inside the Unity project directory");
+			}
+
+			return fullPath;
 		}
 
 		private static int FindPropertyColon(string json, string property)

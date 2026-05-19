@@ -233,6 +233,78 @@
         "required": ["visible"],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "perfmeter.session.start",
+      "title": "Start PerfMeter session recording",
+      "description": "Start bounded SGG PerfMeter session recording with optional warmup, sample interval, and max sample overrides.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SessionStart",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "session"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "warmup_frames": { "type": "integer", "minimum": 0 },
+          "sample_interval_seconds": { "type": "number", "exclusiveMinimum": 0 },
+          "max_samples": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.session.stop",
+      "title": "Stop PerfMeter session recording",
+      "description": "Stop the active SGG PerfMeter session recording and return its summary.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SessionStop",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "session"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.session.summary",
+      "title": "PerfMeter session summary",
+      "description": "Read the current SGG PerfMeter session summary.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SessionSummary",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "session"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.session.export",
+      "title": "Export PerfMeter session",
+      "description": "Export the current SGG PerfMeter session to a project-local JSON or CSV file.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SessionExport",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "session", "export"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "format": { "type": "string", "enum": ["json", "csv"] }
+        },
+        "required": ["path", "format"],
+        "additionalProperties": false
+      }
     }
   ]
 }

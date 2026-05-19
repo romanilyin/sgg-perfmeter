@@ -149,6 +149,18 @@ namespace SGG.PerfMeter
 			return _summary;
 		}
 
+		internal PerfMeterSessionSampleSnapshot[] GetSamplesCopy()
+		{
+			if (_sampleCount == 0)
+			{
+				return System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+			}
+
+			PerfMeterSessionSampleSnapshot[] copy = new PerfMeterSessionSampleSnapshot[_sampleCount];
+			System.Array.Copy(_samples, copy, _sampleCount);
+			return copy;
+		}
+
 		private void AddMetrics(PerfMeterMetricsSnapshot metrics)
 		{
 			double frameTimeMs = metrics.CpuFrameTimeMs > 0d ? metrics.CpuFrameTimeMs : metrics.FrameBudgetMs;
