@@ -415,6 +415,42 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void RenderGraphSnapshotBeforeFeatureRunsIsSafeDefault()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+
+			PerfMeterRenderGraphSnapshot snapshot = default;
+			Assert.DoesNotThrow(() => snapshot = PerformanceMeter.GetRenderGraphSnapshot());
+
+			Assert.That(snapshot.IsAvailable, Is.False);
+			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
+			Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderGraphState.NotObserved));
+			Assert.That(snapshot.LastFrame, Is.EqualTo(-1));
+			Assert.That(snapshot.RegisteredPassCount, Is.EqualTo(PerfMeterRenderGraphSnapshot.UnavailableCount));
+			Assert.That(snapshot.Warning, Does.Contain("not recorded"));
+			Assert.That(PerformanceMeter.TryGetRenderGraphSnapshot(out PerfMeterRenderGraphSnapshot trySnapshot), Is.False);
+			Assert.That(trySnapshot.State, Is.EqualTo(PerfMeterRenderGraphState.NotObserved));
+		}
+
+		[Test]
+		public void McpRenderGraphSnapshotExposesMetadataAndSafeDefault()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
+			string metadata = File.ReadAllText(metadataPath);
+
+			Assert.That(metadata, Does.Contain("perfmeter.rendergraph.snapshot"));
+			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderGraphSnapshot"));
+
+			string json = PerfMeterMcpCommands.RenderGraphSnapshot();
+			Assert.That(json, Does.Contain("\"schema_version\":1"));
+			Assert.That(json, Does.Contain("\"is_available\":false"));
+			Assert.That(json, Does.Contain("\"state\":\"NotObserved\""));
+			Assert.That(json, Does.Contain("\"registered_pass_count\":-1"));
+			Assert.That(json, Does.Contain("\"is_playing\""));
+		}
+
+		[Test]
 		public void AlertEngineCompareCoversSupportedOperators()
 		{
 			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.GreaterThan, 1d), Is.True);

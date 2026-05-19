@@ -2,7 +2,7 @@
 
 Источник: исходное сравнение `_Docs/sgg-perfmeter-competitor-comparison.md` и актуализированный локальный reference от 2026-05-19.
 Дата: 2026-05-19  
-Статус: актуализированный roadmap после iterations 28-31
+Статус: актуализированный roadmap после iteration 43
 
 ## Главный вывод
 
@@ -342,7 +342,7 @@ public interface IPerfMeterCustomMetricProvider
 }
 ```
 
-Первый проход реализован как export/MCP-first extension point: API регистрации/снятия провайдеров, safe exception handling, `custom_metrics` в session JSON samples и MCP latest metrics output. Overlay support пока не входит в scope.
+Первый проход реализован как export/MCP-first extension point: API регистрации/снятия провайдеров, safe exception handling, `custom_metrics` в session JSON samples и MCP latest metrics output. Затем добавлена ограниченная overlay support через модуль `CustomMetrics`: до восьми text rows без превращения overlay в generic dashboard.
 
 ## P2: опционально
 
@@ -350,7 +350,7 @@ public interface IPerfMeterCustomMetricProvider
 - Alternative graph backend, только если UI Toolkit graph cost станет проблемой.
 - Web/server export target только после стабильного file export.
 - CI artifacts integration только после стабильного session export.
-- Render Graph pass/aliasing/merge analytics оставить отдельной архитектурной задачей из `_Docs/perfmeter_theory.md`; это не заимствование у AFPS/Graphy.
+- [Done, spike] Render Graph pass/aliasing/merge analytics: добавлен safe snapshot/API/MCP для наблюдения `PerfMeterRenderGraphFeature` и консервативных reflected counters; если URP internals недоступны, counters возвращаются как degraded `-1` с warning.
 
 ## Что не добавляем
 

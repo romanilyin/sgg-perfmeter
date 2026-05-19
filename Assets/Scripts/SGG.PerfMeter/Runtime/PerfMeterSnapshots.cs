@@ -34,6 +34,13 @@ namespace SGG.PerfMeter
 		Unavailable = 3
 	}
 
+	public enum PerfMeterRenderGraphState
+	{
+		NotObserved = 0,
+		Observed = 1,
+		Unsupported = 2
+	}
+
 	public enum PerfMeterBottleneck
 	{
 		Unknown = 0,
@@ -52,6 +59,67 @@ namespace SGG.PerfMeter
 		Canceled = 3,
 		Error = 4,
 		Unsupported = 5
+	}
+
+	public readonly struct PerfMeterRenderGraphSnapshot
+	{
+		public const int UnavailableCount = -1;
+
+		public PerfMeterRenderGraphSnapshot(
+			PerfMeterAvailability availability,
+			PerfMeterRenderGraphState state,
+			int lastFrame,
+			string observedCameraName,
+			string observedCameraType,
+			int perfMeterPassCount,
+			int registeredPassCount,
+			int mergedPassCount,
+			int transientResourceCount,
+			int importedResourceCount,
+			int aliasedResourceCount,
+			string warning)
+		{
+			Availability = availability;
+			State = state;
+			LastFrame = lastFrame;
+			ObservedCameraName = observedCameraName ?? string.Empty;
+			ObservedCameraType = observedCameraType ?? string.Empty;
+			PerfMeterPassCount = Mathf.Max(0, perfMeterPassCount);
+			RegisteredPassCount = registeredPassCount;
+			MergedPassCount = mergedPassCount;
+			TransientResourceCount = transientResourceCount;
+			ImportedResourceCount = importedResourceCount;
+			AliasedResourceCount = aliasedResourceCount;
+			Warning = warning ?? string.Empty;
+		}
+
+		public static PerfMeterRenderGraphSnapshot NotObserved => new PerfMeterRenderGraphSnapshot(
+			PerfMeterAvailability.Unavailable,
+			PerfMeterRenderGraphState.NotObserved,
+			-1,
+			string.Empty,
+			string.Empty,
+			0,
+			UnavailableCount,
+			UnavailableCount,
+			UnavailableCount,
+			UnavailableCount,
+			UnavailableCount,
+			"PerfMeter Render Graph feature has not recorded a frame yet.");
+
+		public bool IsAvailable => Availability == PerfMeterAvailability.Available;
+		public PerfMeterAvailability Availability { get; }
+		public PerfMeterRenderGraphState State { get; }
+		public int LastFrame { get; }
+		public string ObservedCameraName { get; }
+		public string ObservedCameraType { get; }
+		public int PerfMeterPassCount { get; }
+		public int RegisteredPassCount { get; }
+		public int MergedPassCount { get; }
+		public int TransientResourceCount { get; }
+		public int ImportedResourceCount { get; }
+		public int AliasedResourceCount { get; }
+		public string Warning { get; }
 	}
 
 	public enum PerfMeterOverlayCorner

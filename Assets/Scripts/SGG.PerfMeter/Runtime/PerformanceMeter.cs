@@ -91,6 +91,17 @@ namespace SGG.PerfMeter
 			return cameraSnapshot.IsAvailable;
 		}
 
+		public static PerfMeterRenderGraphSnapshot GetRenderGraphSnapshot()
+		{
+			return PerfMeterRenderGraphAnalytics.GetSnapshot();
+		}
+
+		public static bool TryGetRenderGraphSnapshot(out PerfMeterRenderGraphSnapshot renderGraphSnapshot)
+		{
+			renderGraphSnapshot = GetRenderGraphSnapshot();
+			return renderGraphSnapshot.IsAvailable;
+		}
+
 		public static PerfMeterSettingsSnapshot GetSettings()
 		{
 			return PerfMeterSettingsStore.LoadFromResources();

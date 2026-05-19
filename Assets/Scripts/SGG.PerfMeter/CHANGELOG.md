@@ -14,6 +14,7 @@
 - Added Package Manager samples for bootstrap/zero-code settings, runtime workflows, editor automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
 - Added JSON tunables for overlay scale/opacity/font/refresh/history, alert thresholds/consecutive frames, session defaults, and overdraw default/max frame counts.
 - Added custom metric providers for project-specific counters with session JSON export, MCP latest-metrics output, and bounded overlay rows behind the `CustomMetrics` module.
+- Added a safe Render Graph analytics snapshot API/MCP command that reports the last observed PerfMeter Render Graph feature frame and degraded pass/resource counters when URP internals are unavailable.
 
 ## 2026.5.18-1
 

@@ -206,6 +206,22 @@
       }
     },
     {
+      "id": "perfmeter.rendergraph.snapshot",
+      "title": "PerfMeter Render Graph snapshot",
+      "description": "Read the latest observed SGG PerfMeter URP Render Graph feature diagnostics without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderGraphSnapshot",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "rendergraph", "diagnostics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
       "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, display mode, and target FPS.",

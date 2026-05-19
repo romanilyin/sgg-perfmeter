@@ -95,6 +95,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return CameraSnapshotJson(RuntimePerformanceMeter.GetCameraSnapshot(source, cameraNameFilter));
 		}
 
+		public static string RenderGraphSnapshot()
+		{
+			return RenderGraphSnapshotJson(RuntimePerformanceMeter.GetRenderGraphSnapshot());
+		}
+
 		public static string OverlaySet(string argsJson)
 		{
 			bool visible = RequireBool(argsJson, "visible");
@@ -626,6 +631,28 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"urp_requires_color_option\":").Append(JsonString(camera.UrpRequiresColorOption));
 			builder.Append(",\"urp_requires_depth_texture\":").Append(JsonBool(camera.UrpRequiresDepthTexture));
 			builder.Append(",\"urp_requires_color_texture\":").Append(JsonBool(camera.UrpRequiresColorTexture));
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static string RenderGraphSnapshotJson(PerfMeterRenderGraphSnapshot snapshot)
+		{
+			StringBuilder builder = new StringBuilder(512);
+			builder.Append("{\"schema_version\":1");
+			builder.Append(",\"is_available\":").Append(JsonBool(snapshot.IsAvailable));
+			builder.Append(",\"availability\":").Append(JsonString(snapshot.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(snapshot.State.ToString()));
+			builder.Append(",\"last_frame\":").Append(snapshot.LastFrame);
+			builder.Append(",\"observed_camera_name\":").Append(JsonString(snapshot.ObservedCameraName));
+			builder.Append(",\"observed_camera_type\":").Append(JsonString(snapshot.ObservedCameraType));
+			builder.Append(",\"perfmeter_pass_count\":").Append(snapshot.PerfMeterPassCount);
+			builder.Append(",\"registered_pass_count\":").Append(snapshot.RegisteredPassCount);
+			builder.Append(",\"merged_pass_count\":").Append(snapshot.MergedPassCount);
+			builder.Append(",\"transient_resource_count\":").Append(snapshot.TransientResourceCount);
+			builder.Append(",\"imported_resource_count\":").Append(snapshot.ImportedResourceCount);
+			builder.Append(",\"aliased_resource_count\":").Append(snapshot.AliasedResourceCount);
+			builder.Append(",\"warning\":").Append(JsonString(snapshot.Warning));
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
