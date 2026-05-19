@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "autoStart": true,
+  "collectionMode": "Background",
+  "overlayVisible": false,
+  "overlayCorner": "TopRight",
+  "overlayMode": "TextCompact",
+  "targetFps": 60,
+  "activePreset": "AgentDebug",
+  "presets": [],
+  "ruleDefaults": {
+    "editorWarningCooldownSeconds": 8.0,
+    "structuredLogCooldownSeconds": 2.0,
+    "callbackCooldownSeconds": 0.5
+  },
+  "session": {
+    "warmupFrames": 0,
+    "warmupSeconds": 1.0,
+    "sampleIntervalSeconds": 0.25,
+    "maxSamples": 4096,
+    "resetOnSceneLoad": false,
+    "sceneLoadIgnoreFrames": 2,
+    "sceneLoadIgnoreSeconds": 0.25
+  },
+  "overdraw": {
+    "defaultFrameCount": 60,
+    "maxFrameCount": 600
+  }
+}

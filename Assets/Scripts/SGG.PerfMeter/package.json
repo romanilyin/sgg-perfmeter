@@ -21,5 +21,22 @@
     "name": "SunGearGames",
     "email": "roman.ilyin@gmail.com",
     "url": "https://sungeargames.com"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Bootstrap and Zero-Code Settings",
+      "description": "Minimal runtime bootstrap component plus a Resources JSON settings example.",
+      "path": "Samples~/BootstrapAndSettings"
+    },
+    {
+      "displayName": "Runtime Workflows",
+      "description": "Overlay presets, session export, alert callbacks, overdraw controls, and camera snapshot replay examples.",
+      "path": "Samples~/RuntimeWorkflows"
+    },
+    {
+      "displayName": "Editor and MCP Automation",
+      "description": "Editor setup menu actions and MCP command examples for agent-driven workflows.",
+      "path": "Samples~/EditorAutomation"
+    }
+  ]
 }

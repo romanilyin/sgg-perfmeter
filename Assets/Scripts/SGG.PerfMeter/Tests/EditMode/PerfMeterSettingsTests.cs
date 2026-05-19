@@ -1,4 +1,7 @@
+using System.IO;
 using NUnit.Framework;
+using UnityEditor.PackageManager;
+using UnityEngine;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
@@ -120,9 +123,36 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.Warning, Does.Contain("empty"));
 		}
 
+		[Test]
+		public void PackageJsonDeclaresImportableSamples()
+		{
+			string packageRoot = GetPackageRoot();
+			string packageJsonPath = Path.Combine(packageRoot, "package.json");
+			string packageJson = File.ReadAllText(packageJsonPath);
+
+			AssertSample(packageRoot, packageJson, "Samples~/BootstrapAndSettings", "README.md");
+			AssertSample(packageRoot, packageJson, "Samples~/RuntimeWorkflows", "README.md");
+			AssertSample(packageRoot, packageJson, "Samples~/EditorAutomation", "README.md");
+			Assert.That(File.Exists(Path.Combine(packageRoot, "Samples~/BootstrapAndSettings/Resources/SGG.PerfMeter/perfmeter-settings.json")), Is.True);
+		}
+
 		private static void AssertHasModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)
 		{
 			Assert.That((actual & expected) == expected, Is.True);
+		}
+
+		private static void AssertSample(string packageRoot, string packageJson, string samplePath, string requiredFile)
+		{
+			Assert.That(packageJson, Does.Contain(samplePath));
+			Assert.That(File.Exists(Path.Combine(packageRoot, samplePath, requiredFile)), Is.True);
+		}
+
+		private static string GetPackageRoot()
+		{
+			PackageInfo packageInfo = PackageInfo.FindForAssembly(typeof(PerformanceMeter).Assembly);
+			return packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath)
+				? packageInfo.resolvedPath
+				: Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter");
 		}
 
 		private static void AssertDoesNotHaveModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)

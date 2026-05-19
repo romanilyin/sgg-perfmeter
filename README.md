@@ -23,12 +23,15 @@ Implemented:
 - camera snapshots with transform, projection, clipping, target display, and URP camera settings for reproducible captures;
 - `FrameTimingManager`-based CPU/GPU timing collection;
 - `ProfilerRecorder`-based render, memory, SRP Batcher, BRG/GRD, and upload counters;
-- UI Toolkit overlay with compact, graph, and full modes;
+- UI Toolkit overlay with compact, graph, full modes, and allocation-conscious text field refresh;
 - URP Render Graph renderer feature;
 - bounded numerical overdraw measurement using a hidden replacement shader and `AsyncGPUReadback`;
 - visual overdraw heatmap using an additive replacement shader;
+- session recording with warm-up, reset, scene scope, worst-frame summaries, and JSON/CSV export;
+- rule alerts with callback/log/Editor warning cooldowns;
 - editor setup window with JSON `Presets` and zero-code setup;
-- MCP command definitions for setup, runtime control, metrics, device/environment info, overlay, overdraw measurement, and overdraw heatmap;
+- MCP command definitions for setup, runtime control, metrics, device/environment info, overlay, sessions, alerts, overdraw measurement, and overdraw heatmap;
+- Package Manager samples for bootstrap/settings, runtime workflows, editor automation, MCP commands, session export, alerts, overdraw, and camera replay;
 - English and Russian package documentation;
 - release readiness docs, changelog, security policy, contributing policy, and a manual-only release workflow;
 - edit-mode API safety tests and Play Mode runtime smoke tests.
@@ -37,9 +40,7 @@ Still pending / needs validation:
 
 - broader target-device validation for GPU timings and counter availability;
 - broader Play Mode coverage and player-build tests;
-- CSV/JSON session export;
 - fully validated self-overhead subtraction;
-- full zero-allocation overlay refresh path with field labels, cached enum strings, custom numeric formatting, and no `StringBuilder` text rebuilds;
 - CI workflow for Unity batchmode compile/tests.
 
 ## Requirements
@@ -159,6 +160,14 @@ Debug.Log(PerfMeterSetupActions.RunRecommendedSetup());
 Debug.Log(PerfMeterSetupActions.CreateDefaultSettings());
 Debug.Log(PerfMeterSetupActions.CopyInitializationSnippetToClipboard());
 ```
+
+## Samples
+
+When installed through Package Manager, import the package samples from the package details panel.
+
+- `Bootstrap and Zero-Code Settings`: minimal runtime bootstrap and a Resources JSON settings example.
+- `Runtime Workflows`: overlay preset switching, session export, alert callbacks, overdraw/heatmap controls, and camera snapshot replay.
+- `Editor and MCP Automation`: Editor setup menu actions and MCP command examples for agent-driven profiling.
 
 ## Runtime API
 

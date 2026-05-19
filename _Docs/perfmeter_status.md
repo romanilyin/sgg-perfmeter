@@ -17,6 +17,7 @@
 - `DrawCalls`, `Batches`, BRG draw calls, and BRG instances are aggregates of Unity 6000 component `ProfilerRecorder` counters, not single recorder names.
 - Runtime overlay corner placement is configurable through `PerformanceMeter.SetOverlayCorner(...)`; display mode is configurable through `PerformanceMeter.SetOverlayMode(...)` with `FpsOnly`, `TextCompact`, `Graphs`, and `Full`; JSON-backed overlay presets/modules are configurable through `PerformanceMeter.SetOverlayPreset(...)`, `PerformanceMeter.SetOverlayModules(...)`, and `PerformanceMeter.SetOverlayModuleVisible(...)`; target line budget is configurable through `PerformanceMeter.SetTargetFps(...)` for 15/30/60/90/120/144/240 FPS. Default placement is `TopRight`/`FullDiagnostics`/`Full`/`60 FPS`, with module-filtered stable text fields, cached enum strings, dirty value-label assignment, reusable numeric formatting buffers, stacked CPU graph layout, softer colored graph legends, fixed-width graph numbers, placeholder formatting for unavailable samples/counters, text min/max history, and generated UI Toolkit theme/text settings for reliable runtime text rendering.
 - Runtime settings now support project-owned JSON zero-code setup at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; runtime loads it as `SGG.PerfMeter/perfmeter-settings`, auto-starts only when `enabled` and `autoStart` are true, stores collection mode plus built-in overlay presets/active module lists, and exposes the loaded/default settings through `PerformanceMeter.GetSettings()`.
+- Package Manager samples are declared in `package.json` and live under `Samples~`: bootstrap/zero-code settings, runtime workflows, editor/MCP automation, session export, alerts, overdraw/heatmap, and camera snapshot replay.
 - MCP now includes `perfmeter.device.info` for structured device, graphics, render pipeline, screen, display, and monitor-name diagnostics without starting the runtime.
 - MCP now includes `perfmeter.camera.snapshot` for structured camera transform/projection/URP camera diagnostics without starting the runtime.
 - MCP `perfmeter.overlay.set` now accepts `preset` and `modules`, and runtime status JSON reports `overlay_preset` plus `overlay_modules` for agent-readable overlay configuration.
@@ -26,7 +27,7 @@
 - Editor setup window now also has a `Presets` tab for JSON settings, collection mode, active overlay preset selection, module toggles, and zero-code setup; `ScriptableObject` settings are intentionally not used.
 - `PerfMeterRenderGraphFeature` no longer enqueues an empty overlay marker pass by default; enable `Record Overlay Marker Pass` only for diagnostic/self-overhead measurement. Active overdraw requests and enabled heatmap visibility still enqueue the needed Render Graph passes.
 - Android player smoke validation helpers now exist outside the package: `PerfMeterAndroidBuild.BuildDevelopmentApk` builds a Development APK after recommended setup, accepts `-perfMeterAndroidGraphics vulkan|gles3` and `-perfMeterAndroidApk <path>` overrides, and `PerfMeterAndroidSmokeBootstrap` runs only in Android players to emit `SGG_PERFMETER_SMOKE` logcat markers.
-- Tests include EditMode API/classifier/session/export/MCP/overlay text-cache coverage and PlayMode runtime smoke coverage for overlay lifecycle, snapshot updates, session recording/export, scene scope, heatmap toggles, and overdraw terminal/degraded states.
+- Tests include EditMode API/classifier/session/export/MCP/overlay text-cache/package-samples coverage and PlayMode runtime smoke coverage for overlay lifecycle, snapshot updates, session recording/export, scene scope, heatmap toggles, and overdraw terminal/degraded states.
 - Bottleneck classification now uses main-thread work time after present wait, returns `Unknown` for significant present wait without GPU timing when CPU work is below budget, and picks the dominant CPU/GPU overshoot for mixed overloads.
 - Overdraw measurement and heatmap rendering default to Game cameras only, support an optional camera-name filter, and the numerical path ignores stale `AsyncGPUReadback` callbacks from older measurement sessions.
 - Release-readiness docs are present under `docs/`: versioning, manual checks, release process, release plan, and release notes for `2026.5.18-1`; root/package-local changelogs and package-local README are present for Git UPM consumers.
@@ -45,6 +46,7 @@
 - Iteration 36 warm-up/reset/scene-scope verification passed with `Logs/opencode-iter36-warmup-scope-compile.log`, `Logs/opencode-iter36-warmup-scope-editmode-results.xml`, and `Logs/opencode-iter36-warmup-scope-playmode-results.xml`.
 - Iteration 37 collection-mode verification passed with `Logs/opencode-iter37-collection-modes-compile.log`, `Logs/opencode-iter37-collection-modes-editmode-results.xml`, and `Logs/opencode-iter37-collection-modes-playmode-results.xml`.
 - Iteration 38 overlay-refresh verification passed with `Logs/opencode-iter38-overlay-refresh-compile.log`, `Logs/opencode-iter38-overlay-refresh-editmode-results.xml`, and `Logs/opencode-iter38-overlay-refresh-playmode-results.xml`.
+- Iteration 39 samples verification passed with `Logs/opencode-iter39-samples-compile.log`, `Logs/opencode-iter39-samples-editmode-results.xml`, and `Logs/opencode-iter39-samples-playmode-results.xml`.
 - Latest overdraw heatmap verification passed with `Logs/opencode-overdraw-heatmap-compile.log`, `Logs/opencode-overdraw-heatmap-editmode-results.xml`, and `Logs/opencode-overdraw-heatmap-playmode-results.xml`.
 - Latest package hardening verification passed with `Logs/opencode-hardening-compile.log`, `Logs/opencode-hardening-editmode-results.xml`, and `Logs/opencode-hardening-playmode-results.xml`.
 - Latest Unity `6000.4.7f1` checks passed with `Logs/opencode-6000.4.7-compile-2.log`, `Logs/opencode-6000.4.7-editmode-results.xml`, `Logs/opencode-6000.4.7-playmode-results.xml`, and `Logs/opencode-android-smoke-compile-6000.4.7.log`.
@@ -64,6 +66,6 @@
 
 ## Handoff Notes
 
-- Next implementation work follows `_Docs/sgg-perfmeter-roadmap-from-competitors.ru.md`: samples workflows, JSON tunables, and custom metric providers.
+- Next implementation work follows `_Docs/sgg-perfmeter-roadmap-from-competitors.ru.md`: JSON tunables and custom metric providers.
 - `_Docs/sgg-perfmeter-competitor-comparison-updated.md` is a local reference source and must remain uncommitted by user request.
 - `ProjectSettings/ProjectSettings.asset` currently has `enableFrameTimingStats: 1`; keep it enabled before depending on `FrameTimingManager` in builds.

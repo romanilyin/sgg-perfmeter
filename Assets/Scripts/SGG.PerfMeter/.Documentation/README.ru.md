@@ -63,6 +63,14 @@ public static class PerfMeterBootstrap
 }
 ```
 
+## Samples
+
+Импортируйте samples через Package Manager или копируйте их из `Assets/Scripts/SGG.PerfMeter/Samples~` при локальной разработке из этого репозитория.
+
+- `Bootstrap and Zero-Code Settings` содержит минимальный bootstrap component и пример zero-code settings в `Resources/SGG.PerfMeter/perfmeter-settings.json`.
+- `Runtime Workflows` содержит примеры overlay preset switching, bounded session JSON/CSV export, alert callback, overdraw/heatmap controls и camera snapshot replay.
+- `Editor and MCP Automation` содержит setup menu actions и MCP command examples для agent-driven runs.
+
 ## Runtime-метрики
 
 Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder`. Путь сбора метрик избегает per-frame allocation со стороны PerfMeter; overlay text refresh throttled и использует переиспользуемые field rows, поэтому неизменившиеся labels не получают новые managed strings.
