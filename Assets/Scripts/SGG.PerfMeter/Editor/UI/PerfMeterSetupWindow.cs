@@ -504,6 +504,9 @@ namespace SGG.PerfMeter.Editor.UI
 				currentSettings.SessionWarmupFrames,
 				currentSettings.SessionSampleIntervalSeconds,
 				currentSettings.SessionMaxSamples,
+				currentSettings.EditorWarningCooldownSeconds,
+				currentSettings.StructuredLogCooldownSeconds,
+				currentSettings.CallbackCooldownSeconds,
 				PerfMeterSettingsLoadState.Loaded,
 				string.Empty);
 			return PerfMeterSetupActions.SaveSettings(settings);

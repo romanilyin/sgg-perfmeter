@@ -7,6 +7,8 @@ namespace SGG.PerfMeter
 	/// </summary>
 	public static class PerformanceMeter
 	{
+		public static event System.Action<PerfMeterAlertSnapshot> AlertFired;
+
 		public static PerfMeterStatusSnapshot GetStatus()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -23,6 +25,21 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null ? runtime.LatestMetrics : PerfMeterMetricsSnapshot.Stopped;
+		}
+
+		public static PerfMeterAlertSnapshot[] GetLatestAlerts()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetLatestAlerts() : System.Array.Empty<PerfMeterAlertSnapshot>();
+		}
+
+		public static void ClearAlerts()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.ClearAlerts();
+			}
 		}
 
 		public static bool TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)
@@ -294,6 +311,11 @@ namespace SGG.PerfMeter
 		internal static void ApplySettings(PerfMeterSettingsSnapshot settings)
 		{
 			PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
+		}
+
+		internal static void RaiseAlertFired(PerfMeterAlertSnapshot alert)
+		{
+			AlertFired?.Invoke(alert);
 		}
 	}
 }

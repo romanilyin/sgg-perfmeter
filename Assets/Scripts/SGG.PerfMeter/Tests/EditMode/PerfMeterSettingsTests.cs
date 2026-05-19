@@ -20,6 +20,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.SessionWarmupFrames, Is.EqualTo(0));
 			Assert.That(settings.SessionSampleIntervalSeconds, Is.EqualTo(0.25f).Within(0.001f));
 			Assert.That(settings.SessionMaxSamples, Is.EqualTo(4096));
+			Assert.That(settings.EditorWarningCooldownSeconds, Is.EqualTo(8f).Within(0.001f));
+			Assert.That(settings.StructuredLogCooldownSeconds, Is.EqualTo(2f).Within(0.001f));
+			Assert.That(settings.CallbackCooldownSeconds, Is.EqualTo(0.5f).Within(0.001f));
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 		}
@@ -39,6 +42,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 				3,
 				0.5f,
 				128,
+				9f,
+				3f,
+				1f,
 				PerfMeterSettingsLoadState.Loaded,
 				string.Empty);
 
@@ -55,6 +61,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.SessionWarmupFrames, Is.EqualTo(3));
 			Assert.That(loaded.SessionSampleIntervalSeconds, Is.EqualTo(0.5f).Within(0.001f));
 			Assert.That(loaded.SessionMaxSamples, Is.EqualTo(128));
+			Assert.That(loaded.EditorWarningCooldownSeconds, Is.EqualTo(9f).Within(0.001f));
+			Assert.That(loaded.StructuredLogCooldownSeconds, Is.EqualTo(3f).Within(0.001f));
+			Assert.That(loaded.CallbackCooldownSeconds, Is.EqualTo(1f).Within(0.001f));
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Graphs);
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Timing);
 		}

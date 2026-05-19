@@ -2,6 +2,7 @@ using System.IO;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
@@ -252,6 +253,123 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void AlertEngineCompareCoversSupportedOperators()
+		{
+			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.GreaterThan, 1d), Is.True);
+			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.GreaterThanOrEqual, 2d), Is.True);
+			Assert.That(PerfMeterAlertEngine.Compare(1d, PerfMeterComparison.LessThan, 2d), Is.True);
+			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.LessThanOrEqual, 2d), Is.True);
+			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.Equal, 2d), Is.True);
+			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.NotEqual, 3d), Is.True);
+			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.GreaterThan, 2d), Is.False);
+		}
+
+		[Test]
+		public void AlertEngineHonorsConsecutiveFramesAndCallbackCooldown()
+		{
+			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]
+			{
+				new PerfMeterRule("cpu.test", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 10d, 2, 1f, PerfMeterAlertAction.Callback)
+			});
+			int callbackCount = 0;
+			System.Action<PerfMeterAlertSnapshot> handler = alert => callbackCount++;
+			PerformanceMeter.AlertFired += handler;
+
+			try
+			{
+				engine.Evaluate(CreateMetrics(1, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0d);
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(0));
+
+				engine.Evaluate(CreateMetrics(2, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0.1d);
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(1));
+				Assert.That(callbackCount, Is.EqualTo(1));
+
+				engine.Evaluate(CreateMetrics(3, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0.5d);
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(1));
+				Assert.That(callbackCount, Is.EqualTo(1));
+
+				engine.Evaluate(CreateMetrics(4, 20d, PerfMeterBottleneck.CpuMainThreadBound), 1.2d);
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(2));
+				Assert.That(callbackCount, Is.EqualTo(2));
+
+				engine.Evaluate(CreateMetrics(5, 5d, PerfMeterBottleneck.Balanced), 1.3d);
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(0));
+			}
+			finally
+			{
+				PerformanceMeter.AlertFired -= handler;
+			}
+		}
+
+		[Test]
+		public void AlertEngineKeepsEditorWarningCooldownSeparate()
+		{
+			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]
+			{
+				new PerfMeterRule("editor.test", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 10d, 1, 0f, PerfMeterAlertAction.EditorWarning)
+			});
+			engine.ApplySettings(new PerfMeterSettingsSnapshot(
+				true,
+				true,
+				true,
+				PerfMeterOverlayCorner.TopRight,
+				PerfMeterOverlayMode.Full,
+				PerfMeterTargetFps.Fps60,
+				PerfMeterSettingsStore.DefaultPresetId,
+				PerfMeterOverlayModule.All,
+				0,
+				0.25f,
+				4096,
+				5f,
+				0f,
+				0f,
+				PerfMeterSettingsLoadState.Loaded,
+				string.Empty), PerfMeterTargetFps.Fps60);
+
+			LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("\\[SGG PerfMeter Alert\\] editor.test"));
+			engine.Evaluate(CreateMetrics(1, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0d);
+			engine.Evaluate(CreateMetrics(2, 20d, PerfMeterBottleneck.CpuMainThreadBound), 1d);
+			LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("\\[SGG PerfMeter Alert\\] editor.test"));
+			engine.Evaluate(CreateMetrics(3, 20d, PerfMeterBottleneck.CpuMainThreadBound), 5d);
+			LogAssert.NoUnexpectedReceived();
+			Assert.That(engine.FiredAlertCount, Is.EqualTo(2));
+		}
+
+		[Test]
+		public void AlertEngineClearAlertsResetsStateAndCounters()
+		{
+			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]
+			{
+				new PerfMeterRule("clear.test", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 10d, 1, 10f, PerfMeterAlertAction.Callback)
+			});
+			int callbackCount = 0;
+			System.Action<PerfMeterAlertSnapshot> handler = alert => callbackCount++;
+			PerformanceMeter.AlertFired += handler;
+
+			try
+			{
+				engine.Evaluate(CreateMetrics(1, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0d);
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(1));
+
+				engine.Clear();
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(0));
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(0));
+				Assert.That(string.IsNullOrEmpty(engine.LatestAlert.RuleId), Is.True);
+
+				engine.Evaluate(CreateMetrics(2, 20d, PerfMeterBottleneck.CpuMainThreadBound), 1d);
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(1));
+				Assert.That(callbackCount, Is.EqualTo(2));
+			}
+			finally
+			{
+				PerformanceMeter.AlertFired -= handler;
+			}
+		}
+
+		[Test]
 		public void McpSessionCommandsExposeMetadataAndBasicOutput()
 		{
 			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
@@ -272,6 +390,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			string stopJson = PerfMeterMcpCommands.SessionStop();
 			Assert.That(stopJson, Does.Contain("\"status\":\"stopped\""));
+		}
+
+		[Test]
+		public void McpAlertCommandsExposeMetadataAndBasicOutput()
+		{
+			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
+			string metadata = File.ReadAllText(metadataPath);
+			Assert.That(metadata, Does.Contain("perfmeter.alerts.latest"));
+			Assert.That(metadata, Does.Contain("perfmeter.alerts.clear"));
+
+			string latestJson = PerfMeterMcpCommands.AlertsLatest();
+			Assert.That(latestJson, Does.Contain("\"alerts\""));
+			Assert.That(latestJson, Does.Contain("\"active_alert_count\":0"));
+			Assert.That(latestJson, Does.Contain("\"is_playing\""));
+
+			string clearJson = PerfMeterMcpCommands.AlertsClear();
+			Assert.That(clearJson, Does.Contain("\"cleared\":true"));
+			Assert.That(clearJson, Does.Contain("\"fired_alert_count\":0"));
 		}
 
 		private static PerfMeterMetricsSnapshot CreateMetrics(int frame, double frameTimeMs, PerfMeterBottleneck bottleneck)

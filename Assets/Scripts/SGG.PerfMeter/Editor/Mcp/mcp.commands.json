@@ -100,6 +100,38 @@
       }
     },
     {
+      "id": "perfmeter.alerts.latest",
+      "title": "PerfMeter latest alerts",
+      "description": "Read active SGG PerfMeter alerts and alert counters.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.AlertsLatest",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "alerts"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.alerts.clear",
+      "title": "Clear PerfMeter alerts",
+      "description": "Clear SGG PerfMeter active alerts, alert counters, and per-rule cooldown state.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.AlertsClear",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "alerts"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.device.info",
       "title": "PerfMeter device and environment info",
       "description": "Read Unity device, graphics, display, render pipeline, and environment information.",

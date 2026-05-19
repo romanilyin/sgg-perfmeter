@@ -105,6 +105,92 @@ namespace SGG.PerfMeter
 		Fps240 = 240
 	}
 
+	public enum PerfMeterMetric
+	{
+		CpuFrameTimeMs = 0,
+		CpuMainThreadFrameTimeMs = 1,
+		CpuRenderThreadFrameTimeMs = 2,
+		GpuFrameTimeMs = 3,
+		GpuFrameTimeAvailable = 4,
+		AverageFps = 5,
+		OnePercentLowFps = 6,
+		OverdrawRatio = 7,
+		SystemUsedMemoryBytes = 8,
+		GcReservedMemoryBytes = 9,
+		DrawCalls = 10,
+		SetPassCalls = 11
+	}
+
+	public enum PerfMeterComparison
+	{
+		GreaterThan = 0,
+		GreaterThanOrEqual = 1,
+		LessThan = 2,
+		LessThanOrEqual = 3,
+		Equal = 4,
+		NotEqual = 5
+	}
+
+	[System.Flags]
+	public enum PerfMeterAlertAction
+	{
+		None = 0,
+		StructuredLog = 1 << 0,
+		Callback = 1 << 1,
+		EditorWarning = 1 << 2,
+		Default = StructuredLog | Callback | EditorWarning
+	}
+
+	public readonly struct PerfMeterRule
+	{
+		public PerfMeterRule(string id, PerfMeterMetric metric, PerfMeterComparison comparison, double threshold, int consecutiveFrames = 1, float cooldownSeconds = 0f, PerfMeterAlertAction actions = PerfMeterAlertAction.Default)
+		{
+			Id = string.IsNullOrEmpty(id) ? metric.ToString() : id;
+			Metric = metric;
+			Comparison = comparison;
+			Threshold = threshold;
+			ConsecutiveFrames = Mathf.Max(1, consecutiveFrames);
+			CooldownSeconds = Mathf.Max(0f, cooldownSeconds);
+			Actions = actions;
+		}
+
+		public string Id { get; }
+		public PerfMeterMetric Metric { get; }
+		public PerfMeterComparison Comparison { get; }
+		public double Threshold { get; }
+		public int ConsecutiveFrames { get; }
+		public float CooldownSeconds { get; }
+		public PerfMeterAlertAction Actions { get; }
+	}
+
+	public readonly struct PerfMeterAlertSnapshot
+	{
+		public PerfMeterAlertSnapshot(string ruleId, PerfMeterMetric metric, PerfMeterComparison comparison, double threshold, double value, int collectionFrame, double timeSeconds, int consecutiveFrames, bool active, string message)
+		{
+			RuleId = ruleId ?? string.Empty;
+			Metric = metric;
+			Comparison = comparison;
+			Threshold = threshold;
+			Value = value;
+			CollectionFrame = collectionFrame;
+			TimeSeconds = timeSeconds;
+			ConsecutiveFrames = Mathf.Max(0, consecutiveFrames);
+			Active = active;
+			Message = message ?? string.Empty;
+		}
+
+		public string RuleId { get; }
+		public PerfMeterMetric Metric { get; }
+		public PerfMeterComparison Comparison { get; }
+		public double Threshold { get; }
+		public double Value { get; }
+		public int CollectionFrame { get; }
+		public double TimeSeconds { get; }
+		public int ConsecutiveFrames { get; }
+		public bool Active { get; }
+		public string Message { get; }
+	}
+
 	public enum PerfMeterSessionState
 	{
 		Idle = 0,
@@ -156,7 +242,11 @@ namespace SGG.PerfMeter
 			PerfMeterSessionState sessionState = PerfMeterSessionState.Idle,
 			bool sessionRecording = false,
 			int sessionSampleCount = 0,
-			int sessionDroppedSampleCount = 0)
+			int sessionDroppedSampleCount = 0,
+			int activeAlertCount = 0,
+			int firedAlertCount = 0,
+			string latestAlertRuleId = "",
+			string latestAlertMessage = "")
 		{
 			State = state;
 			Availability = availability;
@@ -183,6 +273,10 @@ namespace SGG.PerfMeter
 			IsSessionRecording = sessionRecording;
 			SessionSampleCount = Mathf.Max(0, sessionSampleCount);
 			SessionDroppedSampleCount = Mathf.Max(0, sessionDroppedSampleCount);
+			ActiveAlertCount = Mathf.Max(0, activeAlertCount);
+			FiredAlertCount = Mathf.Max(0, firedAlertCount);
+			LatestAlertRuleId = latestAlertRuleId ?? string.Empty;
+			LatestAlertMessage = latestAlertMessage ?? string.Empty;
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -210,6 +304,10 @@ namespace SGG.PerfMeter
 		public bool IsSessionRecording { get; }
 		public int SessionSampleCount { get; }
 		public int SessionDroppedSampleCount { get; }
+		public int ActiveAlertCount { get; }
+		public int FiredAlertCount { get; }
+		public string LatestAlertRuleId { get; }
+		public string LatestAlertMessage { get; }
 	}
 
 	public readonly struct PerfMeterSessionOptions

@@ -12,6 +12,7 @@ namespace SGG.PerfMeter
 		private readonly PerfMeterFrameStatsSampler _frameStatsSampler = new PerfMeterFrameStatsSampler();
 		private readonly PerfMeterOverdrawController _overdrawController = new PerfMeterOverdrawController();
 		private readonly PerfMeterSessionRecorder _sessionRecorder = new PerfMeterSessionRecorder();
+		private PerfMeterAlertEngine _alertEngine = new PerfMeterAlertEngine();
 		private PerfMeterStatusSnapshot _status;
 		private PerfMeterMetricsSnapshot _latestMetrics;
 		private PerfMeterOverlay _overlay;
@@ -70,6 +71,7 @@ namespace SGG.PerfMeter
 			runtime._frameStatsSampler.Reset();
 			runtime._overdrawController.Reset();
 			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+			runtime._alertEngine.Clear();
 			runtime._overdrawHeatmapVisible = false;
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
@@ -107,6 +109,7 @@ namespace SGG.PerfMeter
 			if (_instance == this)
 			{
 				_collector.Start();
+				ApplyAlertSettings();
 				SetRunningPlaceholders();
 				EnsureOverlayState();
 			}
@@ -120,6 +123,7 @@ namespace SGG.PerfMeter
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
 			_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble);
+			_alertEngine.Evaluate(_latestMetrics, Time.realtimeSinceStartupAsDouble);
 			_lastCollectorWarning = warning;
 			warning = CombineWarnings(warning, _overdrawController.Warning);
 			_status = CreateStatus(
@@ -144,7 +148,22 @@ namespace SGG.PerfMeter
 				_sessionRecorder.State,
 				_sessionRecorder.IsRecording,
 				_sessionRecorder.SampleCount,
-				_sessionRecorder.DroppedSampleCount);
+				_sessionRecorder.DroppedSampleCount,
+				_alertEngine.ActiveAlertCount,
+				_alertEngine.FiredAlertCount,
+				_alertEngine.LatestAlert.RuleId,
+				_alertEngine.LatestAlert.Message);
+		}
+
+		internal PerfMeterAlertSnapshot[] GetLatestAlerts()
+		{
+			return _alertEngine.GetLatestAlerts();
+		}
+
+		internal void ClearAlerts()
+		{
+			_alertEngine.Clear();
+			RefreshStatusOverlayState();
 		}
 
 		internal void StartSession(PerfMeterSessionOptions options)
@@ -334,6 +353,7 @@ namespace SGG.PerfMeter
 		internal void SetTargetFps(PerfMeterTargetFps targetFps)
 		{
 			_targetFps = NormalizeTargetFps(targetFps);
+			RebuildAlertRules();
 			_latestMetrics = WithTargetFrameBudget(_latestMetrics);
 			EnsureOverlayState();
 
@@ -357,6 +377,7 @@ namespace SGG.PerfMeter
 				_collector.Stop();
 				_frameStatsSampler.Reset();
 				_overdrawController.Reset();
+				_alertEngine.Clear();
 				_overdrawHeatmapVisible = false;
 				_status = CreateStoppedStatus();
 				_latestMetrics = PerfMeterMetricsSnapshot.Stopped;
@@ -375,6 +396,7 @@ namespace SGG.PerfMeter
 		{
 			int frame = Time.frameCount;
 			_frameStatsSampler.Reset();
+			ApplyAlertSettings();
 			_status = CreateStatus(
 				PerfMeterRuntimeState.Running,
 				frame,
@@ -471,7 +493,11 @@ namespace SGG.PerfMeter
 			PerfMeterSessionState sessionState = PerfMeterSessionState.Idle,
 			bool sessionRecording = false,
 			int sessionSampleCount = 0,
-			int sessionDroppedSampleCount = 0)
+			int sessionDroppedSampleCount = 0,
+			int activeAlertCount = 0,
+			int firedAlertCount = 0,
+			string latestAlertRuleId = "",
+			string latestAlertMessage = "")
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -498,7 +524,11 @@ namespace SGG.PerfMeter
 				sessionState,
 				sessionRecording,
 				sessionSampleCount,
-				sessionDroppedSampleCount);
+				sessionDroppedSampleCount,
+				activeAlertCount,
+				firedAlertCount,
+				latestAlertRuleId,
+				latestAlertMessage);
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -654,7 +684,23 @@ namespace SGG.PerfMeter
 				_sessionRecorder.State,
 				_sessionRecorder.IsRecording,
 				_sessionRecorder.SampleCount,
-				_sessionRecorder.DroppedSampleCount);
+				_sessionRecorder.DroppedSampleCount,
+				_alertEngine.ActiveAlertCount,
+				_alertEngine.FiredAlertCount,
+				_alertEngine.LatestAlert.RuleId,
+				_alertEngine.LatestAlert.Message);
+		}
+
+		private void ApplyAlertSettings()
+		{
+			_alertEngine.ApplySettings(PerfMeterSettingsStore.LoadFromResources(), _targetFps);
+		}
+
+		private void RebuildAlertRules()
+		{
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
+			_alertEngine = new PerfMeterAlertEngine(PerfMeterAlertEngine.CreateDefaultRules(_targetFps, 0f));
+			_alertEngine.ApplySettings(settings, _targetFps);
 		}
 
 		private static PerfMeterOverlayPreset NormalizeOverlayPreset(PerfMeterOverlayPreset preset)

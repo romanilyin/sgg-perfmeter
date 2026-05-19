@@ -26,6 +26,9 @@ namespace SGG.PerfMeter
 			int sessionWarmupFrames,
 			float sessionSampleIntervalSeconds,
 			int sessionMaxSamples,
+			float editorWarningCooldownSeconds,
+			float structuredLogCooldownSeconds,
+			float callbackCooldownSeconds,
 			PerfMeterSettingsLoadState loadState,
 			string warning)
 		{
@@ -40,6 +43,9 @@ namespace SGG.PerfMeter
 			SessionWarmupFrames = Mathf.Max(0, sessionWarmupFrames);
 			SessionSampleIntervalSeconds = sessionSampleIntervalSeconds > 0f ? sessionSampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds;
 			SessionMaxSamples = Mathf.Max(1, sessionMaxSamples);
+			EditorWarningCooldownSeconds = Mathf.Max(1f, editorWarningCooldownSeconds);
+			StructuredLogCooldownSeconds = Mathf.Max(0f, structuredLogCooldownSeconds);
+			CallbackCooldownSeconds = Mathf.Max(0f, callbackCooldownSeconds);
 			LoadState = loadState;
 			Warning = warning ?? string.Empty;
 		}
@@ -55,6 +61,9 @@ namespace SGG.PerfMeter
 		public int SessionWarmupFrames { get; }
 		public float SessionSampleIntervalSeconds { get; }
 		public int SessionMaxSamples { get; }
+		public float EditorWarningCooldownSeconds { get; }
+		public float StructuredLogCooldownSeconds { get; }
+		public float CallbackCooldownSeconds { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
 	}
@@ -150,6 +159,9 @@ namespace SGG.PerfMeter
 			settings.session.warmupFrames = snapshot.SessionWarmupFrames;
 			settings.session.sampleIntervalSeconds = snapshot.SessionSampleIntervalSeconds;
 			settings.session.maxSamples = snapshot.SessionMaxSamples;
+			settings.ruleDefaults.editorWarningCooldownSeconds = snapshot.EditorWarningCooldownSeconds;
+			settings.ruleDefaults.structuredLogCooldownSeconds = snapshot.StructuredLogCooldownSeconds;
+			settings.ruleDefaults.callbackCooldownSeconds = snapshot.CallbackCooldownSeconds;
 			ApplySnapshotToPreset(settings, snapshot);
 			return settings;
 		}
@@ -259,6 +271,9 @@ namespace SGG.PerfMeter
 				settings.session != null ? settings.session.warmupFrames : 0,
 				settings.session != null ? settings.session.sampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds,
 				settings.session != null ? settings.session.maxSamples : PerfMeterSessionOptions.DefaultMaxSamples,
+				settings.ruleDefaults != null ? settings.ruleDefaults.editorWarningCooldownSeconds : 8f,
+				settings.ruleDefaults != null ? settings.ruleDefaults.structuredLogCooldownSeconds : 2f,
+				settings.ruleDefaults != null ? settings.ruleDefaults.callbackCooldownSeconds : 0.5f,
 				loadState,
 				CombineWarnings(CombineWarnings(warning, normalizeWarning), moduleWarning));
 		}

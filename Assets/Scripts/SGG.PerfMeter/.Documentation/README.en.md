@@ -13,6 +13,7 @@ Current package version: `2026.5.18-1`. This is a private release candidate; the
 - Camera snapshot: `PerformanceMeter.GetCameraSnapshot(...)` or `PerformanceMeter.TryGetCameraSnapshot(out PerfMeterCameraSnapshot snapshot, ...)` returns camera position, orientation, and parameters for reproducible performance captures.
 - Settings: `PerformanceMeter.GetSettings()` returns the zero-code JSON settings snapshot or safe defaults when the JSON file is missing.
 - Sessions: `PerformanceMeter.StartSession()`, `PerformanceMeter.StartSession(PerfMeterSessionOptions options)`, `PerformanceMeter.StopSession()`, `PerformanceMeter.GetSessionSummary()`, `PerformanceMeter.GetSessionSamples()`, `PerformanceMeter.ExportSessionJson(path)`, `PerformanceMeter.ExportSessionCsv(path)`, and `PerformanceMeter.IsSessionRecording` control bounded in-memory recording and JSON/CSV export.
+- Alerts: `PerformanceMeter.GetLatestAlerts()`, `PerformanceMeter.ClearAlerts()`, and the `PerformanceMeter.AlertFired` event expose active/fired rule alerts without scraping Unity Console output.
 - Lifecycle: `PerformanceMeter.EnsureRunning()` and `PerformanceMeter.Stop()`
 - Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset preset)`, `PerformanceMeter.SetOverlayModules(PerfMeterOverlayModule modules)`, `PerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.OverlayPreset`, `PerformanceMeter.OverlayModules`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `OverlayPreset` / `OverlayModules` / `TargetFps`
 - Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)`, `PerformanceMeter.CancelOverdrawMeasurement()`, `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)`, and `PerformanceMeter.IsOverdrawHeatmapVisible`
@@ -78,13 +79,16 @@ The runtime singleton updates snapshots in `Update()` with real values from `Fra
 - Device/environment snapshot: `PerfMeterDeviceSnapshot` includes Unity version, platform, OS, CPU/RAM, GPU/API/capabilities, screen/current resolution/fullscreen state, main window position, render-safe display layout state, and `PerfMeterDisplaySnapshot` entries with system monitor names from `Screen.GetDisplayLayout(List<DisplayInfo>)`. If layout is unavailable, it falls back to `Screen.currentResolution`.
 - Camera snapshot: `PerfMeterCameraSnapshot` includes camera name/id, scene name/path, position, rotation quaternion, Euler angles, forward/up vectors, projection, FOV/orthographic size, clip planes, aspect, pixel rect, target display, depth, clear flags, culling mask, HDR/MSAA flags, and URP `UniversalAdditionalCameraData` fields when that component already exists on the camera.
 - Session summary/export: `PerfMeterSessionSummarySnapshot` includes sample count, dropped sample count, first/last frame, duration, average/min/max frame time and FPS, bottleneck/spike counts, warnings, start settings/device/camera metadata, and scene names. `PerfMeterSessionOptions` controls `WarmupFrames`, `SampleIntervalSeconds`, and `MaxSamples`. `GetSessionSamples()` returns a copied sample array, while `ExportSessionJson(path)` / `ExportSessionCsv(path)` write schema/package markers, summary/options/metadata, and rows with CPU/GPU/FPS/render/SRP/BRG/upload/memory/overdraw/warning/counter availability metrics.
+- Alerts: default rules watch CPU/GPU frame budget, FPS below target, unavailable GPU timing, and high overdraw ratio. `PerfMeterStatusSnapshot` includes `ActiveAlertCount`, `FiredAlertCount`, `LatestAlertRuleId`, and `LatestAlertMessage`; structured log, callback, and Editor warning use separate cooldowns from JSON settings so Editor Console is not spammed every frame.
 
-## MCP Session Commands
+## MCP Commands
 
 - `perfmeter.session.start` starts bounded recording and accepts optional `warmup_frames`, `sample_interval_seconds`, and `max_samples`.
 - `perfmeter.session.stop` stops recording and returns the summary.
 - `perfmeter.session.summary` returns the current summary without changing state.
 - `perfmeter.session.export` accepts a project-local `path` and `format` (`json`/`csv`), stays inside the project, and does not overwrite an existing file.
+- `perfmeter.alerts.latest` returns active alerts, alert counters, status fields, and Editor state.
+- `perfmeter.alerts.clear` clears active alerts, counters, and per-rule cooldown state.
 
 On OpenGL/OpenGLES, hardware GPU timing may be unavailable or unreliable. In that case `GpuFrameTimeAvailable` is `false` and `PerfMeterStatusSnapshot.Warning` contains a warning; Vulkan is preferred on Android.
 
