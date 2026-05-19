@@ -19,6 +19,7 @@ Current state: **private release candidate / internal validation**.
 Implemented:
 
 - runtime public API for status and latest metrics snapshots;
+- device/environment snapshots with screen, display, and monitor-name information;
 - `FrameTimingManager`-based CPU/GPU timing collection;
 - `ProfilerRecorder`-based render, memory, SRP Batcher, BRG/GRD, and upload counters;
 - UI Toolkit overlay with compact, graph, and full modes;
@@ -26,7 +27,7 @@ Implemented:
 - bounded numerical overdraw measurement using a hidden replacement shader and `AsyncGPUReadback`;
 - visual overdraw heatmap using an additive replacement shader;
 - editor setup window with JSON `Presets` and zero-code setup;
-- MCP command definitions for setup, runtime control, metrics, overlay, overdraw measurement, and overdraw heatmap;
+- MCP command definitions for setup, runtime control, metrics, device/environment info, overlay, overdraw measurement, and overdraw heatmap;
 - English and Russian package documentation;
 - release readiness docs, changelog, security policy, contributing policy, and a manual-only release workflow;
 - edit-mode API safety tests and Play Mode runtime smoke tests.
@@ -426,6 +427,7 @@ Available command IDs:
 | `perfmeter.runtime.ensure` | Start runtime if needed. |
 | `perfmeter.runtime.stop` | Stop runtime. |
 | `perfmeter.metrics.latest` | Read latest metrics snapshot. |
+| `perfmeter.device.info` | Read device, graphics, display, monitor, render pipeline, and Unity environment info. |
 | `perfmeter.overlay.set` | Show/hide overlay and set corner/mode/target FPS. |
 | `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
 | `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
@@ -442,12 +444,14 @@ Assets/Scripts/SGG.PerfMeter/
   CHANGELOG.md
   Runtime/
     PerformanceMeter.cs
+    PerfMeterDeviceInfoProvider.cs
     PerfMeterRuntime.cs
     PerfMeterCollector.cs
     PerfMeterFrameStatsSampler.cs
     PerfMeterOverlay.cs
     PerfMeterOverdrawController.cs
     PerfMeterRenderGraphFeature.cs
+    PerfMeterSettings.cs
     PerfMeterSnapshots.cs
     Resources/
       SGGPerfMeterOverdrawCounter.shader

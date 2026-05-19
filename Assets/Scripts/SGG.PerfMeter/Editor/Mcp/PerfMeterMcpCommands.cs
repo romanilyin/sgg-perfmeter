@@ -46,6 +46,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return MetricsJson(RuntimePerformanceMeter.GetLatestMetrics());
 		}
 
+		public static string DeviceInfo()
+		{
+			return DeviceInfoJson(RuntimePerformanceMeter.GetDeviceInfo());
+		}
+
 		public static string OverlaySet(string argsJson)
 		{
 			bool visible = RequireBool(argsJson, "visible");
@@ -153,6 +158,101 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static string DeviceInfoJson(PerfMeterDeviceSnapshot device)
+		{
+			StringBuilder builder = new StringBuilder(1536);
+			builder.Append("{\"schema_version\":1");
+			builder.Append(",\"unity_version\":").Append(JsonString(device.UnityVersion));
+			builder.Append(",\"application_platform\":").Append(JsonString(device.ApplicationPlatform.ToString()));
+			builder.Append(",\"is_editor\":").Append(JsonBool(device.IsEditor));
+			builder.Append(",\"operating_system\":").Append(JsonString(device.OperatingSystem));
+			builder.Append(",\"device_model\":").Append(JsonString(device.DeviceModel));
+			builder.Append(",\"device_type\":").Append(JsonString(device.DeviceType.ToString()));
+			builder.Append(",\"processor_type\":").Append(JsonString(device.ProcessorType));
+			builder.Append(",\"processor_count\":").Append(device.ProcessorCount);
+			builder.Append(",\"processor_frequency_mhz\":").Append(device.ProcessorFrequencyMhz);
+			builder.Append(",\"system_memory_size_mb\":").Append(device.SystemMemorySizeMb);
+			builder.Append(",\"graphics_device_type\":").Append(JsonString(device.GraphicsDeviceType.ToString()));
+			builder.Append(",\"graphics_device_name\":").Append(JsonString(device.GraphicsDeviceName));
+			builder.Append(",\"graphics_device_vendor\":").Append(JsonString(device.GraphicsDeviceVendor));
+			builder.Append(",\"graphics_device_version\":").Append(JsonString(device.GraphicsDeviceVersion));
+			builder.Append(",\"graphics_memory_size_mb\":").Append(device.GraphicsMemorySizeMb);
+			builder.Append(",\"graphics_shader_level\":").Append(device.GraphicsShaderLevel);
+			builder.Append(",\"graphics_multi_threaded\":").Append(JsonBool(device.GraphicsMultiThreaded));
+			builder.Append(",\"max_texture_size\":").Append(device.MaxTextureSize);
+			builder.Append(",\"supports_compute_shaders\":").Append(JsonBool(device.SupportsComputeShaders));
+			builder.Append(",\"supports_async_gpu_readback\":").Append(JsonBool(device.SupportsAsyncGpuReadback));
+			builder.Append(",\"supports_instancing\":").Append(JsonBool(device.SupportsInstancing));
+			builder.Append(",\"supports_graphics_fence\":").Append(JsonBool(device.SupportsGraphicsFence));
+			builder.Append(",\"screen_width\":").Append(device.ScreenWidth);
+			builder.Append(",\"screen_height\":").Append(device.ScreenHeight);
+			builder.Append(",\"current_resolution_width\":").Append(device.CurrentResolutionWidth);
+			builder.Append(",\"current_resolution_height\":").Append(device.CurrentResolutionHeight);
+			builder.Append(",\"current_refresh_rate_numerator\":").Append(device.CurrentRefreshRateNumerator);
+			builder.Append(",\"current_refresh_rate_denominator\":").Append(device.CurrentRefreshRateDenominator);
+			builder.Append(",\"current_refresh_rate_hz\":").Append(JsonNumber(device.CurrentRefreshRateHz));
+			builder.Append(",\"dpi\":").Append(JsonNumber(device.Dpi));
+			builder.Append(",\"full_screen\":").Append(JsonBool(device.FullScreen));
+			builder.Append(",\"full_screen_mode\":").Append(JsonString(device.FullScreenMode.ToString()));
+			builder.Append(",\"main_window_position_available\":").Append(JsonBool(device.MainWindowPositionAvailable));
+			builder.Append(",\"main_window_position_x\":").Append(device.MainWindowPositionX);
+			builder.Append(",\"main_window_position_y\":").Append(device.MainWindowPositionY);
+			builder.Append(",\"display_layout_available\":").Append(JsonBool(device.DisplayLayoutAvailable));
+			builder.Append(",\"display_layout_warning\":").Append(JsonString(device.DisplayLayoutWarning));
+			AppendRenderPipelineInfo(builder);
+			builder.Append(",\"frame_timing_stats_enabled\":").Append(JsonBool(PlayerSettings.enableFrameTimingStats));
+			builder.Append(",\"active_build_target\":").Append(JsonString(EditorUserBuildSettings.activeBuildTarget.ToString()));
+			builder.Append(",\"active_build_target_group\":").Append(JsonString(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget).ToString()));
+			builder.Append(",\"target_frame_rate\":").Append(Application.targetFrameRate);
+			builder.Append(",\"v_sync_count\":").Append(QualitySettings.vSyncCount);
+			AppendDisplays(builder, device.Displays);
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static void AppendDisplays(StringBuilder builder, PerfMeterDisplaySnapshot[] displays)
+		{
+			builder.Append(",\"displays\":[");
+			for (int i = 0; i < displays.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				PerfMeterDisplaySnapshot display = displays[i];
+				builder.Append("{\"index\":").Append(display.Index);
+				builder.Append(",\"name\":").Append(JsonString(display.Name));
+				builder.Append(",\"width\":").Append(display.Width);
+				builder.Append(",\"height\":").Append(display.Height);
+				builder.Append(",\"work_area_x\":").Append(display.WorkAreaX);
+				builder.Append(",\"work_area_y\":").Append(display.WorkAreaY);
+				builder.Append(",\"work_area_width\":").Append(display.WorkAreaWidth);
+				builder.Append(",\"work_area_height\":").Append(display.WorkAreaHeight);
+				builder.Append(",\"refresh_rate_numerator\":").Append(display.RefreshRateNumerator);
+				builder.Append(",\"refresh_rate_denominator\":").Append(display.RefreshRateDenominator);
+				builder.Append(",\"refresh_rate_hz\":").Append(JsonNumber(display.RefreshRateHz));
+				builder.Append(",\"is_main_window_display\":").Append(JsonBool(display.IsMainWindowDisplay));
+				builder.Append(",\"is_fallback\":").Append(JsonBool(display.IsFallback));
+				builder.Append('}');
+			}
+
+			builder.Append(']');
+		}
+
+		private static void AppendRenderPipelineInfo(StringBuilder builder)
+		{
+			UnityEngine.Rendering.RenderPipelineAsset graphicsAsset = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+			UnityEngine.Rendering.RenderPipelineAsset qualityAsset = QualitySettings.renderPipeline;
+			builder.Append(",\"render_pipeline_asset\":").Append(JsonString(graphicsAsset != null ? graphicsAsset.name : string.Empty));
+			builder.Append(",\"render_pipeline_type\":").Append(JsonString(graphicsAsset != null ? graphicsAsset.GetType().FullName : string.Empty));
+			builder.Append(",\"quality_level\":").Append(QualitySettings.GetQualityLevel());
+			builder.Append(",\"quality_name\":").Append(JsonString(QualitySettings.names.Length > QualitySettings.GetQualityLevel() ? QualitySettings.names[QualitySettings.GetQualityLevel()] : string.Empty));
+			builder.Append(",\"quality_render_pipeline_asset\":").Append(JsonString(qualityAsset != null ? qualityAsset.name : string.Empty));
+			builder.Append(",\"quality_render_pipeline_type\":").Append(JsonString(qualityAsset != null ? qualityAsset.GetType().FullName : string.Empty));
 		}
 
 		private static void AppendEditorState(StringBuilder builder)

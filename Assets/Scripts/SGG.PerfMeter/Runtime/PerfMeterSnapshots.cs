@@ -292,4 +292,173 @@ namespace SGG.PerfMeter
 		public int FrameSpikeCount { get; }
 		public int SevereFrameSpikeCount { get; }
 	}
+
+	public readonly struct PerfMeterDisplaySnapshot
+	{
+		public PerfMeterDisplaySnapshot(
+			int index,
+			string name,
+			int width,
+			int height,
+			int workAreaX,
+			int workAreaY,
+			int workAreaWidth,
+			int workAreaHeight,
+			uint refreshRateNumerator,
+			uint refreshRateDenominator,
+			double refreshRateHz,
+			bool isMainWindowDisplay,
+			bool isFallback)
+		{
+			Index = index;
+			Name = name ?? string.Empty;
+			Width = width;
+			Height = height;
+			WorkAreaX = workAreaX;
+			WorkAreaY = workAreaY;
+			WorkAreaWidth = workAreaWidth;
+			WorkAreaHeight = workAreaHeight;
+			RefreshRateNumerator = refreshRateNumerator;
+			RefreshRateDenominator = refreshRateDenominator;
+			RefreshRateHz = refreshRateHz;
+			IsMainWindowDisplay = isMainWindowDisplay;
+			IsFallback = isFallback;
+		}
+
+		public int Index { get; }
+		public string Name { get; }
+		public int Width { get; }
+		public int Height { get; }
+		public int WorkAreaX { get; }
+		public int WorkAreaY { get; }
+		public int WorkAreaWidth { get; }
+		public int WorkAreaHeight { get; }
+		public uint RefreshRateNumerator { get; }
+		public uint RefreshRateDenominator { get; }
+		public double RefreshRateHz { get; }
+		public bool IsMainWindowDisplay { get; }
+		public bool IsFallback { get; }
+	}
+
+	public readonly struct PerfMeterDeviceSnapshot
+	{
+		public PerfMeterDeviceSnapshot(
+			string unityVersion,
+			RuntimePlatform applicationPlatform,
+			bool isEditor,
+			string operatingSystem,
+			string deviceModel,
+			DeviceType deviceType,
+			string processorType,
+			int processorCount,
+			int processorFrequencyMhz,
+			int systemMemorySizeMb,
+			GraphicsDeviceType graphicsDeviceType,
+			string graphicsDeviceName,
+			string graphicsDeviceVendor,
+			string graphicsDeviceVersion,
+			int graphicsMemorySizeMb,
+			int graphicsShaderLevel,
+			bool graphicsMultiThreaded,
+			int maxTextureSize,
+			bool supportsComputeShaders,
+			bool supportsAsyncGpuReadback,
+			bool supportsInstancing,
+			bool supportsGraphicsFence,
+			int screenWidth,
+			int screenHeight,
+			int currentResolutionWidth,
+			int currentResolutionHeight,
+			uint currentRefreshRateNumerator,
+			uint currentRefreshRateDenominator,
+			double currentRefreshRateHz,
+			float dpi,
+			bool fullScreen,
+			FullScreenMode fullScreenMode,
+			bool mainWindowPositionAvailable,
+			int mainWindowPositionX,
+			int mainWindowPositionY,
+			bool displayLayoutAvailable,
+			string displayLayoutWarning,
+			PerfMeterDisplaySnapshot[] displays)
+		{
+			UnityVersion = unityVersion ?? string.Empty;
+			ApplicationPlatform = applicationPlatform;
+			IsEditor = isEditor;
+			OperatingSystem = operatingSystem ?? string.Empty;
+			DeviceModel = deviceModel ?? string.Empty;
+			DeviceType = deviceType;
+			ProcessorType = processorType ?? string.Empty;
+			ProcessorCount = processorCount;
+			ProcessorFrequencyMhz = processorFrequencyMhz;
+			SystemMemorySizeMb = systemMemorySizeMb;
+			GraphicsDeviceType = graphicsDeviceType;
+			GraphicsDeviceName = graphicsDeviceName ?? string.Empty;
+			GraphicsDeviceVendor = graphicsDeviceVendor ?? string.Empty;
+			GraphicsDeviceVersion = graphicsDeviceVersion ?? string.Empty;
+			GraphicsMemorySizeMb = graphicsMemorySizeMb;
+			GraphicsShaderLevel = graphicsShaderLevel;
+			GraphicsMultiThreaded = graphicsMultiThreaded;
+			MaxTextureSize = maxTextureSize;
+			SupportsComputeShaders = supportsComputeShaders;
+			SupportsAsyncGpuReadback = supportsAsyncGpuReadback;
+			SupportsInstancing = supportsInstancing;
+			SupportsGraphicsFence = supportsGraphicsFence;
+			ScreenWidth = screenWidth;
+			ScreenHeight = screenHeight;
+			CurrentResolutionWidth = currentResolutionWidth;
+			CurrentResolutionHeight = currentResolutionHeight;
+			CurrentRefreshRateNumerator = currentRefreshRateNumerator;
+			CurrentRefreshRateDenominator = currentRefreshRateDenominator;
+			CurrentRefreshRateHz = currentRefreshRateHz;
+			Dpi = dpi;
+			FullScreen = fullScreen;
+			FullScreenMode = fullScreenMode;
+			MainWindowPositionAvailable = mainWindowPositionAvailable;
+			MainWindowPositionX = mainWindowPositionX;
+			MainWindowPositionY = mainWindowPositionY;
+			DisplayLayoutAvailable = displayLayoutAvailable;
+			DisplayLayoutWarning = displayLayoutWarning ?? string.Empty;
+			Displays = displays ?? System.Array.Empty<PerfMeterDisplaySnapshot>();
+		}
+
+		public string UnityVersion { get; }
+		public RuntimePlatform ApplicationPlatform { get; }
+		public bool IsEditor { get; }
+		public string OperatingSystem { get; }
+		public string DeviceModel { get; }
+		public DeviceType DeviceType { get; }
+		public string ProcessorType { get; }
+		public int ProcessorCount { get; }
+		public int ProcessorFrequencyMhz { get; }
+		public int SystemMemorySizeMb { get; }
+		public GraphicsDeviceType GraphicsDeviceType { get; }
+		public string GraphicsDeviceName { get; }
+		public string GraphicsDeviceVendor { get; }
+		public string GraphicsDeviceVersion { get; }
+		public int GraphicsMemorySizeMb { get; }
+		public int GraphicsShaderLevel { get; }
+		public bool GraphicsMultiThreaded { get; }
+		public int MaxTextureSize { get; }
+		public bool SupportsComputeShaders { get; }
+		public bool SupportsAsyncGpuReadback { get; }
+		public bool SupportsInstancing { get; }
+		public bool SupportsGraphicsFence { get; }
+		public int ScreenWidth { get; }
+		public int ScreenHeight { get; }
+		public int CurrentResolutionWidth { get; }
+		public int CurrentResolutionHeight { get; }
+		public uint CurrentRefreshRateNumerator { get; }
+		public uint CurrentRefreshRateDenominator { get; }
+		public double CurrentRefreshRateHz { get; }
+		public float Dpi { get; }
+		public bool FullScreen { get; }
+		public FullScreenMode FullScreenMode { get; }
+		public bool MainWindowPositionAvailable { get; }
+		public int MainWindowPositionX { get; }
+		public int MainWindowPositionY { get; }
+		public bool DisplayLayoutAvailable { get; }
+		public string DisplayLayoutWarning { get; }
+		public PerfMeterDisplaySnapshot[] Displays { get; }
+	}
 }

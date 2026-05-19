@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added project-owned JSON settings, a setup-window `Presets` tab, and zero-code runtime auto-start through `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
+- Added device/environment snapshots with display layout, monitor names, and `perfmeter.device.info` MCP output.
 
 ## 2026.5.18-1
 

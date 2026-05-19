@@ -31,6 +31,17 @@ namespace SGG.PerfMeter
 			return metrics.Availability != PerfMeterAvailability.Unknown;
 		}
 
+		public static PerfMeterDeviceSnapshot GetDeviceInfo()
+		{
+			return PerfMeterDeviceInfoProvider.CreateSnapshot();
+		}
+
+		public static bool TryGetDeviceInfo(out PerfMeterDeviceSnapshot deviceInfo)
+		{
+			deviceInfo = GetDeviceInfo();
+			return !string.IsNullOrEmpty(deviceInfo.UnityVersion);
+		}
+
 		public static PerfMeterSettingsSnapshot GetSettings()
 		{
 			return PerfMeterSettingsStore.LoadFromResources();

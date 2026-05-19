@@ -100,6 +100,22 @@
       }
     },
     {
+      "id": "perfmeter.device.info",
+      "title": "PerfMeter device and environment info",
+      "description": "Read Unity device, graphics, display, render pipeline, and environment information.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.DeviceInfo",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "device", "environment"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
       "description": "Show or hide the SGG PerfMeter overlay and optionally set its screen corner, display mode, and target FPS.",

@@ -3,7 +3,7 @@
 ## Текущая готовность
 
 - Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`; текущая private release candidate версия - `2026.5.18-1`.
-- Реализованы runtime API, JSON settings для zero-code setup, вкладка `Presets`, сбор метрик, UI Toolkit overlay с режимами, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
+- Реализованы runtime API, device/environment snapshot с monitor names, JSON settings для zero-code setup, вкладка `Presets`, сбор метрик, UI Toolkit overlay с режимами, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
 - Есть EditMode API/classifier tests и PlayMode runtime smoke tests; classifier mixed-load edge cases, overdraw stale-readback safety и heatmap toggles покрыты. Android S23 Vulkan/GLES smoke validation пройдена; более широкая player-build validation еще pending.
 - Пакет подготовлен как private/internal release candidate для проверки в Unity 6000.4 / URP 17; публичный релиз остается отложенным.
 
@@ -13,6 +13,7 @@
 - `PerformanceMeter.Stop()` останавливает сбор метрик и runtime-объекты overlay.
 - `PerformanceMeter.GetStatus()` / `PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot status)` возвращают статус, читаемый агентами.
 - `PerformanceMeter.GetLatestMetrics()` / `PerformanceMeter.TryGetLatestMetrics(out PerfMeterMetricsSnapshot metrics)` возвращают immutable snapshots метрик с FPS/lows/spikes, render, SRP Batcher, BRG/GRD, index upload, memory, timing и overdraw значениями.
+- `PerformanceMeter.GetDeviceInfo()` / `PerformanceMeter.TryGetDeviceInfo(out PerfMeterDeviceSnapshot deviceInfo)` возвращают immutable device/environment snapshot с Unity/platform/CPU/GPU/screen/display/monitor info без запуска runtime.
 - `PerformanceMeter.GetSettings()` возвращает snapshot JSON-настроек zero-code setup или safe defaults, если JSON отсутствует.
 - `CollectionFrame` указывает Unity frame, на котором собран snapshot; значения `FrameTimingManager` могут быть задержаны относительно этого кадра.
 - `PerfMeterBottleneck.PresentLimited` отделяет ожидание present/VSync/frame pacing от balanced frames и CPU/GPU-bound frames.
@@ -29,6 +30,7 @@
 - Добавьте `PerfMeterRenderGraphFeature` в активный URP renderer asset, если нужны Render Graph markers, численное измерение overdraw или visual overdraw heatmap; setup window делает это автоматически для найденных URP renderer assets.
 - Включите Player Settings -> Rendering -> Frame Timing Stats перед использованием `FrameTimingManager` в билдах.
 - Для Android предпочтителен Vulkan, если важен GPU frame timing; на OpenGL ES timing может быть недоступен или ненадежен.
+- Системные названия мониторов берутся из `Screen.GetDisplayLayout(List<DisplayInfo>)`, а на платформах без display layout используется fallback из `Screen.currentResolution`.
 - Вызывайте `PerformanceMeter.EnsureRunning()` из gameplay/bootstrap кода, затем читайте snapshots из агентов, диагностики или тестов.
 
 ## Известные ограничения
