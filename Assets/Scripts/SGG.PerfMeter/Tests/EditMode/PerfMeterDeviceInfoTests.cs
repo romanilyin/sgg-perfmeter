@@ -86,13 +86,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void OverlaySetMcpCommandAppliesPresetAndModules()
 		{
-			string json = PerfMeterMcpCommands.OverlaySet("{\"visible\":true,\"preset\":\"Timing\",\"modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\"],\"target_fps\":30}");
+			string json = PerfMeterMcpCommands.OverlaySet("{\"visible\":true,\"preset\":\"Timing\",\"modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\",\"CustomMetrics\"],\"target_fps\":30}");
 
 			Assert.That(json, Does.Contain("\"overlay_preset\":\"Timing\""));
-			Assert.That(json, Does.Contain("\"overlay_modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\"]"));
+			Assert.That(json, Does.Contain("\"overlay_modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\",\"CustomMetrics\"]"));
 			Assert.That(json, Does.Contain("\"target_fps\":30"));
 			Assert.That(PerformanceMeter.GetStatus().OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Timing));
 			Assert.That((PerformanceMeter.GetStatus().OverlayModules & PerfMeterOverlayModule.Graphs) == PerfMeterOverlayModule.Graphs, Is.True);
+			Assert.That((PerformanceMeter.GetStatus().OverlayModules & PerfMeterOverlayModule.CustomMetrics) == PerfMeterOverlayModule.CustomMetrics, Is.True);
 		}
 
 		[Test]
@@ -104,6 +105,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("\"preset\""));
 			Assert.That(metadata, Does.Contain("\"modules\""));
 			Assert.That(metadata, Does.Contain("\"AgentDebug\""));
+			Assert.That(metadata, Does.Contain("\"CustomMetrics\""));
 		}
 	}
 }

@@ -456,7 +456,7 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayPreset.Overdraw:
 					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings;
 				case PerfMeterOverlayPreset.AgentDebug:
-					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings;
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics;
 				default:
 					return PerfMeterOverlayModule.All;
 			}
@@ -584,7 +584,8 @@ namespace SGG.PerfMeter
 				PerfMeterOverlayModule.GpuMemory,
 				PerfMeterOverlayModule.Overdraw,
 				PerfMeterOverlayModule.Heatmap,
-				PerfMeterOverlayModule.Warnings
+				PerfMeterOverlayModule.Warnings,
+				PerfMeterOverlayModule.CustomMetrics
 			};
 			int count = 0;
 			for (int i = 0; i < values.Length; i++)

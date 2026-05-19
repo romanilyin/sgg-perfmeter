@@ -461,7 +461,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 				PerfMeterOverlayModule.GpuMemory,
 				PerfMeterOverlayModule.Overdraw,
 				PerfMeterOverlayModule.Heatmap,
-				PerfMeterOverlayModule.Warnings
+				PerfMeterOverlayModule.Warnings,
+				PerfMeterOverlayModule.CustomMetrics
 			};
 			builder.Append('[');
 			bool needsComma = false;
@@ -947,7 +948,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 				return module;
 			}
 
-			throw new InvalidOperationException("schema_validation_failed\nArgument modules must contain only None, All, Fps, Timing, Graphs, Rendering, SrpBatcher, Brg, Uploads, Memory, Gc, GpuMemory, Overdraw, Heatmap, or Warnings");
+			throw new InvalidOperationException("schema_validation_failed\nArgument modules must contain only None, All, Fps, Timing, Graphs, Rendering, SrpBatcher, Brg, Uploads, Memory, Gc, GpuMemory, Overdraw, Heatmap, Warnings, or CustomMetrics");
 		}
 
 		private static string NormalizeEnumToken(string value)

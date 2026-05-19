@@ -45,6 +45,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.AlertOverdrawConsecutiveFrames, Is.EqualTo(3));
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
+			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
 		}
 
 		[Test]
@@ -168,6 +169,43 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Gc);
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Warnings);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.Overdraw);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
+		}
+
+		[Test]
+		public void AgentDebugPresetIncludesCustomMetricsModule()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.activePreset = "AgentDebug";
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
+		}
+
+		[Test]
+		public void SettingsJsonParsesCustomMetricsModule()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.activePreset = "Custom";
+			settings.presets = new[]
+			{
+				new PerfMeterPresetSettingsJson
+				{
+					id = "Custom",
+					overlayVisible = true,
+					overlayMode = nameof(PerfMeterOverlayMode.Full),
+					targetFps = (int)PerfMeterTargetFps.Fps60,
+					modules = new[] { "Fps", "CustomMetrics" }
+				}
+			};
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.Memory);
 		}
 
 		[Test]

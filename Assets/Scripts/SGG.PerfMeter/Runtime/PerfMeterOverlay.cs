@@ -30,6 +30,9 @@ namespace SGG.PerfMeter
 		private const float OverlayMargin = 12f;
 		private const float BlockGap = 6f;
 		private const float WarningHoldSeconds = 1.25f;
+		private const int MaxCustomMetricRows = 8;
+		private const int MaxCustomMetricNameLength = 22;
+		private const int MaxCustomMetricWarningLength = 52;
 
 		private static readonly Color BackgroundColor = new Color(0.02f, 0.025f, 0.03f, 0.84f);
 		private static readonly Color TextColor = new Color(0.88f, 0.96f, 1f, 1f);
@@ -795,6 +798,8 @@ namespace SGG.PerfMeter
 				AppendMemoryPairWithRanges("Mem/GPU", metrics.SystemUsedMemoryBytes, _history.SystemMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory), metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
 			}
 
+			AppendCustomMetrics();
+
 			if (HasModule(PerfMeterOverlayModule.Warnings))
 			{
 				AppendWarning(warning, 120);
@@ -820,6 +825,8 @@ namespace SGG.PerfMeter
 			{
 				AppendGpuValidity(metrics);
 			}
+
+			AppendCustomMetrics();
 
 			if (HasModule(PerfMeterOverlayModule.Warnings))
 			{
@@ -897,6 +904,8 @@ namespace SGG.PerfMeter
 			{
 				AppendMemoryWithRange("GPU Memory", metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
 			}
+
+			AppendCustomMetrics();
 
 			if (HasModule(PerfMeterOverlayModule.Warnings))
 			{
@@ -1081,6 +1090,75 @@ namespace SGG.PerfMeter
 			_valueBuilder.Append(" heatmap ");
 			_valueBuilder.Append(status.OverdrawHeatmapVisible ? "on" : "off");
 			EndTextField();
+		}
+
+		private void AppendCustomMetrics()
+		{
+			if (!HasModule(PerfMeterOverlayModule.CustomMetrics))
+			{
+				return;
+			}
+
+			PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetrics();
+			int count = Math.Min(customMetrics.Length, MaxCustomMetricRows);
+			for (int i = 0; i < count; i++)
+			{
+				PerfMeterCustomMetricSnapshot metric = customMetrics[i];
+				BeginTextField("Custom " + GetCustomMetricDisplayName(metric));
+				AppendCustomMetricValue(_valueBuilder, metric);
+				EndTextField();
+			}
+		}
+
+		private static string GetCustomMetricDisplayName(PerfMeterCustomMetricSnapshot metric)
+		{
+			string name = !string.IsNullOrEmpty(metric.Name) ? metric.Name : metric.Id;
+			if (string.IsNullOrEmpty(name))
+			{
+				return "metric";
+			}
+
+			return name.Length <= MaxCustomMetricNameLength ? name : name.Substring(0, MaxCustomMetricNameLength - 3) + "...";
+		}
+
+		private void AppendCustomMetricValue(StringBuilder builder, PerfMeterCustomMetricSnapshot metric)
+		{
+			if (metric.Available && !double.IsNaN(metric.Value) && !double.IsInfinity(metric.Value))
+			{
+				AppendDouble(builder, metric.Value, "0.###");
+				if (!string.IsNullOrEmpty(metric.Unit))
+				{
+					builder.Append(' ');
+					builder.Append(metric.Unit);
+				}
+			}
+			else
+			{
+				builder.Append("n/a");
+			}
+
+			if (!string.IsNullOrEmpty(metric.Warning))
+			{
+				builder.Append(" ! ");
+				AppendLimited(builder, metric.Warning, MaxCustomMetricWarningLength);
+			}
+		}
+
+		private static void AppendLimited(StringBuilder builder, string value, int maxLength)
+		{
+			if (string.IsNullOrEmpty(value) || maxLength <= 0)
+			{
+				return;
+			}
+
+			if (value.Length <= maxLength)
+			{
+				builder.Append(value);
+				return;
+			}
+
+			builder.Append(value, 0, Math.Max(0, maxLength - 3));
+			builder.Append("...");
 		}
 
 		private void AppendWarning(string warning, int maxLength)

@@ -239,7 +239,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["None", "All", "Fps", "Timing", "Graphs", "Rendering", "SrpBatcher", "Brg", "Uploads", "Memory", "Gc", "GpuMemory", "Overdraw", "Heatmap", "Warnings"]
+              "enum": ["None", "All", "Fps", "Timing", "Graphs", "Rendering", "SrpBatcher", "Brg", "Uploads", "Memory", "Gc", "GpuMemory", "Overdraw", "Heatmap", "Warnings", "CustomMetrics"]
             },
             "minItems": 1,
             "uniqueItems": true

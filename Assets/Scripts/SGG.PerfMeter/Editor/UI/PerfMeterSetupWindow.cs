@@ -294,6 +294,7 @@ namespace SGG.PerfMeter.Editor.UI
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.Overdraw, "Overdraw ratio");
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.Heatmap, "Heatmap state");
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.Warnings, "Warnings");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.CustomMetrics, "Custom metrics");
 			AddControlRow(section, "Modules", moduleList);
 
 			_settingsOverlayScale = new FloatField();

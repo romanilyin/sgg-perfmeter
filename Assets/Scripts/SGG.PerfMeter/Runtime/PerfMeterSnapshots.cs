@@ -99,7 +99,8 @@ namespace SGG.PerfMeter
 		Overdraw = 1 << 10,
 		Heatmap = 1 << 11,
 		Warnings = 1 << 12,
-		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings
+		CustomMetrics = 1 << 13,
+		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings | CustomMetrics
 	}
 
 	public enum PerfMeterTargetFps
