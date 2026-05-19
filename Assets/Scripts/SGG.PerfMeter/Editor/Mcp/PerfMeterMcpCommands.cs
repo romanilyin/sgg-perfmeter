@@ -55,7 +55,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 			RuntimePerformanceMeter.SetCollectionMode(mode);
 			if (mode == PerfMeterCollectionMode.OverdrawDiagnostic && TryExtractInt(argsJson, "frame_count", out int frameCount))
 			{
-				RuntimePerformanceMeter.RequestOverdrawMeasurement(Mathf.Clamp(frameCount, 1, 600));
+				PerfMeterSettingsSnapshot settings = RuntimePerformanceMeter.GetSettings();
+				RuntimePerformanceMeter.RequestOverdrawMeasurement(Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount));
 			}
 
 			return StatusJson(RuntimePerformanceMeter.GetStatus());
@@ -128,7 +129,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		public static string OverdrawStart(string argsJson)
 		{
-			int frameCount = Mathf.Clamp(ExtractInt(argsJson, "frame_count", 60), 1, 600);
+			PerfMeterSettingsSnapshot settings = RuntimePerformanceMeter.GetSettings();
+			int frameCount = Mathf.Clamp(ExtractInt(argsJson, "frame_count", settings.OverdrawDefaultFrameCount), 1, settings.OverdrawMaxFrameCount);
 			RuntimePerformanceMeter.RequestOverdrawMeasurement(frameCount);
 			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}

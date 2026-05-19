@@ -316,7 +316,7 @@ MCP:
 
 Лучшее место: `Samples~/...` внутри пакета.
 
-### 11. JSON-tunable UI/rule/session settings
+### 11. [Done] JSON-tunable UI/rule/session settings
 
 Расширять JSON постепенно, без `ScriptableObject` settings:
 
@@ -417,7 +417,7 @@ public interface IPerfMeterCustomMetricProvider
 5. Explicit background/headless collection mode: `Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic`.
 6. Zero-allocation overlay refresh path и GC Alloc validation checklist/test scene.
 7. `Samples~` workflows и bilingual documentation для bootstrap/settings/session/alerts/overdraw/MCP.
-8. JSON-tunable UI/rule/session settings.
+8. JSON-tunable UI/rule/session settings. `[Done]`
 9. Custom metric providers для export/MCP-first extension point.
 
 ## Документация и проверки

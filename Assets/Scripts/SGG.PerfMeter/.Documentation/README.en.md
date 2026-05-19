@@ -16,7 +16,7 @@ Current package version: `2026.5.18-1`. This is a private release candidate; the
 - Alerts: `PerformanceMeter.GetLatestAlerts()`, `PerformanceMeter.ClearAlerts()`, and the `PerformanceMeter.AlertFired` event expose active/fired rule alerts without scraping Unity Console output.
 - Lifecycle/modes: `PerformanceMeter.EnsureRunning()`, `PerformanceMeter.Stop()`, `PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode mode)`, and `PerformanceMeter.CollectionMode` control `Stopped`, `Background`, `Overlay`, and `OverdrawDiagnostic` collection modes.
 - Overlay: `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset preset)`, `PerformanceMeter.SetOverlayModules(PerfMeterOverlayModule modules)`, `PerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.OverlayPreset`, `PerformanceMeter.OverlayModules`, `PerformanceMeter.TargetFps`, and status snapshot fields `OverlayVisible` / `OverlayCorner` / `OverlayMode` / `OverlayPreset` / `OverlayModules` / `TargetFps`
-- Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)`, `PerformanceMeter.CancelOverdrawMeasurement()`, `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)`, and `PerformanceMeter.IsOverdrawHeatmapVisible`
+- Overdraw: `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 0)`, `PerformanceMeter.CancelOverdrawMeasurement()`, `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)`, and `PerformanceMeter.IsOverdrawHeatmapVisible`
 
 Queries are safe before the runtime is started: normal reads return a snapshot with `State = Stopped` and should not throw exceptions.
 
@@ -26,8 +26,8 @@ Open `SGG/Perfmeter/Setup` to prepare the project without editing URP renderer a
 
 - `Project Settings` shows `Frame Timing Stats` status and can enable the Player Setting with `Enable Frame Timing`.
 - `URP Renderer Features` lists active Graphics/Quality URP renderer assets first, then renderer assets discovered under `Assets`, with installed/missing/not-editable status; it can add `PerfMeterRenderGraphFeature` to all editable missing renderers or only selected renderers without creating duplicates.
-- The `Presets` tab creates and edits project-owned JSON settings at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; runtime loads it with `Resources.Load<TextAsset>("SGG.PerfMeter/perfmeter-settings")`. `ScriptableObject` settings are intentionally not used. The tab also chooses the active overlay preset (`Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, `Custom`) and saves selected overlay modules into JSON.
-- Zero-code setup is driven by this JSON: when `enabled` and `autoStart` are enabled, runtime auto-start applies collection mode plus overlay visible/corner/mode/target FPS without handwritten bootstrap code.
+- The `Presets` tab creates and edits project-owned JSON settings at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; runtime loads it with `Resources.Load<TextAsset>("SGG.PerfMeter/perfmeter-settings")`. `ScriptableObject` settings are intentionally not used. The tab also chooses the active overlay preset (`Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, `Custom`), saves selected overlay modules, and edits overlay/rule/session/overdraw tunables.
+- Zero-code setup is driven by this JSON: when `enabled` and `autoStart` are enabled, runtime auto-start applies collection mode, overlay visible/corner/mode/target FPS/preset/modules, tuning, alert defaults, session defaults, and overdraw limits without handwritten bootstrap code.
 - `Initialization Code` shows the runtime overlay bootstrap; `Overlay Visible`, `Target FPS`, `Overlay Corner`, and `Overlay Mode` options immediately update the code copied by `Copy Init Code`.
 - The `Runtime` tab is for Play Mode: buttons are disabled in Edit Mode, and in Play Mode they switch collection mode, target FPS, overlay mode/corner, show or hide the overlay, start a short overdraw measurement, and toggle the overdraw heatmap.
 
@@ -67,7 +67,7 @@ public static class PerfMeterBootstrap
 
 Import samples from Package Manager or copy them from `Assets/Scripts/SGG.PerfMeter/Samples~` while developing from this repository.
 
-- `Bootstrap and Zero-Code Settings` contains a minimal bootstrap component and a `Resources/SGG.PerfMeter/perfmeter-settings.json` zero-code setup example.
+- `Bootstrap and Zero-Code Settings` contains a minimal bootstrap component and a `Resources/SGG.PerfMeter/perfmeter-settings.json` zero-code setup example, including overlay/rule/session/overdraw tunables.
 - `Runtime Workflows` contains overlay preset switching, bounded session JSON/CSV export, alert callback, overdraw/heatmap, and camera snapshot replay examples.
 - `Editor and MCP Automation` contains setup menu actions plus MCP command examples for agent-driven runs.
 
@@ -87,8 +87,8 @@ The runtime singleton updates snapshots in `Update()` with real values from `Fra
 - Collection mode: `PerfMeterStatusSnapshot.CollectionMode` reports `Stopped`, `Background`, `Overlay`, or `OverdrawDiagnostic`. `Background` keeps metrics/session collection running without a visible overlay.
 - Device/environment snapshot: `PerfMeterDeviceSnapshot` includes Unity version, platform, OS, CPU/RAM, GPU/API/capabilities, screen/current resolution/fullscreen state, main window position, render-safe display layout state, and `PerfMeterDisplaySnapshot` entries with system monitor names from `Screen.GetDisplayLayout(List<DisplayInfo>)`. If layout is unavailable, it falls back to `Screen.currentResolution`.
 - Camera snapshot: `PerfMeterCameraSnapshot` includes camera name/id, scene name/path, position, rotation quaternion, Euler angles, forward/up vectors, projection, FOV/orthographic size, clip planes, aspect, pixel rect, target display, depth, clear flags, culling mask, HDR/MSAA flags, and URP `UniversalAdditionalCameraData` fields when that component already exists on the camera.
-- Session summary/export: `PerfMeterSessionSummarySnapshot` includes sample count, dropped sample count, first/last frame, duration, average/min/max frame time and FPS, bottleneck/spike counts, warnings, start settings/device/camera metadata, scene names, whole-run/current-scene scope summaries, and worst-frame summaries. `PerfMeterSessionOptions` controls `WarmupFrames`, `WarmupSeconds`, `SampleIntervalSeconds`, `MaxSamples`, `ResetOnSceneLoad`, `SceneLoadIgnoreFrames`, and `SceneLoadIgnoreSeconds`. `GetSessionSamples()` returns a copied sample array, while `ExportSessionJson(path)` / `ExportSessionCsv(path)` write schema/package markers, summary/options/metadata, and rows with CPU/GPU/FPS/render/SRP/BRG/upload/memory/overdraw/warning/counter availability metrics.
-- Alerts: default rules watch CPU/GPU frame budget, FPS below target, unavailable GPU timing, and high overdraw ratio. `PerfMeterStatusSnapshot` includes `ActiveAlertCount`, `FiredAlertCount`, `LatestAlertRuleId`, and `LatestAlertMessage`; structured log, callback, and Editor warning use separate cooldowns from JSON settings so Editor Console is not spammed every frame.
+- Session summary/export: `PerfMeterSessionSummarySnapshot` includes sample count, dropped sample count, first/last frame, duration, average/min/max frame time and FPS, bottleneck/spike counts, warnings, start settings/device/camera metadata, scene names, whole-run/current-scene scope summaries, and worst-frame summaries. `PerfMeterSessionOptions` controls `WarmupFrames`, `WarmupSeconds`, `SampleIntervalSeconds`, `MaxSamples`, `ResetOnSceneLoad`, `SceneLoadIgnoreFrames`, and `SceneLoadIgnoreSeconds`; zero-code defaults for them are stored in JSON. `GetSessionSamples()` returns a copied sample array, while `ExportSessionJson(path)` / `ExportSessionCsv(path)` write schema/package markers, summary/options/metadata, and rows with CPU/GPU/FPS/render/SRP/BRG/upload/memory/overdraw/warning/counter availability metrics.
+- Alerts: default rules watch CPU/GPU frame budget, FPS below target, unavailable GPU timing, and high overdraw ratio. The overdraw ratio threshold, consecutive frame counts, structured log, callback, and Editor warning cooldowns come from JSON settings so Editor Console is not spammed every frame. `PerfMeterStatusSnapshot` includes `ActiveAlertCount`, `FiredAlertCount`, `LatestAlertRuleId`, and `LatestAlertMessage`.
 
 ## MCP Commands
 
@@ -111,13 +111,13 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - The overlay defaults to the top-right corner (`TopRight`) and `Full` mode; available corners are `TopLeft`, `TopRight`, `BottomLeft`, and `BottomRight`.
 - Modes: `FpsOnly` shows one FPS/1%/0.1% line, `TextCompact` shows a compact text summary, `Graphs` shows FPS plus CPU/GPU graphs, and `Full` adds render/memory/overdraw counters.
 - Presets group a display mode and module flags: `Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, and `Custom`. Module flags (`Fps`, `Timing`, `Graphs`, `Rendering`, `SrpBatcher`, `Brg`, `Uploads`, `Memory`, `Gc`, `GpuMemory`, `Overdraw`, `Heatmap`, `Warnings`) filter overlay rows and hide the graph block when `Graphs` is disabled.
-- Text fields are refreshed at most 4 times per second from the latest runtime snapshots, not every frame.
+- Text fields refresh on a JSON-tunable interval from the latest runtime snapshots, not every frame; the default interval is 0.25 seconds.
 - The text block is split into stable field-name labels plus value labels; enum names are cached, numbers format through a reusable buffer, and each value label is assigned only when its text changed instead of rebuilding one large `StringBuilder.ToString()` block.
 - Graphs are drawn through UI Toolkit `generateVisualContent`; the CPU graph uses stacked areas for `render`, `main`, and the remainder up to `frame`, while `frame` is drawn as the upper boundary without summing `frame + main + render`.
 - The right side of the graphs shows colored label badges for `frame`, `other`, `main`, `render`, and `gpu` with current, average, worst 1%, and worst 0.1% timings; numbers use fixed width relative to the current graph scale/maximum.
 - If GPU timing is temporarily unavailable, the GPU badge turns gray, the current value uses an underscore placeholder, and averages/history use valid samples only.
 - Target FPS is selected from `15/30/60/90/120/144/240`; the matching `FrameBudgetMs` drives the red target line shown left of the graph and the scale formula `max(averageTimeMs * 1.1, FrameBudgetMs * 1.2)`.
-- Text modes show current/min/max over the overlay's internal history window for timings, render counters, and memory.
+- Text modes show current/min/max over the overlay's internal history window for timings, render counters, and memory; graph/history length is JSON-tunable.
 - Warnings are held briefly so transient GPU timing gaps do not blink on every refresh.
 - In `Full`, visible fields include state, bottleneck, FPS/lows/spikes, CPU/GPU timings, draw calls, SetPass, batches, vertices, SRP/BRG counters, index uploads, overdraw state/progress/ratio, memory, and warning text when present.
 - `PerformanceMeter.SetOverlayVisible(false)` hides the retained UI without stopping metric collection; `PerformanceMeter.SetOverlayVisible(true)` ensures the runtime is running and shows the overlay in Play Mode.
@@ -139,7 +139,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 
 ## Overdraw Measurement
 
-Overdraw measurement is opt-in and bounded. Call `PerformanceMeter.RequestOverdrawMeasurement()` to request the default 60-frame measurement window, or pass a custom positive frame count. Call `PerformanceMeter.CancelOverdrawMeasurement()` to stop the request early.
+Overdraw measurement is opt-in and bounded. Call `PerformanceMeter.RequestOverdrawMeasurement()` to request the JSON-tunable default measurement window, or pass a custom positive frame count; the runtime clamps it by the JSON `maxFrameCount`. Call `PerformanceMeter.CancelOverdrawMeasurement()` to stop the request early.
 
 - The runtime is `Off` by default and does not record the numerical overdraw pass until a request is active.
 - `PerfMeterRenderGraphFeature` must be added to the active URP renderer. During an active request it records a Render Graph raster pass with the profiling marker `SGG.PerfMeter.Overdraw`.

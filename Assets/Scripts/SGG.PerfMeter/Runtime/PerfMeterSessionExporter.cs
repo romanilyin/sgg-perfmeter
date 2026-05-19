@@ -232,6 +232,11 @@ namespace SGG.PerfMeter
 			builder.Append(",\"target_fps\":").Append((int)settings.TargetFps);
 			builder.Append(",\"active_preset\":").Append(JsonString(settings.ActivePreset));
 			builder.Append(",\"overlay_modules\":").Append(JsonString(settings.OverlayModules.ToString()));
+			builder.Append(",\"overlay_scale\":").Append(JsonNumber(settings.OverlayScale));
+			builder.Append(",\"overlay_opacity\":").Append(JsonNumber(settings.OverlayOpacity));
+			builder.Append(",\"overlay_font_size\":").Append(JsonNumber(settings.OverlayFontSize));
+			builder.Append(",\"overlay_refresh_interval_seconds\":").Append(JsonNumber(settings.OverlayRefreshIntervalSeconds));
+			builder.Append(",\"overlay_graph_history_length\":").Append(settings.OverlayGraphHistoryLength);
 			builder.Append(",\"session_warmup_frames\":").Append(settings.SessionWarmupFrames);
 			builder.Append(",\"session_warmup_seconds\":").Append(JsonNumber(settings.SessionWarmupSeconds));
 			builder.Append(",\"session_sample_interval_seconds\":").Append(JsonNumber(settings.SessionSampleIntervalSeconds));
@@ -239,6 +244,13 @@ namespace SGG.PerfMeter
 			builder.Append(",\"session_reset_on_scene_load\":").Append(JsonBool(settings.SessionResetOnSceneLoad));
 			builder.Append(",\"session_scene_load_ignore_frames\":").Append(settings.SessionSceneLoadIgnoreFrames);
 			builder.Append(",\"session_scene_load_ignore_seconds\":").Append(JsonNumber(settings.SessionSceneLoadIgnoreSeconds));
+			builder.Append(",\"overdraw_default_frame_count\":").Append(settings.OverdrawDefaultFrameCount);
+			builder.Append(",\"overdraw_max_frame_count\":").Append(settings.OverdrawMaxFrameCount);
+			builder.Append(",\"alert_overdraw_ratio_threshold\":").Append(JsonNumber(settings.AlertOverdrawRatioThreshold));
+			builder.Append(",\"alert_timing_consecutive_frames\":").Append(settings.AlertTimingConsecutiveFrames);
+			builder.Append(",\"alert_fps_consecutive_frames\":").Append(settings.AlertFpsConsecutiveFrames);
+			builder.Append(",\"alert_gpu_timing_unavailable_consecutive_frames\":").Append(settings.AlertGpuTimingUnavailableConsecutiveFrames);
+			builder.Append(",\"alert_overdraw_consecutive_frames\":").Append(settings.AlertOverdrawConsecutiveFrames);
 			builder.Append(",\"load_state\":").Append(JsonString(settings.LoadState.ToString()));
 			builder.Append(",\"warning\":").Append(JsonString(settings.Warning));
 			builder.Append('}');

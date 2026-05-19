@@ -329,6 +329,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"summary\""));
 			Assert.That(json, Does.Contain("\"metadata\""));
 			Assert.That(json, Does.Contain("\"samples\""));
+			Assert.That(json, Does.Contain("\"overlay_scale\""));
+			Assert.That(json, Does.Contain("\"overdraw_default_frame_count\""));
+			Assert.That(json, Does.Contain("\"alert_overdraw_ratio_threshold\""));
 			Assert.That(json, Does.Contain("\"whole_run\""));
 			Assert.That(json, Does.Contain("\"current_scene\""));
 			Assert.That(json, Does.Contain("\"worst_frame\""));
@@ -348,6 +351,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.Equal, 2d), Is.True);
 			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.NotEqual, 3d), Is.True);
 			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.GreaterThan, 2d), Is.False);
+		}
+
+		[Test]
+		public void AlertEngineDefaultRulesUseSettingsTunables()
+		{
+			PerfMeterSettingsJson settingsJson = PerfMeterSettingsStore.CreateDefault();
+			settingsJson.ruleDefaults.overdrawRatioThreshold = 2.25d;
+			settingsJson.ruleDefaults.timingConsecutiveFrames = 6;
+			settingsJson.ruleDefaults.fpsConsecutiveFrames = 21;
+			settingsJson.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = 17;
+			settingsJson.ruleDefaults.overdrawConsecutiveFrames = 4;
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.ToSnapshot(settingsJson, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			PerfMeterRule[] rules = PerfMeterAlertEngine.CreateDefaultRules(PerfMeterTargetFps.Fps30, settings);
+
+			Assert.That(FindRule(rules, "cpu.frame.over_budget").Threshold, Is.EqualTo(1000d / 30d).Within(0.001d));
+			Assert.That(FindRule(rules, "cpu.frame.over_budget").ConsecutiveFrames, Is.EqualTo(6));
+			Assert.That(FindRule(rules, "fps.below_target").Threshold, Is.EqualTo(30d));
+			Assert.That(FindRule(rules, "fps.below_target").ConsecutiveFrames, Is.EqualTo(21));
+			Assert.That(FindRule(rules, "gpu.timing.unavailable").ConsecutiveFrames, Is.EqualTo(17));
+			Assert.That(FindRule(rules, "overdraw.ratio.high").Threshold, Is.EqualTo(2.25d).Within(0.001d));
+			Assert.That(FindRule(rules, "overdraw.ratio.high").ConsecutiveFrames, Is.EqualTo(4));
 		}
 
 		[Test]
@@ -536,6 +561,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 				0L,
 				0L,
 				0d);
+		}
+
+		private static PerfMeterRule FindRule(PerfMeterRule[] rules, string id)
+		{
+			for (int i = 0; i < rules.Length; i++)
+			{
+				if (rules[i].Id == id)
+				{
+					return rules[i];
+				}
+			}
+
+			Assert.Fail("Rule not found: " + id);
+			return default;
 		}
 	}
 }

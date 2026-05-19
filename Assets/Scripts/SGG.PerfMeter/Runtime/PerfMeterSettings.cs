@@ -35,7 +35,19 @@ namespace SGG.PerfMeter
 			float structuredLogCooldownSeconds,
 			float callbackCooldownSeconds,
 			PerfMeterSettingsLoadState loadState,
-			string warning)
+			string warning,
+			float overlayScale = 1f,
+			float overlayOpacity = 0.84f,
+			float overlayFontSize = 12f,
+			float overlayRefreshIntervalSeconds = 0.25f,
+			int overlayGraphHistoryLength = 120,
+			int overdrawDefaultFrameCount = 60,
+			int overdrawMaxFrameCount = 600,
+			double alertOverdrawRatioThreshold = 3d,
+			int alertTimingConsecutiveFrames = 5,
+			int alertFpsConsecutiveFrames = 60,
+			int alertGpuTimingUnavailableConsecutiveFrames = 120,
+			int alertOverdrawConsecutiveFrames = 3)
 		{
 			Enabled = enabled;
 			AutoStart = autoStart;
@@ -56,6 +68,18 @@ namespace SGG.PerfMeter
 			EditorWarningCooldownSeconds = Mathf.Max(1f, editorWarningCooldownSeconds);
 			StructuredLogCooldownSeconds = Mathf.Max(0f, structuredLogCooldownSeconds);
 			CallbackCooldownSeconds = Mathf.Max(0f, callbackCooldownSeconds);
+			OverlayScale = Mathf.Clamp(overlayScale, PerfMeterSettingsStore.MinOverlayScale, PerfMeterSettingsStore.MaxOverlayScale);
+			OverlayOpacity = Mathf.Clamp(overlayOpacity, PerfMeterSettingsStore.MinOverlayOpacity, PerfMeterSettingsStore.MaxOverlayOpacity);
+			OverlayFontSize = Mathf.Clamp(overlayFontSize, PerfMeterSettingsStore.MinOverlayFontSize, PerfMeterSettingsStore.MaxOverlayFontSize);
+			OverlayRefreshIntervalSeconds = Mathf.Clamp(overlayRefreshIntervalSeconds, PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds, PerfMeterSettingsStore.MaxOverlayRefreshIntervalSeconds);
+			OverlayGraphHistoryLength = Mathf.Clamp(overlayGraphHistoryLength, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength);
+			OverdrawMaxFrameCount = Mathf.Clamp(overdrawMaxFrameCount, 1, PerfMeterSettingsStore.MaxOverdrawFrameCountLimit);
+			OverdrawDefaultFrameCount = Mathf.Clamp(overdrawDefaultFrameCount, 1, OverdrawMaxFrameCount);
+			AlertOverdrawRatioThreshold = Math.Max(0.1d, alertOverdrawRatioThreshold);
+			AlertTimingConsecutiveFrames = Mathf.Max(1, alertTimingConsecutiveFrames);
+			AlertFpsConsecutiveFrames = Mathf.Max(1, alertFpsConsecutiveFrames);
+			AlertGpuTimingUnavailableConsecutiveFrames = Mathf.Max(1, alertGpuTimingUnavailableConsecutiveFrames);
+			AlertOverdrawConsecutiveFrames = Mathf.Max(1, alertOverdrawConsecutiveFrames);
 			LoadState = loadState;
 			Warning = warning ?? string.Empty;
 		}
@@ -79,6 +103,18 @@ namespace SGG.PerfMeter
 		public float EditorWarningCooldownSeconds { get; }
 		public float StructuredLogCooldownSeconds { get; }
 		public float CallbackCooldownSeconds { get; }
+		public float OverlayScale { get; }
+		public float OverlayOpacity { get; }
+		public float OverlayFontSize { get; }
+		public float OverlayRefreshIntervalSeconds { get; }
+		public int OverlayGraphHistoryLength { get; }
+		public int OverdrawDefaultFrameCount { get; }
+		public int OverdrawMaxFrameCount { get; }
+		public double AlertOverdrawRatioThreshold { get; }
+		public int AlertTimingConsecutiveFrames { get; }
+		public int AlertFpsConsecutiveFrames { get; }
+		public int AlertGpuTimingUnavailableConsecutiveFrames { get; }
+		public int AlertOverdrawConsecutiveFrames { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
 
@@ -110,9 +146,20 @@ namespace SGG.PerfMeter
 		public int targetFps = (int)PerfMeterTargetFps.Fps60;
 		public string activePreset = PerfMeterSettingsStore.DefaultPresetId;
 		public PerfMeterPresetSettingsJson[] presets = Array.Empty<PerfMeterPresetSettingsJson>();
+		public PerfMeterOverlaySettingsJson overlay = new PerfMeterOverlaySettingsJson();
 		public PerfMeterRuleDefaultsJson ruleDefaults = new PerfMeterRuleDefaultsJson();
 		public PerfMeterSessionSettingsJson session = new PerfMeterSessionSettingsJson();
 		public PerfMeterOverdrawSettingsJson overdraw = new PerfMeterOverdrawSettingsJson();
+	}
+
+	[Serializable]
+	internal sealed class PerfMeterOverlaySettingsJson
+	{
+		public float scale = 1f;
+		public float opacity = 0.84f;
+		public float fontSize = 12f;
+		public float refreshIntervalSeconds = 0.25f;
+		public int graphHistoryLength = 120;
 	}
 
 	[Serializable]
@@ -131,6 +178,11 @@ namespace SGG.PerfMeter
 		public float editorWarningCooldownSeconds = 8f;
 		public float structuredLogCooldownSeconds = 2f;
 		public float callbackCooldownSeconds = 0.5f;
+		public double overdrawRatioThreshold = 3d;
+		public int timingConsecutiveFrames = 5;
+		public int fpsConsecutiveFrames = 60;
+		public int gpuTimingUnavailableConsecutiveFrames = 120;
+		public int overdrawConsecutiveFrames = 3;
 	}
 
 	[Serializable]
@@ -158,6 +210,17 @@ namespace SGG.PerfMeter
 		internal const string DefaultPresetId = "FullDiagnostics";
 		internal const string ResourcesLoadPath = "SGG.PerfMeter/perfmeter-settings";
 		internal const string ResourcesAssetPath = "Assets/Resources/SGG.PerfMeter/perfmeter-settings.json";
+		internal const float MinOverlayScale = 0.5f;
+		internal const float MaxOverlayScale = 2f;
+		internal const float MinOverlayOpacity = 0.1f;
+		internal const float MaxOverlayOpacity = 1f;
+		internal const float MinOverlayFontSize = 9f;
+		internal const float MaxOverlayFontSize = 24f;
+		internal const float MinOverlayRefreshIntervalSeconds = 0.05f;
+		internal const float MaxOverlayRefreshIntervalSeconds = 2f;
+		internal const int MinOverlayGraphHistoryLength = 16;
+		internal const int MaxOverlayGraphHistoryLength = 600;
+		internal const int MaxOverdrawFrameCountLimit = 600;
 
 		internal static PerfMeterSettingsSnapshot Defaults => ToSnapshot(CreateDefault(), PerfMeterSettingsLoadState.Missing, string.Empty);
 
@@ -175,6 +238,7 @@ namespace SGG.PerfMeter
 				targetFps = (int)PerfMeterTargetFps.Fps60,
 				activePreset = DefaultPresetId,
 				presets = CreateDefaultPresets(),
+				overlay = new PerfMeterOverlaySettingsJson(),
 				ruleDefaults = new PerfMeterRuleDefaultsJson(),
 				session = new PerfMeterSessionSettingsJson(),
 				overdraw = new PerfMeterOverdrawSettingsJson()
@@ -192,6 +256,11 @@ namespace SGG.PerfMeter
 			settings.overlayMode = snapshot.OverlayMode.ToString();
 			settings.targetFps = (int)snapshot.TargetFps;
 			settings.activePreset = string.IsNullOrEmpty(snapshot.ActivePreset) ? DefaultPresetId : snapshot.ActivePreset;
+			settings.overlay.scale = snapshot.OverlayScale;
+			settings.overlay.opacity = snapshot.OverlayOpacity;
+			settings.overlay.fontSize = snapshot.OverlayFontSize;
+			settings.overlay.refreshIntervalSeconds = snapshot.OverlayRefreshIntervalSeconds;
+			settings.overlay.graphHistoryLength = snapshot.OverlayGraphHistoryLength;
 			settings.session.warmupFrames = snapshot.SessionWarmupFrames;
 			settings.session.warmupSeconds = snapshot.SessionWarmupSeconds;
 			settings.session.sampleIntervalSeconds = snapshot.SessionSampleIntervalSeconds;
@@ -202,6 +271,13 @@ namespace SGG.PerfMeter
 			settings.ruleDefaults.editorWarningCooldownSeconds = snapshot.EditorWarningCooldownSeconds;
 			settings.ruleDefaults.structuredLogCooldownSeconds = snapshot.StructuredLogCooldownSeconds;
 			settings.ruleDefaults.callbackCooldownSeconds = snapshot.CallbackCooldownSeconds;
+			settings.ruleDefaults.overdrawRatioThreshold = snapshot.AlertOverdrawRatioThreshold;
+			settings.ruleDefaults.timingConsecutiveFrames = snapshot.AlertTimingConsecutiveFrames;
+			settings.ruleDefaults.fpsConsecutiveFrames = snapshot.AlertFpsConsecutiveFrames;
+			settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = snapshot.AlertGpuTimingUnavailableConsecutiveFrames;
+			settings.ruleDefaults.overdrawConsecutiveFrames = snapshot.AlertOverdrawConsecutiveFrames;
+			settings.overdraw.defaultFrameCount = snapshot.OverdrawDefaultFrameCount;
+			settings.overdraw.maxFrameCount = snapshot.OverdrawMaxFrameCount;
 			ApplySnapshotToPreset(settings, snapshot);
 			return settings;
 		}
@@ -321,7 +397,19 @@ namespace SGG.PerfMeter
 				settings.ruleDefaults != null ? settings.ruleDefaults.structuredLogCooldownSeconds : 2f,
 				settings.ruleDefaults != null ? settings.ruleDefaults.callbackCooldownSeconds : 0.5f,
 				loadState,
-				CombineWarnings(CombineWarnings(warning, normalizeWarning), moduleWarning));
+				CombineWarnings(CombineWarnings(warning, normalizeWarning), moduleWarning),
+				overlayScale: settings.overlay != null ? settings.overlay.scale : 1f,
+				overlayOpacity: settings.overlay != null ? settings.overlay.opacity : 0.84f,
+				overlayFontSize: settings.overlay != null ? settings.overlay.fontSize : 12f,
+				overlayRefreshIntervalSeconds: settings.overlay != null ? settings.overlay.refreshIntervalSeconds : 0.25f,
+				overlayGraphHistoryLength: settings.overlay != null ? settings.overlay.graphHistoryLength : 120,
+				overdrawDefaultFrameCount: settings.overdraw != null ? settings.overdraw.defaultFrameCount : 60,
+				overdrawMaxFrameCount: settings.overdraw != null ? settings.overdraw.maxFrameCount : 600,
+				alertOverdrawRatioThreshold: settings.ruleDefaults != null ? settings.ruleDefaults.overdrawRatioThreshold : 3d,
+				alertTimingConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.timingConsecutiveFrames : 5,
+				alertFpsConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.fpsConsecutiveFrames : 60,
+				alertGpuTimingUnavailableConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames : 120,
+				alertOverdrawConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.overdrawConsecutiveFrames : 3);
 		}
 
 		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
@@ -333,6 +421,7 @@ namespace SGG.PerfMeter
 			}
 
 			PerformanceMeter.EnsureRunning();
+			PerformanceMeter.ApplyOverlayTuning(settings);
 			PerformanceMeter.SetOverlayPreset(ParseOverlayPreset(settings.ActivePreset));
 			PerformanceMeter.SetOverlayModules(settings.OverlayModules);
 			PerformanceMeter.SetTargetFps(settings.TargetFps);
@@ -588,6 +677,22 @@ namespace SGG.PerfMeter
 			settings.ruleDefaults.editorWarningCooldownSeconds = Mathf.Max(1f, settings.ruleDefaults.editorWarningCooldownSeconds);
 			settings.ruleDefaults.structuredLogCooldownSeconds = Mathf.Max(0f, settings.ruleDefaults.structuredLogCooldownSeconds);
 			settings.ruleDefaults.callbackCooldownSeconds = Mathf.Max(0f, settings.ruleDefaults.callbackCooldownSeconds);
+			settings.ruleDefaults.overdrawRatioThreshold = Math.Max(0.1d, settings.ruleDefaults.overdrawRatioThreshold);
+			settings.ruleDefaults.timingConsecutiveFrames = Mathf.Max(1, settings.ruleDefaults.timingConsecutiveFrames);
+			settings.ruleDefaults.fpsConsecutiveFrames = Mathf.Max(1, settings.ruleDefaults.fpsConsecutiveFrames);
+			settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = Mathf.Max(1, settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames);
+			settings.ruleDefaults.overdrawConsecutiveFrames = Mathf.Max(1, settings.ruleDefaults.overdrawConsecutiveFrames);
+
+			if (settings.overlay == null)
+			{
+				settings.overlay = new PerfMeterOverlaySettingsJson();
+			}
+
+			settings.overlay.scale = Mathf.Clamp(settings.overlay.scale, MinOverlayScale, MaxOverlayScale);
+			settings.overlay.opacity = Mathf.Clamp(settings.overlay.opacity, MinOverlayOpacity, MaxOverlayOpacity);
+			settings.overlay.fontSize = Mathf.Clamp(settings.overlay.fontSize, MinOverlayFontSize, MaxOverlayFontSize);
+			settings.overlay.refreshIntervalSeconds = Mathf.Clamp(settings.overlay.refreshIntervalSeconds, MinOverlayRefreshIntervalSeconds, MaxOverlayRefreshIntervalSeconds);
+			settings.overlay.graphHistoryLength = Mathf.Clamp(settings.overlay.graphHistoryLength, MinOverlayGraphHistoryLength, MaxOverlayGraphHistoryLength);
 
 			if (settings.session == null)
 			{
@@ -606,8 +711,8 @@ namespace SGG.PerfMeter
 				settings.overdraw = new PerfMeterOverdrawSettingsJson();
 			}
 
-			settings.overdraw.defaultFrameCount = Mathf.Clamp(settings.overdraw.defaultFrameCount, 1, settings.overdraw.maxFrameCount <= 0 ? 600 : settings.overdraw.maxFrameCount);
-			settings.overdraw.maxFrameCount = Mathf.Clamp(settings.overdraw.maxFrameCount, settings.overdraw.defaultFrameCount, 600);
+			settings.overdraw.maxFrameCount = Mathf.Clamp(settings.overdraw.maxFrameCount, 1, MaxOverdrawFrameCountLimit);
+			settings.overdraw.defaultFrameCount = Mathf.Clamp(settings.overdraw.defaultFrameCount, 1, settings.overdraw.maxFrameCount);
 		}
 
 		private static PerfMeterOverlayCorner ParseOverlayCorner(string value)

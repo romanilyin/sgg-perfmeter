@@ -3,7 +3,7 @@
 ## Текущая готовность
 
 - Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`; текущая private release candidate версия - `2026.5.18-1`.
-- Реализованы runtime API, collection modes, device/environment snapshot с monitor names, camera snapshot для воспроизводимых captures, session recorder с bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata и JSON/CSV export, rule/alert engine с MCP alert commands, JSON settings для zero-code setup, Package Manager samples, вкладка `Presets` с overlay presets/modules, сбор метрик, UI Toolkit overlay с режимами, module filtering, allocation-conscious text field refresh, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
+- Реализованы runtime API, collection modes, device/environment snapshot с monitor names, camera snapshot для воспроизводимых captures, session recorder с bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata и JSON/CSV export, rule/alert engine с MCP alert commands, JSON settings для zero-code setup, JSON tunables для overlay/rules/session/overdraw, Package Manager samples, вкладка `Presets` с overlay presets/modules/tunables, сбор метрик, UI Toolkit overlay с режимами, module filtering, allocation-conscious text field refresh, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
 - Есть EditMode API/classifier tests и PlayMode runtime smoke tests; classifier mixed-load edge cases, overdraw stale-readback safety и heatmap toggles покрыты. Android S23 Vulkan/GLES smoke validation пройдена; более широкая player-build validation еще pending.
 - Пакет подготовлен как private/internal release candidate для проверки в Unity 6000.4 / URP 17; публичный релиз остается отложенным.
 
@@ -22,14 +22,14 @@
 - `CollectionFrame` указывает Unity frame, на котором собран snapshot; значения `FrameTimingManager` могут быть задержаны относительно этого кадра.
 - `PerfMeterBottleneck.PresentLimited` отделяет ожидание present/VSync/frame pacing от balanced frames и CPU/GPU-bound frames.
 - `PerformanceMeter.SetOverlayVisible(bool visible)`, `PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner corner)`, `PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode mode)`, `PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset preset)`, `PerformanceMeter.SetOverlayModules(PerfMeterOverlayModule modules)`, `PerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)`, `PerformanceMeter.SetTargetFps(PerfMeterTargetFps targetFps)`, `PerformanceMeter.IsOverlayVisible`, `PerformanceMeter.OverlayCorner`, `PerformanceMeter.OverlayMode`, `PerformanceMeter.OverlayPreset`, `PerformanceMeter.OverlayModules` и `PerformanceMeter.TargetFps` управляют runtime overlay, module filtering и target line.
-- `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 60)` / `PerformanceMeter.CancelOverdrawMeasurement()` управляют ограниченным по времени численным измерением overdraw.
+- `PerformanceMeter.RequestOverdrawMeasurement(int frameCount = 0)` / `PerformanceMeter.CancelOverdrawMeasurement()` управляют ограниченным по времени численным измерением overdraw; `0` использует JSON default frame count, а положительные значения clamp'ятся по JSON max frame count.
 - `PerformanceMeter.SetOverdrawHeatmapVisible(bool visible)` и `PerformanceMeter.IsOverdrawHeatmapVisible` управляют visual overdraw heatmap.
 - Editor setup actions для агентов: `PerfMeterSetupActions.GetStatusReport()`, `PerfMeterSetupActions.EnableFrameTimingStats()`, `PerfMeterSetupActions.InstallRendererFeatures()`, `PerfMeterSetupActions.CreateDefaultSettings()`, `PerfMeterSetupActions.SaveSettings(...)`, `PerfMeterSetupActions.ApplySettingsToRuntime()`, `PerfMeterSetupActions.RunRecommendedSetup()`.
 
 ## Setup
 
 - Откройте `SGG/Perfmeter/Setup` для проверки проекта, списка active/discovered URP renderer assets, установки `PerfMeterRenderGraphFeature` во все или выбранные editable renderers, настройки collection mode и вкладки `Presets`, а также копирования bootstrap-кода при необходимости.
-- Вкладка `Presets` создает и редактирует `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; это project-owned JSON, не `ScriptableObject`. При `enabled=true` и `autoStart=true` runtime auto-start применяет collection mode и overlay settings без ручного bootstrap-кода. Active preset и module toggles сохраняются в JSON и применяются к runtime overlay.
+- Вкладка `Presets` создает и редактирует `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; это project-owned JSON, не `ScriptableObject`. При `enabled=true` и `autoStart=true` runtime auto-start применяет collection mode, overlay settings, rule defaults, session defaults и overdraw limits без ручного bootstrap-кода. Active preset, module toggles и tunables сохраняются в JSON и применяются к runtime overlay/alerts/session defaults.
 - Для headless/agent setup вызовите `SGG.PerfMeter.Editor.Setup.PerfMeterSetupActions.RunRecommendedSetup()` из Editor-контекста.
 - Package samples покрывают bootstrap/zero-code settings, runtime workflows, editor setup automation, MCP command examples, session export, alerts, overdraw/heatmap и camera snapshot replay.
 - Добавьте `PerfMeterRenderGraphFeature` в активный URP renderer asset, если нужны Render Graph markers, численное измерение overdraw или visual overdraw heatmap; setup window делает это автоматически для найденных URP renderer assets.
@@ -47,10 +47,10 @@
 - Аналитика Render Graph passes/aliasing/merge еще не реализована.
 - MCP session commands `perfmeter.session.start/stop/summary/export`, runtime reset command `perfmeter.runtime.reset_stats` и mode command `perfmeter.runtime.mode.set` реализованы; export ограничивает path директорией проекта и не перезаписывает существующие файлы.
 - MCP alert commands `perfmeter.alerts.latest/clear` реализованы; output содержит alerts, counters, status fields и Editor state.
-- Editor warning alerts имеют отдельный JSON-настраиваемый cooldown и не пишут warning каждый кадр.
+- Editor warning alerts имеют отдельный JSON-настраиваемый cooldown и не пишут warning каждый кадр; default rule thresholds и consecutive-frame windows также редактируются в JSON/Presets.
 - Session start принимает warm-up seconds и scene-load reset/ignore overrides; summary/export output содержит whole-run/current-scene и worst-frame data.
 - Пустой overlay marker pass является opt-in diagnostic mode; self-overhead subtraction все еще pending.
-- Overlay text refresh теперь использует стабильные field labels, cached enum strings, переиспользуемые buffers для чисел и dirty assignment для value labels; изменившиеся числовые values и graph legend labels все еще могут materialize managed strings на throttled refresh interval.
+- Overlay text refresh теперь использует стабильные field labels, cached enum strings, переиспользуемые buffers для чисел и dirty assignment для value labels; refresh interval, scale, opacity, font size и graph history length настраиваются в JSON. Изменившиеся числовые values и graph legend labels все еще могут materialize managed strings на throttled refresh interval.
 - Более широкая manual device validation все еще полезна за пределами текущей Android S23 Vulkan/GLES smoke coverage.
 
 ## Release Readiness

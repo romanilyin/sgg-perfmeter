@@ -16,7 +16,7 @@ namespace SGG.PerfMeter
 		private int _firedAlertCount;
 
 		internal PerfMeterAlertEngine()
-			: this(CreateDefaultRules(PerfMeterTargetFps.Fps60, 0f))
+			: this(CreateDefaultRules(PerfMeterTargetFps.Fps60, PerfMeterSettingsStore.Defaults))
 		{
 		}
 
@@ -75,17 +75,17 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		internal static PerfMeterRule[] CreateDefaultRules(PerfMeterTargetFps targetFps, float cooldownSeconds)
+		internal static PerfMeterRule[] CreateDefaultRules(PerfMeterTargetFps targetFps, PerfMeterSettingsSnapshot settings)
 		{
 			double budget = PerfMeterRuntime.GetFrameBudgetMs(targetFps);
 			return new[]
 			{
-				new PerfMeterRule("cpu.frame.over_budget", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, 5, cooldownSeconds),
-				new PerfMeterRule("cpu.main.over_budget", PerfMeterMetric.CpuMainThreadFrameTimeMs, PerfMeterComparison.GreaterThan, budget, 5, cooldownSeconds),
-				new PerfMeterRule("gpu.frame.over_budget", PerfMeterMetric.GpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, 5, cooldownSeconds),
-				new PerfMeterRule("fps.below_target", PerfMeterMetric.AverageFps, PerfMeterComparison.LessThan, (int)targetFps, 60, cooldownSeconds),
-				new PerfMeterRule("gpu.timing.unavailable", PerfMeterMetric.GpuFrameTimeAvailable, PerfMeterComparison.LessThan, 0.5d, 120, cooldownSeconds),
-				new PerfMeterRule("overdraw.ratio.high", PerfMeterMetric.OverdrawRatio, PerfMeterComparison.GreaterThan, 3d, 3, cooldownSeconds)
+				new PerfMeterRule("cpu.frame.over_budget", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
+				new PerfMeterRule("cpu.main.over_budget", PerfMeterMetric.CpuMainThreadFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
+				new PerfMeterRule("gpu.frame.over_budget", PerfMeterMetric.GpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
+				new PerfMeterRule("fps.below_target", PerfMeterMetric.AverageFps, PerfMeterComparison.LessThan, (int)targetFps, settings.AlertFpsConsecutiveFrames),
+				new PerfMeterRule("gpu.timing.unavailable", PerfMeterMetric.GpuFrameTimeAvailable, PerfMeterComparison.LessThan, 0.5d, settings.AlertGpuTimingUnavailableConsecutiveFrames),
+				new PerfMeterRule("overdraw.ratio.high", PerfMeterMetric.OverdrawRatio, PerfMeterComparison.GreaterThan, settings.AlertOverdrawRatioThreshold, settings.AlertOverdrawConsecutiveFrames)
 			};
 		}
 

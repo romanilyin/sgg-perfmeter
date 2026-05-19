@@ -47,7 +47,7 @@ PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 
 Import package samples from Package Manager or copy them from `Samples~` when developing from this repository.
 
-- `Bootstrap and Zero-Code Settings`: minimal bootstrap component plus a `Resources/SGG.PerfMeter/perfmeter-settings.json` example.
+- `Bootstrap and Zero-Code Settings`: minimal bootstrap component plus a `Resources/SGG.PerfMeter/perfmeter-settings.json` example with overlay/rule/session/overdraw tunables.
 - `Runtime Workflows`: overlay preset switching, bounded session export, alert callbacks, overdraw/heatmap controls, and camera snapshot replay.
 - `Editor and MCP Automation`: setup menu actions and MCP command examples for agent-driven profiling runs.
 

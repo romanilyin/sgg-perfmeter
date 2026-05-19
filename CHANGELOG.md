@@ -11,6 +11,7 @@
 - Added explicit collection modes (`Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic`) with JSON/setup/runtime/MCP controls.
 - Improved overlay text refresh with stable UI Toolkit field rows, cached enum text, reusable numeric formatting buffers, and dirty value-label assignment.
 - Added Package Manager samples for bootstrap/zero-code settings, runtime workflows, editor automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
+- Added JSON tunables for overlay scale/opacity/font/refresh/history, alert thresholds/consecutive frames, session defaults, and overdraw default/max frame counts.
 
 ## 2026.5.18-1
 

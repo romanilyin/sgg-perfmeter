@@ -9,7 +9,7 @@ namespace SGG.PerfMeter
 	[DisallowMultipleComponent]
 	internal sealed class PerfMeterOverlay : MonoBehaviour
 	{
-		private const float RefreshIntervalSeconds = 0.25f;
+		private const float DefaultRefreshIntervalSeconds = 0.25f;
 		private const int TextFieldCapacity = 32;
 		private const float GraphBlockWidth = 780f;
 		private const float TextBlockWidth = 520f;
@@ -69,6 +69,11 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayCorner _corner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _mode = PerfMeterOverlayMode.Full;
 		private PerfMeterOverlayModule _modules = PerfMeterOverlayModule.All;
+		private float _overlayScale = 1f;
+		private float _overlayOpacity = 0.84f;
+		private float _overlayFontSize = 12f;
+		private float _refreshIntervalSeconds = DefaultRefreshIntervalSeconds;
+		private int _graphHistoryLength = 120;
 		private int _textFieldCount;
 		private int _lastVisibleTextFieldCount;
 		private bool _isVisible = true;
@@ -187,6 +192,19 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal void SetTuning(float scale, float opacity, float fontSize, float refreshIntervalSeconds, int graphHistoryLength)
+		{
+			_overlayScale = Mathf.Clamp(scale, PerfMeterSettingsStore.MinOverlayScale, PerfMeterSettingsStore.MaxOverlayScale);
+			_overlayOpacity = Mathf.Clamp(opacity, PerfMeterSettingsStore.MinOverlayOpacity, PerfMeterSettingsStore.MaxOverlayOpacity);
+			_overlayFontSize = Mathf.Clamp(fontSize, PerfMeterSettingsStore.MinOverlayFontSize, PerfMeterSettingsStore.MaxOverlayFontSize);
+			_refreshIntervalSeconds = Mathf.Clamp(refreshIntervalSeconds, PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds, PerfMeterSettingsStore.MaxOverlayRefreshIntervalSeconds);
+			_graphHistoryLength = Mathf.Clamp(graphHistoryLength, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength);
+
+			ApplyTuningToVisuals();
+			_cpuGraph?.SetHistoryCapacity(_graphHistoryLength);
+			_gpuGraph?.SetHistoryCapacity(_graphHistoryLength);
+		}
+
 		private void EnsureDocument()
 		{
 			if (_document == null)
@@ -288,7 +306,7 @@ namespace SGG.PerfMeter
 			block.style.paddingRight = 10f;
 			block.style.paddingTop = 8f;
 			block.style.paddingBottom = 8f;
-			block.style.backgroundColor = BackgroundColor;
+			block.style.backgroundColor = GetBackgroundColor();
 			block.style.flexDirection = FlexDirection.Column;
 			block.style.unityFont = GetRuntimeFont();
 			return block;
@@ -303,7 +321,7 @@ namespace SGG.PerfMeter
 			Label cpuMaxScaleLabel;
 			Label cpuBudgetLabel;
 			VisualElement cpuScale = CreateScaleLabelColumn(CpuGraphHeight, out cpuMaxScaleLabel, out cpuBudgetLabel);
-			_cpuGraph = new PerfMeterGraphElement("sgg-perfmeter-cpu-graph", PerfMeterGraphMode.StackedCpu, CpuGraphHeight, cpuMaxScaleLabel, cpuBudgetLabel);
+			_cpuGraph = new PerfMeterGraphElement("sgg-perfmeter-cpu-graph", PerfMeterGraphMode.StackedCpu, CpuGraphHeight, cpuMaxScaleLabel, cpuBudgetLabel, _graphHistoryLength);
 			VisualElement cpuLegend = CreateLegendColumn(CpuGraphHeight);
 			_cpuFrameLegend = CreateLegendLine("frame --", FrameColor);
 			_cpuOtherLegend = CreateLegendLine("other --", OtherCpuColor);
@@ -325,7 +343,7 @@ namespace SGG.PerfMeter
 			Label gpuMaxScaleLabel;
 			Label gpuBudgetLabel;
 			VisualElement gpuScale = CreateScaleLabelColumn(GpuGraphHeight, out gpuMaxScaleLabel, out gpuBudgetLabel);
-			_gpuGraph = new PerfMeterGraphElement("sgg-perfmeter-gpu-graph", PerfMeterGraphMode.Line, GpuGraphHeight, gpuMaxScaleLabel, gpuBudgetLabel);
+			_gpuGraph = new PerfMeterGraphElement("sgg-perfmeter-gpu-graph", PerfMeterGraphMode.Line, GpuGraphHeight, gpuMaxScaleLabel, gpuBudgetLabel, _graphHistoryLength);
 			VisualElement gpuLegend = CreateLegendColumn(GpuGraphHeight);
 			_gpuLegend = CreateLegendLine("gpu --", GpuColor);
 			gpuLegend.Add(_gpuLegend);
@@ -508,11 +526,38 @@ namespace SGG.PerfMeter
 			}
 
 			ApplyBlockAlignment();
+			ApplyTuningToVisuals();
 		}
 
 		private float GetTextFontSize()
 		{
-			return _mode == PerfMeterOverlayMode.Full ? 12f : 13f;
+			return _mode == PerfMeterOverlayMode.Full ? _overlayFontSize : _overlayFontSize + 1f;
+		}
+
+		private void ApplyTuningToVisuals()
+		{
+			if (_container != null)
+			{
+				_container.transform.scale = new Vector3(_overlayScale, _overlayScale, 1f);
+			}
+
+			Color background = GetBackgroundColor();
+			if (_graphBlock != null)
+			{
+				_graphBlock.style.backgroundColor = background;
+			}
+
+			if (_textBlock != null)
+			{
+				_textBlock.style.backgroundColor = background;
+			}
+
+			SetTextFieldFontSize(GetTextFontSize());
+		}
+
+		private Color GetBackgroundColor()
+		{
+			return new Color(BackgroundColor.r, BackgroundColor.g, BackgroundColor.b, _overlayOpacity);
 		}
 
 		private void SetTextFieldFontSize(float fontSize)
@@ -604,7 +649,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			_nextRefreshTime = Time.unscaledTime + RefreshIntervalSeconds;
+			_nextRefreshTime = Time.unscaledTime + _refreshIntervalSeconds;
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 			string warning = ResolveDisplayWarning(status.Warning);
@@ -1671,7 +1716,6 @@ namespace SGG.PerfMeter
 
 		private sealed class PerfMeterGraphElement : VisualElement
 		{
-			private const int Capacity = 120;
 			private static readonly Color BudgetColor = new Color(1f, 0.32f, 0.28f, 0.75f);
 			private static readonly Color GridColor = new Color(0.32f, 0.42f, 0.5f, 0.32f);
 			private static readonly Color GraphBackgroundColor = new Color(0.04f, 0.055f, 0.065f, 0.92f);
@@ -1680,26 +1724,28 @@ namespace SGG.PerfMeter
 			private static readonly Color RenderFillColor = new Color(RenderColor.r, RenderColor.g, RenderColor.b, 0.55f);
 			private static readonly Color OtherFillColor = new Color(OtherCpuColor.r, OtherCpuColor.g, OtherCpuColor.b, 0.45f);
 
-			private readonly double[] _primary = new double[Capacity];
-			private readonly double[] _secondary = new double[Capacity];
-			private readonly double[] _tertiary = new double[Capacity];
-			private readonly bool[] _valid = new bool[Capacity];
-			private readonly double[] _scratch = new double[Capacity];
+			private double[] _primary;
+			private double[] _secondary;
+			private double[] _tertiary;
+			private bool[] _valid;
+			private double[] _scratch;
 			private readonly PerfMeterGraphMode _mode;
 			private readonly float _height;
 			private readonly Label _maxScaleLabel;
 			private readonly Label _budgetLabel;
+			private int _capacity;
 			private int _index;
 			private int _count;
 			private double _frameBudgetMs = PerfMeterCollector.DefaultFrameBudgetMs;
 
-			internal PerfMeterGraphElement(string name, PerfMeterGraphMode mode, float height, Label maxScaleLabel, Label budgetLabel)
+			internal PerfMeterGraphElement(string name, PerfMeterGraphMode mode, float height, Label maxScaleLabel, Label budgetLabel, int historyCapacity)
 			{
 				this.name = name;
 				_mode = mode;
 				_height = height;
 				_maxScaleLabel = maxScaleLabel;
 				_budgetLabel = budgetLabel;
+				SetHistoryCapacity(historyCapacity);
 				pickingMode = PickingMode.Ignore;
 				style.width = GraphPlotWidth;
 				style.height = height;
@@ -1709,6 +1755,27 @@ namespace SGG.PerfMeter
 			}
 
 			internal double ScaleMs { get; private set; } = PerfMeterCollector.DefaultFrameBudgetMs * 2d;
+
+			internal void SetHistoryCapacity(int historyCapacity)
+			{
+				int normalized = Mathf.Clamp(historyCapacity, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength);
+				if (_capacity == normalized && _primary != null)
+				{
+					return;
+				}
+
+				_capacity = normalized;
+				_primary = new double[_capacity];
+				_secondary = new double[_capacity];
+				_tertiary = new double[_capacity];
+				_valid = new bool[_capacity];
+				_scratch = new double[_capacity];
+				_index = 0;
+				_count = 0;
+				ScaleMs = CalculateScaleMs();
+				UpdateScaleLabels();
+				MarkDirtyRepaint();
+			}
 
 			internal void SetFrameBudgetMs(double frameBudgetMs)
 			{
@@ -1726,9 +1793,9 @@ namespace SGG.PerfMeter
 				_secondary[_index] = Sanitize(secondary);
 				_tertiary[_index] = Sanitize(tertiary);
 				_valid[_index] = valid;
-				_index = (_index + 1) % Capacity;
+				_index = (_index + 1) % _capacity;
 
-				if (_count < Capacity)
+				if (_count < _capacity)
 				{
 					_count++;
 				}
@@ -2005,7 +2072,7 @@ namespace SGG.PerfMeter
 
 			private int BufferIndex(int sample)
 			{
-				return (_index - _count + sample + Capacity) % Capacity;
+				return (_index - _count + sample + _capacity) % _capacity;
 			}
 
 			private static CpuStack CalculateCpuStack(double frame, double main, double render)

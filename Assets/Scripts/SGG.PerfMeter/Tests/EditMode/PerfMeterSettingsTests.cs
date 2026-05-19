@@ -31,6 +31,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.EditorWarningCooldownSeconds, Is.EqualTo(8f).Within(0.001f));
 			Assert.That(settings.StructuredLogCooldownSeconds, Is.EqualTo(2f).Within(0.001f));
 			Assert.That(settings.CallbackCooldownSeconds, Is.EqualTo(0.5f).Within(0.001f));
+			Assert.That(settings.OverlayScale, Is.EqualTo(1f).Within(0.001f));
+			Assert.That(settings.OverlayOpacity, Is.EqualTo(0.84f).Within(0.001f));
+			Assert.That(settings.OverlayFontSize, Is.EqualTo(12f).Within(0.001f));
+			Assert.That(settings.OverlayRefreshIntervalSeconds, Is.EqualTo(0.25f).Within(0.001f));
+			Assert.That(settings.OverlayGraphHistoryLength, Is.EqualTo(120));
+			Assert.That(settings.OverdrawDefaultFrameCount, Is.EqualTo(60));
+			Assert.That(settings.OverdrawMaxFrameCount, Is.EqualTo(600));
+			Assert.That(settings.AlertOverdrawRatioThreshold, Is.EqualTo(3d).Within(0.001d));
+			Assert.That(settings.AlertTimingConsecutiveFrames, Is.EqualTo(5));
+			Assert.That(settings.AlertFpsConsecutiveFrames, Is.EqualTo(60));
+			Assert.That(settings.AlertGpuTimingUnavailableConsecutiveFrames, Is.EqualTo(120));
+			Assert.That(settings.AlertOverdrawConsecutiveFrames, Is.EqualTo(3));
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 		}
@@ -59,7 +71,19 @@ namespace SGG.PerfMeter.Tests.EditMode
 				3f,
 				1f,
 				PerfMeterSettingsLoadState.Loaded,
-				string.Empty);
+				string.Empty,
+				overlayScale: 1.25f,
+				overlayOpacity: 0.66f,
+				overlayFontSize: 14f,
+				overlayRefreshIntervalSeconds: 0.5f,
+				overlayGraphHistoryLength: 240,
+				overdrawDefaultFrameCount: 24,
+				overdrawMaxFrameCount: 180,
+				alertOverdrawRatioThreshold: 2.5d,
+				alertTimingConsecutiveFrames: 7,
+				alertFpsConsecutiveFrames: 30,
+				alertGpuTimingUnavailableConsecutiveFrames: 90,
+				alertOverdrawConsecutiveFrames: 4);
 
 			string json = PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateFromSnapshot(source));
 
@@ -82,8 +106,53 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.EditorWarningCooldownSeconds, Is.EqualTo(9f).Within(0.001f));
 			Assert.That(loaded.StructuredLogCooldownSeconds, Is.EqualTo(3f).Within(0.001f));
 			Assert.That(loaded.CallbackCooldownSeconds, Is.EqualTo(1f).Within(0.001f));
+			Assert.That(loaded.OverlayScale, Is.EqualTo(1.25f).Within(0.001f));
+			Assert.That(loaded.OverlayOpacity, Is.EqualTo(0.66f).Within(0.001f));
+			Assert.That(loaded.OverlayFontSize, Is.EqualTo(14f).Within(0.001f));
+			Assert.That(loaded.OverlayRefreshIntervalSeconds, Is.EqualTo(0.5f).Within(0.001f));
+			Assert.That(loaded.OverlayGraphHistoryLength, Is.EqualTo(240));
+			Assert.That(loaded.OverdrawDefaultFrameCount, Is.EqualTo(24));
+			Assert.That(loaded.OverdrawMaxFrameCount, Is.EqualTo(180));
+			Assert.That(loaded.AlertOverdrawRatioThreshold, Is.EqualTo(2.5d).Within(0.001d));
+			Assert.That(loaded.AlertTimingConsecutiveFrames, Is.EqualTo(7));
+			Assert.That(loaded.AlertFpsConsecutiveFrames, Is.EqualTo(30));
+			Assert.That(loaded.AlertGpuTimingUnavailableConsecutiveFrames, Is.EqualTo(90));
+			Assert.That(loaded.AlertOverdrawConsecutiveFrames, Is.EqualTo(4));
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Graphs);
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Timing);
+		}
+
+		[Test]
+		public void SettingsJsonClampsTunables()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.overlay.scale = 10f;
+			settings.overlay.opacity = -1f;
+			settings.overlay.fontSize = 100f;
+			settings.overlay.refreshIntervalSeconds = 0f;
+			settings.overlay.graphHistoryLength = 1;
+			settings.ruleDefaults.overdrawRatioThreshold = -1d;
+			settings.ruleDefaults.timingConsecutiveFrames = 0;
+			settings.ruleDefaults.fpsConsecutiveFrames = 0;
+			settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = 0;
+			settings.ruleDefaults.overdrawConsecutiveFrames = 0;
+			settings.overdraw.maxFrameCount = 12;
+			settings.overdraw.defaultFrameCount = 120;
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			Assert.That(snapshot.OverlayScale, Is.EqualTo(PerfMeterSettingsStore.MaxOverlayScale).Within(0.001f));
+			Assert.That(snapshot.OverlayOpacity, Is.EqualTo(PerfMeterSettingsStore.MinOverlayOpacity).Within(0.001f));
+			Assert.That(snapshot.OverlayFontSize, Is.EqualTo(PerfMeterSettingsStore.MaxOverlayFontSize).Within(0.001f));
+			Assert.That(snapshot.OverlayRefreshIntervalSeconds, Is.EqualTo(PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds).Within(0.001f));
+			Assert.That(snapshot.OverlayGraphHistoryLength, Is.EqualTo(PerfMeterSettingsStore.MinOverlayGraphHistoryLength));
+			Assert.That(snapshot.AlertOverdrawRatioThreshold, Is.EqualTo(0.1d).Within(0.001d));
+			Assert.That(snapshot.AlertTimingConsecutiveFrames, Is.EqualTo(1));
+			Assert.That(snapshot.AlertFpsConsecutiveFrames, Is.EqualTo(1));
+			Assert.That(snapshot.AlertGpuTimingUnavailableConsecutiveFrames, Is.EqualTo(1));
+			Assert.That(snapshot.AlertOverdrawConsecutiveFrames, Is.EqualTo(1));
+			Assert.That(snapshot.OverdrawMaxFrameCount, Is.EqualTo(12));
+			Assert.That(snapshot.OverdrawDefaultFrameCount, Is.EqualTo(12));
 		}
 
 		[Test]

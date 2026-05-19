@@ -180,13 +180,17 @@ namespace SGG.PerfMeter
 			return PerfMeterSessionExporter.ExportCsv(path, summary, samples, GetStatus());
 		}
 
-		public static void RequestOverdrawMeasurement(int frameCount = 60)
+		public static void RequestOverdrawMeasurement(int frameCount = 0)
 		{
+			PerfMeterSettingsSnapshot settings = GetSettings();
+			int normalizedFrameCount = frameCount <= 0
+				? settings.OverdrawDefaultFrameCount
+				: Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount);
 			PerfMeterRuntime.EnsureRunning();
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
-				runtime.RequestOverdrawMeasurement(frameCount);
+				runtime.RequestOverdrawMeasurement(normalizedFrameCount);
 			}
 		}
 
@@ -345,6 +349,15 @@ namespace SGG.PerfMeter
 		internal static void ApplySettings(PerfMeterSettingsSnapshot settings)
 		{
 			PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
+		}
+
+		internal static void ApplyOverlayTuning(PerfMeterSettingsSnapshot settings)
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayTuning(settings);
+			}
 		}
 
 		internal static void RaiseAlertFired(PerfMeterAlertSnapshot alert)

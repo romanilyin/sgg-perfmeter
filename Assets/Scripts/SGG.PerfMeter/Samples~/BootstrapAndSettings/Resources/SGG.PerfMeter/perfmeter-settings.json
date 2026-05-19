@@ -9,10 +9,22 @@
   "targetFps": 60,
   "activePreset": "AgentDebug",
   "presets": [],
+  "overlay": {
+    "scale": 1.0,
+    "opacity": 0.84,
+    "fontSize": 12.0,
+    "refreshIntervalSeconds": 0.25,
+    "graphHistoryLength": 120
+  },
   "ruleDefaults": {
     "editorWarningCooldownSeconds": 8.0,
     "structuredLogCooldownSeconds": 2.0,
-    "callbackCooldownSeconds": 0.5
+    "callbackCooldownSeconds": 0.5,
+    "overdrawRatioThreshold": 3.0,
+    "timingConsecutiveFrames": 5,
+    "fpsConsecutiveFrames": 60,
+    "gpuTimingUnavailableConsecutiveFrames": 120,
+    "overdrawConsecutiveFrames": 3
   },
   "session": {
     "warmupFrames": 0,

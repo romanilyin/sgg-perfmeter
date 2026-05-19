@@ -49,6 +49,28 @@ namespace SGG.PerfMeter.Editor.UI
 		private EnumField _settingsOverlayCorner;
 		private EnumField _settingsOverlayMode;
 		private EnumField _settingsActivePreset;
+		private FloatField _settingsOverlayScale;
+		private FloatField _settingsOverlayOpacity;
+		private FloatField _settingsOverlayFontSize;
+		private FloatField _settingsOverlayRefreshInterval;
+		private IntegerField _settingsOverlayGraphHistory;
+		private FloatField _settingsEditorWarningCooldown;
+		private FloatField _settingsStructuredLogCooldown;
+		private FloatField _settingsCallbackCooldown;
+		private FloatField _settingsAlertOverdrawThreshold;
+		private IntegerField _settingsAlertTimingFrames;
+		private IntegerField _settingsAlertFpsFrames;
+		private IntegerField _settingsAlertGpuTimingUnavailableFrames;
+		private IntegerField _settingsAlertOverdrawFrames;
+		private IntegerField _settingsSessionWarmupFrames;
+		private FloatField _settingsSessionWarmupSeconds;
+		private FloatField _settingsSessionSampleInterval;
+		private IntegerField _settingsSessionMaxSamples;
+		private Toggle _settingsSessionResetOnSceneLoad;
+		private IntegerField _settingsSessionSceneLoadIgnoreFrames;
+		private FloatField _settingsSessionSceneLoadIgnoreSeconds;
+		private IntegerField _settingsOverdrawDefaultFrameCount;
+		private IntegerField _settingsOverdrawMaxFrameCount;
 		private Label _lastActionLabel;
 		private Label _runtimePlayModeInfo;
 		private Label _runtimeStatus;
@@ -274,6 +296,72 @@ namespace SGG.PerfMeter.Editor.UI
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.Warnings, "Warnings");
 			AddControlRow(section, "Modules", moduleList);
 
+			_settingsOverlayScale = new FloatField();
+			AddControlRow(section, "Overlay Scale", _settingsOverlayScale);
+
+			_settingsOverlayOpacity = new FloatField();
+			AddControlRow(section, "Overlay Opacity", _settingsOverlayOpacity);
+
+			_settingsOverlayFontSize = new FloatField();
+			AddControlRow(section, "Overlay Font Size", _settingsOverlayFontSize);
+
+			_settingsOverlayRefreshInterval = new FloatField();
+			AddControlRow(section, "Refresh Interval", _settingsOverlayRefreshInterval);
+
+			_settingsOverlayGraphHistory = new IntegerField();
+			AddControlRow(section, "Graph History", _settingsOverlayGraphHistory);
+
+			_settingsEditorWarningCooldown = new FloatField();
+			AddControlRow(section, "Editor Warning Cooldown", _settingsEditorWarningCooldown);
+
+			_settingsStructuredLogCooldown = new FloatField();
+			AddControlRow(section, "Structured Log Cooldown", _settingsStructuredLogCooldown);
+
+			_settingsCallbackCooldown = new FloatField();
+			AddControlRow(section, "Callback Cooldown", _settingsCallbackCooldown);
+
+			_settingsAlertOverdrawThreshold = new FloatField();
+			AddControlRow(section, "Overdraw Alert Ratio", _settingsAlertOverdrawThreshold);
+
+			_settingsAlertTimingFrames = new IntegerField();
+			AddControlRow(section, "Timing Alert Frames", _settingsAlertTimingFrames);
+
+			_settingsAlertFpsFrames = new IntegerField();
+			AddControlRow(section, "FPS Alert Frames", _settingsAlertFpsFrames);
+
+			_settingsAlertGpuTimingUnavailableFrames = new IntegerField();
+			AddControlRow(section, "GPU Timing Alert Frames", _settingsAlertGpuTimingUnavailableFrames);
+
+			_settingsAlertOverdrawFrames = new IntegerField();
+			AddControlRow(section, "Overdraw Alert Frames", _settingsAlertOverdrawFrames);
+
+			_settingsSessionWarmupFrames = new IntegerField();
+			AddControlRow(section, "Session Warmup Frames", _settingsSessionWarmupFrames);
+
+			_settingsSessionWarmupSeconds = new FloatField();
+			AddControlRow(section, "Session Warmup Seconds", _settingsSessionWarmupSeconds);
+
+			_settingsSessionSampleInterval = new FloatField();
+			AddControlRow(section, "Session Sample Interval", _settingsSessionSampleInterval);
+
+			_settingsSessionMaxSamples = new IntegerField();
+			AddControlRow(section, "Session Max Samples", _settingsSessionMaxSamples);
+
+			_settingsSessionResetOnSceneLoad = new Toggle();
+			AddControlRow(section, "Reset On Scene Load", _settingsSessionResetOnSceneLoad);
+
+			_settingsSessionSceneLoadIgnoreFrames = new IntegerField();
+			AddControlRow(section, "Scene Ignore Frames", _settingsSessionSceneLoadIgnoreFrames);
+
+			_settingsSessionSceneLoadIgnoreSeconds = new FloatField();
+			AddControlRow(section, "Scene Ignore Seconds", _settingsSessionSceneLoadIgnoreSeconds);
+
+			_settingsOverdrawDefaultFrameCount = new IntegerField();
+			AddControlRow(section, "Overdraw Default Frames", _settingsOverdrawDefaultFrameCount);
+
+			_settingsOverdrawMaxFrameCount = new IntegerField();
+			AddControlRow(section, "Overdraw Max Frames", _settingsOverdrawMaxFrameCount);
+
 			VisualElement actions = AddActions(section);
 			AddButton(actions, "Create Defaults", () => RunAction("Create Defaults", PerfMeterSetupActions.CreateDefaultSettings));
 			AddButton(actions, "Load JSON", () =>
@@ -494,6 +582,28 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			SetModuleToggles(settings.OverlayModules);
+			_settingsOverlayScale?.SetValueWithoutNotify(settings.OverlayScale);
+			_settingsOverlayOpacity?.SetValueWithoutNotify(settings.OverlayOpacity);
+			_settingsOverlayFontSize?.SetValueWithoutNotify(settings.OverlayFontSize);
+			_settingsOverlayRefreshInterval?.SetValueWithoutNotify(settings.OverlayRefreshIntervalSeconds);
+			_settingsOverlayGraphHistory?.SetValueWithoutNotify(settings.OverlayGraphHistoryLength);
+			_settingsEditorWarningCooldown?.SetValueWithoutNotify(settings.EditorWarningCooldownSeconds);
+			_settingsStructuredLogCooldown?.SetValueWithoutNotify(settings.StructuredLogCooldownSeconds);
+			_settingsCallbackCooldown?.SetValueWithoutNotify(settings.CallbackCooldownSeconds);
+			_settingsAlertOverdrawThreshold?.SetValueWithoutNotify((float)settings.AlertOverdrawRatioThreshold);
+			_settingsAlertTimingFrames?.SetValueWithoutNotify(settings.AlertTimingConsecutiveFrames);
+			_settingsAlertFpsFrames?.SetValueWithoutNotify(settings.AlertFpsConsecutiveFrames);
+			_settingsAlertGpuTimingUnavailableFrames?.SetValueWithoutNotify(settings.AlertGpuTimingUnavailableConsecutiveFrames);
+			_settingsAlertOverdrawFrames?.SetValueWithoutNotify(settings.AlertOverdrawConsecutiveFrames);
+			_settingsSessionWarmupFrames?.SetValueWithoutNotify(settings.SessionWarmupFrames);
+			_settingsSessionWarmupSeconds?.SetValueWithoutNotify(settings.SessionWarmupSeconds);
+			_settingsSessionSampleInterval?.SetValueWithoutNotify(settings.SessionSampleIntervalSeconds);
+			_settingsSessionMaxSamples?.SetValueWithoutNotify(settings.SessionMaxSamples);
+			_settingsSessionResetOnSceneLoad?.SetValueWithoutNotify(settings.SessionResetOnSceneLoad);
+			_settingsSessionSceneLoadIgnoreFrames?.SetValueWithoutNotify(settings.SessionSceneLoadIgnoreFrames);
+			_settingsSessionSceneLoadIgnoreSeconds?.SetValueWithoutNotify(settings.SessionSceneLoadIgnoreSeconds);
+			_settingsOverdrawDefaultFrameCount?.SetValueWithoutNotify(settings.OverdrawDefaultFrameCount);
+			_settingsOverdrawMaxFrameCount?.SetValueWithoutNotify(settings.OverdrawMaxFrameCount);
 		}
 
 		private PerfMeterSetupActionResult SaveSettingsFromControls()
@@ -512,18 +622,30 @@ namespace SGG.PerfMeter.Editor.UI
 				_settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps targetFps ? targetFps : PerfMeterTargetFps.Fps60,
 				activePreset.ToString(),
 				GetSelectedOverlayModules(activePreset),
-				currentSettings.SessionWarmupFrames,
-				currentSettings.SessionWarmupSeconds,
-				currentSettings.SessionSampleIntervalSeconds,
-				currentSettings.SessionMaxSamples,
-				currentSettings.SessionResetOnSceneLoad,
-				currentSettings.SessionSceneLoadIgnoreFrames,
-				currentSettings.SessionSceneLoadIgnoreSeconds,
-				currentSettings.EditorWarningCooldownSeconds,
-				currentSettings.StructuredLogCooldownSeconds,
-				currentSettings.CallbackCooldownSeconds,
+				_settingsSessionWarmupFrames != null ? _settingsSessionWarmupFrames.value : currentSettings.SessionWarmupFrames,
+				_settingsSessionWarmupSeconds != null ? _settingsSessionWarmupSeconds.value : currentSettings.SessionWarmupSeconds,
+				_settingsSessionSampleInterval != null ? _settingsSessionSampleInterval.value : currentSettings.SessionSampleIntervalSeconds,
+				_settingsSessionMaxSamples != null ? _settingsSessionMaxSamples.value : currentSettings.SessionMaxSamples,
+				_settingsSessionResetOnSceneLoad != null ? _settingsSessionResetOnSceneLoad.value : currentSettings.SessionResetOnSceneLoad,
+				_settingsSessionSceneLoadIgnoreFrames != null ? _settingsSessionSceneLoadIgnoreFrames.value : currentSettings.SessionSceneLoadIgnoreFrames,
+				_settingsSessionSceneLoadIgnoreSeconds != null ? _settingsSessionSceneLoadIgnoreSeconds.value : currentSettings.SessionSceneLoadIgnoreSeconds,
+				_settingsEditorWarningCooldown != null ? _settingsEditorWarningCooldown.value : currentSettings.EditorWarningCooldownSeconds,
+				_settingsStructuredLogCooldown != null ? _settingsStructuredLogCooldown.value : currentSettings.StructuredLogCooldownSeconds,
+				_settingsCallbackCooldown != null ? _settingsCallbackCooldown.value : currentSettings.CallbackCooldownSeconds,
 				PerfMeterSettingsLoadState.Loaded,
-				string.Empty);
+				string.Empty,
+				overlayScale: _settingsOverlayScale != null ? _settingsOverlayScale.value : currentSettings.OverlayScale,
+				overlayOpacity: _settingsOverlayOpacity != null ? _settingsOverlayOpacity.value : currentSettings.OverlayOpacity,
+				overlayFontSize: _settingsOverlayFontSize != null ? _settingsOverlayFontSize.value : currentSettings.OverlayFontSize,
+				overlayRefreshIntervalSeconds: _settingsOverlayRefreshInterval != null ? _settingsOverlayRefreshInterval.value : currentSettings.OverlayRefreshIntervalSeconds,
+				overlayGraphHistoryLength: _settingsOverlayGraphHistory != null ? _settingsOverlayGraphHistory.value : currentSettings.OverlayGraphHistoryLength,
+				overdrawDefaultFrameCount: _settingsOverdrawDefaultFrameCount != null ? _settingsOverdrawDefaultFrameCount.value : currentSettings.OverdrawDefaultFrameCount,
+				overdrawMaxFrameCount: _settingsOverdrawMaxFrameCount != null ? _settingsOverdrawMaxFrameCount.value : currentSettings.OverdrawMaxFrameCount,
+				alertOverdrawRatioThreshold: _settingsAlertOverdrawThreshold != null ? _settingsAlertOverdrawThreshold.value : currentSettings.AlertOverdrawRatioThreshold,
+				alertTimingConsecutiveFrames: _settingsAlertTimingFrames != null ? _settingsAlertTimingFrames.value : currentSettings.AlertTimingConsecutiveFrames,
+				alertFpsConsecutiveFrames: _settingsAlertFpsFrames != null ? _settingsAlertFpsFrames.value : currentSettings.AlertFpsConsecutiveFrames,
+				alertGpuTimingUnavailableConsecutiveFrames: _settingsAlertGpuTimingUnavailableFrames != null ? _settingsAlertGpuTimingUnavailableFrames.value : currentSettings.AlertGpuTimingUnavailableConsecutiveFrames,
+				alertOverdrawConsecutiveFrames: _settingsAlertOverdrawFrames != null ? _settingsAlertOverdrawFrames.value : currentSettings.AlertOverdrawConsecutiveFrames);
 			return PerfMeterSetupActions.SaveSettings(settings);
 		}
 

@@ -22,6 +22,14 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
 		private PerfMeterOverlayModule _overlayModules = PerfMeterOverlayModule.All;
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
+		private float _overlayScale = 1f;
+		private float _overlayOpacity = 0.84f;
+		private float _overlayFontSize = 12f;
+		private float _overlayRefreshIntervalSeconds = 0.25f;
+		private int _overlayGraphHistoryLength = 120;
+		private int _overdrawDefaultFrameCount = 60;
+		private int _overdrawMaxFrameCount = 600;
+		private PerfMeterSettingsSnapshot _settings = PerfMeterSettingsStore.Defaults;
 		private bool _overlayRequestedVisible = true;
 		private bool _overdrawHeatmapVisible;
 
@@ -194,14 +202,14 @@ namespace SGG.PerfMeter
 				case PerfMeterCollectionMode.OverdrawDiagnostic:
 					_overlayRequestedVisible = true;
 					EnsureOverlayState();
-					RequestOverdrawMeasurement(60);
+					RequestOverdrawMeasurement(_overdrawDefaultFrameCount);
 					break;
 			}
 		}
 
 		internal void StartSession(PerfMeterSessionOptions options)
 		{
-			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
+			PerfMeterSettingsSnapshot settings = _settings;
 			PerfMeterSessionOptions normalizedOptions = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(settings);
 			_sessionRecorder.Start(
 				normalizedOptions,
@@ -232,7 +240,8 @@ namespace SGG.PerfMeter
 
 		internal void RequestOverdrawMeasurement(int frameCount)
 		{
-			_overdrawController.RequestMeasurement(frameCount);
+			int normalizedFrameCount = frameCount <= 0 ? _overdrawDefaultFrameCount : frameCount;
+			_overdrawController.RequestMeasurement(Mathf.Clamp(normalizedFrameCount, 1, _overdrawMaxFrameCount));
 			_latestMetrics = WithOverdrawState(_latestMetrics);
 			RefreshStatusOverlayState();
 		}
@@ -393,6 +402,26 @@ namespace SGG.PerfMeter
 			if (_overlay != null)
 			{
 				_overlay.SetTargetFps(_targetFps);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetOverlayTuning(PerfMeterSettingsSnapshot settings)
+		{
+			_settings = settings;
+			_overlayScale = settings.OverlayScale;
+			_overlayOpacity = settings.OverlayOpacity;
+			_overlayFontSize = settings.OverlayFontSize;
+			_overlayRefreshIntervalSeconds = settings.OverlayRefreshIntervalSeconds;
+			_overlayGraphHistoryLength = settings.OverlayGraphHistoryLength;
+			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
+			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
+			ApplyAlertSettings(settings);
+
+			if (_overlay != null)
+			{
+				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
 
 			RefreshStatusOverlayState();
@@ -693,6 +722,7 @@ namespace SGG.PerfMeter
 			_overlay.SetMode(_overlayMode);
 			_overlay.SetModules(_overlayModules);
 			_overlay.SetTargetFps(_targetFps);
+			_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			_overlay.SetVisible(_overlayRequestedVisible);
 			RefreshStatusOverlayState();
 		}
@@ -731,14 +761,22 @@ namespace SGG.PerfMeter
 
 		private void ApplyAlertSettings()
 		{
-			_alertEngine.ApplySettings(PerfMeterSettingsStore.LoadFromResources(), _targetFps);
+			_settings = PerfMeterSettingsStore.LoadFromResources();
+			ApplyAlertSettings(_settings);
+		}
+
+		private void ApplyAlertSettings(PerfMeterSettingsSnapshot settings)
+		{
+			_settings = settings;
+			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
+			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
+			_alertEngine = new PerfMeterAlertEngine(PerfMeterAlertEngine.CreateDefaultRules(_targetFps, settings));
+			_alertEngine.ApplySettings(settings, _targetFps);
 		}
 
 		private void RebuildAlertRules()
 		{
-			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
-			_alertEngine = new PerfMeterAlertEngine(PerfMeterAlertEngine.CreateDefaultRules(_targetFps, 0f));
-			_alertEngine.ApplySettings(settings, _targetFps);
+			ApplyAlertSettings(_settings);
 		}
 
 		private PerfMeterCollectionMode GetCollectionMode()
