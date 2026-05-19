@@ -34,6 +34,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
+		internal PerfMeterCollectionMode CollectionMode => GetCollectionMode();
 		internal bool IsSessionRecording => _sessionRecorder.IsRecording;
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
@@ -129,6 +130,7 @@ namespace SGG.PerfMeter
 			_status = CreateStatus(
 				PerfMeterRuntimeState.Running,
 				frame,
+				GetCollectionMode(),
 				frameTimingAvailability,
 				warning,
 				_collector.LastError,
@@ -173,6 +175,28 @@ namespace SGG.PerfMeter
 			_alertEngine.Clear();
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
 			RefreshStatusOverlayState();
+		}
+
+		internal void SetCollectionMode(PerfMeterCollectionMode mode)
+		{
+			switch (NormalizeCollectionMode(mode))
+			{
+				case PerfMeterCollectionMode.Background:
+					_overlayRequestedVisible = false;
+					EnsureOverlayState();
+					RefreshStatusOverlayState();
+					break;
+				case PerfMeterCollectionMode.Overlay:
+					_overlayRequestedVisible = true;
+					EnsureOverlayState();
+					RefreshStatusOverlayState();
+					break;
+				case PerfMeterCollectionMode.OverdrawDiagnostic:
+					_overlayRequestedVisible = true;
+					EnsureOverlayState();
+					RequestOverdrawMeasurement(60);
+					break;
+			}
 		}
 
 		internal void StartSession(PerfMeterSessionOptions options)
@@ -409,6 +433,7 @@ namespace SGG.PerfMeter
 			_status = CreateStatus(
 				PerfMeterRuntimeState.Running,
 				frame,
+				GetCollectionMode(),
 				PerfMeterFrameTimingAvailability.NotCollected,
 				string.Empty,
 				_collector.LastError,
@@ -458,6 +483,7 @@ namespace SGG.PerfMeter
 			return CreateStatus(
 				state,
 				collectionFrame,
+				state == PerfMeterRuntimeState.Stopped ? PerfMeterCollectionMode.Stopped : PerfMeterCollectionMode.Overlay,
 				PerfMeterFrameTimingAvailability.NotCollected,
 				warning,
 				lastError,
@@ -483,6 +509,7 @@ namespace SGG.PerfMeter
 		private static PerfMeterStatusSnapshot CreateStatus(
 			PerfMeterRuntimeState state,
 			int collectionFrame,
+			PerfMeterCollectionMode collectionMode,
 			PerfMeterFrameTimingAvailability frameTimingAvailability,
 			string warning,
 			string lastError,
@@ -511,6 +538,7 @@ namespace SGG.PerfMeter
 			return new PerfMeterStatusSnapshot(
 				state,
 				PerfMeterAvailability.Available,
+				collectionMode,
 				frameTimingAvailability,
 				SystemInfo.graphicsDeviceType,
 				SystemInfo.graphicsDeviceName,
@@ -674,6 +702,7 @@ namespace SGG.PerfMeter
 			_status = CreateStatus(
 				_status.State,
 				_status.CollectionFrame,
+				GetCollectionMode(),
 				_status.FrameTimingAvailability,
 				CombineWarnings(_lastCollectorWarning, _overdrawController.Warning),
 				_status.LastError,
@@ -710,6 +739,34 @@ namespace SGG.PerfMeter
 			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
 			_alertEngine = new PerfMeterAlertEngine(PerfMeterAlertEngine.CreateDefaultRules(_targetFps, 0f));
 			_alertEngine.ApplySettings(settings, _targetFps);
+		}
+
+		private PerfMeterCollectionMode GetCollectionMode()
+		{
+			if (_overdrawHeatmapVisible || IsOverdrawDiagnosticState(_overdrawController.State))
+			{
+				return PerfMeterCollectionMode.OverdrawDiagnostic;
+			}
+
+			return _overlayRequestedVisible ? PerfMeterCollectionMode.Overlay : PerfMeterCollectionMode.Background;
+		}
+
+		private static bool IsOverdrawDiagnosticState(PerfMeterOverdrawMeasurementState state)
+		{
+			return state == PerfMeterOverdrawMeasurementState.Measuring || state == PerfMeterOverdrawMeasurementState.Completed || state == PerfMeterOverdrawMeasurementState.Error || state == PerfMeterOverdrawMeasurementState.Unsupported;
+		}
+
+		private static PerfMeterCollectionMode NormalizeCollectionMode(PerfMeterCollectionMode mode)
+		{
+			switch (mode)
+			{
+				case PerfMeterCollectionMode.Background:
+				case PerfMeterCollectionMode.Overlay:
+				case PerfMeterCollectionMode.OverdrawDiagnostic:
+					return mode;
+				default:
+					return PerfMeterCollectionMode.Overlay;
+			}
 		}
 
 		private static PerfMeterOverlayPreset NormalizeOverlayPreset(PerfMeterOverlayPreset preset)

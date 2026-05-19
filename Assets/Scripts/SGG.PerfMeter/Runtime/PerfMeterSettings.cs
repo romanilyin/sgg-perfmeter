@@ -17,6 +17,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterSettingsSnapshot(
 			bool enabled,
 			bool autoStart,
+			PerfMeterCollectionMode collectionMode,
 			bool overlayVisible,
 			PerfMeterOverlayCorner overlayCorner,
 			PerfMeterOverlayMode overlayMode,
@@ -38,6 +39,7 @@ namespace SGG.PerfMeter
 		{
 			Enabled = enabled;
 			AutoStart = autoStart;
+			CollectionMode = NormalizeCollectionMode(collectionMode);
 			OverlayVisible = overlayVisible;
 			OverlayCorner = overlayCorner;
 			OverlayMode = overlayMode;
@@ -60,6 +62,7 @@ namespace SGG.PerfMeter
 
 		public bool Enabled { get; }
 		public bool AutoStart { get; }
+		public PerfMeterCollectionMode CollectionMode { get; }
 		public bool OverlayVisible { get; }
 		public PerfMeterOverlayCorner OverlayCorner { get; }
 		public PerfMeterOverlayMode OverlayMode { get; }
@@ -78,6 +81,20 @@ namespace SGG.PerfMeter
 		public float CallbackCooldownSeconds { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
+
+		private static PerfMeterCollectionMode NormalizeCollectionMode(PerfMeterCollectionMode mode)
+		{
+			switch (mode)
+			{
+				case PerfMeterCollectionMode.Stopped:
+				case PerfMeterCollectionMode.Background:
+				case PerfMeterCollectionMode.Overlay:
+				case PerfMeterCollectionMode.OverdrawDiagnostic:
+					return mode;
+				default:
+					return PerfMeterCollectionMode.Overlay;
+			}
+		}
 	}
 
 	[Serializable]
@@ -86,6 +103,7 @@ namespace SGG.PerfMeter
 		public int schemaVersion = PerfMeterSettingsStore.CurrentSchemaVersion;
 		public bool enabled = true;
 		public bool autoStart = true;
+		public string collectionMode = nameof(PerfMeterCollectionMode.Overlay);
 		public bool overlayVisible = true;
 		public string overlayCorner = nameof(PerfMeterOverlayCorner.TopRight);
 		public string overlayMode = nameof(PerfMeterOverlayMode.Full);
@@ -150,6 +168,7 @@ namespace SGG.PerfMeter
 				schemaVersion = CurrentSchemaVersion,
 				enabled = true,
 				autoStart = true,
+				collectionMode = nameof(PerfMeterCollectionMode.Overlay),
 				overlayVisible = true,
 				overlayCorner = nameof(PerfMeterOverlayCorner.TopRight),
 				overlayMode = nameof(PerfMeterOverlayMode.Full),
@@ -167,6 +186,7 @@ namespace SGG.PerfMeter
 			PerfMeterSettingsJson settings = CreateDefault();
 			settings.enabled = snapshot.Enabled;
 			settings.autoStart = snapshot.AutoStart;
+			settings.collectionMode = snapshot.CollectionMode.ToString();
 			settings.overlayVisible = snapshot.OverlayVisible;
 			settings.overlayCorner = snapshot.OverlayCorner.ToString();
 			settings.overlayMode = snapshot.OverlayMode.ToString();
@@ -264,6 +284,7 @@ namespace SGG.PerfMeter
 			string moduleWarning = string.Empty;
 			PerfMeterOverlayMode overlayMode = ParseOverlayMode(settings.overlayMode);
 			PerfMeterTargetFps targetFps = ParseTargetFps(settings.targetFps);
+			PerfMeterCollectionMode collectionMode = ParseCollectionMode(settings.collectionMode, settings.overlayVisible);
 			bool overlayVisible = settings.overlayVisible;
 			PerfMeterOverlayModule overlayModules = GetPresetModules(ParseOverlayPreset(settings.activePreset));
 
@@ -282,6 +303,7 @@ namespace SGG.PerfMeter
 			return new PerfMeterSettingsSnapshot(
 				settings.enabled,
 				settings.autoStart,
+				collectionMode,
 				overlayVisible,
 				ParseOverlayCorner(settings.overlayCorner),
 				overlayMode,
@@ -304,13 +326,23 @@ namespace SGG.PerfMeter
 
 		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
 		{
+			if (settings.CollectionMode == PerfMeterCollectionMode.Stopped)
+			{
+				PerformanceMeter.Stop();
+				return;
+			}
+
 			PerformanceMeter.EnsureRunning();
 			PerformanceMeter.SetOverlayPreset(ParseOverlayPreset(settings.ActivePreset));
 			PerformanceMeter.SetOverlayModules(settings.OverlayModules);
 			PerformanceMeter.SetTargetFps(settings.TargetFps);
 			PerformanceMeter.SetOverlayCorner(settings.OverlayCorner);
 			PerformanceMeter.SetOverlayMode(settings.OverlayMode);
-			PerformanceMeter.SetOverlayVisible(settings.OverlayVisible);
+			PerformanceMeter.SetCollectionMode(settings.CollectionMode);
+			if (settings.CollectionMode == PerfMeterCollectionMode.Overlay)
+			{
+				PerformanceMeter.SetOverlayVisible(settings.OverlayVisible);
+			}
 		}
 
 		internal static PerfMeterOverlayPreset ParseOverlayPreset(string value)
@@ -528,6 +560,16 @@ namespace SGG.PerfMeter
 
 			settings.targetFps = (int)targetFps;
 
+			if (string.IsNullOrEmpty(settings.collectionMode) || !TryParseCollectionMode(settings.collectionMode, out PerfMeterCollectionMode collectionMode))
+			{
+				settings.collectionMode = settings.overlayVisible ? nameof(PerfMeterCollectionMode.Overlay) : nameof(PerfMeterCollectionMode.Background);
+				warning = CombineWarnings(warning, "Invalid collectionMode; overlayVisible is used as fallback.");
+			}
+			else
+			{
+				settings.collectionMode = NormalizeCollectionMode(collectionMode).ToString();
+			}
+
 			if (string.IsNullOrEmpty(settings.activePreset))
 			{
 				settings.activePreset = DefaultPresetId;
@@ -573,6 +615,25 @@ namespace SGG.PerfMeter
 			return TryParseOverlayCorner(value, out PerfMeterOverlayCorner corner) ? corner : PerfMeterOverlayCorner.TopRight;
 		}
 
+		private static PerfMeterCollectionMode ParseCollectionMode(string value, bool overlayVisibleFallback)
+		{
+			return TryParseCollectionMode(value, out PerfMeterCollectionMode mode) ? NormalizeCollectionMode(mode) : (overlayVisibleFallback ? PerfMeterCollectionMode.Overlay : PerfMeterCollectionMode.Background);
+		}
+
+		private static PerfMeterCollectionMode NormalizeCollectionMode(PerfMeterCollectionMode mode)
+		{
+			switch (mode)
+			{
+				case PerfMeterCollectionMode.Stopped:
+				case PerfMeterCollectionMode.Background:
+				case PerfMeterCollectionMode.Overlay:
+				case PerfMeterCollectionMode.OverdrawDiagnostic:
+					return mode;
+				default:
+					return PerfMeterCollectionMode.Overlay;
+			}
+		}
+
 		private static PerfMeterOverlayMode ParseOverlayMode(string value)
 		{
 			return TryParseOverlayMode(value, out PerfMeterOverlayMode mode) ? mode : PerfMeterOverlayMode.Full;
@@ -586,6 +647,11 @@ namespace SGG.PerfMeter
 		private static bool TryParseOverlayMode(string value, out PerfMeterOverlayMode mode)
 		{
 			return Enum.TryParse(value, true, out mode) && Enum.IsDefined(typeof(PerfMeterOverlayMode), mode);
+		}
+
+		private static bool TryParseCollectionMode(string value, out PerfMeterCollectionMode mode)
+		{
+			return Enum.TryParse(value, true, out mode) && Enum.IsDefined(typeof(PerfMeterCollectionMode), mode);
 		}
 
 		private static PerfMeterTargetFps ParseTargetFps(int value)

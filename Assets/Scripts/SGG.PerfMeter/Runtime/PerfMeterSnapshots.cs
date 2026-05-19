@@ -11,6 +11,14 @@ namespace SGG.PerfMeter
 		Error = 3
 	}
 
+	public enum PerfMeterCollectionMode
+	{
+		Stopped = 0,
+		Background = 1,
+		Overlay = 2,
+		OverdrawDiagnostic = 3
+	}
+
 	public enum PerfMeterAvailability
 	{
 		Unknown = 0,
@@ -220,6 +228,7 @@ namespace SGG.PerfMeter
 		public PerfMeterStatusSnapshot(
 			PerfMeterRuntimeState state,
 			PerfMeterAvailability availability,
+			PerfMeterCollectionMode collectionMode,
 			PerfMeterFrameTimingAvailability frameTimingAvailability,
 			GraphicsDeviceType graphicsDeviceType,
 			string graphicsDeviceName,
@@ -250,6 +259,7 @@ namespace SGG.PerfMeter
 		{
 			State = state;
 			Availability = availability;
+			CollectionMode = state == PerfMeterRuntimeState.Stopped ? PerfMeterCollectionMode.Stopped : collectionMode;
 			FrameTimingAvailability = frameTimingAvailability;
 			GraphicsDeviceType = graphicsDeviceType;
 			GraphicsDeviceName = graphicsDeviceName ?? string.Empty;
@@ -281,6 +291,7 @@ namespace SGG.PerfMeter
 
 		public PerfMeterRuntimeState State { get; }
 		public PerfMeterAvailability Availability { get; }
+		public PerfMeterCollectionMode CollectionMode { get; }
 		public PerfMeterFrameTimingAvailability FrameTimingAvailability { get; }
 		public GraphicsDeviceType GraphicsDeviceType { get; }
 		public string GraphicsDeviceName { get; }

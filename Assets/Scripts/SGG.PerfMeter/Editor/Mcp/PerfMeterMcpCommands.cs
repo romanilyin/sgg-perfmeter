@@ -49,6 +49,18 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return StatusJson(RuntimePerformanceMeter.GetStatus());
 		}
 
+		public static string RuntimeModeSet(string argsJson)
+		{
+			PerfMeterCollectionMode mode = ParseCollectionMode(RequireString(argsJson, "mode"));
+			RuntimePerformanceMeter.SetCollectionMode(mode);
+			if (mode == PerfMeterCollectionMode.OverdrawDiagnostic && TryExtractInt(argsJson, "frame_count", out int frameCount))
+			{
+				RuntimePerformanceMeter.RequestOverdrawMeasurement(Mathf.Clamp(frameCount, 1, 600));
+			}
+
+			return StatusJson(RuntimePerformanceMeter.GetStatus());
+		}
+
 		public static string MetricsLatest()
 		{
 			return MetricsJson(RuntimePerformanceMeter.GetLatestMetrics());
@@ -190,6 +202,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			StringBuilder builder = new StringBuilder(768);
 			builder.Append("{\"state\":").Append(JsonString(status.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"collection_mode\":").Append(JsonString(status.CollectionMode.ToString()));
 			builder.Append(",\"frame_timing_availability\":").Append(JsonString(status.FrameTimingAvailability.ToString()));
 			builder.Append(",\"graphics_device_type\":").Append(JsonString(status.GraphicsDeviceType.ToString()));
 			builder.Append(",\"graphics_device_name\":").Append(JsonString(status.GraphicsDeviceName));
@@ -869,6 +882,17 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument preset must be Custom, Minimal, Timing, Rendering, Memory, Overdraw, FullDiagnostics, or AgentDebug");
+		}
+
+		private static PerfMeterCollectionMode ParseCollectionMode(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterCollectionMode mode) && Enum.IsDefined(typeof(PerfMeterCollectionMode), mode))
+			{
+				return mode;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument mode must be Stopped, Background, Overlay, or OverdrawDiagnostic");
 		}
 
 		private static PerfMeterOverlayModule ParseOverlayModules(string[] values)

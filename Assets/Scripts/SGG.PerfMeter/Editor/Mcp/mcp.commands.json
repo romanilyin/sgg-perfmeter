@@ -100,6 +100,26 @@
       }
     },
     {
+      "id": "perfmeter.runtime.mode.set",
+      "title": "Set PerfMeter collection mode",
+      "description": "Set SGG PerfMeter collection mode to Stopped, Background, Overlay, or OverdrawDiagnostic.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeModeSet",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "runtime", "mode"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "mode": { "type": "string", "enum": ["Stopped", "Background", "Overlay", "OverdrawDiagnostic"] },
+          "frame_count": { "type": "integer", "minimum": 1, "maximum": 600 }
+        },
+        "required": ["mode"],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.metrics.latest",
       "title": "PerfMeter latest metrics",
       "description": "Read the latest SGG PerfMeter metrics snapshot.",

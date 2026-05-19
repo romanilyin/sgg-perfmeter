@@ -225,6 +225,7 @@ namespace SGG.PerfMeter
 			builder.Append('{');
 			builder.Append("\"enabled\":").Append(JsonBool(settings.Enabled));
 			builder.Append(",\"auto_start\":").Append(JsonBool(settings.AutoStart));
+			builder.Append(",\"collection_mode\":").Append(JsonString(settings.CollectionMode.ToString()));
 			builder.Append(",\"overlay_visible\":").Append(JsonBool(settings.OverlayVisible));
 			builder.Append(",\"overlay_corner\":").Append(JsonString(settings.OverlayCorner.ToString()));
 			builder.Append(",\"overlay_mode\":").Append(JsonString(settings.OverlayMode.ToString()));

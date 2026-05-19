@@ -94,6 +94,31 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static PerfMeterCollectionMode CollectionMode
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.CollectionMode : PerfMeterCollectionMode.Stopped;
+			}
+		}
+
+		public static void SetCollectionMode(PerfMeterCollectionMode mode)
+		{
+			if (mode == PerfMeterCollectionMode.Stopped)
+			{
+				Stop();
+				return;
+			}
+
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetCollectionMode(mode);
+			}
+		}
+
 		public static bool IsSessionRecording
 		{
 			get

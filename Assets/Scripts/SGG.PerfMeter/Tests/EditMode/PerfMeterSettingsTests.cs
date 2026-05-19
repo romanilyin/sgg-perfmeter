@@ -12,6 +12,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Missing));
 			Assert.That(settings.Enabled, Is.True);
 			Assert.That(settings.AutoStart, Is.True);
+			Assert.That(settings.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
 			Assert.That(settings.OverlayVisible, Is.True);
 			Assert.That(settings.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
@@ -37,6 +38,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterSettingsSnapshot source = new PerfMeterSettingsSnapshot(
 				true,
 				true,
+				PerfMeterCollectionMode.Background,
 				false,
 				PerfMeterOverlayCorner.BottomLeft,
 				PerfMeterOverlayMode.Graphs,
@@ -61,6 +63,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("schemaVersion"));
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot loaded), Is.True);
 			Assert.That(loaded.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Loaded));
+			Assert.That(loaded.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(loaded.OverlayVisible, Is.False);
 			Assert.That(loaded.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));
 			Assert.That(loaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));

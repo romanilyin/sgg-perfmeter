@@ -43,6 +43,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _settingsResourcesPath;
 		private Toggle _settingsEnabled;
 		private Toggle _settingsAutoStart;
+		private EnumField _settingsCollectionMode;
 		private Toggle _settingsOverlayVisible;
 		private EnumField _settingsTargetFps;
 		private EnumField _settingsOverlayCorner;
@@ -51,6 +52,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _lastActionLabel;
 		private Label _runtimePlayModeInfo;
 		private Label _runtimeStatus;
+		private Label _runtimeCollectionMode;
 		private Label _runtimeOverlayVisible;
 		private Label _runtimeOverlayPreset;
 		private Label _runtimeOverlayModules;
@@ -230,6 +232,9 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsAutoStart = new Toggle();
 			AddControlRow(section, "Auto Start", _settingsAutoStart);
 
+			_settingsCollectionMode = new EnumField(PerfMeterCollectionMode.Overlay);
+			AddControlRow(section, "Collection Mode", _settingsCollectionMode);
+
 			_settingsOverlayVisible = new Toggle();
 			AddControlRow(section, "Overlay Visible", _settingsOverlayVisible);
 
@@ -287,6 +292,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimePlayModeInfo.AddToClassList("pm-info");
 			runtimeSection.Add(_runtimePlayModeInfo);
 			_runtimeStatus = AddRow(runtimeSection, "State");
+			_runtimeCollectionMode = AddRow(runtimeSection, "Collection Mode");
 			_runtimeOverlayVisible = AddRow(runtimeSection, "Overlay Visible");
 			_runtimeOverlayPreset = AddRow(runtimeSection, "Overlay Preset");
 			_runtimeOverlayModules = AddRow(runtimeSection, "Overlay Modules");
@@ -297,6 +303,9 @@ namespace SGG.PerfMeter.Editor.UI
 
 			VisualElement lifecycleActions = AddActions(runtimeSection);
 			AddRuntimeButton(lifecycleActions, "Ensure Runtime", () => RunRuntimeAction("Ensure Runtime", RuntimePerformanceMeter.EnsureRunning));
+			AddRuntimeButton(lifecycleActions, "Background Mode", () => RunRuntimeAction("Background Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background)));
+			AddRuntimeButton(lifecycleActions, "Overlay Mode", () => RunRuntimeAction("Overlay Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay)));
+			AddRuntimeButton(lifecycleActions, "Overdraw Diagnostic", () => RunRuntimeAction("Overdraw Diagnostic", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.OverdrawDiagnostic)));
 			AddRuntimeButton(lifecycleActions, "Show Overlay", () => RunRuntimeAction("Show Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(true)));
 			AddRuntimeButton(lifecycleActions, "Hide Overlay", () => RunRuntimeAction("Hide Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(false)));
 
@@ -474,6 +483,7 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			_settingsEnabled?.SetValueWithoutNotify(settings.Enabled);
 			_settingsAutoStart?.SetValueWithoutNotify(settings.AutoStart);
+			_settingsCollectionMode?.SetValueWithoutNotify(settings.CollectionMode);
 			_settingsOverlayVisible?.SetValueWithoutNotify(settings.OverlayVisible);
 			_settingsTargetFps?.SetValueWithoutNotify(settings.TargetFps);
 			_settingsOverlayCorner?.SetValueWithoutNotify(settings.OverlayCorner);
@@ -495,6 +505,7 @@ namespace SGG.PerfMeter.Editor.UI
 			PerfMeterSettingsSnapshot settings = new PerfMeterSettingsSnapshot(
 				_settingsEnabled == null || _settingsEnabled.value,
 				_settingsAutoStart == null || _settingsAutoStart.value,
+				_settingsCollectionMode != null && _settingsCollectionMode.value is PerfMeterCollectionMode collectionMode ? collectionMode : currentSettings.CollectionMode,
 				_settingsOverlayVisible == null || _settingsOverlayVisible.value,
 				_settingsOverlayCorner != null && _settingsOverlayCorner.value is PerfMeterOverlayCorner corner ? corner : PerfMeterOverlayCorner.TopRight,
 				_settingsOverlayMode != null && _settingsOverlayMode.value is PerfMeterOverlayMode mode ? mode : PerfMeterOverlayMode.Full,
@@ -921,6 +932,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			_runtimeStatus.text = status.State + " / " + status.Bottleneck;
+			_runtimeCollectionMode.text = status.CollectionMode.ToString();
 			_runtimeOverlayVisible.text = status.OverlayVisible ? "Visible" : "Hidden";
 			_runtimeOverlayPreset.text = status.OverlayPreset.ToString();
 			_runtimeOverlayModules.text = status.OverlayModules.ToString();

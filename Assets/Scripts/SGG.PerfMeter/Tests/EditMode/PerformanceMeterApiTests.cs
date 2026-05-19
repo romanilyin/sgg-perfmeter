@@ -28,6 +28,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 			Assert.That(status.Availability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(status.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(status.FrameTimingAvailability, Is.EqualTo(PerfMeterFrameTimingAvailability.NotCollected));
 			Assert.That(status.CollectionFrame, Is.EqualTo(-1));
 			Assert.That(status.GraphicsDeviceName, Is.Not.Null);
@@ -47,6 +48,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Running));
+			Assert.That(status.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
 			Assert.That(status.Availability, Is.EqualTo(PerfMeterAvailability.Available));
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(status.Warning, Is.Not.Null);
@@ -95,6 +97,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(PerformanceMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(true));
 
@@ -117,6 +120,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.GetStatus().TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(PerformanceMeter.GetLatestMetrics().FrameBudgetMs, Is.EqualTo(1000d / 120d).Within(0.001d));
 
+			Assert.DoesNotThrow(() => PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background));
+			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay));
+			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
+
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverdrawHeatmapVisible(true));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.True);
 			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.True);
@@ -127,6 +138,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(false));
 			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Stopped));
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 		}
 
 		[Test]
@@ -357,6 +371,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			engine.ApplySettings(new PerfMeterSettingsSnapshot(
 				true,
 				true,
+				PerfMeterCollectionMode.Overlay,
 				true,
 				PerfMeterOverlayCorner.TopRight,
 				PerfMeterOverlayMode.Full,
@@ -423,6 +438,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
 			string metadata = File.ReadAllText(metadataPath);
 			Assert.That(metadata, Does.Contain("perfmeter.runtime.reset_stats"));
+			Assert.That(metadata, Does.Contain("perfmeter.runtime.mode.set"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.start"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.stop"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.summary"));
@@ -430,6 +446,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			string resetJson = PerfMeterMcpCommands.RuntimeResetStats();
 			Assert.That(resetJson, Does.Contain("\"state\""));
+			string modeJson = PerfMeterMcpCommands.RuntimeModeSet("{\"mode\":\"Background\"}");
+			Assert.That(modeJson, Does.Contain("\"collection_mode\":\"Background\""));
 
 			string startJson = PerfMeterMcpCommands.SessionStart("{\"warmup_frames\":0,\"warmup_seconds\":0,\"sample_interval_seconds\":0.01,\"max_samples\":2,\"reset_on_scene_load\":true,\"scene_load_ignore_frames\":1,\"scene_load_ignore_seconds\":0}");
 			Assert.That(startJson, Does.Contain("\"success\":true"));

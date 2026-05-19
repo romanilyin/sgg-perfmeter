@@ -63,6 +63,14 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			yield return null;
 			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.False);
 
+			PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
+			yield return null;
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+
+			PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
+			yield return null;
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
+
 			PerformanceMeter.SetOverlayVisible(false);
 			yield return null;
 
