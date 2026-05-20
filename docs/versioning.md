@@ -22,13 +22,13 @@ N     daily build number, starting at 1
 Example:
 
 ```text
-2026.5.18-1
+2026.5.20-1
 ```
 
 Do not use leading zeroes in Unity package manifests:
 
 ```text
-BAD: 2026.05.18-1
+BAD: 2026.05.20-1
 BAD: 2026.5.08-1
 ```
 
@@ -39,7 +39,7 @@ Unity package manifests must stay SemVer-compatible; numeric identifiers with le
 Use the same version for the source release tag:
 
 ```text
-2026.5.18-1
+2026.5.20-1
 ```
 
 Do not move an existing pushed tag. If a release candidate changes after a tag was pushed, create a new `-N` suffix.

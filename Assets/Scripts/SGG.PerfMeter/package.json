@@ -1,8 +1,8 @@
 {
   "name": "com.sungeargames.perfmeter",
-  "version": "2026.5.18-1",
+  "version": "2026.5.20-1",
   "displayName": "SGG PerfMeter",
-  "description": "Low-overhead performance meter and agent-readable profiling API for Unity URP projects.",
+  "description": "Runtime performance diagnostics layer and agent-readable profiling API for Unity 6000.4+ URP Render Graph projects.",
   "unity": "6000.4",
   "license": "LicenseRef-Stinger-Royalty-Free-EULA-1.0",
   "licensesUrl": "https://github.com/romanilyin/sgg-perfmeter/blob/main/LICENSE.md",
@@ -14,8 +14,12 @@
   "keywords": [
     "performance",
     "profiler",
+    "diagnostics",
     "metrics",
-    "urp"
+    "urp",
+    "rendergraph",
+    "overdraw",
+    "mcp"
   ],
   "author": {
     "name": "SunGearGames",

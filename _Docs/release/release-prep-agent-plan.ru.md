@@ -2,7 +2,7 @@
 
 Аудитория: coding/documentation agent, работающий внутри `romanilyin/sgg-perfmeter`.
 
-Целевая версия: `2026.5.18-1`.
+Целевая версия: `2026.5.20-1`.
 
 Release state: private release candidate. Не делать репозиторий публичным, не публиковать в registry, не создавать публичные releases и не пушить tags без явного подтверждения владельца.
 
@@ -14,7 +14,7 @@ Release state: private release candidate. Не делать репозитори
 2. Держать English и Russian документацию одинаковой по смыслу там, где docs bilingual.
 3. Проверить package metadata, samples, changelogs, release notes и release plan.
 4. Запустить локальные проверки, соответствующие типу изменений.
-5. Подготовить final checklist перед tag `2026.5.18-1`.
+5. Подготовить final checklist перед tag `2026.5.20-1`.
 
 ## Текущие факты
 
@@ -42,8 +42,8 @@ Release state: private release candidate. Не делать репозитори
 - `Assets/Scripts/SGG.PerfMeter/.Documentation/STATUS.ru.md`
 - `CHANGELOG.md`
 - `Assets/Scripts/SGG.PerfMeter/CHANGELOG.md`
-- `docs/release-2026.5.18-1.md`
-- `docs/release-notes-2026.5.18-1.md`
+- `docs/release-2026.5.20-1.md`
+- `docs/release-notes-2026.5.20-1.md`
 - `_Docs/perfmeter_status.md`
 - `_Docs/perfmeter_iterations.md`
 - `_Docs/marketing/positioning.en.md`
@@ -58,7 +58,7 @@ Release state: private release candidate. Не делать репозитори
 Проверить `Assets/Scripts/SGG.PerfMeter/package.json`:
 
 - `name`: `com.sungeargames.perfmeter`
-- `version`: `2026.5.18-1`
+- `version`: `2026.5.20-1`
 - `unity`: `6000.4`
 - URP dependency: `17.4.0`
 - samples: `Samples~/BootstrapAndSettings`, `Samples~/RuntimeWorkflows`, `Samples~/EditorAutomation`

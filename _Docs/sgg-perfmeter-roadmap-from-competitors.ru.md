@@ -2,7 +2,9 @@
 
 Источник: исходное сравнение `_Docs/sgg-perfmeter-competitor-comparison.md` и актуализированный локальный reference от 2026-05-19.
 Дата: 2026-05-19  
-Статус: актуализированный roadmap после iteration 43
+Статус: historical roadmap / implementation mostly completed после iteration 43. Current release-facing comparison lives in `_Docs/marketing/`.
+
+Примечание: разделы с `[Done]` ниже оставлены как historical implementation requirements, а не как новые задачи. Не начинать повторную реализацию этих пунктов без отдельного запроса.
 
 ## Главный вывод
 
@@ -68,7 +70,7 @@ Zero-code setup нужен через то же окно. Предпочтите
 
 Важно: JSON-настройки должны быть версионируемыми. Добавить поле `schemaVersion`, безопасный fallback при неизвестной версии и human-readable формат без бинарных Unity dependencies.
 
-### 2. Session recorder и CSV/JSON export
+### 2. [Done] Session recorder и CSV/JSON export
 
 Добавляем повторяемые profiling-сессии, чтобы PerfMeter был не только overlay, но и инструментом валидации.
 
@@ -141,7 +143,7 @@ MCP:
 
 Назначение: session export должен позволять агенту или тестовому bootstrap вернуть сцену и камеру в нужное положение перед повторным измерением.
 
-### 4. Rule/alert system без audio
+### 4. [Done] Rule/alert system без audio
 
 Берем идею Graphy Debugger, но адаптируем под структурированные метрики SGG.
 
@@ -265,7 +267,7 @@ MCP:
 
 ## P0 continuation: recorder/runtime hardening
 
-### 7. Warm-up, reset, min/max и scene scope
+### 7. [Done] Warm-up, reset, min/max и scene scope
 
 Добавить:
 
@@ -275,7 +277,7 @@ MCP:
 - min/max frame time/FPS в summary;
 - отдельная статистика current scene и whole run.
 
-### 8. Background/headless mode
+### 8. [Done] Background/headless mode
 
 Сейчас overlay можно скрыть без остановки сбора. Нужно формализовать режимы:
 
@@ -286,7 +288,7 @@ MCP:
 
 Это важно для билдов, автоматических тестов и agent runs. Zero-code setup должен уметь запускать runtime сразу в `Background`, если пользователь не хочет видимый overlay.
 
-### 9. Allocation-conscious overlay refresh
+### 9. [Done] Allocation-conscious overlay refresh
 
 Конкуренты оптимизируют строки и labels, но используют uGUI. Мы оставляем UI Toolkit.
 
@@ -301,7 +303,7 @@ MCP:
 
 Цель: убрать текущую пересборку managed string через `StringBuilder.ToString()` при refresh.
 
-### 10. Samples
+### 10. [Done] Samples
 
 Добавить package samples:
 
@@ -410,13 +412,13 @@ public interface IPerfMeterCustomMetricProvider
 
 ## Рекомендуемый порядок итераций
 
-1. Session recorder core: start/stop, bounded samples, summary snapshot, device/camera/settings metadata.
-2. Session JSON/CSV export + MCP `perfmeter.session.*`.
-3. Rule/alert system + MCP alerts + обязательный cooldown для Editor warning; без sound/audio actions.
-4. Session warm-up, reset APIs, scene scope и worst-frame summaries.
-5. Explicit background/headless collection mode: `Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic`.
-6. Zero-allocation overlay refresh path и GC Alloc validation checklist/test scene.
-7. `Samples~` workflows и bilingual documentation для bootstrap/settings/session/alerts/overdraw/MCP.
+1. Session recorder core: start/stop, bounded samples, summary snapshot, device/camera/settings metadata. `[Done]`
+2. Session JSON/CSV export + MCP `perfmeter.session.*`. `[Done]`
+3. Rule/alert system + MCP alerts + обязательный cooldown для Editor warning; без sound/audio actions. `[Done]`
+4. Session warm-up, reset APIs, scene scope и worst-frame summaries. `[Done]`
+5. Explicit background/headless collection mode: `Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic`. `[Done]`
+6. Allocation-conscious overlay refresh path и GC Alloc validation checklist/test scene. `[Done]`
+7. `Samples~` workflows и bilingual documentation для bootstrap/settings/session/alerts/overdraw/MCP. `[Done]`
 8. JSON-tunable UI/rule/session settings. `[Done]`
 9. Custom metric providers для export/MCP-first extension point. `[Done]`
 

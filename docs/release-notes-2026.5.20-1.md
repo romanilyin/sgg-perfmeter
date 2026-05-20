@@ -1,4 +1,4 @@
-# SGG PerfMeter 2026.5.18-1
+# SGG PerfMeter 2026.5.20-1
 
 Private release candidate for SGG PerfMeter, a low-overhead runtime performance diagnostics layer and agent-readable profiling API for Unity 6000.4+ URP Render Graph projects.
 
@@ -26,23 +26,23 @@ The repository remains private. Do not publish these notes as a public GitHub Re
 
 ## Coordinates
 
-- Source tag, planned: `2026.5.18-1`.
-- Unity package: `com.sungeargames.perfmeter@2026.5.18-1`.
-- Private Git UPM: `git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.18-1`.
+- Source tag, planned: `2026.5.20-1`.
+- Unity package: `com.sungeargames.perfmeter@2026.5.20-1`.
+- Private Git UPM: `git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.20-1`.
 - License: `LicenseRef-Stinger-Royalty-Free-EULA-1.0`.
 
 ## Verification
 
-Latest baseline already completed before this documentation sync:
+Final pre-tag checks completed for `2026.5.20-1`:
 
-- Iteration 43 Render Graph analytics compile passed in `Logs/opencode-iter43-rendergraph-compile.log`.
-- Iteration 43 EditMode passed `54/54` in `Logs/opencode-iter43-rendergraph-editmode-results.xml`.
-- Iteration 43 PlayMode passed `5/5` in `Logs/opencode-iter43-rendergraph-playmode-results.xml`.
-- Iteration 43 `git diff --check` passed.
+- `git diff --check` passed.
+- Compile passed in `Logs/opencode-release-2026.5.20-compile.log`.
+- EditMode passed `54/54` in `Logs/opencode-release-2026.5.20-editmode-results.xml`.
+- PlayMode passed `5/5` in `Logs/opencode-release-2026.5.20-playmode-results.xml`.
 - Android S23 Vulkan smoke validation passed with GPU timing available and `overdraw_state=Completed`.
 - Android S23 OpenGLES3 fallback validation passed with expected `overdraw_state=Unsupported`.
 
-Release tagging should re-run the local gates listed in `docs/release-2026.5.18-1.md`.
+Release tagging should re-run the local gates listed in `docs/release-2026.5.20-1.md`.
 
 ## Known Limitations
 

@@ -1,10 +1,10 @@
-# Release Plan 2026.5.18-1
+# Release Plan 2026.5.20-1
 
 This is the working plan for the private SGG PerfMeter release candidate. The repository stays private until a public switch is explicitly approved.
 
 ## Scope
 
-Release candidate `2026.5.18-1` includes:
+Release candidate `2026.5.20-1` includes:
 
 - Source repository and nested Unity Git UPM package `com.sungeargames.perfmeter` under `Assets/Scripts/SGG.PerfMeter`.
 - Root README, package-local README, bilingual package documentation, root and package-local changelogs, license and notice files.
@@ -22,19 +22,19 @@ Release candidate `2026.5.18-1` includes:
 Use calendar version:
 
 ```text
-2026.5.18-1
+2026.5.20-1
 ```
 
 Planned tag after the final release-prep commit passes gates:
 
 ```text
-2026.5.18-1
+2026.5.20-1
 ```
 
 Private Git UPM consumers can pin:
 
 ```text
-git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.18-1
+git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.20-1
 ```
 
 Do not push the tag until the final release commit is reviewed and verified. Do not move a pushed tag.
@@ -42,7 +42,7 @@ Do not push the tag until the final release commit is reviewed and verified. Do 
 ## Prepared State
 
 - Package metadata includes `licensesUrl`, `changelogUrl`, and `documentationUrl` pointing at canonical repository files.
-- Root and package-local changelogs track `2026.5.18-1`.
+- Root and package-local changelogs track `2026.5.20-1`.
 - Package-local README/CHANGELOG are included for Git UPM consumers.
 - Security policy, contributing policy, CODEOWNERS, PR template, issue security routing, and manual-only release workflow are present.
 - Manual release workflow uses `workflow_dispatch` only and does not publish packages.
@@ -50,18 +50,18 @@ Do not push the tag until the final release commit is reviewed and verified. Do 
 
 ## Verification Baseline
 
-Latest completed checks before this documentation sync:
+Final pre-tag checks for `2026.5.20-1`:
 
-- Iteration 43 Render Graph analytics compile: `Logs/opencode-iter43-rendergraph-compile.log`, `ExitCode: 0`.
-- Iteration 43 EditMode: `54/54`, `Logs/opencode-iter43-rendergraph-editmode-results.xml`.
-- Iteration 43 PlayMode: `5/5`, `Logs/opencode-iter43-rendergraph-playmode-results.xml`.
-- Iteration 43 whitespace check: `git diff --check` passed.
+- Whitespace: `git diff --check` passed.
+- Compile: `Logs/opencode-release-2026.5.20-compile.log`, `ExitCode: 0`.
+- EditMode: `54/54`, `Logs/opencode-release-2026.5.20-editmode-results.xml`.
+- PlayMode: `5/5`, `Logs/opencode-release-2026.5.20-playmode-results.xml`.
 - Android Vulkan S23 smoke: `Logs/opencode-android-s23-build-terminal.log`, `overdraw_state=Completed`, no filtered `AndroidRuntime` fatal output.
 - Android OpenGLES3 S23 smoke: `Logs/opencode-android-s23-gles-build.log`, expected `overdraw_state=Unsupported`, no filtered `AndroidRuntime` fatal output.
 
 ## Pre-Tag Checklist
 
-Run before creating tag `2026.5.18-1`:
+Run before creating tag `2026.5.20-1`:
 
 ```bash
 git diff --check
@@ -82,8 +82,8 @@ Unity.exe -batchmode -projectPath "C:\Work\Unity\sgg-perfmeter" -runTests -testP
 
 Manual checks:
 
-- Confirm `Assets/Scripts/SGG.PerfMeter/package.json` version is `2026.5.18-1`.
-- Confirm README fixed-version examples use `#2026.5.18-1`.
+- Confirm `Assets/Scripts/SGG.PerfMeter/package.json` version is `2026.5.20-1`.
+- Confirm README fixed-version examples use `#2026.5.20-1`.
 - Confirm release notes and changelogs include the same version.
 - Confirm Unity-generated package/version noise from Unity `6000.4.7f1` was not committed unless intentionally changed.
 - Confirm no private logs, APKs, `.env` files, or device-specific dumps are staged.

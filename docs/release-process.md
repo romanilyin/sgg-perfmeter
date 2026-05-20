@@ -2,7 +2,7 @@
 
 Release publishing automation is not implemented yet. The repository has local Unity verification and a manual release-readiness workflow that validates documentation and metadata gates without publishing packages or opening the repository.
 
-Current release plan: `docs/release-2026.5.18-1.md`.
+Current release plan: `docs/release-2026.5.20-1.md`.
 
 ## Coordinates
 
@@ -10,7 +10,7 @@ Current release plan: `docs/release-2026.5.18-1.md`.
 - Unity UPM package: `com.sungeargames.perfmeter`.
 - Display name: `SGG PerfMeter`.
 - License: `LicenseRef-Stinger-Royalty-Free-EULA-1.0`.
-- Current private release candidate: `2026.5.18-1`.
+- Current private release candidate: `2026.5.20-1`.
 
 The repository remains private until a public switch is explicitly approved.
 
@@ -21,7 +21,7 @@ The private release candidate includes the nested Unity package under `Assets/Sc
 For the first private candidate, Unity distribution is Git UPM by repository tag and path:
 
 ```text
-git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.18-1
+git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.20-1
 ```
 
 Do not publish to Unity Asset Store, OpenUPM, a package registry, or GitHub Releases yet.
@@ -49,8 +49,8 @@ Before a device validation release:
 Create and push the source tag only after the release commit passes gates:
 
 ```bash
-git tag 2026.5.18-1
-git push origin 2026.5.18-1
+git tag 2026.5.20-1
+git push origin 2026.5.20-1
 ```
 
 Do not move an existing pushed tag. If anything changes after a pushed tag, create the next daily suffix such as `2026.5.18-2`.
@@ -67,4 +67,4 @@ Public release is deferred. Before opening the repository:
 
 ## Post-Release Notes
 
-Use `docs/release-notes-2026.5.18-1.md` as the private release notes draft. If a public GitHub Release is later created, review the notes for public wording and mark the release as pre-release if any shipped surface remains experimental.
+Use `docs/release-notes-2026.5.20-1.md` as the private release notes draft. If a public GitHub Release is later created, review the notes for public wording and mark the release as pre-release if any shipped surface remains experimental.

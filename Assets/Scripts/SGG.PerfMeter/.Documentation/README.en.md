@@ -6,7 +6,7 @@ Positioning: SGG PerfMeter is a Unity 6000+ URP Render Graph diagnostics layer a
 
 It is intentionally complementary to Unity Profiler, RenderDoc, Profile Analyzer, and Frame Debugger. Use those tools for deep captures; use PerfMeter for lightweight runtime telemetry, structured snapshots, and repeatable automation.
 
-Current package version: `2026.5.18-1`. This is a private release candidate; the repository remains private until the public switch is explicitly approved.
+Current package version: `2026.5.20-1`. This is a private release candidate; the repository remains private until the public switch is explicitly approved.
 
 ## Agent API
 

@@ -21,7 +21,7 @@ jobs:
           import json
           from pathlib import Path
 
-          version = "2026.5.18-1"
+          version = "2026.5.20-1"
           package_path = Path("Assets/Scripts/SGG.PerfMeter/package.json")
           package = json.loads(package_path.read_text(encoding="utf-8"))
           assert package["name"] == "com.sungeargames.perfmeter"

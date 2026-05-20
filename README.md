@@ -14,7 +14,7 @@ Compared with general-purpose Unity FPS overlays such as Advanced FPS Counter an
 
 The package is intentionally focused on runtime metrics. It does not replace Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
 
-Target private release candidate: `2026.5.18-1`. The repository remains private until the release preparation is reviewed; the release plan is tracked in `docs/release-2026.5.18-1.md`, and release notes are drafted in `docs/release-notes-2026.5.18-1.md`.
+Target private release candidate: `2026.5.20-1`. The repository remains private until the release preparation is reviewed; the release plan is tracked in `docs/release-2026.5.20-1.md`, and release notes are drafted in `docs/release-notes-2026.5.20-1.md`.
 
 ## Status
 
@@ -103,7 +103,7 @@ For a fixed version, pin a tag or commit:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.18-1"
+    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.20-1"
   }
 }
 ```
@@ -553,8 +553,8 @@ Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform Play
 
 Release-readiness docs:
 
-- `docs/release-2026.5.18-1.md`
-- `docs/release-notes-2026.5.18-1.md`
+- `docs/release-2026.5.20-1.md`
+- `docs/release-notes-2026.5.20-1.md`
 - `docs/release-process.md`
 - `docs/manual-checks.md`
 - `docs/versioning.md`

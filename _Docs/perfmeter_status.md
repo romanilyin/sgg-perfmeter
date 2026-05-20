@@ -2,7 +2,7 @@
 
 ## Package State
 
-- Package metadata is `com.sungeargames.perfmeter` / `SGG PerfMeter` at private release candidate version `2026.5.18-1`; no `sky` or `weather` package identity remnants were found under `Assets/Scripts/SGG.PerfMeter/`.
+- Package metadata is `com.sungeargames.perfmeter` / `SGG PerfMeter` at private release candidate version `2026.5.20-1`; no `sky` or `weather` package identity remnants were found under `Assets/Scripts/SGG.PerfMeter/`.
 - User-facing docs are maintained in English and Russian under `Assets/Scripts/SGG.PerfMeter/.Documentation/`.
 - Public runtime API entry point is `SGG.PerfMeter.PerformanceMeter`; snapshots use `CollectionFrame` and MCP JSON uses `collection_frame` to avoid implying exact `FrameTimingManager` sample-frame identity.
 - Runtime now includes opt-in numerical overdraw measurement through a hidden replacement shader, fragment-stage atomic counter buffer, and `AsyncGPUReadback`, plus a separate additive visual overdraw heatmap pass.
@@ -34,12 +34,12 @@
 - Tests include EditMode API/classifier/session/export/MCP/overlay text-cache/package-samples coverage and PlayMode runtime smoke coverage for overlay lifecycle, snapshot updates, session recording/export, scene scope, heatmap toggles, and overdraw terminal/degraded states.
 - Bottleneck classification now uses main-thread work time after present wait, returns `Unknown` for significant present wait without GPU timing when CPU work is below budget, and picks the dominant CPU/GPU overshoot for mixed overloads.
 - Overdraw measurement and heatmap rendering default to Game cameras only, support an optional camera-name filter, and the numerical path ignores stale `AsyncGPUReadback` callbacks from older measurement sessions.
-- Release-readiness docs are present under `docs/`: versioning, manual checks, release process, release plan, and release notes for `2026.5.18-1`; root/package-local changelogs and package-local README are present for Git UPM consumers.
+- Release-readiness docs are present under `docs/`: versioning, manual checks, release process, release plan, and release notes for `2026.5.20-1`; root/package-local changelogs and package-local README are present for Git UPM consumers.
 
 ## Verification Notes
 
 - Use Unity batchmode compile and `-runTests` without `-quit` as the reliable local verification path. The project version is now `6000.4.7f1`; current Android validation uses this installed editor because it has Android Build Support.
-- Latest release-docs verification passed with `Logs/opencode-release-docs-compile.log`, `Logs/opencode-release-docs-editmode-results.xml`, and `Logs/opencode-release-docs-playmode-results.xml`.
+- Latest `2026.5.20-1` release verification passed with `Logs/opencode-release-2026.5.20-compile.log`, `Logs/opencode-release-2026.5.20-editmode-results.xml`, and `Logs/opencode-release-2026.5.20-playmode-results.xml`.
 - Latest JSON settings verification passed with `Logs/opencode-iter28-settings-compile.log`, `Logs/opencode-iter28-settings-editmode-results.xml`, and `Logs/opencode-iter28-settings-playmode-results.xml`.
 - Latest device snapshot verification passed with `Logs/opencode-iter29-device-compile.log`, `Logs/opencode-iter29-device-editmode-results.xml`, and `Logs/opencode-iter29-device-playmode-results.xml`.
 - Latest camera snapshot verification passed with `Logs/opencode-iter30-camera-compile.log`, `Logs/opencode-iter30-camera-editmode-results.xml`, and `Logs/opencode-iter30-camera-playmode-results.xml`.

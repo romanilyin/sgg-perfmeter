@@ -2,7 +2,7 @@
 
 ## Текущая готовность
 
-- Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`; текущая private release candidate версия - `2026.5.18-1`.
+- Идентификатор пакета: `com.sungeargames.perfmeter` / `SGG PerfMeter`; текущая private release candidate версия - `2026.5.20-1`.
 - Реализованы runtime API, custom metric providers для project-specific counters, collection modes, device/environment snapshot с monitor names, camera snapshot для воспроизводимых captures, safe Render Graph analytics snapshot, session recorder с bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata и JSON/CSV export, rule/alert engine с MCP alert commands, JSON settings для zero-code setup, JSON tunables для overlay/rules/session/overdraw, Package Manager samples, вкладка `Presets` с overlay presets/modules/tunables, сбор метрик, UI Toolkit overlay с режимами, module filtering, limited custom metric rows, allocation-conscious text field refresh, stacked CPU/GPU графиками, цветными legend labels и min/max текстовой историей, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in численное измерение overdraw и visual overdraw heatmap.
 - Есть EditMode API/classifier tests и PlayMode runtime smoke tests; classifier mixed-load edge cases, overdraw stale-readback safety и heatmap toggles покрыты. Android S23 Vulkan/GLES smoke validation пройдена; более широкая player-build validation еще pending.
 - Пакет подготовлен как private/internal release candidate для проверки в Unity 6000.4 / URP 17; публичный релиз остается отложенным.
@@ -58,8 +58,8 @@
 
 ## Release Readiness
 
-- Root release plan: `docs/release-2026.5.18-1.md`.
-- Release notes draft: `docs/release-notes-2026.5.18-1.md`.
+- Root release plan: `docs/release-2026.5.20-1.md`.
+- Release notes draft: `docs/release-notes-2026.5.20-1.md`.
 - Release process: `docs/release-process.md`.
 - Local/manual gates: Unity compile, EditMode tests, PlayMode tests, `git diff --check` и optional Android Vulkan/GLES smoke builds.
 - GitHub release workflow manual-only (`workflow_dispatch`) и не публикует packages.

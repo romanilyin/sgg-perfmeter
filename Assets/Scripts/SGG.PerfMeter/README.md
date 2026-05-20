@@ -4,7 +4,7 @@ SGG PerfMeter is a low-overhead runtime performance diagnostics layer and agent-
 
 It is not just an FPS counter: it combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, overdraw diagnostics, device/camera snapshots, session export, rule alerts, custom metrics, UI Toolkit overlay, and MCP commands. It is not a replacement for Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
 
-Package version: `2026.5.18-1`.
+Package version: `2026.5.20-1`.
 
 This package is in private release-candidate validation. The repository remains private until the public switch is explicitly approved.
 
@@ -17,8 +17,8 @@ This package is in private release-candidate validation. The repository remains 
 
 Root repository release docs, outside this package path:
 
-- `docs/release-2026.5.18-1.md`
-- `docs/release-notes-2026.5.18-1.md`
+- `docs/release-2026.5.20-1.md`
+- `docs/release-notes-2026.5.20-1.md`
 - `docs/release-process.md`
 
 ## Quick Start

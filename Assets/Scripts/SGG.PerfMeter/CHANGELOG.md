@@ -2,27 +2,17 @@
 
 ## Unreleased
 
-- Added project-owned JSON settings, a setup-window `Presets` tab, and zero-code runtime auto-start through `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
-- Added device/environment snapshots with display layout, monitor names, and `perfmeter.device.info` MCP output.
-- Added camera snapshots with transform/projection/URP camera settings and `perfmeter.camera.snapshot` MCP output.
-- Added JSON-backed overlay presets/modules, module-filtered overlay output, setup-window module toggles, and MCP `overlay_preset` / `overlay_modules` support.
-- Added session recorder APIs with bounded in-memory samples, safe sample-copy access, session summaries, status fields, settings/device/camera metadata capture, JSON/CSV export, and MCP session start/stop/summary/export commands.
-- Added rule-based alerts with active/fired alert status, separate structured-log/callback/Editor-warning cooldowns, callback events, and MCP `perfmeter.alerts.latest/clear` commands.
-- Added session warm-up seconds, runtime `ResetStats`, scene-load reset/ignore options, whole-run/current-scene summaries, worst-frame summaries, and MCP `perfmeter.runtime.reset_stats`.
-- Added explicit collection modes (`Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic`) with JSON/setup/runtime/MCP controls.
-- Improved overlay text refresh with stable UI Toolkit field rows, cached enum text, reusable numeric formatting buffers, and dirty value-label assignment.
-- Added Package Manager samples for bootstrap/zero-code settings, runtime workflows, editor automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
-- Added JSON tunables for overlay scale/opacity/font/refresh/history, alert thresholds/consecutive frames, session defaults, and overdraw default/max frame counts.
-- Added custom metric providers for project-specific counters with session JSON export, MCP latest-metrics output, and bounded overlay rows behind the `CustomMetrics` module.
-- Added a safe Render Graph analytics snapshot API/MCP command that reports the last observed PerfMeter Render Graph feature frame and degraded pass/resource counters when URP internals are unavailable.
-- Updated package documentation to reflect session export, alerts, custom metrics, Render Graph analytics, and the current URP diagnostics positioning.
+- No changes yet.
 
-## 2026.5.18-1
+## 2026.5.20-1
 
 - Prepared the private release candidate for `com.sungeargames.perfmeter` / `SGG PerfMeter`.
-- Added `PerformanceMeter` runtime API, immutable status/metrics snapshots, overlay controls, target FPS, overdraw measurement, and heatmap visibility controls.
+- Added `PerformanceMeter` runtime API, immutable status/metrics snapshots, collection modes, overlay controls, target FPS, session recording/export, alerts, custom metrics, device/camera snapshots, Render Graph snapshots, overdraw measurement, and heatmap visibility controls.
 - Added `FrameTimingManager` timings and `ProfilerRecorder` counters for render, memory, SRP Batcher, BRG/GRD, index uploads, and GPU memory.
-- Added UI Toolkit overlay modes and CPU/GPU graphs.
-- Added URP Render Graph feature with opt-in overlay marker, numerical overdraw measurement, and visual overdraw heatmap passes.
-- Added Editor setup/runtime controls and MCP command metadata for agent workflows.
+- Added UI Toolkit overlay modes, CPU/GPU graphs, presets/modules, JSON-tunable presentation, allocation-conscious text refresh, and bounded custom metric rows.
+- Added URP Render Graph feature with opt-in overlay marker, numerical overdraw measurement, visual overdraw heatmap passes, and safe Render Graph analytics snapshot.
+- Added project-owned JSON settings, a setup-window `Presets` tab, JSON tunables, and zero-code runtime auto-start through `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
+- Added device/environment snapshots, camera snapshots, session recorder JSON/CSV export, rule alerts, custom metric providers, and MCP commands for agent-driven workflows.
+- Added Package Manager samples for bootstrap/zero-code settings, runtime workflows, editor automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
 - Added EditMode and PlayMode tests plus Android Vulkan/GLES smoke-validation helpers.
+- Added package documentation, package metadata URLs, license/notice files, release-readiness docs, and marketing/positioning docs.

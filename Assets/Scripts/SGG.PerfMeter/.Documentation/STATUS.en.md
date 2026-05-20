@@ -2,7 +2,7 @@
 
 ## Current Readiness
 
-- Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`; current private release candidate version is `2026.5.18-1`.
+- Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`; current private release candidate version is `2026.5.20-1`.
 - Runtime API, custom metric providers for project-specific counters, collection modes, device/environment snapshot with monitor names, camera snapshot for reproducible captures, safe Render Graph analytics snapshot, session recorder with bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata, JSON/CSV export, rule/alert engine with MCP alert commands, JSON settings for zero-code setup, JSON tunables for overlay/rules/session/overdraw, Package Manager samples, the `Presets` tab with overlay presets/modules/tunables, metrics collection, UI Toolkit overlay with modes, module filtering, limited custom metric rows, allocation-conscious text field refresh, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
 - EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases, overdraw stale-readback safety, and heatmap toggles are covered. Android S23 Vulkan/GLES smoke validation has passed; broader player-build validation is still pending.
 - The package is prepared as a private/internal release candidate for Unity 6000.4 / URP 17 validation; public release remains deferred.
@@ -58,8 +58,8 @@
 
 ## Release Readiness
 
-- Root release plan: `docs/release-2026.5.18-1.md`.
-- Release notes draft: `docs/release-notes-2026.5.18-1.md`.
+- Root release plan: `docs/release-2026.5.20-1.md`.
+- Release notes draft: `docs/release-notes-2026.5.20-1.md`.
 - Release process: `docs/release-process.md`.
 - Local/manual gates: Unity compile, EditMode tests, PlayMode tests, `git diff --check`, and optional Android Vulkan/GLES smoke builds.
 - The GitHub release workflow is manual-only (`workflow_dispatch`) and does not publish packages.
