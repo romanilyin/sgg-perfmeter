@@ -8,10 +8,12 @@ Release candidate `2026.5.18-1` includes:
 
 - Source repository and nested Unity Git UPM package `com.sungeargames.perfmeter` under `Assets/Scripts/SGG.PerfMeter`.
 - Root README, package-local README, bilingual package documentation, root and package-local changelogs, license and notice files.
-- Runtime public API `SGG.PerfMeter.PerformanceMeter` for status, metrics, lifecycle, overlay controls, target FPS, overdraw measurement, and heatmap visibility.
-- UI Toolkit runtime overlay with compact, graph, and full modes.
-- URP 17 Render Graph feature with opt-in overlay marker, numerical overdraw measurement, and visual overdraw heatmap passes.
-- Editor setup/runtime window and MCP command metadata for agent workflows.
+- Runtime public API `SGG.PerfMeter.PerformanceMeter` for status, metrics, lifecycle, collection modes, overlay controls, target FPS, session recording/export, alerts, custom metrics, device/camera snapshots, Render Graph snapshots, overdraw measurement, and heatmap visibility.
+- Project-owned JSON settings for zero-code setup, overlay presets/modules/tunables, rule defaults, session defaults, and overdraw limits.
+- UI Toolkit runtime overlay with compact, graph, full, preset/module-filtered diagnostics, allocation-conscious text refresh, and bounded custom metric rows.
+- URP 17 Render Graph feature with opt-in overlay marker, numerical overdraw measurement, visual overdraw heatmap passes, and safe Render Graph analytics snapshot.
+- Editor setup/runtime/presets window and MCP command metadata/handlers for setup, runtime, metrics, device, camera, Render Graph, overlay, overdraw, sessions, and alerts.
+- Package Manager samples for bootstrap/settings, runtime workflows, and editor/MCP automation.
 - EditMode and PlayMode test suites.
 - Android Development APK smoke build helper and Android runtime smoke bootstrap.
 
@@ -48,14 +50,12 @@ Do not push the tag until the final release commit is reviewed and verified. Do 
 
 ## Verification Baseline
 
-Latest completed checks before this release-prep pass:
+Latest completed checks before this documentation sync:
 
-- Compile: `Logs/opencode-overdraw-heatmap-compile.log`, `ExitCode: 0`.
-- EditMode: `18/18`, `Logs/opencode-overdraw-heatmap-editmode-results.xml`.
-- PlayMode: `2/2`, `Logs/opencode-overdraw-heatmap-playmode-results.xml`.
-- Release docs compile: `Logs/opencode-release-docs-compile.log`, `ExitCode: 0`.
-- Release docs EditMode: `18/18`, `Logs/opencode-release-docs-editmode-results.xml`.
-- Release docs PlayMode: `2/2`, `Logs/opencode-release-docs-playmode-results.xml`.
+- Iteration 43 Render Graph analytics compile: `Logs/opencode-iter43-rendergraph-compile.log`, `ExitCode: 0`.
+- Iteration 43 EditMode: `54/54`, `Logs/opencode-iter43-rendergraph-editmode-results.xml`.
+- Iteration 43 PlayMode: `5/5`, `Logs/opencode-iter43-rendergraph-playmode-results.xml`.
+- Iteration 43 whitespace check: `git diff --check` passed.
 - Android Vulkan S23 smoke: `Logs/opencode-android-s23-build-terminal.log`, `overdraw_state=Completed`, no filtered `AndroidRuntime` fatal output.
 - Android OpenGLES3 S23 smoke: `Logs/opencode-android-s23-gles-build.log`, expected `overdraw_state=Unsupported`, no filtered `AndroidRuntime` fatal output.
 

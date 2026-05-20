@@ -2,6 +2,10 @@
 
 SGG PerfMeter предоставляет публичный runtime API для безопасного чтения статуса и последних метрик производительности без обращения к UI или Unity Console.
 
+Позиционирование: SGG PerfMeter - это Unity 6000+ URP Render Graph diagnostics layer и agent-readable profiling API, а не просто FPS counter. Пакет объединяет FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, overdraw diagnostics, device/camera snapshots, session export, rule alerts, custom metrics, UI Toolkit overlay и MCP commands для Play Mode, билдов, smoke tests и editor/agent automation.
+
+Он дополняет Unity Profiler, RenderDoc, Profile Analyzer и Frame Debugger, но не заменяет их. Для глубоких captures используйте эти инструменты; для легкой runtime telemetry, structured snapshots и repeatable automation используйте PerfMeter.
+
 Текущая версия пакета: `2026.5.18-1`. Это private release candidate; репозиторий остается приватным до явного решения о public switch.
 
 ## API для агентов

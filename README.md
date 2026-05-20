@@ -1,12 +1,16 @@
 # SGG PerfMeter
 
-**SGG PerfMeter** is a low-overhead runtime performance meter and agent-readable profiling API for **Unity 6000.4+** projects that use **Universal Render Pipeline**.
+**SGG PerfMeter** is a low-overhead runtime performance diagnostics layer and agent-readable profiling API for **Unity 6000.4+ URP Render Graph** projects.
 
 It is designed for builds and Play Mode where you need fast answers to practical questions:
 
 - Is the frame CPU-bound, GPU-bound, render-thread-bound, or only waiting for presentation/VSync?
 - Are draw calls, SetPass calls, SRP Batcher, BRG/GRD, buffer uploads, memory, or overdraw suspicious?
 - Can an AI agent or editor tool read profiler state without scraping UI text or Unity Console logs?
+
+Most FPS counters answer "What is the FPS right now?" SGG PerfMeter is built to answer why a frame is slow, what changed, how an agent can read it, and how a capture can be reproduced.
+
+Compared with general-purpose Unity FPS overlays such as Advanced FPS Counter and Graphy, SGG PerfMeter focuses on modern URP diagnostics, reproducible runtime sessions, structured snapshots, and agent-readable automation.
 
 The package is intentionally focused on runtime metrics. It does not replace Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
 
@@ -24,13 +28,13 @@ Implemented:
 - `FrameTimingManager`-based CPU/GPU timing collection;
 - `ProfilerRecorder`-based render, memory, SRP Batcher, BRG/GRD, and upload counters;
 - UI Toolkit overlay with compact, graph, full modes, and allocation-conscious text field refresh;
-- URP Render Graph renderer feature;
+- URP Render Graph renderer feature with marker, overdraw, heatmap, and safe analytics snapshot paths;
 - bounded numerical overdraw measurement using a hidden replacement shader and `AsyncGPUReadback`;
 - visual overdraw heatmap using an additive replacement shader;
 - session recording with warm-up, reset, scene scope, worst-frame summaries, and JSON/CSV export;
 - rule alerts with callback/log/Editor warning cooldowns;
 - editor setup window with JSON `Presets` and zero-code setup;
-- MCP command definitions for setup, runtime control, metrics, device/environment info, overlay, sessions, alerts, overdraw measurement, and overdraw heatmap;
+- MCP command definitions for setup, runtime control, metrics, device/environment info, camera snapshots, Render Graph snapshots, overlay, sessions, alerts, overdraw measurement, and overdraw heatmap;
 - Package Manager samples for bootstrap/settings, runtime workflows, editor automation, MCP commands, session export, alerts, overdraw, and camera replay;
 - English and Russian package documentation;
 - release readiness docs, changelog, security policy, contributing policy, and a manual-only release workflow;
@@ -195,6 +199,14 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 }
 ```
 
+Structured snapshots for reproducible reports:
+
+```csharp
+PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
+PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
+PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapshot();
+```
+
 Metrics:
 
 ```csharp
@@ -205,6 +217,31 @@ Debug.Log(
     $"GPU {(metrics.GpuFrameTimeAvailable ? metrics.GpuFrameTimeMs.ToString("0.00") : "N/A")} ms, " +
     $"Draws {metrics.DrawCalls}, SetPass {metrics.SetPassCalls}, " +
     $"Bottleneck {metrics.Bottleneck}");
+```
+
+Custom metrics from project providers:
+
+```csharp
+foreach (PerfMeterCustomMetricSnapshot customMetric in PerformanceMeter.GetCustomMetrics())
+{
+    Debug.Log($"{customMetric.Name}: {(customMetric.Available ? customMetric.Value.ToString("0.###") : "n/a")} {customMetric.Unit}");
+}
+```
+
+Sessions and alerts:
+
+```csharp
+PerformanceMeter.AlertFired += alert => Debug.Log(alert.Message);
+
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(30, 0.25f, 600));
+
+// Later, after the measured window.
+PerformanceMeter.StopSession();
+PerfMeterSessionSummarySnapshot summary = PerformanceMeter.GetSessionSummary();
+PerformanceMeter.ExportSessionJson("Logs/perfmeter-session.json");
+PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
+
+PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
 Overlay:
@@ -436,13 +473,22 @@ Available command IDs:
 | `perfmeter.runtime.status` | Read runtime status. |
 | `perfmeter.runtime.ensure` | Start runtime if needed. |
 | `perfmeter.runtime.stop` | Stop runtime. |
+| `perfmeter.runtime.reset_stats` | Reset rolling stats, alert counters, and active session counters. |
+| `perfmeter.runtime.mode.set` | Switch `Stopped`, `Background`, `Overlay`, or `OverdrawDiagnostic` collection mode. |
 | `perfmeter.metrics.latest` | Read latest metrics snapshot. |
+| `perfmeter.alerts.latest` | Read active alerts, alert counters, status fields, and Editor state. |
+| `perfmeter.alerts.clear` | Clear active alerts, counters, and per-rule cooldown state. |
 | `perfmeter.device.info` | Read device, graphics, display, monitor, render pipeline, and Unity environment info. |
 | `perfmeter.camera.snapshot` | Read camera transform/projection/URP settings for reproducible captures. |
-| `perfmeter.overlay.set` | Show/hide overlay and set corner/mode/target FPS. |
+| `perfmeter.rendergraph.snapshot` | Read the latest observed PerfMeter Render Graph feature diagnostics. |
+| `perfmeter.overlay.set` | Show/hide overlay and set preset/modules/corner/mode/target FPS. |
 | `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
 | `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
 | `perfmeter.overdraw.heatmap.set` | Show or hide visual overdraw heatmap. |
+| `perfmeter.session.start` | Start bounded session recording with optional warm-up, scene-load, interval, and sample-count overrides. |
+| `perfmeter.session.stop` | Stop the active session and return its summary. |
+| `perfmeter.session.summary` | Read the current session summary. |
+| `perfmeter.session.export` | Export the current session to a project-local JSON or CSV file. |
 
 These commands are intended for Unity MCP / editor automation workflows where an agent needs structured JSON output instead of screenshots or log scraping.
 
@@ -454,6 +500,7 @@ Assets/Scripts/SGG.PerfMeter/
   README.md
   CHANGELOG.md
   Runtime/
+    PerfMeterAlertEngine.cs
     PerformanceMeter.cs
     PerfMeterCameraSnapshot.cs
     PerfMeterCameraSnapshotProvider.cs
@@ -464,6 +511,8 @@ Assets/Scripts/SGG.PerfMeter/
     PerfMeterOverlay.cs
     PerfMeterOverdrawController.cs
     PerfMeterRenderGraphFeature.cs
+    PerfMeterSessionExporter.cs
+    PerfMeterSessionRecorder.cs
     PerfMeterSettings.cs
     PerfMeterSnapshots.cs
     Resources/
@@ -513,8 +562,8 @@ Release-readiness docs:
 Recommended next verification targets:
 
 - Windows Player: D3D11 and D3D12.
-- Android Player: Vulkan.
-- Android Player: OpenGLES3 degraded-mode behavior.
+- Additional Android devices: Vulkan timing/counter availability.
+- Additional Android devices: OpenGLES3 degraded-mode behavior.
 - macOS/iOS Player: Metal.
 - Play Mode overlay stability.
 - Release Player metric availability.
@@ -525,10 +574,10 @@ Recommended next verification targets:
 - Root project is currently a sample Unity project plus a nested UPM package; install through `?path=/Assets/Scripts/SGG.PerfMeter` when using Git dependencies.
 - GPU timings can be delayed or unavailable depending on platform and graphics API; `CollectionFrame` identifies when the snapshot was collected, not the original hardware timing frame.
 - Bottleneck classification is heuristic and should be validated against Unity Profiler captures before treating it as authoritative.
-- The overlay refresh is throttled, but text assignment still creates managed strings on refresh; full zero-allocation overlay refresh is tracked as a later optimization.
+- The overlay refresh is allocation-conscious and throttled, but changed numeric values and graph legend labels can still materialize managed strings at the refresh interval.
 - Self-overhead marker pass is opt-in diagnostic mode, and full overhead subtraction is not finalized.
 - Overdraw heatmap is diagnostic and uses an extra scene redraw while visible.
-- CSV/JSON session export is not implemented yet.
+- Render Graph pass/resource/aliasing/merge analytics are conservative; internal Unity counters can report `-1` with a warning when URP does not expose them safely.
 - CI is not configured yet.
 
 ## License

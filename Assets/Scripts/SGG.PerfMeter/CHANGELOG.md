@@ -15,6 +15,7 @@
 - Added JSON tunables for overlay scale/opacity/font/refresh/history, alert thresholds/consecutive frames, session defaults, and overdraw default/max frame counts.
 - Added custom metric providers for project-specific counters with session JSON export, MCP latest-metrics output, and bounded overlay rows behind the `CustomMetrics` module.
 - Added a safe Render Graph analytics snapshot API/MCP command that reports the last observed PerfMeter Render Graph feature frame and degraded pass/resource counters when URP internals are unavailable.
+- Updated package documentation to reflect session export, alerts, custom metrics, Render Graph analytics, and the current URP diagnostics positioning.
 
 ## 2026.5.18-1
 

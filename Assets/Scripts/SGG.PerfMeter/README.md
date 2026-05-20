@@ -1,6 +1,8 @@
 # SGG PerfMeter
 
-SGG PerfMeter is a low-overhead runtime performance meter and agent-readable profiling API for Unity 6000.4+ URP projects.
+SGG PerfMeter is a low-overhead runtime performance diagnostics layer and agent-readable profiling API for Unity 6000.4+ URP Render Graph projects.
+
+It is not just an FPS counter: it combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, overdraw diagnostics, device/camera snapshots, session export, rule alerts, custom metrics, UI Toolkit overlay, and MCP commands. It is not a replacement for Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
 
 Package version: `2026.5.18-1`.
 
