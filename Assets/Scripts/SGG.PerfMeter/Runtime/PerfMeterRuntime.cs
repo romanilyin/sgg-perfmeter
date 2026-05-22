@@ -173,6 +173,9 @@ namespace SGG.PerfMeter
 			{
 				_focusResumeIgnoreFrames = FocusResumeIgnoreFrames;
 			}
+
+			_sessionRecorder.SetApplicationFocusState(_applicationFocused, _applicationPaused, Time.frameCount, Time.realtimeSinceStartupAsDouble);
+			RefreshStatusOverlayState();
 		}
 
 		private void OnApplicationPause(bool pauseStatus)
@@ -187,6 +190,9 @@ namespace SGG.PerfMeter
 			{
 				_focusResumeIgnoreFrames = FocusResumeIgnoreFrames;
 			}
+
+			_sessionRecorder.SetApplicationFocusState(_applicationFocused, _applicationPaused, Time.frameCount, Time.realtimeSinceStartupAsDouble);
+			RefreshStatusOverlayState();
 		}
 
 		internal PerfMeterAlertSnapshot[] GetLatestAlerts()
@@ -203,7 +209,7 @@ namespace SGG.PerfMeter
 		internal void ResetStats()
 		{
 			_frameStatsSampler.Reset();
-			_sessionRecorder.ResetStats(Time.frameCount, Time.realtimeSinceStartupAsDouble, _latestMetrics);
+			_sessionRecorder.ResetStats(Time.frameCount, Time.realtimeSinceStartupAsDouble, _latestMetrics, _applicationFocused, _applicationPaused);
 			_alertEngine.Clear();
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
 			RefreshStatusOverlayState();
@@ -242,7 +248,9 @@ namespace SGG.PerfMeter
 				settings,
 				Time.frameCount,
 				Time.realtimeSinceStartupAsDouble,
-				_latestMetrics);
+				_latestMetrics,
+				_applicationFocused,
+				_applicationPaused);
 			RefreshStatusOverlayState();
 		}
 
@@ -514,7 +522,9 @@ namespace SGG.PerfMeter
 				_overlayMode,
 				_targetFps,
 				_overlayPreset,
-				_overlayModules);
+				_overlayModules,
+				applicationFocused: _applicationFocused,
+				applicationPaused: _applicationPaused);
 
 			_latestMetrics = new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -568,7 +578,13 @@ namespace SGG.PerfMeter
 				PerfMeterSessionState.Idle,
 				false,
 				0,
-				0);
+				0,
+				0,
+				0,
+				string.Empty,
+				string.Empty,
+				true,
+				false);
 		}
 
 		private static PerfMeterStatusSnapshot CreateStatus(
@@ -598,7 +614,9 @@ namespace SGG.PerfMeter
 			int activeAlertCount = 0,
 			int firedAlertCount = 0,
 			string latestAlertRuleId = "",
-			string latestAlertMessage = "")
+			string latestAlertMessage = "",
+			bool applicationFocused = true,
+			bool applicationPaused = false)
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -630,7 +648,9 @@ namespace SGG.PerfMeter
 				activeAlertCount,
 				firedAlertCount,
 				latestAlertRuleId,
-				latestAlertMessage);
+				latestAlertMessage,
+				applicationFocused,
+				applicationPaused);
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -768,7 +788,9 @@ namespace SGG.PerfMeter
 				_alertEngine.ActiveAlertCount,
 				_alertEngine.FiredAlertCount,
 				_alertEngine.LatestAlert.RuleId,
-				_alertEngine.LatestAlert.Message);
+				_alertEngine.LatestAlert.Message,
+				_applicationFocused,
+				_applicationPaused);
 		}
 
 		private static string CombineWarnings(string first, string second)
@@ -844,7 +866,9 @@ namespace SGG.PerfMeter
 				_alertEngine.ActiveAlertCount,
 				_alertEngine.FiredAlertCount,
 				_alertEngine.LatestAlert.RuleId,
-				_alertEngine.LatestAlert.Message);
+				_alertEngine.LatestAlert.Message,
+				_applicationFocused,
+				_applicationPaused);
 		}
 
 		private void ApplyAlertSettings()

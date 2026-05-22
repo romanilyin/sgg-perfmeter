@@ -40,6 +40,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.OverdrawHeatmapVisible, Is.False);
 			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Idle));
 			Assert.That(status.IsSessionRecording, Is.False);
+			Assert.That(status.ApplicationFocused, Is.True);
+			Assert.That(status.ApplicationPaused, Is.False);
 			Assert.That(PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot tryStatus), Is.True);
 			Assert.That(tryStatus.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 		}
@@ -363,6 +365,33 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SessionRecorderTracksFocusLossAndPauseTelemetry()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.Defaults;
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 4), default, default, settings, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+
+			recorder.SetApplicationFocusState(false, false, 11, 1.25d);
+			recorder.SetApplicationFocusState(false, true, 12, 1.50d);
+			recorder.SetApplicationFocusState(true, true, 13, 1.75d);
+			recorder.SetApplicationFocusState(true, false, 14, 2.00d);
+
+			PerfMeterSessionSummarySnapshot summary = recorder.GetSummary();
+			Assert.That(summary.FocusLossCount, Is.EqualTo(1));
+			Assert.That(summary.PauseCount, Is.EqualTo(1));
+			Assert.That(summary.FocusPausedDurationSeconds, Is.EqualTo(0.75d).Within(0.001d));
+
+			recorder.SetApplicationFocusState(false, false, 15, 2.50d);
+			summary = recorder.GetSummary();
+			Assert.That(summary.FocusLossCount, Is.EqualTo(2));
+			Assert.That(summary.FocusPausedDurationSeconds, Is.EqualTo(0.75d).Within(0.001d));
+
+			recorder.Stop(3.00d);
+			summary = recorder.GetSummary();
+			Assert.That(summary.FocusPausedDurationSeconds, Is.EqualTo(1.25d).Within(0.001d));
+		}
+
+		[Test]
 		public void SessionExportFormatsJsonAndCsv()
 		{
 			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
@@ -390,12 +419,15 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"worst_frame\""));
 			Assert.That(json, Does.Contain("\"cpu_frame_ms\":16"));
 			Assert.That(json, Does.Contain("\"custom_metric_sample_count\":1"));
+			Assert.That(json, Does.Contain("\"focus_loss_count\":0"));
+			Assert.That(json, Does.Contain("\"application_focused\":"));
 			Assert.That(json, Does.Contain("\"custom_metrics\""));
 			Assert.That(json, Does.Contain("\"id\":\"combat.active_units\""));
 			Assert.That(json, Does.Contain("\"value\":42"));
 			Assert.That(csv, Does.StartWith("frame,time_seconds,scene,bottleneck,cpu_frame_ms"));
 			Assert.That(csv, Does.Contain("GpuBound"));
 			Assert.That(csv, Does.Contain("overdraw_ratio"));
+			Assert.That(csv, Does.Contain("session_focus_loss_count"));
 		}
 
 		[Test]
@@ -639,6 +671,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			string resetJson = PerfMeterMcpCommands.RuntimeResetStats();
 			Assert.That(resetJson, Does.Contain("\"state\""));
+			Assert.That(resetJson, Does.Contain("\"application_focused\""));
 			string modeJson = PerfMeterMcpCommands.RuntimeModeSet("{\"mode\":\"Background\"}");
 			Assert.That(modeJson, Does.Contain("\"collection_mode\":\"Background\""));
 
@@ -653,6 +686,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(summaryJson, Does.Contain("\"summary\""));
 			Assert.That(summaryJson, Does.Contain("\"state\":\"Recording\""));
 			Assert.That(summaryJson, Does.Contain("\"whole_run\""));
+			Assert.That(summaryJson, Does.Contain("\"focus_loss_count\""));
+			Assert.That(summaryJson, Does.Contain("\"focus_paused_duration_seconds\""));
 
 			string stopJson = PerfMeterMcpCommands.SessionStop();
 			Assert.That(stopJson, Does.Contain("\"status\":\"stopped\""));

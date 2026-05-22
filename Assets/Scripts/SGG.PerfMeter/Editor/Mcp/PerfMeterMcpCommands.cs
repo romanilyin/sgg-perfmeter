@@ -216,6 +216,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
 			builder.Append(",\"collection_frame\":").Append(status.CollectionFrame);
 			builder.Append(",\"last_error\":").Append(JsonString(status.LastError));
+			builder.Append(",\"application_focused\":").Append(JsonBool(status.ApplicationFocused));
+			builder.Append(",\"application_paused\":").Append(JsonBool(status.ApplicationPaused));
 			builder.Append(",\"bottleneck\":").Append(JsonString(status.Bottleneck.ToString()));
 			builder.Append(",\"available_counters\":").Append(JsonString(status.AvailableCounters.ToString()));
 			builder.Append(",\"unavailable_counters\":").Append(JsonString(status.UnavailableCounters.ToString()));
@@ -321,6 +323,9 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"max_fps\":").Append(JsonNumber(summary.MaxFps));
 			builder.Append(",\"frame_spike_count\":").Append(summary.FrameSpikeCount);
 			builder.Append(",\"severe_frame_spike_count\":").Append(summary.SevereFrameSpikeCount);
+			builder.Append(",\"focus_loss_count\":").Append(summary.FocusLossCount);
+			builder.Append(",\"pause_count\":").Append(summary.PauseCount);
+			builder.Append(",\"focus_paused_duration_seconds\":").Append(JsonNumber(summary.FocusPausedDurationSeconds));
 			builder.Append(",\"warning\":").Append(JsonString(summary.Warning));
 			builder.Append(",\"start_scene_name\":").Append(JsonString(summary.StartSceneName));
 			builder.Append(",\"last_scene_name\":").Append(JsonString(summary.LastSceneName));

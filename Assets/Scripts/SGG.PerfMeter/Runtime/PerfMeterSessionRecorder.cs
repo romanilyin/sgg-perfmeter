@@ -20,17 +20,24 @@ namespace SGG.PerfMeter
 		private double _stopTimeSeconds;
 		private double _nextSampleTimeSeconds;
 		private double _sceneIgnoreUntilTimeSeconds;
+		private double _focusPausedStartTimeSeconds;
+		private double _focusPausedDurationSeconds;
 		private int _sampleCount;
 		private int _droppedSampleCount;
 		private int _startFrame = -1;
 		private int _sceneIgnoreUntilFrame = -1;
+		private int _focusLossCount;
+		private int _pauseCount;
+		private bool _applicationFocused = true;
+		private bool _applicationPaused;
+		private bool _focusPaused;
 
 		internal PerfMeterSessionState State => _state;
 		internal bool IsRecording => _state == PerfMeterSessionState.Recording;
 		internal int SampleCount => _sampleCount;
 		internal int DroppedSampleCount => _droppedSampleCount;
 
-		internal void Start(PerfMeterSessionOptions options, PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterSettingsSnapshot settings, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics)
+		internal void Start(PerfMeterSessionOptions options, PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterSettingsSnapshot settings, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics, bool applicationFocused = true, bool applicationPaused = false)
 		{
 			_options = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(settings);
 			_samples = new PerfMeterSessionSampleSnapshot[_options.MaxSamples];
@@ -38,6 +45,8 @@ namespace SGG.PerfMeter
 			_device = device;
 			_camera = camera;
 			_settings = settings;
+			_applicationFocused = applicationFocused;
+			_applicationPaused = applicationPaused;
 			ResetRecordingWindow(GetActiveSceneName(), frame, timeSeconds, latestMetrics);
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
@@ -68,10 +77,13 @@ namespace SGG.PerfMeter
 			_lastSceneName = string.Empty;
 			_wholeRunStats = default;
 			_currentSceneStats = default;
+			_applicationFocused = true;
+			_applicationPaused = false;
+			ResetFocusStats(0d);
 			_summary = PerfMeterSessionSummarySnapshot.Empty;
 		}
 
-		internal void ResetStats(int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics)
+		internal void ResetStats(int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics, bool applicationFocused = true, bool applicationPaused = false)
 		{
 			if (_state != PerfMeterSessionState.Recording)
 			{
@@ -79,7 +91,36 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			_applicationFocused = applicationFocused;
+			_applicationPaused = applicationPaused;
 			ResetRecordingWindow(GetActiveSceneName(), frame, timeSeconds, latestMetrics);
+			_summary = CreateSummary(timeSeconds, string.Empty);
+		}
+
+		internal void SetApplicationFocusState(bool applicationFocused, bool applicationPaused, int frame, double timeSeconds)
+		{
+			if (_state != PerfMeterSessionState.Recording)
+			{
+				_applicationFocused = applicationFocused;
+				_applicationPaused = applicationPaused;
+				_focusPaused = !applicationFocused || applicationPaused;
+				_focusPausedStartTimeSeconds = _focusPaused ? timeSeconds : 0d;
+				return;
+			}
+
+			if (_applicationFocused && !applicationFocused)
+			{
+				_focusLossCount++;
+			}
+
+			if (!_applicationPaused && applicationPaused)
+			{
+				_pauseCount++;
+			}
+
+			_applicationFocused = applicationFocused;
+			_applicationPaused = applicationPaused;
+			UpdateFocusPausedWindow(timeSeconds);
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
@@ -172,8 +213,50 @@ namespace SGG.PerfMeter
 			_sceneIgnoreUntilTimeSeconds = 0d;
 			_sampleCount = 0;
 			_droppedSampleCount = 0;
+			ResetFocusStats(timeSeconds);
 			_wholeRunStats.Reset(sceneName, frame, timeSeconds, latestMetrics.FrameSpikeCount, latestMetrics.SevereFrameSpikeCount);
 			_currentSceneStats.Reset(sceneName, frame, timeSeconds, latestMetrics.FrameSpikeCount, latestMetrics.SevereFrameSpikeCount);
+		}
+
+		private void ResetFocusStats(double timeSeconds)
+		{
+			_focusLossCount = 0;
+			_pauseCount = 0;
+			_focusPausedDurationSeconds = 0d;
+			_focusPaused = !_applicationFocused || _applicationPaused;
+			_focusPausedStartTimeSeconds = _focusPaused ? timeSeconds : 0d;
+		}
+
+		private void UpdateFocusPausedWindow(double timeSeconds)
+		{
+			bool focusPaused = !_applicationFocused || _applicationPaused;
+			if (_focusPaused == focusPaused)
+			{
+				return;
+			}
+
+			if (focusPaused)
+			{
+				_focusPausedStartTimeSeconds = timeSeconds;
+			}
+			else
+			{
+				_focusPausedDurationSeconds += System.Math.Max(0d, timeSeconds - _focusPausedStartTimeSeconds);
+				_focusPausedStartTimeSeconds = 0d;
+			}
+
+			_focusPaused = focusPaused;
+		}
+
+		private double GetFocusPausedDurationSeconds(double currentTimeSeconds)
+		{
+			double durationSeconds = _focusPausedDurationSeconds;
+			if (_focusPaused)
+			{
+				durationSeconds += System.Math.Max(0d, currentTimeSeconds - _focusPausedStartTimeSeconds);
+			}
+
+			return durationSeconds;
 		}
 
 		private void HandleSceneChanged(string sceneName, int frame, double timeSeconds, PerfMeterMetricsSnapshot metrics)
@@ -231,7 +314,10 @@ namespace SGG.PerfMeter
 				_startSceneName,
 				_lastSceneName,
 				wholeRun,
-				currentScene);
+				currentScene,
+				_focusLossCount,
+				_pauseCount,
+				GetFocusPausedDurationSeconds(stopped ? _stopTimeSeconds : currentTimeSeconds));
 		}
 
 		private static string GetActiveSceneName()

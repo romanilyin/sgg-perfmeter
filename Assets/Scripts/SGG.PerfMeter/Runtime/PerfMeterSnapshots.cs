@@ -352,7 +352,9 @@ namespace SGG.PerfMeter
 			int activeAlertCount = 0,
 			int firedAlertCount = 0,
 			string latestAlertRuleId = "",
-			string latestAlertMessage = "")
+			string latestAlertMessage = "",
+			bool applicationFocused = true,
+			bool applicationPaused = false)
 		{
 			State = state;
 			Availability = availability;
@@ -384,6 +386,8 @@ namespace SGG.PerfMeter
 			FiredAlertCount = Mathf.Max(0, firedAlertCount);
 			LatestAlertRuleId = latestAlertRuleId ?? string.Empty;
 			LatestAlertMessage = latestAlertMessage ?? string.Empty;
+			ApplicationFocused = applicationFocused;
+			ApplicationPaused = applicationPaused;
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -416,6 +420,8 @@ namespace SGG.PerfMeter
 		public int FiredAlertCount { get; }
 		public string LatestAlertRuleId { get; }
 		public string LatestAlertMessage { get; }
+		public bool ApplicationFocused { get; }
+		public bool ApplicationPaused { get; }
 	}
 
 	public readonly struct PerfMeterSessionOptions
@@ -632,7 +638,10 @@ namespace SGG.PerfMeter
 			string startSceneName,
 			string lastSceneName,
 			PerfMeterSessionScopeSummarySnapshot wholeRun,
-			PerfMeterSessionScopeSummarySnapshot currentScene)
+			PerfMeterSessionScopeSummarySnapshot currentScene,
+			int focusLossCount = 0,
+			int pauseCount = 0,
+			double focusPausedDurationSeconds = 0d)
 		{
 			State = state;
 			Options = options;
@@ -663,6 +672,9 @@ namespace SGG.PerfMeter
 			LastSceneName = lastSceneName ?? string.Empty;
 			WholeRun = wholeRun;
 			CurrentScene = currentScene;
+			FocusLossCount = Mathf.Max(0, focusLossCount);
+			PauseCount = Mathf.Max(0, pauseCount);
+			FocusPausedDurationSeconds = System.Math.Max(0d, focusPausedDurationSeconds);
 		}
 
 		public static PerfMeterSessionSummarySnapshot Empty => new PerfMeterSessionSummarySnapshot(
@@ -727,6 +739,9 @@ namespace SGG.PerfMeter
 		public PerfMeterSessionScopeSummarySnapshot CurrentScene { get; }
 		public PerfMeterSessionWorstFrameSnapshot WorstFrame => WholeRun.WorstFrame;
 		public PerfMeterSessionWorstFrameSnapshot CurrentSceneWorstFrame => CurrentScene.WorstFrame;
+		public int FocusLossCount { get; }
+		public int PauseCount { get; }
+		public double FocusPausedDurationSeconds { get; }
 	}
 
 	public readonly struct PerfMeterMetricsSnapshot

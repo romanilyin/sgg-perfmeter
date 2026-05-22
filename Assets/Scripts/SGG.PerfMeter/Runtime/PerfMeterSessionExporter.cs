@@ -47,6 +47,8 @@ namespace SGG.PerfMeter
 			builder.Append("\"warning\":").Append(JsonString(status.Warning));
 			builder.Append(",\"available_counters\":").Append(JsonString(status.AvailableCounters.ToString()));
 			builder.Append(",\"unavailable_counters\":").Append(JsonString(status.UnavailableCounters.ToString()));
+			builder.Append(",\"application_focused\":").Append(JsonBool(status.ApplicationFocused));
+			builder.Append(",\"application_paused\":").Append(JsonBool(status.ApplicationPaused));
 			builder.Append('}');
 			builder.Append(",\"samples\":[");
 			for (int i = 0; i < safeSamples.Length; i++)
@@ -67,11 +69,11 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(1024 + safeSamples.Length * 512);
-			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,available_counters,unavailable_counters");
+			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters");
 			builder.AppendLine();
 			for (int i = 0; i < safeSamples.Length; i++)
 			{
-				AppendCsvSample(builder, safeSamples[i], summary.Warning, status);
+				AppendCsvSample(builder, safeSamples[i], summary, status);
 				builder.AppendLine();
 			}
 
@@ -118,6 +120,9 @@ namespace SGG.PerfMeter
 			builder.Append(",\"present_limited_sample_count\":").Append(summary.PresentLimitedSampleCount);
 			builder.Append(",\"frame_spike_count\":").Append(summary.FrameSpikeCount);
 			builder.Append(",\"severe_frame_spike_count\":").Append(summary.SevereFrameSpikeCount);
+			builder.Append(",\"focus_loss_count\":").Append(summary.FocusLossCount);
+			builder.Append(",\"pause_count\":").Append(summary.PauseCount);
+			builder.Append(",\"focus_paused_duration_seconds\":").Append(JsonNumber(summary.FocusPausedDurationSeconds));
 			builder.Append(",\"warning\":").Append(JsonString(summary.Warning));
 			builder.Append(",\"start_scene_name\":").Append(JsonString(summary.StartSceneName));
 			builder.Append(",\"last_scene_name\":").Append(JsonString(summary.LastSceneName));
@@ -344,7 +349,7 @@ namespace SGG.PerfMeter
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(metrics.OverdrawRatio));
 		}
 
-		private static void AppendCsvSample(StringBuilder builder, PerfMeterSessionSampleSnapshot sample, string warning, PerfMeterStatusSnapshot status)
+		private static void AppendCsvSample(StringBuilder builder, PerfMeterSessionSampleSnapshot sample, PerfMeterSessionSummarySnapshot summary, PerfMeterStatusSnapshot status)
 		{
 			PerfMeterMetricsSnapshot metrics = sample.Metrics;
 			builder.Append(sample.CollectionFrame).Append(',');
@@ -377,7 +382,10 @@ namespace SGG.PerfMeter
 			AppendCsv(builder, metrics.OverdrawState.ToString()).Append(',');
 			builder.Append(JsonNumber(metrics.OverdrawProgress)).Append(',');
 			builder.Append(JsonNumber(metrics.OverdrawRatio)).Append(',');
-			AppendCsv(builder, warning).Append(',');
+			AppendCsv(builder, summary.Warning).Append(',');
+			builder.Append(summary.FocusLossCount).Append(',');
+			builder.Append(summary.PauseCount).Append(',');
+			builder.Append(JsonNumber(summary.FocusPausedDurationSeconds)).Append(',');
 			AppendCsv(builder, status.AvailableCounters.ToString()).Append(',');
 			AppendCsv(builder, status.UnavailableCounters.ToString());
 		}
