@@ -122,6 +122,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("\"font_family\""));
 			Assert.That(metadata, Does.Contain("\"Cyber\""));
 			Assert.That(metadata, Does.Contain("\"CompactCards\""));
+			Assert.That(metadata, Does.Contain("\"MetricBars\""));
 			Assert.That(metadata, Does.Contain("\"JetBrainsMono\""));
 			Assert.That(metadata, Does.Contain("\"AgentDebug\""));
 			Assert.That(metadata, Does.Contain("\"CustomMetrics\""));

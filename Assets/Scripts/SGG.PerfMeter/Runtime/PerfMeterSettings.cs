@@ -487,6 +487,7 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayLayout.CompactCards:
 				case PerfMeterOverlayLayout.DiagnosticsWide:
 				case PerfMeterOverlayLayout.OverdrawFocus:
+				case PerfMeterOverlayLayout.MetricBars:
 					return layout;
 				default:
 					return PerfMeterOverlayLayout.Classic;

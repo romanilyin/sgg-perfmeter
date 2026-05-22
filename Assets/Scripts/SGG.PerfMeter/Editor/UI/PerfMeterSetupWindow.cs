@@ -457,6 +457,7 @@ namespace SGG.PerfMeter.Editor.UI
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.CompactCards);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.DiagnosticsWide);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.OverdrawFocus);
+			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.MetricBars);
 
 			VisualElement fontActions = AddActions(runtimeSection);
 			AddOverlayFontButton(fontActions, PerfMeterOverlayFontFamily.Manrope);

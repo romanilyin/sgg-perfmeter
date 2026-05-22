@@ -253,7 +253,7 @@
           },
           "layout": {
             "type": "string",
-            "enum": ["Classic", "CompactCards", "DiagnosticsWide", "OverdrawFocus"]
+            "enum": ["Classic", "CompactCards", "DiagnosticsWide", "OverdrawFocus", "MetricBars"]
           },
           "font_family": {
             "type": "string",

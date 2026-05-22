@@ -151,7 +151,8 @@ namespace SGG.PerfMeter
 		Classic = 0,
 		CompactCards = 1,
 		DiagnosticsWide = 2,
-		OverdrawFocus = 3
+		OverdrawFocus = 3,
+		MetricBars = 4
 	}
 
 	public enum PerfMeterOverlayFontFamily

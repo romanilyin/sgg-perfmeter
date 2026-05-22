@@ -288,6 +288,11 @@ namespace SGG.PerfMeter
 			return copy;
 		}
 
+		internal PerfMeterCustomMetricSnapshot[] PeekLatestCustomMetrics()
+		{
+			return _latestCustomMetrics.Length == 0 ? PerfMeterCustomMetricRegistry.Collect() : _latestCustomMetrics;
+		}
+
 		internal void RequestOverdrawMeasurement(int frameCount)
 		{
 			int normalizedFrameCount = frameCount <= 0 ? _overdrawDefaultFrameCount : frameCount;

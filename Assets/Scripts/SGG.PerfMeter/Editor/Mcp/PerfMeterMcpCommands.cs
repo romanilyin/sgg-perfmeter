@@ -1028,7 +1028,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 				return layout;
 			}
 
-			throw new InvalidOperationException("schema_validation_failed\nArgument layout must be Classic, CompactCards, DiagnosticsWide, or OverdrawFocus");
+			throw new InvalidOperationException("schema_validation_failed\nArgument layout must be Classic, CompactCards, DiagnosticsWide, OverdrawFocus, or MetricBars");
 		}
 
 		private static PerfMeterOverlayFontFamily ParseOverlayFontFamily(string value)
