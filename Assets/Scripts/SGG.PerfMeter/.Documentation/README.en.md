@@ -81,10 +81,10 @@ Import samples from Package Manager or copy them from `Assets/Scripts/SGG.PerfMe
 
 The runtime singleton updates snapshots in `Update()` with real values from `FrameTimingManager` and `ProfilerRecorder`. The metric collection path avoids PerfMeter-side per-frame allocations; the overlay text refresh is throttled and uses reusable field rows so unchanged labels do not receive new managed strings.
 
-`CollectionFrame` is the `Time.frameCount` when PerfMeter collected the snapshot. It is not guaranteed to be the exact frame represented by `FrameTimingManager`, because Unity frame timings can arrive delayed by a few frames.
+`CollectionFrame` is the `Time.frameCount` when PerfMeter collected the snapshot. It is not guaranteed to be the exact frame represented by `FrameTimingManager`, because Unity frame timings can arrive delayed by a few frames. When the application loses focus or is paused, collection temporarily skips frames and ignores a short warm-up window after focus returns so stale timings do not enter FPS stats, session samples, alerts, or overlay history.
 
 - Timings: `CpuFrameTimeMs`, `CpuMainThreadFrameTimeMs`, `CpuRenderThreadFrameTimeMs`, `CpuMainThreadPresentWaitTimeMs`, `GpuFrameTimeMs`.
-- FPS stats: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, and `SevereFrameSpikeCount`; the source is `FrameTiming.cpuFrameTime`, not `Time.deltaTime`.
+- FPS stats: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, and `SevereFrameSpikeCount`; the source is a valid `FrameTiming.cpuFrameTime` in the `(0, 60000] ms` range, not `Time.deltaTime`.
 - Render counters: `DrawCalls`, `SetPassCalls`, `Batches`, `Vertices`, `SrpBatcherInstances`.
 - BRG/GRD counters when available: `BrgDrawCalls`, `BrgInstances`, `IndexBufferUploadInFrameBytes` through `PerfMeterStatusSnapshot.AvailableCounters` / `UnavailableCounters`.
 - Memory counters: `SystemUsedMemoryBytes`, `GcReservedMemoryBytes`, `GpuMemoryBytes`.
@@ -125,7 +125,7 @@ The runtime overlay is built programmatically with UI Toolkit (`UIDocument`, `Pa
 - The text block is split into stable field-name labels plus value labels; enum names are cached, numbers format through a reusable buffer, and each value label is assigned only when its text changed instead of rebuilding one large `StringBuilder.ToString()` block.
 - Graphs are drawn through UI Toolkit `generateVisualContent`; the CPU graph uses stacked areas for `render`, `main`, and the remainder up to `frame`, while `frame` is drawn as the upper boundary without summing `frame + main + render`.
 - The right side of the graphs shows colored label badges for `frame`, `other`, `main`, `render`, and `gpu` with current, average, worst 1%, and worst 0.1% timings; numbers use fixed width relative to the current graph scale/maximum.
-- If GPU timing is temporarily unavailable, the GPU badge turns gray, the current value uses an underscore placeholder, and averages/history use valid samples only.
+- If GPU timing is temporarily unavailable, the GPU badge turns gray, the current value uses an underscore placeholder, and averages/history use valid samples only. Invalid `FrameTimingManager` samples and focus/pause gaps are not added to graphs or min/max history.
 - Target FPS is selected from `15/30/60/90/120/144/240`; the matching `FrameBudgetMs` drives the red target line shown left of the graph and the scale formula `max(averageTimeMs * 1.1, FrameBudgetMs * 1.2)`.
 - Text modes show current/min/max over the overlay's internal history window for timings, render counters, and memory; graph/history length is JSON-tunable.
 - Warnings are held briefly so transient GPU timing gaps do not blink on every refresh.

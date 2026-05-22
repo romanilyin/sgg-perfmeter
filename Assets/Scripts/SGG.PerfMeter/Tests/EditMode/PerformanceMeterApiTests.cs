@@ -174,6 +174,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void FrameTimingSanityAllowsOneMinuteAndRejectsUnderflowSentinel()
+		{
+			Assert.That(PerfMeterCollector.IsValidFrameTimingSampleMs(16d), Is.True);
+			Assert.That(PerfMeterCollector.IsValidFrameTimingSampleMs(60000d), Is.True);
+			Assert.That(PerfMeterCollector.IsValidFrameTimingSampleMs(60000.001d), Is.False);
+			Assert.That(PerfMeterCollector.IsValidFrameTimingSampleMs(1844674407370955.2d), Is.False);
+			Assert.That(PerfMeterCollector.IsValidFrameTimingSampleMs(double.NaN), Is.False);
+			Assert.That(PerfMeterCollector.IsValidFrameTimingSampleMs(double.PositiveInfinity), Is.False);
+			Assert.That(PerfMeterCollector.IsValidFrameTimingComponentMs(0d), Is.True);
+		}
+
+		[Test]
+		public void FrameStatsSamplerIgnoresInvalidHugeFrameTimingSamples()
+		{
+			PerfMeterFrameStatsSampler sampler = new PerfMeterFrameStatsSampler();
+			sampler.AddSample(16d, true);
+			sampler.AddSample(1844674407370955.2d, true);
+			sampler.AddSample(60000d, true);
+
+			PerfMeterFrameStatsSnapshot snapshot = sampler.GetSnapshot();
+			Assert.That(snapshot.SampleCount, Is.EqualTo(2));
+			Assert.That(snapshot.GpuValidSampleCount, Is.EqualTo(2));
+			Assert.That(snapshot.FrameSpikeCount, Is.EqualTo(1));
+			Assert.That(snapshot.SevereFrameSpikeCount, Is.EqualTo(1));
+
+			sampler.Reset();
+			sampler.AddSample(60000.001d, true);
+			Assert.That(sampler.GetSnapshot().SampleCount, Is.EqualTo(0));
+		}
+
+		[Test]
 		public void OverdrawApiIsOptInAndSafeInEditMode()
 		{
 			PerfMeterStatusSnapshot stoppedStatus = PerformanceMeter.GetStatus();

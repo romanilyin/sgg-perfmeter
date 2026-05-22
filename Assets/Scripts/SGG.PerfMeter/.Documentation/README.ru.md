@@ -81,10 +81,10 @@ public static class PerfMeterBootstrap
 
 Runtime singleton обновляет snapshots в `Update()` реальными значениями из `FrameTimingManager` и `ProfilerRecorder`. Путь сбора метрик избегает per-frame allocation со стороны PerfMeter; overlay text refresh throttled и использует переиспользуемые field rows, поэтому неизменившиеся labels не получают новые managed strings.
 
-`CollectionFrame` - это `Time.frameCount`, на котором PerfMeter собрал snapshot. Это не гарантированно тот же кадр, который описывает `FrameTimingManager`, потому что Unity frame timings могут приходить с задержкой в несколько кадров.
+`CollectionFrame` - это `Time.frameCount`, на котором PerfMeter собрал snapshot. Это не гарантированно тот же кадр, который описывает `FrameTimingManager`, потому что Unity frame timings могут приходить с задержкой в несколько кадров. При потере фокуса/паузы сбор временно пропускает кадры, а после возврата фокуса игнорирует короткое warm-up окно, чтобы stale timings не попали в FPS, session samples, alerts и overlay history.
 
 - Тайминги: `CpuFrameTimeMs`, `CpuMainThreadFrameTimeMs`, `CpuRenderThreadFrameTimeMs`, `CpuMainThreadPresentWaitTimeMs`, `GpuFrameTimeMs`.
-- FPS-статистика: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, `SevereFrameSpikeCount`; источник - `FrameTiming.cpuFrameTime`, не `Time.deltaTime`.
+- FPS-статистика: `AverageFps`, `OnePercentLowFps`, `PointOnePercentLowFps`, `FrameSampleCount`, `GpuValidSampleCount`, `FrameSpikeCount`, `SevereFrameSpikeCount`; источник - валидный `FrameTiming.cpuFrameTime` в диапазоне `(0, 60000] ms`, не `Time.deltaTime`.
 - Render counters: `DrawCalls`, `SetPassCalls`, `Batches`, `Vertices`, `SrpBatcherInstances`.
 - BRG/GRD counters, если доступны: `BrgDrawCalls`, `BrgInstances`, `IndexBufferUploadInFrameBytes` через `PerfMeterStatusSnapshot.AvailableCounters` / `UnavailableCounters`.
 - Memory counters: `SystemUsedMemoryBytes`, `GcReservedMemoryBytes`, `GpuMemoryBytes`.
@@ -125,7 +125,7 @@ Runtime overlay создается программно на UI Toolkit (`UIDocu
 - Text block разбит на стабильные labels с именами полей и value labels; enum names кэшируются, числа форматируются через переиспользуемый buffer, а value label получает новое значение только при изменении текста вместо пересборки одного большого `StringBuilder.ToString()` block.
 - Графики рисуются через UI Toolkit `generateVisualContent`; CPU-граф использует stacked area для `render`, `main` и остатка до `frame`, а `frame` рисуется верхней границей без суммирования `frame + main + render`.
 - Справа от графиков выводятся цветные подписи-плашки `frame`, `other`, `main`, `render` и `gpu` с текущим значением, средним, худшими 1% и 0.1% по времени кадра; числа имеют фиксированную ширину относительно текущего масштаба/максимума.
-- Если GPU timing временно недоступен, GPU-плашка становится серой, текущее значение заменяется underscore placeholder, а средние/история используют только валидные samples.
+- Если GPU timing временно недоступен, GPU-плашка становится серой, текущее значение заменяется underscore placeholder, а средние/история используют только валидные samples. Невалидные `FrameTimingManager` samples и focus/pause gaps не добавляются в графики и min/max историю.
 - Целевой FPS выбирается из `15/30/60/90/120/144/240`; соответствующий `FrameBudgetMs` задает положение красной target line слева от графика и участвует в масштабе `max(averageTimeMs * 1.1, FrameBudgetMs * 1.2)`.
 - Текстовые режимы показывают current/min/max за внутреннее окно истории overlay для timing, render counters и memory; graph/history length настраивается в JSON.
 - Предупреждения удерживаются короткое время, чтобы transient GPU timing gaps не мигали каждый refresh.

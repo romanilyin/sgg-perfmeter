@@ -52,7 +52,7 @@ namespace SGG.PerfMeter
 
 		internal void AddSample(double cpuFrameTimeMs, bool gpuFrameTimeAvailable)
 		{
-			if (cpuFrameTimeMs <= 0d || double.IsNaN(cpuFrameTimeMs) || double.IsInfinity(cpuFrameTimeMs))
+			if (!PerfMeterCollector.IsValidFrameTimingSampleMs(cpuFrameTimeMs))
 			{
 				return;
 			}

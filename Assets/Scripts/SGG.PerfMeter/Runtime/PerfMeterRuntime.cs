@@ -6,6 +6,9 @@ namespace SGG.PerfMeter
 	internal sealed class PerfMeterRuntime : MonoBehaviour
 	{
 		private const string GameObjectName = "SGG PerfMeter Runtime";
+		private const string FocusPausedWarning = "Frame timing collection is paused while the application is unfocused or paused.";
+		private const string FocusResumeWarmupWarning = "Frame timing collection is warming up after focus or pause resume.";
+		private const int FocusResumeIgnoreFrames = 3;
 		private static PerfMeterRuntime _instance;
 
 		private readonly PerfMeterCollector _collector = new PerfMeterCollector();
@@ -33,6 +36,9 @@ namespace SGG.PerfMeter
 		private PerfMeterSettingsSnapshot _settings = PerfMeterSettingsStore.Defaults;
 		private bool _overlayRequestedVisible = true;
 		private bool _overdrawHeatmapVisible;
+		private bool _applicationFocused = true;
+		private bool _applicationPaused;
+		private int _focusResumeIgnoreFrames;
 
 		internal static PerfMeterRuntime Instance => _instance;
 		internal PerfMeterStatusSnapshot Status => _status;
@@ -128,44 +134,59 @@ namespace SGG.PerfMeter
 
 		private void Update()
 		{
+			if (TrySkipCollectionForFocusState(out string focusWarning))
+			{
+				_lastCollectorWarning = focusWarning;
+				RefreshRunningStatus(Time.frameCount, PerfMeterFrameTimingAvailability.NotCollected, focusWarning);
+				return;
+			}
+
 			int frame = Time.frameCount;
 			double frameBudgetMs = GetFrameBudgetMs(_targetFps);
-			_latestMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning);
+			PerfMeterMetricsSnapshot collectedMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored);
+			if (frameTimingSampleIgnored)
+			{
+				_lastCollectorWarning = warning;
+				RefreshRunningStatus(frame, frameTimingAvailability, warning);
+				return;
+			}
+
+			_latestMetrics = collectedMetrics;
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
 			_latestCustomMetrics = PerfMeterCustomMetricRegistry.Collect();
 			_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics);
 			_alertEngine.Evaluate(_latestMetrics, Time.realtimeSinceStartupAsDouble);
 			_lastCollectorWarning = warning;
-			warning = CombineWarnings(warning, _overdrawController.Warning);
-			_status = CreateStatus(
-				PerfMeterRuntimeState.Running,
-				frame,
-				GetCollectionMode(),
-				frameTimingAvailability,
-				warning,
-				_collector.LastError,
-				_latestMetrics.Bottleneck,
-				_collector.AvailableCounters,
-				_collector.UnavailableCounters,
-				IsOverlayVisible,
-				_overdrawController.State,
-				_overdrawController.Progress,
-				_overdrawController.Ratio,
-				_overdrawHeatmapVisible,
-				_overlayCorner,
-				_overlayMode,
-				_targetFps,
-				_overlayPreset,
-				_overlayModules,
-				_sessionRecorder.State,
-				_sessionRecorder.IsRecording,
-				_sessionRecorder.SampleCount,
-				_sessionRecorder.DroppedSampleCount,
-				_alertEngine.ActiveAlertCount,
-				_alertEngine.FiredAlertCount,
-				_alertEngine.LatestAlert.RuleId,
-				_alertEngine.LatestAlert.Message);
+			RefreshRunningStatus(frame, frameTimingAvailability, warning);
+		}
+
+		private void OnApplicationFocus(bool hasFocus)
+		{
+			if (Application.isBatchMode || _applicationFocused == hasFocus)
+			{
+				return;
+			}
+
+			_applicationFocused = hasFocus;
+			if (hasFocus)
+			{
+				_focusResumeIgnoreFrames = FocusResumeIgnoreFrames;
+			}
+		}
+
+		private void OnApplicationPause(bool pauseStatus)
+		{
+			if (_applicationPaused == pauseStatus)
+			{
+				return;
+			}
+
+			_applicationPaused = pauseStatus;
+			if (!pauseStatus)
+			{
+				_focusResumeIgnoreFrames = FocusResumeIgnoreFrames;
+			}
 		}
 
 		internal PerfMeterAlertSnapshot[] GetLatestAlerts()
@@ -696,6 +717,58 @@ namespace SGG.PerfMeter
 				metrics.PointOnePercentLowFps,
 				metrics.FrameSpikeCount,
 				metrics.SevereFrameSpikeCount);
+		}
+
+		private bool TrySkipCollectionForFocusState(out string warning)
+		{
+			if (_applicationPaused || !_applicationFocused)
+			{
+				warning = FocusPausedWarning;
+				return true;
+			}
+
+			if (_focusResumeIgnoreFrames > 0)
+			{
+				FrameTimingManager.CaptureFrameTimings();
+				_focusResumeIgnoreFrames--;
+				warning = FocusResumeWarmupWarning;
+				return true;
+			}
+
+			warning = string.Empty;
+			return false;
+		}
+
+		private void RefreshRunningStatus(int frame, PerfMeterFrameTimingAvailability frameTimingAvailability, string warning)
+		{
+			_status = CreateStatus(
+				PerfMeterRuntimeState.Running,
+				frame,
+				GetCollectionMode(),
+				frameTimingAvailability,
+				CombineWarnings(warning, _overdrawController.Warning),
+				_collector.LastError,
+				_latestMetrics.Bottleneck,
+				_collector.AvailableCounters,
+				_collector.UnavailableCounters,
+				IsOverlayVisible,
+				_overdrawController.State,
+				_overdrawController.Progress,
+				_overdrawController.Ratio,
+				_overdrawHeatmapVisible,
+				_overlayCorner,
+				_overlayMode,
+				_targetFps,
+				_overlayPreset,
+				_overlayModules,
+				_sessionRecorder.State,
+				_sessionRecorder.IsRecording,
+				_sessionRecorder.SampleCount,
+				_sessionRecorder.DroppedSampleCount,
+				_alertEngine.ActiveAlertCount,
+				_alertEngine.FiredAlertCount,
+				_alertEngine.LatestAlert.RuleId,
+				_alertEngine.LatestAlert.Message);
 		}
 
 		private static string CombineWarnings(string first, string second)

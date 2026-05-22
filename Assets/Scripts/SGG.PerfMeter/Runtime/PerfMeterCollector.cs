@@ -7,9 +7,11 @@ namespace SGG.PerfMeter
 	internal sealed class PerfMeterCollector
 	{
 		internal const double DefaultFrameBudgetMs = 1000d / 60d;
+		internal const double MaxFrameTimingSampleMs = 60000d;
 
 		private const string OpenGlGpuTimingWarning = "GPU frame timing can be unavailable or unreliable on OpenGL/OpenGLES. Prefer Vulkan/Metal/D3D for GPU-bound classification.";
 		private const string MissingGpuTimingWarning = "GPU frame timing is unavailable. Enable Frame Timing Stats and verify platform GPU timer support.";
+		private const string InvalidFrameTimingWarning = "Ignored invalid FrameTimingManager sample outside the 0-60000 ms sanity range.";
 		private const string MissingCountersWarning = "Some ProfilerRecorder counters are unavailable on this Unity version, platform, or render path.";
 
 		private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
@@ -93,7 +95,7 @@ namespace SGG.PerfMeter
 			_isRunning = false;
 		}
 
-		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning)
+		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
 		{
 			if (!_isRunning)
 			{
@@ -102,15 +104,18 @@ namespace SGG.PerfMeter
 
 			FrameTimingManager.CaptureFrameTimings();
 			uint timingCount = FrameTimingManager.GetLatestTimings(1, _frameTimings);
-			frameTimingAvailability = timingCount > 0 ? PerfMeterFrameTimingAvailability.Available : PerfMeterFrameTimingAvailability.Unavailable;
-
 			FrameTiming timing = timingCount > 0 ? _frameTimings[0] : default;
-			double cpuFrameTimeMs = timingCount > 0 ? timing.cpuFrameTime : 0d;
-			double cpuMainThreadFrameTimeMs = timingCount > 0 ? timing.cpuMainThreadFrameTime : 0d;
-			double cpuRenderThreadFrameTimeMs = timingCount > 0 ? timing.cpuRenderThreadFrameTime : 0d;
-			double cpuMainThreadPresentWaitTimeMs = timingCount > 0 ? timing.cpuMainThreadPresentWaitTime : 0d;
-			double gpuFrameTimeMs = timingCount > 0 ? timing.gpuFrameTime : 0d;
+			bool hasValidCpuFrameTiming = timingCount > 0 && HasValidCpuFrameTiming(timing);
+			frameTimingSampleIgnored = timingCount > 0 && !hasValidCpuFrameTiming;
+			frameTimingAvailability = hasValidCpuFrameTiming ? PerfMeterFrameTimingAvailability.Available : PerfMeterFrameTimingAvailability.Unavailable;
+
+			double cpuFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuFrameTime : 0d;
+			double cpuMainThreadFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuMainThreadFrameTime : 0d;
+			double cpuRenderThreadFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuRenderThreadFrameTime : 0d;
+			double cpuMainThreadPresentWaitTimeMs = hasValidCpuFrameTiming ? timing.cpuMainThreadPresentWaitTime : 0d;
+			double gpuFrameTimeMs = hasValidCpuFrameTiming && IsValidFrameTimingSampleMs(timing.gpuFrameTime) ? timing.gpuFrameTime : 0d;
 			bool gpuFrameTimeAvailable = gpuFrameTimeMs > 0d;
+			bool invalidGpuFrameTiming = hasValidCpuFrameTiming && timing.gpuFrameTime > 0d && !gpuFrameTimeAvailable;
 
 			PerfMeterBottleneck bottleneck = ClassifyBottleneck(
 				frameTimingAvailability,
@@ -122,7 +127,7 @@ namespace SGG.PerfMeter
 				gpuFrameTimeMs,
 				gpuFrameTimeAvailable);
 
-			warning = GetWarning(gpuFrameTimeAvailable);
+			warning = GetWarning(gpuFrameTimeAvailable, frameTimingSampleIgnored || invalidGpuFrameTiming);
 
 			return new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -202,11 +207,16 @@ namespace SGG.PerfMeter
 			return false;
 		}
 
-		private string GetWarning(bool gpuFrameTimeAvailable)
+		private string GetWarning(bool gpuFrameTimeAvailable, bool invalidFrameTiming)
 		{
 			if (UsesOpenGlGpuTiming())
 			{
 				return OpenGlGpuTimingWarning;
+			}
+
+			if (invalidFrameTiming)
+			{
+				return InvalidFrameTimingWarning;
 			}
 
 			if (!gpuFrameTimeAvailable)
@@ -221,6 +231,24 @@ namespace SGG.PerfMeter
 		{
 			GraphicsDeviceType deviceType = SystemInfo.graphicsDeviceType;
 			return deviceType == GraphicsDeviceType.OpenGLES3 || deviceType == GraphicsDeviceType.OpenGLCore;
+		}
+
+		internal static bool IsValidFrameTimingSampleMs(double value)
+		{
+			return value > 0d && value <= MaxFrameTimingSampleMs && !double.IsNaN(value) && !double.IsInfinity(value);
+		}
+
+		internal static bool IsValidFrameTimingComponentMs(double value)
+		{
+			return value >= 0d && value <= MaxFrameTimingSampleMs && !double.IsNaN(value) && !double.IsInfinity(value);
+		}
+
+		private static bool HasValidCpuFrameTiming(FrameTiming timing)
+		{
+			return IsValidFrameTimingSampleMs(timing.cpuFrameTime) &&
+				IsValidFrameTimingComponentMs(timing.cpuMainThreadFrameTime) &&
+				IsValidFrameTimingComponentMs(timing.cpuRenderThreadFrameTime) &&
+				IsValidFrameTimingComponentMs(timing.cpuMainThreadPresentWaitTime);
 		}
 
 		internal static PerfMeterBottleneck ClassifyBottleneck(

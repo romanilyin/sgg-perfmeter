@@ -79,6 +79,7 @@ namespace SGG.PerfMeter
 		private int _graphHistoryLength = 120;
 		private int _textFieldCount;
 		private int _lastVisibleTextFieldCount;
+		private int _lastRecordedCollectionFrame = -1;
 		private bool _isVisible = true;
 
 		internal bool IsVisible => _isVisible && isActiveAndEnabled;
@@ -656,11 +657,15 @@ namespace SGG.PerfMeter
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 			string warning = ResolveDisplayWarning(status.Warning);
-			_history.AddSample(metrics, status);
+			bool recordSample = ShouldRecordOverlaySample(status, metrics);
+			if (recordSample)
+			{
+				_history.AddSample(metrics, status);
+			}
 
 			if (HasModule(PerfMeterOverlayModule.Graphs))
 			{
-				UpdateGraphs(status, metrics);
+				UpdateGraphs(status, metrics, recordSample);
 			}
 
 			_textFieldCount = 0;
@@ -683,7 +688,23 @@ namespace SGG.PerfMeter
 			HideUnusedTextFields();
 		}
 
-		private void UpdateGraphs(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics)
+		private bool ShouldRecordOverlaySample(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics)
+		{
+			if (metrics.CollectionFrame < 0 || metrics.CollectionFrame == _lastRecordedCollectionFrame)
+			{
+				return false;
+			}
+
+			if (status.FrameTimingAvailability != PerfMeterFrameTimingAvailability.Available || !PerfMeterCollector.IsValidFrameTimingSampleMs(metrics.CpuFrameTimeMs))
+			{
+				return false;
+			}
+
+			_lastRecordedCollectionFrame = metrics.CollectionFrame;
+			return true;
+		}
+
+		private void UpdateGraphs(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, bool recordSample)
 		{
 			if (_cpuGraph == null || _gpuGraph == null)
 			{
@@ -694,15 +715,17 @@ namespace SGG.PerfMeter
 			_cpuGraph.SetFrameBudgetMs(frameBudgetMs);
 			_gpuGraph.SetFrameBudgetMs(frameBudgetMs);
 
-			bool cpuValid = metrics.CpuFrameTimeMs > 0d;
-			_cpuGraph.AddSample(
-				metrics.CpuFrameTimeMs,
-				metrics.CpuMainThreadFrameTimeMs,
-				metrics.CpuRenderThreadFrameTimeMs,
-				cpuValid);
-			if (metrics.GpuFrameTimeAvailable && metrics.GpuFrameTimeMs > 0d)
+			if (recordSample)
 			{
-				_gpuGraph.AddSample(metrics.GpuFrameTimeMs, 0d, 0d, true);
+				_cpuGraph.AddSample(
+					metrics.CpuFrameTimeMs,
+					metrics.CpuMainThreadFrameTimeMs,
+					metrics.CpuRenderThreadFrameTimeMs,
+					true);
+				if (metrics.GpuFrameTimeAvailable && PerfMeterCollector.IsValidFrameTimingSampleMs(metrics.GpuFrameTimeMs))
+				{
+					_gpuGraph.AddSample(metrics.GpuFrameTimeMs, 0d, 0d, true);
+				}
 			}
 
 			PerfMeterSeriesStats frameStats = _cpuGraph.GetStats(0);
