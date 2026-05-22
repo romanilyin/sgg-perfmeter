@@ -33,16 +33,29 @@ namespace SGG.PerfMeter
 		private const int MaxCustomMetricRows = 8;
 		private const int MaxCustomMetricNameLength = 22;
 		private const int MaxCustomMetricWarningLength = 52;
+		private const float WidgetCardWidth = 144f;
+		private const float WidgetCardHeight = 78f;
+		private const float WidgetGap = 8f;
+		private const float BudgetBarWidth = 372f;
+		private const float DiagnosticsWideTextWidth = 780f;
+		private const float CompactCardsTextHeight = 260f;
+		private const float OverdrawFocusTextHeight = 220f;
 
-		private static readonly Color BackgroundColor = new Color(0.02f, 0.025f, 0.03f, 0.84f);
-		private static readonly Color TextColor = new Color(0.88f, 0.96f, 1f, 1f);
-		private static readonly Color MutedTextColor = new Color(0.68f, 0.82f, 0.9f, 1f);
-		private static readonly Color FrameColor = new Color(0.36f, 0.78f, 0.86f, 1f);
-		private static readonly Color OtherCpuColor = new Color(0.50f, 0.44f, 0.82f, 1f);
-		private static readonly Color MainColor = new Color(0.88f, 0.63f, 0.32f, 1f);
-		private static readonly Color RenderColor = new Color(0.38f, 0.76f, 0.40f, 1f);
-		private static readonly Color GpuColor = new Color(0.62f, 0.24f, 0.34f, 1f);
-		private static readonly Color UnavailableColor = new Color(0.34f, 0.38f, 0.42f, 1f);
+		private static PerfMeterOverlayThemeTokens _activeTheme = PerfMeterOverlayThemeTokens.ClassicDark;
+		private static Color BackgroundColor => _activeTheme.Background;
+		private static Color TextColor => _activeTheme.Text;
+		private static Color MutedTextColor => _activeTheme.MutedText;
+		private static Color FrameColor => _activeTheme.Frame;
+		private static Color OtherCpuColor => _activeTheme.CpuOther;
+		private static Color MainColor => _activeTheme.CpuMain;
+		private static Color RenderColor => _activeTheme.CpuRender;
+		private static Color GpuColor => _activeTheme.Gpu;
+		private static Color WarningColor => _activeTheme.Warning;
+		private static Color AccentColor => _activeTheme.Accent;
+		private static Color UnavailableColor => _activeTheme.Unavailable;
+		private static Color GraphBackgroundColor => _activeTheme.GraphBackground;
+		private static Color GridColor => _activeTheme.Grid;
+		private static Color BudgetColor => _activeTheme.Budget;
 		private static PerfMeterOverlayFontFamily _activeFontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private static PerfMeterOverlayFontResources _fontResources;
 		private static Font _legacyRuntimeFont;
@@ -57,6 +70,7 @@ namespace SGG.PerfMeter
 		private ThemeStyleSheet _themeStyleSheet;
 		private UnityEngine.TextCore.Text.FontAsset _fontAsset;
 		private VisualElement _container;
+		private VisualElement _widgetBlock;
 		private VisualElement _graphBlock;
 		private VisualElement _textBlock;
 		private VisualElement _textRows;
@@ -66,6 +80,13 @@ namespace SGG.PerfMeter
 		private Label _cpuRenderLegend;
 		private Label _cpuOtherLegend;
 		private Label _gpuLegend;
+		private PerfMeterMetricCard _fpsCard;
+		private PerfMeterMetricCard _cpuCard;
+		private PerfMeterMetricCard _gpuCard;
+		private PerfMeterMetricCard _spikeCard;
+		private PerfMeterMetricCard _overdrawCard;
+		private PerfMeterBudgetBar _cpuBudgetBar;
+		private PerfMeterBudgetBar _gpuBudgetBar;
 		private PerfMeterGraphElement _cpuGraph;
 		private PerfMeterGraphElement _gpuGraph;
 		private float _nextRefreshTime;
@@ -180,12 +201,8 @@ namespace SGG.PerfMeter
 			}
 
 			_theme = normalized;
-			ApplyTuningToVisuals();
-
-			if (_isVisible)
-			{
-				RefreshText(force: true);
-			}
+			SetActiveTheme(_theme);
+			RebuildVisualTree();
 		}
 
 		internal void SetLayout(PerfMeterOverlayLayout layout)
@@ -318,8 +335,13 @@ namespace SGG.PerfMeter
 			_container.style.position = Position.Absolute;
 			_container.style.width = GraphBlockWidth;
 			_container.style.flexDirection = FlexDirection.Column;
+			SetActiveTheme(_theme);
 			SetActiveFontFamily(_fontFamily);
 			_container.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
+
+			_widgetBlock = CreateBlock("sgg-perfmeter-widget-block", GraphBlockWidth);
+			_widgetBlock.style.marginBottom = BlockGap;
+			BuildWidgetRows();
 
 			_graphBlock = CreateBlock("sgg-perfmeter-graph-block", GraphBlockWidth);
 			_graphBlock.style.marginBottom = BlockGap;
@@ -345,6 +367,7 @@ namespace SGG.PerfMeter
 			_textRows.style.unityFontStyleAndWeight = FontStyle.Normal;
 			_textBlock.Add(_textRows);
 
+			_container.Add(_widgetBlock);
 			_container.Add(_graphBlock);
 			_container.Add(_textBlock);
 			root.Add(_container);
@@ -361,10 +384,18 @@ namespace SGG.PerfMeter
 
 			_document.rootVisualElement.Clear();
 			_container = null;
+			_widgetBlock = null;
 			_graphBlock = null;
 			_textBlock = null;
 			_textRows = null;
 			_graphs = null;
+			_fpsCard = null;
+			_cpuCard = null;
+			_gpuCard = null;
+			_spikeCard = null;
+			_overdrawCard = null;
+			_cpuBudgetBar = null;
+			_gpuBudgetBar = null;
 			_cpuGraph = null;
 			_gpuGraph = null;
 			_cpuFrameLegend = null;
@@ -400,6 +431,53 @@ namespace SGG.PerfMeter
 			block.style.flexDirection = FlexDirection.Column;
 			block.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 			return block;
+		}
+
+		private void BuildWidgetRows()
+		{
+			VisualElement cardRow = CreateWidgetRow("sgg-perfmeter-widget-cards");
+			_fpsCard = CreateMetricCard("FPS", AccentColor);
+			_cpuCard = CreateMetricCard("CPU", FrameColor);
+			_gpuCard = CreateMetricCard("GPU", GpuColor);
+			_spikeCard = CreateMetricCard("Spikes", WarningColor);
+			_overdrawCard = CreateMetricCard("Overdraw", MainColor);
+			cardRow.Add(_fpsCard);
+			cardRow.Add(_cpuCard);
+			cardRow.Add(_gpuCard);
+			cardRow.Add(_spikeCard);
+			cardRow.Add(_overdrawCard);
+			_widgetBlock.Add(cardRow);
+
+			VisualElement budgetRow = CreateWidgetRow("sgg-perfmeter-widget-bars");
+			budgetRow.style.marginBottom = 0f;
+			_cpuBudgetBar = CreateBudgetBar("CPU budget", FrameColor);
+			_gpuBudgetBar = CreateBudgetBar("GPU budget", GpuColor);
+			budgetRow.Add(_cpuBudgetBar);
+			budgetRow.Add(_gpuBudgetBar);
+			_widgetBlock.Add(budgetRow);
+		}
+
+		private static VisualElement CreateWidgetRow(string name)
+		{
+			VisualElement row = new VisualElement
+			{
+				name = name,
+				pickingMode = PickingMode.Ignore
+			};
+			row.style.flexDirection = FlexDirection.Row;
+			row.style.alignItems = Align.Stretch;
+			row.style.marginBottom = WidgetGap;
+			return row;
+		}
+
+		private static PerfMeterMetricCard CreateMetricCard(string title, Color accent)
+		{
+			return new PerfMeterMetricCard(title, accent, GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.Bold), GetRuntimeFont(PerfMeterOverlayFontRole.Regular));
+		}
+
+		private static PerfMeterBudgetBar CreateBudgetBar(string title, Color accent)
+		{
+			return new PerfMeterBudgetBar(title, accent, GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.SemiBold));
 		}
 
 		private void BuildGraphRows()
@@ -492,7 +570,7 @@ namespace SGG.PerfMeter
 			column.style.marginRight = ScaleLabelGap;
 
 			maxScaleLabel = CreateScaleLabel(MutedTextColor);
-			budgetLabel = CreateScaleLabel(new Color(1f, 0.32f, 0.28f, 0.95f));
+			budgetLabel = CreateScaleLabel(WithAlpha(BudgetColor, 0.95f));
 			column.Add(maxScaleLabel);
 			column.Add(budgetLabel);
 			return column;
@@ -593,12 +671,21 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			bool showWidgets = ShouldShowWidgetBlock();
 			bool showGraphs = (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
+			if (_widgetBlock != null)
+			{
+				_widgetBlock.style.display = showWidgets ? DisplayStyle.Flex : DisplayStyle.None;
+				_widgetBlock.style.height = showWidgets ? StyleKeyword.Auto : 0f;
+				_widgetBlock.style.width = GraphBlockWidth;
+			}
+
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
 
-			float containerWidth = showGraphs ? GraphBlockWidth : TextBlockWidth;
+			float textWidth = GetTextBlockWidth();
+			float containerWidth = showGraphs || showWidgets ? GraphBlockWidth : textWidth;
 			_container.style.width = containerWidth;
-			_textBlock.style.width = TextBlockWidth;
+			_textBlock.style.width = textWidth;
 			_textBlock.style.height = GetTextBlockHeight();
 			if (showGraphs)
 			{
@@ -616,8 +703,46 @@ namespace SGG.PerfMeter
 				SetTextFieldFontSize(GetTextFontSize());
 			}
 
+			ApplyWidgetLayout();
+
 			ApplyBlockAlignment();
 			ApplyTuningToVisuals();
+		}
+
+		private bool ShouldShowWidgetBlock()
+		{
+			return _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
+		}
+
+		private float GetTextBlockWidth()
+		{
+			return _layout == PerfMeterOverlayLayout.DiagnosticsWide ? DiagnosticsWideTextWidth : TextBlockWidth;
+		}
+
+		private void ApplyWidgetLayout()
+		{
+			if (_widgetBlock == null)
+			{
+				return;
+			}
+
+			bool timing = HasModule(PerfMeterOverlayModule.Timing);
+			bool overdraw = HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap);
+			SetWidgetVisible(_fpsCard, HasModule(PerfMeterOverlayModule.Fps));
+			SetWidgetVisible(_cpuCard, timing && _layout != PerfMeterOverlayLayout.OverdrawFocus);
+			SetWidgetVisible(_gpuCard, timing && _layout != PerfMeterOverlayLayout.OverdrawFocus);
+			SetWidgetVisible(_spikeCard, HasModule(PerfMeterOverlayModule.Fps) && _layout != PerfMeterOverlayLayout.OverdrawFocus);
+			SetWidgetVisible(_overdrawCard, overdraw || _layout == PerfMeterOverlayLayout.OverdrawFocus);
+			SetWidgetVisible(_cpuBudgetBar, timing);
+			SetWidgetVisible(_gpuBudgetBar, timing);
+		}
+
+		private static void SetWidgetVisible(VisualElement element, bool visible)
+		{
+			if (element != null)
+			{
+				element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
 		}
 
 		private float GetTextFontSize()
@@ -633,6 +758,11 @@ namespace SGG.PerfMeter
 			}
 
 			Color background = GetBackgroundColor();
+			if (_widgetBlock != null)
+			{
+				_widgetBlock.style.backgroundColor = background;
+			}
+
 			if (_graphBlock != null)
 			{
 				_graphBlock.style.backgroundColor = background;
@@ -644,6 +774,7 @@ namespace SGG.PerfMeter
 			}
 
 			SetTextFieldFontSize(GetTextFontSize());
+			SetWidgetFontSizes();
 		}
 
 		private Color GetBackgroundColor()
@@ -659,8 +790,32 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		private void SetWidgetFontSizes()
+		{
+			float small = Mathf.Max(9f, _overlayFontSize - 1f);
+			float value = Mathf.Max(18f, _overlayFontSize + 13f);
+			float caption = Mathf.Max(9f, _overlayFontSize - 2f);
+			_fpsCard?.SetFontSizes(small, value + 5f, caption);
+			_cpuCard?.SetFontSizes(small, value, caption);
+			_gpuCard?.SetFontSizes(small, value, caption);
+			_spikeCard?.SetFontSizes(small, value, caption);
+			_overdrawCard?.SetFontSizes(small, value, caption);
+			_cpuBudgetBar?.SetFontSize(small);
+			_gpuBudgetBar?.SetFontSize(small);
+		}
+
 		private float GetTextBlockHeight()
 		{
+			if (_layout == PerfMeterOverlayLayout.CompactCards && _mode == PerfMeterOverlayMode.Full)
+			{
+				return CompactCardsTextHeight;
+			}
+
+			if (_layout == PerfMeterOverlayLayout.OverdrawFocus && _mode == PerfMeterOverlayMode.Full)
+			{
+				return OverdrawFocusTextHeight;
+			}
+
 			switch (_mode)
 			{
 				case PerfMeterOverlayMode.FpsOnly:
@@ -676,7 +831,7 @@ namespace SGG.PerfMeter
 
 		private void ApplyBlockAlignment()
 		{
-			if (_textBlock == null || _graphBlock == null)
+			if (_textBlock == null || _graphBlock == null || _widgetBlock == null)
 			{
 				return;
 			}
@@ -684,6 +839,7 @@ namespace SGG.PerfMeter
 			bool rightAligned = _corner == PerfMeterOverlayCorner.TopRight || _corner == PerfMeterOverlayCorner.BottomRight;
 			Align align = rightAligned ? Align.FlexEnd : Align.FlexStart;
 			_textBlock.style.alignSelf = align;
+			_widgetBlock.style.alignSelf = Align.FlexStart;
 			_graphBlock.style.alignSelf = Align.FlexStart;
 		}
 
@@ -754,6 +910,8 @@ namespace SGG.PerfMeter
 			{
 				UpdateGraphs(status, metrics, recordSample);
 			}
+
+			UpdateMetricWidgets(status, metrics, warning);
 
 			_textFieldCount = 0;
 			switch (_mode)
@@ -832,6 +990,53 @@ namespace SGG.PerfMeter
 				_gpuLegend,
 				FormatLegend("gpu", gpuStats, gpuLegendReferenceMs, metrics.GpuFrameTimeAvailable),
 				metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor);
+		}
+
+		private void UpdateMetricWidgets(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
+		{
+			if (_widgetBlock == null || !ShouldShowWidgetBlock())
+			{
+				return;
+			}
+
+			double currentFps = FpsFromFrameMs(metrics.CpuFrameTimeMs);
+			double averageFps = metrics.AverageFps > 1d ? metrics.AverageFps : currentFps;
+			double onePercentLowFps = metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps;
+			double pointOnePercentLowFps = metrics.PointOnePercentLowFps > 1d ? metrics.PointOnePercentLowFps : onePercentLowFps;
+			double frameBudgetMs = PerfMeterRuntime.GetFrameBudgetMs(status.TargetFps);
+			bool cpuAvailable = metrics.CpuFrameTimeMs > 0d;
+			bool gpuAvailable = metrics.GpuFrameTimeAvailable && metrics.GpuFrameTimeMs > 0d;
+
+			_fpsCard?.SetValue(
+				FormatFpsValue(averageFps),
+				"1% " + FormatFpsValue(onePercentLowFps) + " / .1% " + FormatFpsValue(pointOnePercentLowFps),
+				averageFps > 0d && currentFps < 1000d / frameBudgetMs * 0.9d ? WarningColor : AccentColor);
+
+			Color cpuAccent = cpuAvailable && metrics.CpuFrameTimeMs > frameBudgetMs ? WarningColor : FrameColor;
+			_cpuCard?.SetValue(
+				FormatMsValue(metrics.CpuFrameTimeMs),
+				"m " + FormatMsValue(metrics.CpuMainThreadFrameTimeMs) + " / r " + FormatMsValue(metrics.CpuRenderThreadFrameTimeMs),
+				cpuAvailable ? cpuAccent : UnavailableColor);
+
+			Color gpuAccent = !gpuAvailable ? UnavailableColor : metrics.GpuFrameTimeMs > frameBudgetMs ? WarningColor : GpuColor;
+			_gpuCard?.SetValue(
+				gpuAvailable ? FormatMsValue(metrics.GpuFrameTimeMs) : "--",
+				"valid " + metrics.GpuValidSampleCount.ToString(CultureInfo.InvariantCulture) + "/" + metrics.FrameSampleCount.ToString(CultureInfo.InvariantCulture),
+				gpuAccent);
+
+			_spikeCard?.SetValue(
+				metrics.FrameSpikeCount.ToString(CultureInfo.InvariantCulture) + " / " + metrics.SevereFrameSpikeCount.ToString(CultureInfo.InvariantCulture),
+				!string.IsNullOrEmpty(warning) ? "warning active" : GetBottleneckText(metrics.Bottleneck),
+				metrics.SevereFrameSpikeCount > 0 || !string.IsNullOrEmpty(warning) ? WarningColor : AccentColor);
+
+			Color overdrawAccent = metrics.OverdrawState == PerfMeterOverdrawMeasurementState.Error || metrics.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported ? WarningColor : MainColor;
+			_overdrawCard?.SetValue(
+				FormatOverdrawRatio(metrics.OverdrawRatio),
+				GetOverdrawStateText(metrics.OverdrawState) + " " + FormatPercent(metrics.OverdrawProgress),
+				overdrawAccent);
+
+			_cpuBudgetBar?.SetValue(metrics.CpuFrameTimeMs, frameBudgetMs, cpuAvailable, cpuAccent);
+			_gpuBudgetBar?.SetValue(metrics.GpuFrameTimeMs, frameBudgetMs, gpuAvailable, gpuAccent);
 		}
 
 		private void BuildFpsOnlyText(PerfMeterMetricsSnapshot metrics, string warning)
@@ -1125,6 +1330,11 @@ namespace SGG.PerfMeter
 		private static void SetActiveFontFamily(PerfMeterOverlayFontFamily fontFamily)
 		{
 			_activeFontFamily = PerfMeterSettingsStore.NormalizeOverlayFontFamily(fontFamily);
+		}
+
+		private static void SetActiveTheme(PerfMeterOverlayTheme theme)
+		{
+			_activeTheme = PerfMeterOverlayThemeTokens.Resolve(PerfMeterSettingsStore.NormalizeOverlayTheme(theme));
 		}
 
 		private ThemeStyleSheet CreateGeneratedThemeStyleSheet()
@@ -1750,6 +1960,16 @@ namespace SGG.PerfMeter
 			return value > 0d ? value.ToString("0.0", CultureInfo.InvariantCulture) : "--";
 		}
 
+		private static string FormatOverdrawRatio(double value)
+		{
+			return value > 0d ? value.ToString("0.00", CultureInfo.InvariantCulture) + "x" : "--";
+		}
+
+		private static string FormatPercent(float value)
+		{
+			return (Mathf.Clamp01(value) * 100f).ToString("0", CultureInfo.InvariantCulture) + "%";
+		}
+
 		private static string FormatMsValue(double value)
 		{
 			return value > 0d ? value.ToString("0.00", CultureInfo.InvariantCulture) : "--";
@@ -1830,6 +2050,11 @@ namespace SGG.PerfMeter
 			return luminance > 0.58f ? new Color(0.04f, 0.055f, 0.065f, 1f) : new Color(0.92f, 0.96f, 1f, 1f);
 		}
 
+		private static Color WithAlpha(Color color, float alpha)
+		{
+			return new Color(color.r, color.g, color.b, alpha);
+		}
+
 		private sealed class PerfMeterOverlayTextField
 		{
 			private readonly VisualElement _row;
@@ -1880,6 +2105,197 @@ namespace SGG.PerfMeter
 			internal void SetVisible(bool visible)
 			{
 				_row.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+		}
+
+		private sealed class PerfMeterMetricCard : VisualElement
+		{
+			private readonly Label _titleLabel;
+			private readonly Label _valueLabel;
+			private readonly Label _captionLabel;
+			private string _value = string.Empty;
+			private string _caption = string.Empty;
+
+			internal PerfMeterMetricCard(string title, Color accent, Font titleFont, Font valueFont, Font captionFont)
+			{
+				pickingMode = PickingMode.Ignore;
+				style.width = WidgetCardWidth;
+				style.height = WidgetCardHeight;
+				style.marginRight = WidgetGap;
+				style.paddingLeft = 10f;
+				style.paddingRight = 10f;
+				style.paddingTop = 8f;
+				style.paddingBottom = 7f;
+				style.flexDirection = FlexDirection.Column;
+				style.justifyContent = Justify.SpaceBetween;
+				style.overflow = Overflow.Hidden;
+
+				_titleLabel = CreateCardLabel(title, MutedTextColor, TextAnchor.MiddleLeft, titleFont);
+				_valueLabel = CreateCardLabel("--", TextColor, TextAnchor.MiddleLeft, valueFont);
+				_captionLabel = CreateCardLabel(string.Empty, MutedTextColor, TextAnchor.MiddleLeft, captionFont);
+				_valueLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+				Add(_titleLabel);
+				Add(_valueLabel);
+				Add(_captionLabel);
+				SetAccent(accent);
+			}
+
+			internal void SetValue(string value, string caption, Color accent)
+			{
+				string safeValue = value ?? string.Empty;
+				if (_value != safeValue)
+				{
+					_value = safeValue;
+					_valueLabel.text = safeValue;
+				}
+
+				string safeCaption = caption ?? string.Empty;
+				if (_caption != safeCaption)
+				{
+					_caption = safeCaption;
+					_captionLabel.text = safeCaption;
+				}
+
+				SetAccent(accent);
+			}
+
+			internal void SetFontSizes(float title, float value, float caption)
+			{
+				_titleLabel.style.fontSize = title;
+				_valueLabel.style.fontSize = value;
+				_captionLabel.style.fontSize = caption;
+			}
+
+			private void SetAccent(Color accent)
+			{
+				Color border = WithAlpha(accent, 0.58f);
+				style.backgroundColor = WithAlpha(accent, 0.10f);
+				style.borderTopWidth = 1f;
+				style.borderBottomWidth = 1f;
+				style.borderLeftWidth = 2f;
+				style.borderRightWidth = 1f;
+				style.borderTopColor = border;
+				style.borderBottomColor = WithAlpha(accent, 0.28f);
+				style.borderLeftColor = accent;
+				style.borderRightColor = WithAlpha(accent, 0.28f);
+				_valueLabel.style.color = accent;
+			}
+
+			private static Label CreateCardLabel(string text, Color color, TextAnchor align, Font font)
+			{
+				Label label = new Label(text)
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				label.style.color = color;
+				label.style.unityTextAlign = align;
+				label.style.unityFont = font;
+				label.style.whiteSpace = WhiteSpace.NoWrap;
+				label.style.overflow = Overflow.Hidden;
+				return label;
+			}
+		}
+
+		private sealed class PerfMeterBudgetBar : VisualElement
+		{
+			private readonly Label _titleLabel;
+			private readonly Label _valueLabel;
+			private readonly VisualElement _fill;
+			private string _value = string.Empty;
+
+			internal PerfMeterBudgetBar(string title, Color accent, Font titleFont, Font valueFont)
+			{
+				pickingMode = PickingMode.Ignore;
+				style.width = BudgetBarWidth;
+				style.height = 44f;
+				style.marginRight = WidgetGap;
+				style.paddingLeft = 10f;
+				style.paddingRight = 10f;
+				style.paddingTop = 6f;
+				style.paddingBottom = 7f;
+				style.backgroundColor = WithAlpha(accent, 0.08f);
+				style.borderLeftWidth = 2f;
+				style.borderTopWidth = 1f;
+				style.borderRightWidth = 1f;
+				style.borderBottomWidth = 1f;
+				style.borderLeftColor = accent;
+				style.borderTopColor = WithAlpha(accent, 0.36f);
+				style.borderRightColor = WithAlpha(accent, 0.20f);
+				style.borderBottomColor = WithAlpha(accent, 0.20f);
+
+				VisualElement header = new VisualElement
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				header.style.flexDirection = FlexDirection.Row;
+				header.style.justifyContent = Justify.SpaceBetween;
+				header.style.marginBottom = 5f;
+				_titleLabel = CreateBarLabel(title, MutedTextColor, TextAnchor.MiddleLeft, titleFont);
+				_valueLabel = CreateBarLabel("--", TextColor, TextAnchor.MiddleRight, valueFont);
+				header.Add(_titleLabel);
+				header.Add(_valueLabel);
+				Add(header);
+
+				VisualElement track = new VisualElement
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				track.style.position = Position.Relative;
+				track.style.height = 8f;
+				track.style.width = Length.Percent(100f);
+				track.style.backgroundColor = WithAlpha(TextColor, 0.12f);
+				_fill = new VisualElement
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				_fill.style.position = Position.Absolute;
+				_fill.style.left = 0f;
+				_fill.style.top = 0f;
+				_fill.style.bottom = 0f;
+				_fill.style.width = Length.Percent(0f);
+				_fill.style.backgroundColor = accent;
+				track.Add(_fill);
+				Add(track);
+			}
+
+			internal void SetValue(double currentMs, double budgetMs, bool available, Color accent)
+			{
+				string text = available ? FormatMsValue(currentMs) + " / " + FormatMsValue(budgetMs) + " ms" : "-- / " + FormatMsValue(budgetMs) + " ms";
+				if (_value != text)
+				{
+					_value = text;
+					_valueLabel.text = text;
+				}
+
+				float percent = available && budgetMs > 0d ? Mathf.Clamp((float)(currentMs / budgetMs * 100d), 0f, 100f) : 0f;
+				_fill.style.width = Length.Percent(percent);
+				_fill.style.backgroundColor = accent;
+				_valueLabel.style.color = available ? TextColor : UnavailableColor;
+				style.backgroundColor = WithAlpha(accent, available ? 0.08f : 0.05f);
+				style.borderLeftColor = accent;
+				style.borderTopColor = WithAlpha(accent, 0.36f);
+				style.borderRightColor = WithAlpha(accent, 0.20f);
+				style.borderBottomColor = WithAlpha(accent, 0.20f);
+			}
+
+			internal void SetFontSize(float fontSize)
+			{
+				_titleLabel.style.fontSize = fontSize;
+				_valueLabel.style.fontSize = fontSize;
+			}
+
+			private static Label CreateBarLabel(string text, Color color, TextAnchor align, Font font)
+			{
+				Label label = new Label(text)
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				label.style.flexGrow = 1f;
+				label.style.color = color;
+				label.style.unityTextAlign = align;
+				label.style.unityFont = font;
+				label.style.whiteSpace = WhiteSpace.NoWrap;
+				return label;
 			}
 		}
 
@@ -1947,6 +2363,115 @@ namespace SGG.PerfMeter
 			Bold
 		}
 
+		private readonly struct PerfMeterOverlayThemeTokens
+		{
+			private PerfMeterOverlayThemeTokens(Color background, Color graphBackground, Color text, Color mutedText, Color frame, Color cpuMain, Color cpuRender, Color cpuOther, Color gpu, Color warning, Color accent, Color unavailable, Color grid, Color budget)
+			{
+				Background = background;
+				GraphBackground = graphBackground;
+				Text = text;
+				MutedText = mutedText;
+				Frame = frame;
+				CpuMain = cpuMain;
+				CpuRender = cpuRender;
+				CpuOther = cpuOther;
+				Gpu = gpu;
+				Warning = warning;
+				Accent = accent;
+				Unavailable = unavailable;
+				Grid = grid;
+				Budget = budget;
+			}
+
+			internal static PerfMeterOverlayThemeTokens ClassicDark => new PerfMeterOverlayThemeTokens(
+				new Color(0.02f, 0.025f, 0.03f, 0.84f),
+				new Color(0.04f, 0.055f, 0.065f, 0.92f),
+				new Color(0.88f, 0.96f, 1f, 1f),
+				new Color(0.68f, 0.82f, 0.9f, 1f),
+				new Color(0.36f, 0.78f, 0.86f, 1f),
+				new Color(0.88f, 0.63f, 0.32f, 1f),
+				new Color(0.38f, 0.76f, 0.40f, 1f),
+				new Color(0.50f, 0.44f, 0.82f, 1f),
+				new Color(0.62f, 0.24f, 0.34f, 1f),
+				new Color(1f, 0.34f, 0.30f, 1f),
+				new Color(0.30f, 0.86f, 0.96f, 1f),
+				new Color(0.34f, 0.38f, 0.42f, 1f),
+				new Color(0.32f, 0.42f, 0.5f, 0.32f),
+				new Color(1f, 0.32f, 0.28f, 0.75f));
+
+			internal static PerfMeterOverlayThemeTokens Resolve(PerfMeterOverlayTheme theme)
+			{
+				switch (theme)
+				{
+					case PerfMeterOverlayTheme.Glass:
+						return new PerfMeterOverlayThemeTokens(
+							new Color(0.045f, 0.075f, 0.095f, 0.72f),
+							new Color(0.03f, 0.07f, 0.075f, 0.82f),
+							new Color(0.91f, 1f, 0.96f, 1f),
+							new Color(0.68f, 0.86f, 0.84f, 1f),
+							new Color(0.43f, 0.94f, 0.60f, 1f),
+							new Color(0.95f, 0.70f, 0.38f, 1f),
+							new Color(0.36f, 0.80f, 0.52f, 1f),
+							new Color(0.42f, 0.68f, 0.90f, 1f),
+							new Color(0.96f, 0.33f, 0.52f, 1f),
+							new Color(1f, 0.34f, 0.38f, 1f),
+							new Color(0.46f, 0.92f, 1f, 1f),
+							new Color(0.38f, 0.46f, 0.48f, 1f),
+							new Color(0.72f, 0.95f, 0.90f, 0.22f),
+							new Color(1f, 0.42f, 0.35f, 0.72f));
+					case PerfMeterOverlayTheme.Cyber:
+						return new PerfMeterOverlayThemeTokens(
+							new Color(0.005f, 0.018f, 0.035f, 0.90f),
+							new Color(0.005f, 0.025f, 0.045f, 0.94f),
+							new Color(0.86f, 0.98f, 1f, 1f),
+							new Color(0.48f, 0.68f, 0.80f, 1f),
+							new Color(0.13f, 0.92f, 1f, 1f),
+							new Color(1f, 0.58f, 0.12f, 1f),
+							new Color(0.24f, 0.92f, 0.45f, 1f),
+							new Color(0.70f, 0.38f, 1f, 1f),
+							new Color(0.64f, 0.32f, 1f, 1f),
+							new Color(1f, 0.22f, 0.36f, 1f),
+							new Color(1f, 0.82f, 0.16f, 1f),
+							new Color(0.22f, 0.30f, 0.42f, 1f),
+							new Color(0.13f, 0.92f, 1f, 0.24f),
+							new Color(1f, 0.22f, 0.36f, 0.82f));
+					case PerfMeterOverlayTheme.HighContrast:
+						return new PerfMeterOverlayThemeTokens(
+							new Color(0f, 0f, 0f, 0.94f),
+							new Color(0.02f, 0.02f, 0.02f, 0.96f),
+							new Color(1f, 1f, 1f, 1f),
+							new Color(0.82f, 0.82f, 0.82f, 1f),
+							new Color(0.30f, 1f, 0.30f, 1f),
+							new Color(1f, 0.86f, 0.10f, 1f),
+							new Color(0.30f, 0.78f, 1f, 1f),
+							new Color(0.85f, 0.55f, 1f, 1f),
+							new Color(1f, 0.32f, 0.55f, 1f),
+							new Color(1f, 0.10f, 0.10f, 1f),
+							new Color(0.20f, 0.82f, 1f, 1f),
+							new Color(0.45f, 0.45f, 0.45f, 1f),
+							new Color(1f, 1f, 1f, 0.20f),
+							new Color(1f, 0.15f, 0.15f, 0.90f));
+					default:
+						return ClassicDark;
+				}
+			}
+
+			internal Color Background { get; }
+			internal Color GraphBackground { get; }
+			internal Color Text { get; }
+			internal Color MutedText { get; }
+			internal Color Frame { get; }
+			internal Color CpuMain { get; }
+			internal Color CpuRender { get; }
+			internal Color CpuOther { get; }
+			internal Color Gpu { get; }
+			internal Color Warning { get; }
+			internal Color Accent { get; }
+			internal Color Unavailable { get; }
+			internal Color Grid { get; }
+			internal Color Budget { get; }
+		}
+
 		private readonly struct PerfMeterSeriesStats
 		{
 			internal PerfMeterSeriesStats(int count, double current, double average, double onePercentHigh, double pointOnePercentHigh, double min, double max)
@@ -1971,13 +2496,10 @@ namespace SGG.PerfMeter
 
 		private sealed class PerfMeterGraphElement : VisualElement
 		{
-			private static readonly Color BudgetColor = new Color(1f, 0.32f, 0.28f, 0.75f);
-			private static readonly Color GridColor = new Color(0.32f, 0.42f, 0.5f, 0.32f);
-			private static readonly Color GraphBackgroundColor = new Color(0.04f, 0.055f, 0.065f, 0.92f);
-			private static readonly Color FrameFillColor = new Color(FrameColor.r, FrameColor.g, FrameColor.b, 0.34f);
-			private static readonly Color MainFillColor = new Color(MainColor.r, MainColor.g, MainColor.b, 0.55f);
-			private static readonly Color RenderFillColor = new Color(RenderColor.r, RenderColor.g, RenderColor.b, 0.55f);
-			private static readonly Color OtherFillColor = new Color(OtherCpuColor.r, OtherCpuColor.g, OtherCpuColor.b, 0.45f);
+			private static Color FrameFillColor => WithAlpha(FrameColor, 0.34f);
+			private static Color MainFillColor => WithAlpha(MainColor, 0.55f);
+			private static Color RenderFillColor => WithAlpha(RenderColor, 0.55f);
+			private static Color OtherFillColor => WithAlpha(OtherCpuColor, 0.45f);
 
 			private double[] _primary;
 			private double[] _secondary;
