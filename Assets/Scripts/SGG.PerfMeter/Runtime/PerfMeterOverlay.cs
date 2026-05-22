@@ -31,6 +31,7 @@ namespace SGG.PerfMeter
 		private const float BlockGap = 6f;
 		private const float WarningHoldSeconds = 1.25f;
 		private const int MaxCustomMetricRows = 8;
+		private const int MaxCpuCoreRows = PerfMeterCpuCoreSampler.MaxCoreCount;
 		private const int MaxCustomMetricNameLength = 22;
 		private const int MaxCustomMetricWarningLength = 52;
 		private const float WidgetCardWidth = 144f;
@@ -78,6 +79,7 @@ namespace SGG.PerfMeter
 		private readonly char[] _numberBuffer = new char[64];
 		private readonly PerfMeterOverlayTextField[] _textFields = new PerfMeterOverlayTextField[TextFieldCapacity];
 		private readonly PerfMeterStatBarField[] _barFields = new PerfMeterStatBarField[MetricBarFieldCapacity];
+		private readonly PerfMeterCpuCoreLoadSnapshot[] _cpuCoreLoadScratch = new PerfMeterCpuCoreLoadSnapshot[MaxCpuCoreRows];
 		private readonly PerfMeterOverlayHistory _history = new PerfMeterOverlayHistory();
 		private UIDocument _document;
 		private PanelSettings _panelSettings;
@@ -1158,23 +1160,38 @@ namespace SGG.PerfMeter
 			AppendBottleneck(_valueBuilder, metrics.Bottleneck);
 			AddBarMessage("SGG PerfMeter", _valueBuilder, AccentColor);
 
+			if (HasModule(PerfMeterOverlayModule.Warnings) && !string.IsNullOrEmpty(warning))
+			{
+				_valueBuilder.Length = 0;
+				AppendLimited(_valueBuilder, warning, 150);
+				AddBarMessage("Warn", _valueBuilder, WarningColor);
+			}
+
 			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
 				AddFpsBar(metrics);
 			}
 
-			if (HasModule(PerfMeterOverlayModule.Timing))
+			bool hasTiming = HasModule(PerfMeterOverlayModule.Timing);
+			if (hasTiming)
 			{
 				AddStatBar("CPU Frame", metrics.CpuFrameTimeMs, _history.CpuFrameTimeMs, metrics.CpuFrameTimeMs > 0d, FrameColor, PerfMeterStatBarFormat.Milliseconds);
 				AddStatBar("CPU Main", metrics.CpuMainThreadFrameTimeMs, _history.CpuMainThreadFrameTimeMs, metrics.CpuMainThreadFrameTimeMs > 0d, MainColor, PerfMeterStatBarFormat.Milliseconds);
 				AddStatBar("CPU Render", metrics.CpuRenderThreadFrameTimeMs, _history.CpuRenderThreadFrameTimeMs, metrics.CpuRenderThreadFrameTimeMs > 0d, RenderColor, PerfMeterStatBarFormat.Milliseconds);
 				AddStatBar("GPU", GetDisplayGpuFrameTime(metrics), _history.GpuFrameTimeMs, metrics.GpuFrameTimeAvailable && metrics.GpuFrameTimeMs > 0d, GpuColor, PerfMeterStatBarFormat.Milliseconds);
 				AddStatBar("Present Wait", metrics.CpuMainThreadPresentWaitTimeMs, _history.CpuPresentWaitTimeMs, metrics.CpuMainThreadPresentWaitTimeMs >= 0d, OtherCpuColor, PerfMeterStatBarFormat.Milliseconds);
-				_valueBuilder.Length = 0;
-				AppendInt(_valueBuilder, metrics.GpuValidSampleCount);
-				_valueBuilder.Append('/');
-				AppendInt(_valueBuilder, metrics.FrameSampleCount);
-				AddBarMessage("GPU valid", _valueBuilder, metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.CpuCores))
+			{
+				AppendCpuCoreBars();
+			}
+
+			AppendCustomMetricBars();
+
+			if (hasTiming)
+			{
+				AddGpuValidBar(metrics);
 			}
 
 			if (HasModule(PerfMeterOverlayModule.Rendering))
@@ -1238,13 +1255,52 @@ namespace SGG.PerfMeter
 				AddStatBar("GPU Memory", metrics.GpuMemoryBytes, _history.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory), GpuColor, PerfMeterStatBarFormat.Megabytes);
 			}
 
-			AppendCustomMetricBars();
+		}
 
-			if (HasModule(PerfMeterOverlayModule.Warnings) && !string.IsNullOrEmpty(warning))
+		private void AddGpuValidBar(PerfMeterMetricsSnapshot metrics)
+		{
+			_valueBuilder.Length = 0;
+			AppendInt(_valueBuilder, metrics.GpuValidSampleCount);
+			_valueBuilder.Append('/');
+			AppendInt(_valueBuilder, metrics.FrameSampleCount);
+			AddBarMessage("GPU valid", _valueBuilder, metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor);
+		}
+
+		private void AppendCpuCoreBars()
+		{
+			PerfMeterCpuCoreLoadSnapshot[] loads = GetOverlayCpuCoreLoads(out int count);
+			PerfMeterCpuCoreLoadAvailability availability = GetOverlayCpuCoreLoadAvailability();
+			if (count <= 0 || availability != PerfMeterCpuCoreLoadAvailability.Available)
 			{
-				_valueBuilder.Length = 0;
-				AppendLimited(_valueBuilder, warning, 150);
-				AddBarMessage("Warn", _valueBuilder, WarningColor);
+				bool unavailable = availability == PerfMeterCpuCoreLoadAvailability.Unavailable || availability == PerfMeterCpuCoreLoadAvailability.Unsupported;
+				AddBarMessage("CPU Cores", GetCpuCoreLoadMessage(availability), unavailable ? UnavailableColor : AccentColor);
+				return;
+			}
+
+			int visibleCount = Math.Min(count, MaxCpuCoreRows);
+			_history.AddCpuCoreSamples(loads, visibleCount);
+			for (int i = 0; i < visibleCount && HasAvailableBarField(); i++)
+			{
+				PerfMeterCpuCoreLoadSnapshot load = loads[i];
+				_barNameBuilder.Length = 0;
+				_barNameBuilder.Append("CPU Core ");
+				AppendInt(_barNameBuilder, load.CoreIndex);
+				AddStatBar(_barNameBuilder, load.LoadPercent, _history.CpuCoreLoadPercent[i], load.Available, GetCpuCoreColor(i), PerfMeterStatBarFormat.Percent);
+			}
+		}
+
+		private static string GetCpuCoreLoadMessage(PerfMeterCpuCoreLoadAvailability availability)
+		{
+			switch (availability)
+			{
+				case PerfMeterCpuCoreLoadAvailability.WarmingUp:
+					return "warming up";
+				case PerfMeterCpuCoreLoadAvailability.Unavailable:
+					return "unavailable";
+				case PerfMeterCpuCoreLoadAvailability.Unsupported:
+					return "unsupported";
+				default:
+					return "warming up";
 			}
 		}
 
@@ -1294,7 +1350,33 @@ namespace SGG.PerfMeter
 			AddStatBar(name, current, stats, available, accent, format);
 		}
 
+		private void AddStatBar(StringBuilder name, double current, PerfMeterHistorySeries series, bool available, Color accent, PerfMeterStatBarFormat format)
+		{
+			if (!HasAvailableBarField())
+			{
+				return;
+			}
+
+			PerfMeterHistoryStats stats = series.GetStats();
+			if (stats.Count <= 0 && available && IsFinite(current))
+			{
+				stats = PerfMeterHistoryStats.FromCurrent(current);
+			}
+
+			AddStatBar(name, current, stats, available, accent, format);
+		}
+
 		private void AddStatBar(string name, double current, PerfMeterHistoryStats stats, bool available, Color accent, PerfMeterStatBarFormat format)
+		{
+			AddStatBar(name, null, current, stats, available, accent, format);
+		}
+
+		private void AddStatBar(StringBuilder name, double current, PerfMeterHistoryStats stats, bool available, Color accent, PerfMeterStatBarFormat format)
+		{
+			AddStatBar(null, name, current, stats, available, accent, format);
+		}
+
+		private void AddStatBar(string name, StringBuilder nameBuilder, double current, PerfMeterHistoryStats stats, bool available, Color accent, PerfMeterStatBarFormat format)
 		{
 			if (!HasAvailableBarField())
 			{
@@ -1341,6 +1423,7 @@ namespace SGG.PerfMeter
 
 			field.SetValue(
 				name,
+				nameBuilder,
 				_barMinBuilder,
 				_barMaxBuilder,
 				_valueBuilder,
@@ -1893,6 +1976,31 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.PeekLatestCustomMetrics() : PerformanceMeter.GetCustomMetrics();
 		}
 
+		private PerfMeterCpuCoreLoadSnapshot[] GetOverlayCpuCoreLoads(out int count)
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime == null)
+			{
+				count = 0;
+				return _cpuCoreLoadScratch;
+			}
+
+			PerfMeterCpuCoreLoadSnapshot[] loads = runtime.PeekCpuCoreLoads();
+			count = Mathf.Clamp(runtime.CpuCoreLoadCount, 0, Math.Min(loads.Length, _cpuCoreLoadScratch.Length));
+			for (int i = 0; i < count; i++)
+			{
+				_cpuCoreLoadScratch[i] = loads[i];
+			}
+
+			return _cpuCoreLoadScratch;
+		}
+
+		private static PerfMeterCpuCoreLoadAvailability GetOverlayCpuCoreLoadAvailability()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.CpuCoreLoadAvailability : PerfMeterCpuCoreLoadAvailability.Unsupported;
+		}
+
 		private static void AppendCustomMetricDisplayName(StringBuilder builder, PerfMeterCustomMetricSnapshot metric)
 		{
 			string name = !string.IsNullOrEmpty(metric.Name) ? metric.Name : metric.Id;
@@ -2413,6 +2521,9 @@ namespace SGG.PerfMeter
 				case PerfMeterStatBarFormat.Megabytes:
 					builder.Append(" MB");
 					break;
+				case PerfMeterStatBarFormat.Percent:
+					builder.Append('%');
+					break;
 			}
 		}
 
@@ -2431,6 +2542,9 @@ namespace SGG.PerfMeter
 					break;
 				case PerfMeterStatBarFormat.Ratio:
 					AppendPositiveFixed(builder, value, "0.00");
+					break;
+				case PerfMeterStatBarFormat.Percent:
+					AppendNonNegativeFixed(builder, value, "0.0");
 					break;
 				default:
 					if (IsFinite(value))
@@ -2559,6 +2673,21 @@ namespace SGG.PerfMeter
 			return IsFinite(value) && IsFinite(scaleMax) && scaleMax > 0d ? Mathf.Clamp((float)(value / scaleMax * 100d), 0f, 100f) : 0f;
 		}
 
+		private static Color GetCpuCoreColor(int coreIndex)
+		{
+			switch (coreIndex % 4)
+			{
+				case 1:
+					return MainColor;
+				case 2:
+					return RenderColor;
+				case 3:
+					return OtherCpuColor;
+				default:
+					return FrameColor;
+			}
+		}
+
 		private static Color GetReadableTextColor(Color background)
 		{
 			float luminance = 0.2126f * background.r + 0.7152f * background.g + 0.0722f * background.b;
@@ -2684,12 +2813,12 @@ namespace SGG.PerfMeter
 				_track.style.flexShrink = 0f;
 				_track.style.height = 3f;
 				_track.style.backgroundColor = WithAlpha(TextColor, 0.16f);
-				_fill = CreateMarkerElement(3f, 0f);
+				_fill = CreateMarkerElement(3f, 0f, 1f);
 				_fill.style.left = 0f;
 				_fill.style.width = Length.Percent(0f);
-				_averageMarker = CreateMarkerElement(7f, -2f);
-				_onePercentMarker = CreateMarkerElement(7f, -2f);
-				_pointOnePercentMarker = CreateMarkerElement(7f, -2f);
+				_averageMarker = CreateMarkerElement(7f, -2f, 1f);
+				_onePercentMarker = CreateMarkerElement(9f, -3f, 2f);
+				_pointOnePercentMarker = CreateMarkerElement(11f, -4f, 2f);
 				_track.Add(_fill);
 				_track.Add(_averageMarker);
 				_track.Add(_onePercentMarker);
@@ -2705,9 +2834,16 @@ namespace SGG.PerfMeter
 
 			internal VisualElement Root => _root;
 
-			internal void SetValue(string name, StringBuilder min, StringBuilder max, StringBuilder current, StringBuilder stats, float currentPercent, float averagePercent, float onePercent, float pointOnePercent, Color accent)
+			internal void SetValue(string name, StringBuilder nameBuilder, StringBuilder min, StringBuilder max, StringBuilder current, StringBuilder stats, float currentPercent, float averagePercent, float onePercent, float pointOnePercent, Color accent)
 			{
-				SetName(name);
+				if (nameBuilder != null)
+				{
+					SetName(nameBuilder);
+				}
+				else
+				{
+					SetName(name);
+				}
 				SetCachedText(_minLabel, _minCache, min);
 				SetCachedText(_maxLabel, _maxCache, max);
 				SetCachedText(_currentLabel, _currentCache, current);
@@ -2719,9 +2855,9 @@ namespace SGG.PerfMeter
 				_fill.style.width = Length.Percent(currentPercent);
 				_fill.style.backgroundColor = accent;
 				_track.style.backgroundColor = WithAlpha(accent, 0.18f);
-				SetMarker(_averageMarker, averagePercent, WithAlpha(TextColor, 0.95f));
-				SetMarker(_onePercentMarker, onePercent, WithAlpha(WarningColor, 0.95f));
-				SetMarker(_pointOnePercentMarker, pointOnePercent, WithAlpha(accent, 0.95f));
+				SetMarker(_averageMarker, averagePercent, WithAlpha(TextColor, 0.92f));
+				SetMarker(_onePercentMarker, onePercent, WithAlpha(WarningColor, 0.98f));
+				SetMarker(_pointOnePercentMarker, pointOnePercent, WithAlpha(new Color(1f, 0.12f, 0.24f, 1f), 0.98f));
 				_nameLabel.style.color = MutedTextColor;
 				_minLabel.style.color = MutedTextColor;
 				_maxLabel.style.color = MutedTextColor;
@@ -2820,7 +2956,7 @@ namespace SGG.PerfMeter
 				return label;
 			}
 
-			private static VisualElement CreateMarkerElement(float height, float top)
+			private static VisualElement CreateMarkerElement(float height, float top, float width)
 			{
 				VisualElement element = new VisualElement
 				{
@@ -2828,7 +2964,7 @@ namespace SGG.PerfMeter
 				};
 				element.style.position = Position.Absolute;
 				element.style.top = top;
-				element.style.width = 1f;
+				element.style.width = width;
 				element.style.height = height;
 				return element;
 			}
@@ -3115,7 +3251,8 @@ namespace SGG.PerfMeter
 			Milliseconds,
 			Whole,
 			Megabytes,
-			Ratio
+			Ratio,
+			Percent
 		}
 
 		private readonly struct PerfMeterOverlayThemeTokens
@@ -3817,6 +3954,7 @@ namespace SGG.PerfMeter
 			internal readonly PerfMeterHistorySeries SystemMemoryBytes = new PerfMeterHistorySeries();
 			internal readonly PerfMeterHistorySeries GcReservedMemoryBytes = new PerfMeterHistorySeries();
 			internal readonly PerfMeterHistorySeries GpuMemoryBytes = new PerfMeterHistorySeries();
+			internal readonly PerfMeterHistorySeries[] CpuCoreLoadPercent = CreateCpuCoreHistory();
 
 			internal void AddSample(PerfMeterMetricsSnapshot metrics, PerfMeterStatusSnapshot status)
 			{
@@ -3840,6 +3978,26 @@ namespace SGG.PerfMeter
 				SystemMemoryBytes.Add(metrics.SystemUsedMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.SystemUsedMemory));
 				GcReservedMemoryBytes.Add(metrics.GcReservedMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GcReservedMemory));
 				GpuMemoryBytes.Add(metrics.GpuMemoryBytes, HasCounter(status, PerfMeterCounterAvailability.GpuMemory));
+			}
+
+			internal void AddCpuCoreSamples(PerfMeterCpuCoreLoadSnapshot[] loads, int count)
+			{
+				int safeCount = Math.Min(count, CpuCoreLoadPercent.Length);
+				for (int i = 0; i < safeCount; i++)
+				{
+					CpuCoreLoadPercent[i].Add(loads[i].LoadPercent, loads[i].Available);
+				}
+			}
+
+			private static PerfMeterHistorySeries[] CreateCpuCoreHistory()
+			{
+				PerfMeterHistorySeries[] series = new PerfMeterHistorySeries[MaxCpuCoreRows];
+				for (int i = 0; i < series.Length; i++)
+				{
+					series[i] = new PerfMeterHistorySeries();
+				}
+
+				return series;
 			}
 		}
 	}

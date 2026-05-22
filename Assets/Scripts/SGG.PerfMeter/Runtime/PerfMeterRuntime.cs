@@ -13,6 +13,7 @@ namespace SGG.PerfMeter
 
 		private readonly PerfMeterCollector _collector = new PerfMeterCollector();
 		private readonly PerfMeterFrameStatsSampler _frameStatsSampler = new PerfMeterFrameStatsSampler();
+		private readonly PerfMeterCpuCoreSampler _cpuCoreSampler = new PerfMeterCpuCoreSampler();
 		private readonly PerfMeterOverdrawController _overdrawController = new PerfMeterOverdrawController();
 		private readonly PerfMeterSessionRecorder _sessionRecorder = new PerfMeterSessionRecorder();
 		private PerfMeterAlertEngine _alertEngine = new PerfMeterAlertEngine();
@@ -41,6 +42,7 @@ namespace SGG.PerfMeter
 		private bool _overdrawHeatmapVisible;
 		private bool _applicationFocused = true;
 		private bool _applicationPaused;
+		private bool _cpuCoreSamplingActive;
 		private int _focusResumeIgnoreFrames;
 
 		internal static PerfMeterRuntime Instance => _instance;
@@ -91,6 +93,8 @@ namespace SGG.PerfMeter
 			PerfMeterRuntime runtime = _instance;
 			runtime._collector.Stop();
 			runtime._frameStatsSampler.Reset();
+			runtime._cpuCoreSampler.Reset();
+			runtime._cpuCoreSamplingActive = false;
 			runtime._overdrawController.Reset();
 			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
 			runtime._alertEngine.Clear();
@@ -160,6 +164,7 @@ namespace SGG.PerfMeter
 			_latestMetrics = collectedMetrics;
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
+			UpdateCpuCoreSampler(Time.unscaledTime);
 			_latestCustomMetrics = PerfMeterCustomMetricRegistry.Collect();
 			_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics);
 			_alertEngine.Evaluate(_latestMetrics, Time.realtimeSinceStartupAsDouble);
@@ -228,16 +233,19 @@ namespace SGG.PerfMeter
 				case PerfMeterCollectionMode.Background:
 					_overlayRequestedVisible = false;
 					EnsureOverlayState();
+					ResetCpuCoreSamplerIfInactive();
 					RefreshStatusOverlayState();
 					break;
 				case PerfMeterCollectionMode.Overlay:
 					_overlayRequestedVisible = true;
 					EnsureOverlayState();
+					ResetCpuCoreSamplerIfInactive();
 					RefreshStatusOverlayState();
 					break;
 				case PerfMeterCollectionMode.OverdrawDiagnostic:
 					_overlayRequestedVisible = true;
 					EnsureOverlayState();
+					ResetCpuCoreSamplerIfInactive();
 					RequestOverdrawMeasurement(_overdrawDefaultFrameCount);
 					break;
 			}
@@ -292,6 +300,19 @@ namespace SGG.PerfMeter
 		{
 			return _latestCustomMetrics.Length == 0 ? PerfMeterCustomMetricRegistry.Collect() : _latestCustomMetrics;
 		}
+
+		internal PerfMeterCpuCoreLoadSnapshot[] GetCpuCoreLoads()
+		{
+			return _cpuCoreSampler.GetLoadsCopy();
+		}
+
+		internal PerfMeterCpuCoreLoadSnapshot[] PeekCpuCoreLoads()
+		{
+			return _cpuCoreSampler.PeekLoads();
+		}
+
+		internal int CpuCoreLoadCount => _cpuCoreSampler.CoreCount;
+		internal PerfMeterCpuCoreLoadAvailability CpuCoreLoadAvailability => _cpuCoreSampler.Availability;
 
 		internal void RequestOverdrawMeasurement(int frameCount)
 		{
@@ -376,6 +397,7 @@ namespace SGG.PerfMeter
 				_overlay.SetVisible(visible);
 			}
 
+			ResetCpuCoreSamplerIfInactive();
 			RefreshStatusOverlayState();
 		}
 
@@ -402,6 +424,7 @@ namespace SGG.PerfMeter
 				_overlay.SetMode(mode);
 			}
 
+			ResetCpuCoreSamplerIfInactive();
 			RefreshStatusOverlayState();
 		}
 
@@ -428,6 +451,7 @@ namespace SGG.PerfMeter
 				_overlay.SetLayout(_overlayLayout);
 			}
 
+			ResetCpuCoreSamplerIfInactive();
 			RefreshStatusOverlayState();
 		}
 
@@ -449,14 +473,21 @@ namespace SGG.PerfMeter
 			_overlayPreset = NormalizeOverlayPreset(preset);
 			_overlayModules = PerfMeterSettingsStore.GetPresetModules(_overlayPreset);
 			_overlayMode = PerfMeterSettingsStore.GetPresetMode(_overlayPreset);
+			if (_overlayPreset == PerfMeterOverlayPreset.AgentDebug)
+			{
+				_overlayLayout = PerfMeterOverlayLayout.MetricBars;
+			}
+
 			EnsureOverlayState();
 
 			if (_overlay != null)
 			{
 				_overlay.SetMode(_overlayMode);
 				_overlay.SetModules(_overlayModules);
+				_overlay.SetLayout(_overlayLayout);
 			}
 
+			ResetCpuCoreSamplerIfInactive();
 			RefreshStatusOverlayState();
 		}
 
@@ -470,6 +501,7 @@ namespace SGG.PerfMeter
 				_overlay.SetModules(_overlayModules);
 			}
 
+			ResetCpuCoreSamplerIfInactive();
 			RefreshStatusOverlayState();
 		}
 
@@ -524,6 +556,7 @@ namespace SGG.PerfMeter
 				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
 
+			ResetCpuCoreSamplerIfInactive();
 			RefreshStatusOverlayState();
 		}
 
@@ -538,6 +571,8 @@ namespace SGG.PerfMeter
 			{
 				_collector.Stop();
 				_frameStatsSampler.Reset();
+				_cpuCoreSampler.Reset();
+				_cpuCoreSamplingActive = false;
 				_overdrawController.Reset();
 				_alertEngine.Clear();
 				_overdrawHeatmapVisible = false;
@@ -548,6 +583,7 @@ namespace SGG.PerfMeter
 
 		private void OnDestroy()
 		{
+			_cpuCoreSampler.Dispose();
 			if (_instance == this)
 			{
 				_instance = null;
@@ -567,8 +603,8 @@ namespace SGG.PerfMeter
 				string.Empty,
 				_collector.LastError,
 				PerfMeterBottleneck.Unknown,
-				_collector.AvailableCounters,
-				_collector.UnavailableCounters,
+				GetAvailableCounters(),
+				GetUnavailableCounters(),
 				IsOverlayVisible,
 				_overdrawController.State,
 				_overdrawController.Progress,
@@ -834,11 +870,11 @@ namespace SGG.PerfMeter
 				frame,
 				GetCollectionMode(),
 				frameTimingAvailability,
-				CombineWarnings(warning, _overdrawController.Warning),
+				CombineWarnings(CombineWarnings(warning, _overdrawController.Warning), GetCpuCoreWarning()),
 				_collector.LastError,
 				_latestMetrics.Bottleneck,
-				_collector.AvailableCounters,
-				_collector.UnavailableCounters,
+				GetAvailableCounters(),
+				GetUnavailableCounters(),
 				IsOverlayVisible,
 				_overdrawController.State,
 				_overdrawController.Progress,
@@ -944,11 +980,11 @@ namespace SGG.PerfMeter
 				_status.CollectionFrame,
 				GetCollectionMode(),
 				_status.FrameTimingAvailability,
-				CombineWarnings(_lastCollectorWarning, _overdrawController.Warning),
+				CombineWarnings(CombineWarnings(_lastCollectorWarning, _overdrawController.Warning), GetCpuCoreWarning()),
 				_status.LastError,
 				_status.Bottleneck,
-				_status.AvailableCounters,
-				_status.UnavailableCounters,
+				GetAvailableCounters(),
+				GetUnavailableCounters(),
 				IsOverlayVisible,
 				_overdrawController.State,
 				_overdrawController.Progress,
@@ -972,6 +1008,69 @@ namespace SGG.PerfMeter
 				_alertEngine.LatestAlert.Message,
 				_applicationFocused,
 				_applicationPaused);
+		}
+
+		private PerfMeterCounterAvailability GetAvailableCounters()
+		{
+			PerfMeterCounterAvailability counters = _collector.AvailableCounters;
+			if (ShouldSampleCpuCoreLoads() && (_cpuCoreSampler.Availability == PerfMeterCpuCoreLoadAvailability.Available || _cpuCoreSampler.Availability == PerfMeterCpuCoreLoadAvailability.WarmingUp))
+			{
+				counters |= PerfMeterCounterAvailability.CpuCoreLoad;
+			}
+
+			return counters;
+		}
+
+		private PerfMeterCounterAvailability GetUnavailableCounters()
+		{
+			PerfMeterCounterAvailability counters = _collector.UnavailableCounters;
+			if (ShouldSampleCpuCoreLoads() && (_cpuCoreSampler.Availability == PerfMeterCpuCoreLoadAvailability.Unsupported || _cpuCoreSampler.Availability == PerfMeterCpuCoreLoadAvailability.Unavailable))
+			{
+				counters |= PerfMeterCounterAvailability.CpuCoreLoad;
+			}
+
+			return counters;
+		}
+
+		private string GetCpuCoreWarning()
+		{
+			return ShouldSampleCpuCoreLoads() ? _cpuCoreSampler.Warning : string.Empty;
+		}
+
+		private void UpdateCpuCoreSampler(float unscaledTime)
+		{
+			if (!ShouldSampleCpuCoreLoads())
+			{
+				ResetCpuCoreSamplerIfInactive();
+				return;
+			}
+
+			if (!_cpuCoreSamplingActive)
+			{
+				_cpuCoreSampler.Reset();
+				_cpuCoreSamplingActive = true;
+			}
+
+			_cpuCoreSampler.Update(unscaledTime);
+		}
+
+		private void ResetCpuCoreSamplerIfInactive()
+		{
+			if (ShouldSampleCpuCoreLoads())
+			{
+				return;
+			}
+
+			if (_cpuCoreSamplingActive || _cpuCoreSampler.CoreCount > 0)
+			{
+				_cpuCoreSampler.Reset();
+				_cpuCoreSamplingActive = false;
+			}
+		}
+
+		private bool ShouldSampleCpuCoreLoads()
+		{
+			return _overlayRequestedVisible && _overlayLayout == PerfMeterOverlayLayout.MetricBars && _overlayMode != PerfMeterOverlayMode.FpsOnly && (_overlayModules & PerfMeterOverlayModule.CpuCores) != 0;
 		}
 
 		private void ApplyAlertSettings()

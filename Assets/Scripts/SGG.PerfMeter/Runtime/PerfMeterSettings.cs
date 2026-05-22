@@ -371,13 +371,14 @@ namespace SGG.PerfMeter
 		internal static PerfMeterSettingsSnapshot ToSnapshot(PerfMeterSettingsJson settings, PerfMeterSettingsLoadState loadState, string warning)
 		{
 			Normalize(settings, out string normalizeWarning);
+			PerfMeterOverlayPreset activePresetId = ParseOverlayPreset(settings.activePreset);
 			PerfMeterPresetSettingsJson activePreset = FindPreset(settings, settings.activePreset);
 			string moduleWarning = string.Empty;
 			PerfMeterOverlayMode overlayMode = ParseOverlayMode(settings.overlayMode);
 			PerfMeterTargetFps targetFps = ParseTargetFps(settings.targetFps);
 			PerfMeterCollectionMode collectionMode = ParseCollectionMode(settings.collectionMode, settings.overlayVisible);
 			bool overlayVisible = settings.overlayVisible;
-			PerfMeterOverlayModule overlayModules = GetPresetModules(ParseOverlayPreset(settings.activePreset));
+			PerfMeterOverlayModule overlayModules = GetPresetModules(activePresetId);
 			PerfMeterOverlayTheme overlayTheme = settings.overlay != null ? ParseOverlayTheme(settings.overlay.theme) : PerfMeterOverlayTheme.ClassicDark;
 			PerfMeterOverlayLayout overlayLayout = settings.overlay != null ? ParseOverlayLayout(settings.overlay.layout) : PerfMeterOverlayLayout.Classic;
 			PerfMeterOverlayFontFamily overlayFontFamily = settings.overlay != null ? ParseOverlayFontFamily(settings.overlay.fontFamily) : PerfMeterOverlayFontFamily.Manrope;
@@ -392,6 +393,11 @@ namespace SGG.PerfMeter
 			else
 			{
 				moduleWarning = "Active overlay preset was not found; top-level overlay settings are used.";
+			}
+
+			if (activePresetId == PerfMeterOverlayPreset.AgentDebug)
+			{
+				overlayLayout = PerfMeterOverlayLayout.MetricBars;
 			}
 
 			return new PerfMeterSettingsSnapshot(
@@ -537,7 +543,7 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayPreset.Overdraw:
 					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings;
 				case PerfMeterOverlayPreset.AgentDebug:
-					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics;
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics | PerfMeterOverlayModule.CpuCores;
 				default:
 					return PerfMeterOverlayModule.All;
 			}
@@ -666,7 +672,8 @@ namespace SGG.PerfMeter
 				PerfMeterOverlayModule.Overdraw,
 				PerfMeterOverlayModule.Heatmap,
 				PerfMeterOverlayModule.Warnings,
-				PerfMeterOverlayModule.CustomMetrics
+				PerfMeterOverlayModule.CustomMetrics,
+				PerfMeterOverlayModule.CpuCores
 			};
 			int count = 0;
 			for (int i = 0; i < values.Length; i++)

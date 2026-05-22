@@ -1,3 +1,4 @@
+using System.Text;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
 
@@ -126,6 +127,55 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("\"JetBrainsMono\""));
 			Assert.That(metadata, Does.Contain("\"AgentDebug\""));
 			Assert.That(metadata, Does.Contain("\"CustomMetrics\""));
+			Assert.That(metadata, Does.Contain("\"CpuCores\""));
+		}
+
+		[Test]
+		public void CpuCoreSamplerParsesProcStatCoreRows()
+		{
+			string[] lines =
+			{
+				"cpu  100 0 50 850 0 0 0 0 0 0",
+				"cpu0 10 0 5 85 0 0 0 0 0 0",
+				"cpu1 20 0 10 70 0 0 0 0 0 0"
+			};
+			PerfMeterCpuCoreSampler.CpuCoreTick[] ticks = new PerfMeterCpuCoreSampler.CpuCoreTick[4];
+
+			bool parsed = PerfMeterCpuCoreSampler.TryParseProcStat(lines, ticks, out int count);
+
+			Assert.That(parsed, Is.True);
+			Assert.That(count, Is.EqualTo(2));
+			Assert.That(ticks[0].Total, Is.EqualTo(100));
+			Assert.That(ticks[0].Idle, Is.EqualTo(85));
+			Assert.That(ticks[1].Total, Is.EqualTo(100));
+			Assert.That(ticks[1].Idle, Is.EqualTo(70));
+		}
+
+		[Test]
+		public void CpuCoreSamplerParsesProcStatBytesWithoutAggregateRow()
+		{
+			byte[] bytes = Encoding.ASCII.GetBytes("cpu  100 0 50 850 0 0 0 0 0 0\ncpu0 10 0 5 85 0 0 0 0 0 0\ncpu1\t20\t0\t10\t70\t0\t0\t0\t0\t0\t0\n");
+			PerfMeterCpuCoreSampler.CpuCoreTick[] ticks = new PerfMeterCpuCoreSampler.CpuCoreTick[4];
+
+			bool parsed = PerfMeterCpuCoreSampler.TryParseProcStat(bytes, bytes.Length, ticks, out int count);
+
+			Assert.That(parsed, Is.True);
+			Assert.That(count, Is.EqualTo(2));
+			Assert.That(ticks[0].Total, Is.EqualTo(100));
+			Assert.That(ticks[0].Idle, Is.EqualTo(85));
+			Assert.That(ticks[1].Total, Is.EqualTo(100));
+			Assert.That(ticks[1].Idle, Is.EqualTo(70));
+		}
+
+		[Test]
+		public void CpuCoreSamplerCalculatesWindowsStyleLoad()
+		{
+			PerfMeterCpuCoreSampler.CpuCoreTick previous = new PerfMeterCpuCoreSampler.CpuCoreTick(1000L, 500L);
+			PerfMeterCpuCoreSampler.CpuCoreTick current = new PerfMeterCpuCoreSampler.CpuCoreTick(1100L, 530L);
+
+			double load = PerfMeterCpuCoreSampler.CalculateLoadPercent(previous, current);
+
+			Assert.That(load, Is.EqualTo(70d).Within(0.001d));
 		}
 	}
 }

@@ -49,6 +49,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
+			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCores);
 		}
 
 		[Test]
@@ -202,7 +203,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
 
 			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
 		}
 
 		[Test]

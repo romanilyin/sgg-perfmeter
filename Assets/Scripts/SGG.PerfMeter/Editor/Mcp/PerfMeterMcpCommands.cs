@@ -490,7 +490,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 				PerfMeterOverlayModule.Overdraw,
 				PerfMeterOverlayModule.Heatmap,
 				PerfMeterOverlayModule.Warnings,
-				PerfMeterOverlayModule.CustomMetrics
+				PerfMeterOverlayModule.CustomMetrics,
+				PerfMeterOverlayModule.CpuCores
 			};
 			builder.Append('[');
 			bool needsComma = false;
@@ -1006,7 +1007,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 				return module;
 			}
 
-			throw new InvalidOperationException("schema_validation_failed\nArgument modules must contain only None, All, Fps, Timing, Graphs, Rendering, SrpBatcher, Brg, Uploads, Memory, Gc, GpuMemory, Overdraw, Heatmap, Warnings, or CustomMetrics");
+			throw new InvalidOperationException("schema_validation_failed\nArgument modules must contain only None, All, Fps, Timing, Graphs, Rendering, SrpBatcher, Brg, Uploads, Memory, Gc, GpuMemory, Overdraw, Heatmap, Warnings, CustomMetrics, or CpuCores");
 		}
 
 		private static PerfMeterOverlayTheme ParseOverlayTheme(string value)

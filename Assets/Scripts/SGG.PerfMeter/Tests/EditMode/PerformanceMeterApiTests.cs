@@ -465,6 +465,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void CpuCoreLoadsAreEmptyWithoutRuntime()
+		{
+			Assert.That(PerformanceMeter.GetCpuCoreLoads(), Is.Empty);
+		}
+
+		[Test]
 		public void McpLatestMetricsIncludesCustomMetrics()
 		{
 			PerformanceMeter.RegisterCustomMetricProvider(new TestCustomMetricProvider("economy.gold", 123d));

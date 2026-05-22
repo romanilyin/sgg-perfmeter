@@ -11,7 +11,7 @@
   "presets": [],
   "overlay": {
     "theme": "Glass",
-    "layout": "CompactCards",
+    "layout": "MetricBars",
     "fontFamily": "Manrope",
     "scale": 1.0,
     "opacity": 0.84,

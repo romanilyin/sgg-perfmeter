@@ -30,6 +30,12 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetLatestCustomMetrics() : PerfMeterCustomMetricRegistry.Collect();
 		}
 
+		public static PerfMeterCpuCoreLoadSnapshot[] GetCpuCoreLoads()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetCpuCoreLoads() : System.Array.Empty<PerfMeterCpuCoreLoadSnapshot>();
+		}
+
 		public static PerfMeterStatusSnapshot GetStatus()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;

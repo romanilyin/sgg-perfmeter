@@ -192,7 +192,8 @@ namespace SGG.PerfMeter
 		Heatmap = 1 << 11,
 		Warnings = 1 << 12,
 		CustomMetrics = 1 << 13,
-		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings | CustomMetrics
+		CpuCores = 1 << 14,
+		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings | CustomMetrics | CpuCores
 	}
 
 	public enum PerfMeterTargetFps
@@ -341,7 +342,8 @@ namespace SGG.PerfMeter
 		SystemUsedMemory = 1 << 7,
 		GcReservedMemory = 1 << 8,
 		SrpBatcherInstances = 1 << 9,
-		GpuMemory = 1 << 10
+		GpuMemory = 1 << 10,
+		CpuCoreLoad = 1 << 11
 	}
 
 	public readonly struct PerfMeterStatusSnapshot
