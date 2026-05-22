@@ -1,4 +1,3 @@
-using System.IO;
 using System.Text;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
@@ -499,8 +498,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void McpRenderGraphSnapshotExposesMetadataAndSafeDefault()
 		{
 			PerfMeterRenderGraphAnalytics.ResetForTests();
-			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
-			string metadata = File.ReadAllText(metadataPath);
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 
 			Assert.That(metadata, Does.Contain("perfmeter.rendergraph.snapshot"));
 			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderGraphSnapshot"));
@@ -660,8 +658,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void McpSessionCommandsExposeMetadataAndBasicOutput()
 		{
-			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
-			string metadata = File.ReadAllText(metadataPath);
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 			Assert.That(metadata, Does.Contain("perfmeter.runtime.reset_stats"));
 			Assert.That(metadata, Does.Contain("perfmeter.runtime.mode.set"));
 			Assert.That(metadata, Does.Contain("perfmeter.session.start"));
@@ -696,8 +693,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void McpAlertCommandsExposeMetadataAndBasicOutput()
 		{
-			string metadataPath = Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json");
-			string metadata = File.ReadAllText(metadataPath);
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 			Assert.That(metadata, Does.Contain("perfmeter.alerts.latest"));
 			Assert.That(metadata, Does.Contain("perfmeter.alerts.clear"));
 

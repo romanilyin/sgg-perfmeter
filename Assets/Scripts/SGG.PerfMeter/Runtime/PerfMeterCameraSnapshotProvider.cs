@@ -24,7 +24,11 @@ namespace SGG.PerfMeter
 				resolvedSource,
 				gameCameraCount,
 				camera.name,
-				camera.GetInstanceID(),
+			#if UNITY_6000_4_OR_NEWER
+				GetCameraEntityId(camera),
+			#else
+				GetCameraInstanceId(camera),
+			#endif
 				camera.gameObject.scene.name,
 				camera.gameObject.scene.path,
 				camera.enabled,
@@ -146,6 +150,18 @@ namespace SGG.PerfMeter
 			return null;
 		}
 
+	#if UNITY_6000_4_OR_NEWER
+		private static ulong GetCameraEntityId(Camera camera)
+		{
+			return EntityId.ToULong(camera.GetEntityId());
+		}
+	#else
+		private static int GetCameraInstanceId(Camera camera)
+		{
+			return camera.GetInstanceID();
+		}
+	#endif
+
 		private static PerfMeterCameraSnapshot CreateUnavailable(PerfMeterCameraSource source, int gameCameraCount, string warning)
 		{
 			return new PerfMeterCameraSnapshot(
@@ -154,7 +170,11 @@ namespace SGG.PerfMeter
 				source,
 				gameCameraCount,
 				string.Empty,
+			#if UNITY_6000_4_OR_NEWER
+				0UL,
+			#else
 				0,
+			#endif
 				string.Empty,
 				string.Empty,
 				false,

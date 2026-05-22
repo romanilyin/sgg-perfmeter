@@ -25,7 +25,11 @@ namespace SGG.PerfMeter
 			PerfMeterCameraSource source,
 			int detectedGameCameraCount,
 			string cameraName,
+		#if UNITY_6000_4_OR_NEWER
+			ulong cameraEntityId,
+		#else
 			int cameraInstanceId,
+		#endif
 			string sceneName,
 			string scenePath,
 			bool enabled,
@@ -68,7 +72,11 @@ namespace SGG.PerfMeter
 			Source = source;
 			DetectedGameCameraCount = detectedGameCameraCount;
 			CameraName = cameraName ?? string.Empty;
+		#if UNITY_6000_4_OR_NEWER
+			CameraEntityId = cameraEntityId;
+		#else
 			CameraInstanceId = cameraInstanceId;
+		#endif
 			SceneName = sceneName ?? string.Empty;
 			ScenePath = scenePath ?? string.Empty;
 			Enabled = enabled;
@@ -112,7 +120,11 @@ namespace SGG.PerfMeter
 		public PerfMeterCameraSource Source { get; }
 		public int DetectedGameCameraCount { get; }
 		public string CameraName { get; }
+	#if UNITY_6000_4_OR_NEWER
+		public ulong CameraEntityId { get; }
+	#else
 		public int CameraInstanceId { get; }
+	#endif
 		public string SceneName { get; }
 		public string ScenePath { get; }
 		public bool Enabled { get; }

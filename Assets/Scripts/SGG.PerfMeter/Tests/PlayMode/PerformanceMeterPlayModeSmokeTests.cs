@@ -101,6 +101,11 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			Assert.That(PerformanceMeter.TryGetCameraSnapshot(out PerfMeterCameraSnapshot snapshot, PerfMeterCameraSource.NameFilter, "Snapshot Test"), Is.True);
 			Assert.That(snapshot.CameraName, Is.EqualTo(cameraObject.name));
+		#if UNITY_6000_4_OR_NEWER
+			Assert.That(snapshot.CameraEntityId, Is.EqualTo(EntityId.ToULong(camera.GetEntityId())));
+		#else
+			Assert.That(snapshot.CameraInstanceId, Is.EqualTo(camera.GetInstanceID()));
+		#endif
 			Assert.That(snapshot.Source, Is.EqualTo(PerfMeterCameraSource.NameFilter));
 			Assert.That(snapshot.Projection, Is.EqualTo(PerfMeterCameraProjection.Perspective));
 			Assert.That(snapshot.Position.x, Is.EqualTo(3f).Within(0.001f));

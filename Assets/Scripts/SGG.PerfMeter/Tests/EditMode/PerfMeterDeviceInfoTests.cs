@@ -53,7 +53,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void DeviceInfoMcpCommandMetadataIsRegistered()
 		{
-			string metadata = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json").text;
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 
 			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.device.info\""));
 			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.DeviceInfo"));
@@ -67,7 +67,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			string json = PerfMeterMcpCommands.CameraSnapshot("{}");
 
 			Assert.That(json, Does.StartWith("{"));
+		#if UNITY_6000_4_OR_NEWER
+			Assert.That(json, Does.Contain("\"schema_version\":2"));
+			Assert.That(json, Does.Contain("\"camera_entity_id\":"));
+			Assert.That(json, Does.Not.Contain("\"camera_instance_id\":"));
+		#else
 			Assert.That(json, Does.Contain("\"schema_version\":1"));
+			Assert.That(json, Does.Contain("\"camera_instance_id\":"));
+		#endif
 			Assert.That(json, Does.Contain("\"is_available\":"));
 			Assert.That(json, Does.Contain("\"position\":"));
 			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
@@ -76,7 +83,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void CameraSnapshotMcpCommandMetadataIsRegistered()
 		{
-			string metadata = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json").text;
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 
 			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.camera.snapshot\""));
 			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CameraSnapshot"));
@@ -99,7 +106,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void OverlaySetMcpCommandMetadataIncludesPresetAndModules()
 		{
-			string metadata = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json").text;
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 
 			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.overlay.set\""));
 			Assert.That(metadata, Does.Contain("\"preset\""));

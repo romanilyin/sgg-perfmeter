@@ -593,13 +593,21 @@ namespace SGG.PerfMeter.Editor.Mcp
 		private static string CameraSnapshotJson(PerfMeterCameraSnapshot camera)
 		{
 			StringBuilder builder = new StringBuilder(1536);
+		#if UNITY_6000_4_OR_NEWER
+			builder.Append("{\"schema_version\":2");
+		#else
 			builder.Append("{\"schema_version\":1");
+		#endif
 			builder.Append(",\"is_available\":").Append(JsonBool(camera.IsAvailable));
 			builder.Append(",\"warning\":").Append(JsonString(camera.Warning));
 			builder.Append(",\"source\":").Append(JsonString(camera.Source.ToString()));
 			builder.Append(",\"detected_game_camera_count\":").Append(camera.DetectedGameCameraCount);
 			builder.Append(",\"camera_name\":").Append(JsonString(camera.CameraName));
+		#if UNITY_6000_4_OR_NEWER
+			builder.Append(",\"camera_entity_id\":").Append(JsonString(camera.CameraEntityId.ToString(CultureInfo.InvariantCulture)));
+		#else
 			builder.Append(",\"camera_instance_id\":").Append(camera.CameraInstanceId);
+		#endif
 			builder.Append(",\"scene_name\":").Append(JsonString(camera.SceneName));
 			builder.Append(",\"scene_path\":").Append(JsonString(camera.ScenePath));
 			builder.Append(",\"enabled\":").Append(JsonBool(camera.Enabled));

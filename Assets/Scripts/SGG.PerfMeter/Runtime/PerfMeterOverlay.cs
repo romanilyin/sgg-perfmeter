@@ -542,7 +542,7 @@ namespace SGG.PerfMeter
 		{
 			if (_container != null)
 			{
-				_container.transform.scale = new Vector3(_overlayScale, _overlayScale, 1f);
+				_container.style.scale = new StyleScale(new Vector2(_overlayScale, _overlayScale));
 			}
 
 			Color background = GetBackgroundColor();
