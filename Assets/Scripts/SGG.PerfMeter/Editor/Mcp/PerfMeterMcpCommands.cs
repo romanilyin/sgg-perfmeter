@@ -118,6 +118,21 @@ namespace SGG.PerfMeter.Editor.Mcp
 				RuntimePerformanceMeter.SetOverlayMode(ParseOverlayMode(mode));
 			}
 
+			if (TryExtractString(argsJson, "theme", out string theme))
+			{
+				RuntimePerformanceMeter.SetOverlayTheme(ParseOverlayTheme(theme));
+			}
+
+			if (TryExtractString(argsJson, "layout", out string layout))
+			{
+				RuntimePerformanceMeter.SetOverlayLayout(ParseOverlayLayout(layout));
+			}
+
+			if (TryExtractString(argsJson, "font_family", out string fontFamily))
+			{
+				RuntimePerformanceMeter.SetOverlayFontFamily(ParseOverlayFontFamily(fontFamily));
+			}
+
 			if (TryExtractInt(argsJson, "target_fps", out int targetFps))
 			{
 				RuntimePerformanceMeter.SetTargetFps(ParseTargetFps(targetFps));
@@ -224,6 +239,9 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"overlay_visible\":").Append(JsonBool(status.OverlayVisible));
 			builder.Append(",\"overlay_corner\":").Append(JsonString(status.OverlayCorner.ToString()));
 			builder.Append(",\"overlay_mode\":").Append(JsonString(status.OverlayMode.ToString()));
+			builder.Append(",\"overlay_theme\":").Append(JsonString(status.OverlayTheme.ToString()));
+			builder.Append(",\"overlay_layout\":").Append(JsonString(status.OverlayLayout.ToString()));
+			builder.Append(",\"overlay_font_family\":").Append(JsonString(status.OverlayFontFamily.ToString()));
 			builder.Append(",\"overlay_preset\":").Append(JsonString(status.OverlayPreset.ToString()));
 			builder.Append(",\"overlay_modules\":");
 			AppendOverlayModules(builder, status.OverlayModules);
@@ -989,6 +1007,39 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument modules must contain only None, All, Fps, Timing, Graphs, Rendering, SrpBatcher, Brg, Uploads, Memory, Gc, GpuMemory, Overdraw, Heatmap, Warnings, or CustomMetrics");
+		}
+
+		private static PerfMeterOverlayTheme ParseOverlayTheme(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterOverlayTheme theme) && Enum.IsDefined(typeof(PerfMeterOverlayTheme), theme))
+			{
+				return theme;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument theme must be ClassicDark, Glass, Cyber, or HighContrast");
+		}
+
+		private static PerfMeterOverlayLayout ParseOverlayLayout(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterOverlayLayout layout) && Enum.IsDefined(typeof(PerfMeterOverlayLayout), layout))
+			{
+				return layout;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument layout must be Classic, CompactCards, DiagnosticsWide, or OverdrawFocus");
+		}
+
+		private static PerfMeterOverlayFontFamily ParseOverlayFontFamily(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterOverlayFontFamily fontFamily) && Enum.IsDefined(typeof(PerfMeterOverlayFontFamily), fontFamily))
+			{
+				return fontFamily;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument font_family must be Manrope, JetBrainsMono, or LegacyRuntime");
 		}
 
 		private static string NormalizeEnumToken(string value)

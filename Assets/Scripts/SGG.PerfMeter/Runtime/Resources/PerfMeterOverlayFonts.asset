@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a8f2c91d34e4ccf9a42d921c0e7b615, type: 3}
+  m_Name: PerfMeterOverlayFonts
+  m_EditorClassIdentifier:
+  _manropeRegular: {fileID: 12800000, guid: d4e7f9a23b0c4d6e8f1a3c5d7e9b2a46, type: 3}
+  _manropeMedium: {fileID: 12800000, guid: e5f8a0b34c1d5e7f9a2b4d6e8f0c3b57, type: 3}
+  _manropeSemiBold: {fileID: 12800000, guid: f6a9b1c45d2e6f8a0b3c5e7f9a1d4c68, type: 3}
+  _manropeBold: {fileID: 12800000, guid: a7b0c2d56e3f7a9b1c4d6f8a0b2e5d79, type: 3}
+  _jetBrainsMonoRegular: {fileID: 12800000, guid: c9d2e4f78a5b9c1d3e6f8b0c2d4a7f91, type: 3}
+  _jetBrainsMonoMedium: {fileID: 12800000, guid: d0e3f5a89b6c0d2e4f7a9c1d3e5b8a02, type: 3}

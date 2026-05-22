@@ -47,7 +47,10 @@ namespace SGG.PerfMeter
 			int alertTimingConsecutiveFrames = 5,
 			int alertFpsConsecutiveFrames = 60,
 			int alertGpuTimingUnavailableConsecutiveFrames = 120,
-			int alertOverdrawConsecutiveFrames = 3)
+			int alertOverdrawConsecutiveFrames = 3,
+			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
+			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.Classic,
+			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope)
 		{
 			Enabled = enabled;
 			AutoStart = autoStart;
@@ -55,6 +58,9 @@ namespace SGG.PerfMeter
 			OverlayVisible = overlayVisible;
 			OverlayCorner = overlayCorner;
 			OverlayMode = overlayMode;
+			OverlayTheme = PerfMeterSettingsStore.NormalizeOverlayTheme(overlayTheme);
+			OverlayLayout = PerfMeterSettingsStore.NormalizeOverlayLayout(overlayLayout);
+			OverlayFontFamily = PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily);
 			TargetFps = targetFps;
 			ActivePreset = string.IsNullOrEmpty(activePreset) ? PerfMeterSettingsStore.DefaultPresetId : activePreset;
 			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(PerfMeterSettingsStore.ParseOverlayPreset(ActivePreset)) : overlayModules;
@@ -90,6 +96,9 @@ namespace SGG.PerfMeter
 		public bool OverlayVisible { get; }
 		public PerfMeterOverlayCorner OverlayCorner { get; }
 		public PerfMeterOverlayMode OverlayMode { get; }
+		public PerfMeterOverlayTheme OverlayTheme { get; }
+		public PerfMeterOverlayLayout OverlayLayout { get; }
+		public PerfMeterOverlayFontFamily OverlayFontFamily { get; }
 		public PerfMeterTargetFps TargetFps { get; }
 		public string ActivePreset { get; }
 		public PerfMeterOverlayModule OverlayModules { get; }
@@ -155,6 +164,9 @@ namespace SGG.PerfMeter
 	[Serializable]
 	internal sealed class PerfMeterOverlaySettingsJson
 	{
+		public string theme = nameof(PerfMeterOverlayTheme.ClassicDark);
+		public string layout = nameof(PerfMeterOverlayLayout.Classic);
+		public string fontFamily = nameof(PerfMeterOverlayFontFamily.Manrope);
 		public float scale = 1f;
 		public float opacity = 0.84f;
 		public float fontSize = 12f;
@@ -256,6 +268,9 @@ namespace SGG.PerfMeter
 			settings.overlayMode = snapshot.OverlayMode.ToString();
 			settings.targetFps = (int)snapshot.TargetFps;
 			settings.activePreset = string.IsNullOrEmpty(snapshot.ActivePreset) ? DefaultPresetId : snapshot.ActivePreset;
+			settings.overlay.theme = snapshot.OverlayTheme.ToString();
+			settings.overlay.layout = snapshot.OverlayLayout.ToString();
+			settings.overlay.fontFamily = snapshot.OverlayFontFamily.ToString();
 			settings.overlay.scale = snapshot.OverlayScale;
 			settings.overlay.opacity = snapshot.OverlayOpacity;
 			settings.overlay.fontSize = snapshot.OverlayFontSize;
@@ -363,6 +378,9 @@ namespace SGG.PerfMeter
 			PerfMeterCollectionMode collectionMode = ParseCollectionMode(settings.collectionMode, settings.overlayVisible);
 			bool overlayVisible = settings.overlayVisible;
 			PerfMeterOverlayModule overlayModules = GetPresetModules(ParseOverlayPreset(settings.activePreset));
+			PerfMeterOverlayTheme overlayTheme = settings.overlay != null ? ParseOverlayTheme(settings.overlay.theme) : PerfMeterOverlayTheme.ClassicDark;
+			PerfMeterOverlayLayout overlayLayout = settings.overlay != null ? ParseOverlayLayout(settings.overlay.layout) : PerfMeterOverlayLayout.Classic;
+			PerfMeterOverlayFontFamily overlayFontFamily = settings.overlay != null ? ParseOverlayFontFamily(settings.overlay.fontFamily) : PerfMeterOverlayFontFamily.Manrope;
 
 			if (activePreset != null)
 			{
@@ -409,7 +427,10 @@ namespace SGG.PerfMeter
 				alertTimingConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.timingConsecutiveFrames : 5,
 				alertFpsConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.fpsConsecutiveFrames : 60,
 				alertGpuTimingUnavailableConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames : 120,
-				alertOverdrawConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.overdrawConsecutiveFrames : 3);
+				alertOverdrawConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.overdrawConsecutiveFrames : 3,
+				overlayTheme: overlayTheme,
+				overlayLayout: overlayLayout,
+				overlayFontFamily: overlayFontFamily);
 		}
 
 		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
@@ -422,6 +443,9 @@ namespace SGG.PerfMeter
 
 			PerformanceMeter.EnsureRunning();
 			PerformanceMeter.ApplyOverlayTuning(settings);
+			PerformanceMeter.SetOverlayTheme(settings.OverlayTheme);
+			PerformanceMeter.SetOverlayLayout(settings.OverlayLayout);
+			PerformanceMeter.SetOverlayFontFamily(settings.OverlayFontFamily);
 			PerformanceMeter.SetOverlayPreset(ParseOverlayPreset(settings.ActivePreset));
 			PerformanceMeter.SetOverlayModules(settings.OverlayModules);
 			PerformanceMeter.SetTargetFps(settings.TargetFps);
@@ -439,6 +463,62 @@ namespace SGG.PerfMeter
 			return Enum.TryParse(value, true, out PerfMeterOverlayPreset preset) && Enum.IsDefined(typeof(PerfMeterOverlayPreset), preset)
 				? preset
 				: PerfMeterOverlayPreset.FullDiagnostics;
+		}
+
+		internal static PerfMeterOverlayTheme NormalizeOverlayTheme(PerfMeterOverlayTheme theme)
+		{
+			switch (theme)
+			{
+				case PerfMeterOverlayTheme.ClassicDark:
+				case PerfMeterOverlayTheme.Glass:
+				case PerfMeterOverlayTheme.Cyber:
+				case PerfMeterOverlayTheme.HighContrast:
+					return theme;
+				default:
+					return PerfMeterOverlayTheme.ClassicDark;
+			}
+		}
+
+		internal static PerfMeterOverlayLayout NormalizeOverlayLayout(PerfMeterOverlayLayout layout)
+		{
+			switch (layout)
+			{
+				case PerfMeterOverlayLayout.Classic:
+				case PerfMeterOverlayLayout.CompactCards:
+				case PerfMeterOverlayLayout.DiagnosticsWide:
+				case PerfMeterOverlayLayout.OverdrawFocus:
+					return layout;
+				default:
+					return PerfMeterOverlayLayout.Classic;
+			}
+		}
+
+		internal static PerfMeterOverlayFontFamily NormalizeOverlayFontFamily(PerfMeterOverlayFontFamily fontFamily)
+		{
+			switch (fontFamily)
+			{
+				case PerfMeterOverlayFontFamily.Manrope:
+				case PerfMeterOverlayFontFamily.JetBrainsMono:
+				case PerfMeterOverlayFontFamily.LegacyRuntime:
+					return fontFamily;
+				default:
+					return PerfMeterOverlayFontFamily.Manrope;
+			}
+		}
+
+		internal static PerfMeterOverlayTheme ParseOverlayTheme(string value)
+		{
+			return TryParseOverlayTheme(value, out PerfMeterOverlayTheme theme) ? theme : PerfMeterOverlayTheme.ClassicDark;
+		}
+
+		internal static PerfMeterOverlayLayout ParseOverlayLayout(string value)
+		{
+			return TryParseOverlayLayout(value, out PerfMeterOverlayLayout layout) ? layout : PerfMeterOverlayLayout.Classic;
+		}
+
+		internal static PerfMeterOverlayFontFamily ParseOverlayFontFamily(string value)
+		{
+			return TryParseOverlayFontFamily(value, out PerfMeterOverlayFontFamily fontFamily) ? fontFamily : PerfMeterOverlayFontFamily.Manrope;
 		}
 
 		internal static PerfMeterOverlayModule GetPresetModules(PerfMeterOverlayPreset preset)
@@ -690,6 +770,48 @@ namespace SGG.PerfMeter
 			}
 
 			settings.overlay.scale = Mathf.Clamp(settings.overlay.scale, MinOverlayScale, MaxOverlayScale);
+			if (string.IsNullOrEmpty(settings.overlay.theme))
+			{
+				settings.overlay.theme = nameof(PerfMeterOverlayTheme.ClassicDark);
+			}
+			else if (!TryParseOverlayTheme(settings.overlay.theme, out PerfMeterOverlayTheme theme))
+			{
+				settings.overlay.theme = nameof(PerfMeterOverlayTheme.ClassicDark);
+				warning = CombineWarnings(warning, "Invalid overlay theme; ClassicDark is used.");
+			}
+			else
+			{
+				settings.overlay.theme = theme.ToString();
+			}
+
+			if (string.IsNullOrEmpty(settings.overlay.layout))
+			{
+				settings.overlay.layout = nameof(PerfMeterOverlayLayout.Classic);
+			}
+			else if (!TryParseOverlayLayout(settings.overlay.layout, out PerfMeterOverlayLayout layout))
+			{
+				settings.overlay.layout = nameof(PerfMeterOverlayLayout.Classic);
+				warning = CombineWarnings(warning, "Invalid overlay layout; Classic is used.");
+			}
+			else
+			{
+				settings.overlay.layout = layout.ToString();
+			}
+
+			if (string.IsNullOrEmpty(settings.overlay.fontFamily))
+			{
+				settings.overlay.fontFamily = nameof(PerfMeterOverlayFontFamily.Manrope);
+			}
+			else if (!TryParseOverlayFontFamily(settings.overlay.fontFamily, out PerfMeterOverlayFontFamily fontFamily))
+			{
+				settings.overlay.fontFamily = nameof(PerfMeterOverlayFontFamily.Manrope);
+				warning = CombineWarnings(warning, "Invalid overlay fontFamily; Manrope is used.");
+			}
+			else
+			{
+				settings.overlay.fontFamily = fontFamily.ToString();
+			}
+
 			settings.overlay.opacity = Mathf.Clamp(settings.overlay.opacity, MinOverlayOpacity, MaxOverlayOpacity);
 			settings.overlay.fontSize = Mathf.Clamp(settings.overlay.fontSize, MinOverlayFontSize, MaxOverlayFontSize);
 			settings.overlay.refreshIntervalSeconds = Mathf.Clamp(settings.overlay.refreshIntervalSeconds, MinOverlayRefreshIntervalSeconds, MaxOverlayRefreshIntervalSeconds);
@@ -743,6 +865,21 @@ namespace SGG.PerfMeter
 		private static PerfMeterOverlayMode ParseOverlayMode(string value)
 		{
 			return TryParseOverlayMode(value, out PerfMeterOverlayMode mode) ? mode : PerfMeterOverlayMode.Full;
+		}
+
+		private static bool TryParseOverlayTheme(string value, out PerfMeterOverlayTheme theme)
+		{
+			return Enum.TryParse(value, true, out theme) && Enum.IsDefined(typeof(PerfMeterOverlayTheme), theme);
+		}
+
+		private static bool TryParseOverlayLayout(string value, out PerfMeterOverlayLayout layout)
+		{
+			return Enum.TryParse(value, true, out layout) && Enum.IsDefined(typeof(PerfMeterOverlayLayout), layout);
+		}
+
+		private static bool TryParseOverlayFontFamily(string value, out PerfMeterOverlayFontFamily fontFamily)
+		{
+			return Enum.TryParse(value, true, out fontFamily) && Enum.IsDefined(typeof(PerfMeterOverlayFontFamily), fontFamily);
 		}
 
 		private static bool TryParseOverlayCorner(string value, out PerfMeterOverlayCorner corner)

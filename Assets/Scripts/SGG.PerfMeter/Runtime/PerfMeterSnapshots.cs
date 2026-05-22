@@ -138,6 +138,29 @@ namespace SGG.PerfMeter
 		Full = 3
 	}
 
+	public enum PerfMeterOverlayTheme
+	{
+		ClassicDark = 0,
+		Glass = 1,
+		Cyber = 2,
+		HighContrast = 3
+	}
+
+	public enum PerfMeterOverlayLayout
+	{
+		Classic = 0,
+		CompactCards = 1,
+		DiagnosticsWide = 2,
+		OverdrawFocus = 3
+	}
+
+	public enum PerfMeterOverlayFontFamily
+	{
+		Manrope = 0,
+		JetBrainsMono = 1,
+		LegacyRuntime = 2
+	}
+
 	public enum PerfMeterOverlayPreset
 	{
 		Custom = 0,
@@ -354,7 +377,10 @@ namespace SGG.PerfMeter
 			string latestAlertRuleId = "",
 			string latestAlertMessage = "",
 			bool applicationFocused = true,
-			bool applicationPaused = false)
+			bool applicationPaused = false,
+			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
+			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.Classic,
+			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope)
 		{
 			State = state;
 			Availability = availability;
@@ -371,6 +397,9 @@ namespace SGG.PerfMeter
 			OverlayVisible = overlayVisible;
 			OverlayCorner = overlayCorner;
 			OverlayMode = overlayMode;
+			OverlayTheme = overlayTheme;
+			OverlayLayout = overlayLayout;
+			OverlayFontFamily = overlayFontFamily;
 			TargetFps = targetFps;
 			OverlayPreset = overlayPreset;
 			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : overlayModules;
@@ -405,6 +434,9 @@ namespace SGG.PerfMeter
 		public bool OverlayVisible { get; }
 		public PerfMeterOverlayCorner OverlayCorner { get; }
 		public PerfMeterOverlayMode OverlayMode { get; }
+		public PerfMeterOverlayTheme OverlayTheme { get; }
+		public PerfMeterOverlayLayout OverlayLayout { get; }
+		public PerfMeterOverlayFontFamily OverlayFontFamily { get; }
 		public PerfMeterTargetFps TargetFps { get; }
 		public PerfMeterOverlayPreset OverlayPreset { get; }
 		public PerfMeterOverlayModule OverlayModules { get; }

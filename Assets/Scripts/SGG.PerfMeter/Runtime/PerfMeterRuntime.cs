@@ -23,6 +23,9 @@ namespace SGG.PerfMeter
 		private string _lastCollectorWarning = string.Empty;
 		private PerfMeterOverlayCorner _overlayCorner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _overlayMode = PerfMeterOverlayMode.Full;
+		private PerfMeterOverlayTheme _overlayTheme = PerfMeterOverlayTheme.ClassicDark;
+		private PerfMeterOverlayLayout _overlayLayout = PerfMeterOverlayLayout.Classic;
+		private PerfMeterOverlayFontFamily _overlayFontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
 		private PerfMeterOverlayModule _overlayModules = PerfMeterOverlayModule.All;
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
@@ -46,6 +49,9 @@ namespace SGG.PerfMeter
 		internal bool IsOverlayVisible => IsRuntimeOverlaySupported && _overlay != null && _overlay.IsVisible;
 		internal PerfMeterOverlayCorner OverlayCorner => _overlayCorner;
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
+		internal PerfMeterOverlayTheme OverlayTheme => _overlayTheme;
+		internal PerfMeterOverlayLayout OverlayLayout => _overlayLayout;
+		internal PerfMeterOverlayFontFamily OverlayFontFamily => _overlayFontFamily;
 		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
@@ -394,6 +400,45 @@ namespace SGG.PerfMeter
 			RefreshStatusOverlayState();
 		}
 
+		internal void SetOverlayTheme(PerfMeterOverlayTheme theme)
+		{
+			_overlayTheme = PerfMeterSettingsStore.NormalizeOverlayTheme(theme);
+			EnsureOverlayState();
+
+			if (_overlay != null)
+			{
+				_overlay.SetTheme(_overlayTheme);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetOverlayLayout(PerfMeterOverlayLayout layout)
+		{
+			_overlayLayout = PerfMeterSettingsStore.NormalizeOverlayLayout(layout);
+			EnsureOverlayState();
+
+			if (_overlay != null)
+			{
+				_overlay.SetLayout(_overlayLayout);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetOverlayFontFamily(PerfMeterOverlayFontFamily fontFamily)
+		{
+			_overlayFontFamily = PerfMeterSettingsStore.NormalizeOverlayFontFamily(fontFamily);
+			EnsureOverlayState();
+
+			if (_overlay != null)
+			{
+				_overlay.SetFontFamily(_overlayFontFamily);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
 		internal void SetOverlayPreset(PerfMeterOverlayPreset preset)
 		{
 			_overlayPreset = NormalizeOverlayPreset(preset);
@@ -459,12 +504,18 @@ namespace SGG.PerfMeter
 			_overlayFontSize = settings.OverlayFontSize;
 			_overlayRefreshIntervalSeconds = settings.OverlayRefreshIntervalSeconds;
 			_overlayGraphHistoryLength = settings.OverlayGraphHistoryLength;
+			_overlayTheme = settings.OverlayTheme;
+			_overlayLayout = settings.OverlayLayout;
+			_overlayFontFamily = settings.OverlayFontFamily;
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
 			ApplyAlertSettings(settings);
 
 			if (_overlay != null)
 			{
+				_overlay.SetTheme(_overlayTheme);
+				_overlay.SetLayout(_overlayLayout);
+				_overlay.SetFontFamily(_overlayFontFamily);
 				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
 
@@ -520,6 +571,9 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
+				_overlayTheme,
+				_overlayLayout,
+				_overlayFontFamily,
 				_targetFps,
 				_overlayPreset,
 				_overlayModules,
@@ -572,6 +626,9 @@ namespace SGG.PerfMeter
 				false,
 				PerfMeterOverlayCorner.TopRight,
 				PerfMeterOverlayMode.Full,
+				PerfMeterOverlayTheme.ClassicDark,
+				PerfMeterOverlayLayout.Classic,
+				PerfMeterOverlayFontFamily.Manrope,
 				PerfMeterTargetFps.Fps60,
 				PerfMeterOverlayPreset.FullDiagnostics,
 				PerfMeterOverlayModule.All,
@@ -604,6 +661,9 @@ namespace SGG.PerfMeter
 			bool overdrawHeatmapVisible = false,
 			PerfMeterOverlayCorner overlayCorner = PerfMeterOverlayCorner.TopRight,
 			PerfMeterOverlayMode overlayMode = PerfMeterOverlayMode.Full,
+			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
+			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.Classic,
+			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
 			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60,
 			PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics,
 			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.All,
@@ -650,7 +710,10 @@ namespace SGG.PerfMeter
 				latestAlertRuleId,
 				latestAlertMessage,
 				applicationFocused,
-				applicationPaused);
+				applicationPaused,
+				overlayTheme: PerfMeterSettingsStore.NormalizeOverlayTheme(overlayTheme),
+				overlayLayout: PerfMeterSettingsStore.NormalizeOverlayLayout(overlayLayout),
+				overlayFontFamily: PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily));
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -778,6 +841,9 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
+				_overlayTheme,
+				_overlayLayout,
+				_overlayFontFamily,
 				_targetFps,
 				_overlayPreset,
 				_overlayModules,
@@ -837,6 +903,9 @@ namespace SGG.PerfMeter
 
 			_overlay.SetCorner(_overlayCorner);
 			_overlay.SetMode(_overlayMode);
+			_overlay.SetTheme(_overlayTheme);
+			_overlay.SetLayout(_overlayLayout);
+			_overlay.SetFontFamily(_overlayFontFamily);
 			_overlay.SetModules(_overlayModules);
 			_overlay.SetTargetFps(_targetFps);
 			_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
@@ -882,6 +951,9 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible,
 				_overlayCorner,
 				_overlayMode,
+				_overlayTheme,
+				_overlayLayout,
+				_overlayFontFamily,
 				_targetFps,
 				_overlayPreset,
 				_overlayModules,

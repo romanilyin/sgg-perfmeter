@@ -19,6 +19,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.OverlayVisible, Is.True);
 			Assert.That(settings.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
+			Assert.That(settings.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
+			Assert.That(settings.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Classic));
+			Assert.That(settings.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
 			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(settings.ActivePreset, Is.EqualTo(PerfMeterSettingsStore.DefaultPresetId));
 			Assert.That(settings.SessionWarmupFrames, Is.EqualTo(0));
@@ -84,17 +87,26 @@ namespace SGG.PerfMeter.Tests.EditMode
 				alertTimingConsecutiveFrames: 7,
 				alertFpsConsecutiveFrames: 30,
 				alertGpuTimingUnavailableConsecutiveFrames: 90,
-				alertOverdrawConsecutiveFrames: 4);
+				alertOverdrawConsecutiveFrames: 4,
+				overlayTheme: PerfMeterOverlayTheme.Cyber,
+				overlayLayout: PerfMeterOverlayLayout.DiagnosticsWide,
+				overlayFontFamily: PerfMeterOverlayFontFamily.JetBrainsMono);
 
 			string json = PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateFromSnapshot(source));
 
 			Assert.That(json, Does.Contain("schemaVersion"));
+			Assert.That(json, Does.Contain("\"theme\": \"Cyber\""));
+			Assert.That(json, Does.Contain("\"layout\": \"DiagnosticsWide\""));
+			Assert.That(json, Does.Contain("\"fontFamily\": \"JetBrainsMono\""));
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot loaded), Is.True);
 			Assert.That(loaded.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Loaded));
 			Assert.That(loaded.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(loaded.OverlayVisible, Is.False);
 			Assert.That(loaded.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));
 			Assert.That(loaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
+			Assert.That(loaded.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.Cyber));
+			Assert.That(loaded.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.DiagnosticsWide));
+			Assert.That(loaded.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.JetBrainsMono));
 			Assert.That(loaded.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
 			Assert.That(loaded.ActivePreset, Is.EqualTo("Timing"));
 			Assert.That(loaded.SessionWarmupFrames, Is.EqualTo(3));
@@ -132,6 +144,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			settings.overlay.fontSize = 100f;
 			settings.overlay.refreshIntervalSeconds = 0f;
 			settings.overlay.graphHistoryLength = 1;
+			settings.overlay.theme = "bad-theme";
+			settings.overlay.layout = "bad-layout";
+			settings.overlay.fontFamily = "bad-font";
 			settings.ruleDefaults.overdrawRatioThreshold = -1d;
 			settings.ruleDefaults.timingConsecutiveFrames = 0;
 			settings.ruleDefaults.fpsConsecutiveFrames = 0;
@@ -147,6 +162,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.OverlayFontSize, Is.EqualTo(PerfMeterSettingsStore.MaxOverlayFontSize).Within(0.001f));
 			Assert.That(snapshot.OverlayRefreshIntervalSeconds, Is.EqualTo(PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds).Within(0.001f));
 			Assert.That(snapshot.OverlayGraphHistoryLength, Is.EqualTo(PerfMeterSettingsStore.MinOverlayGraphHistoryLength));
+			Assert.That(snapshot.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Classic));
+			Assert.That(snapshot.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
+			Assert.That(snapshot.Warning, Does.Contain("Invalid overlay theme"));
+			Assert.That(snapshot.Warning, Does.Contain("Invalid overlay layout"));
+			Assert.That(snapshot.Warning, Does.Contain("Invalid overlay fontFamily"));
 			Assert.That(snapshot.AlertOverdrawRatioThreshold, Is.EqualTo(0.1d).Within(0.001d));
 			Assert.That(snapshot.AlertTimingConsecutiveFrames, Is.EqualTo(1));
 			Assert.That(snapshot.AlertFpsConsecutiveFrames, Is.EqualTo(1));
@@ -206,6 +227,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.Memory);
+		}
+
+		[Test]
+		public void SettingsJsonMissingThemeAndLayoutUsesDefaultsWithoutWarning()
+		{
+			string json = "{\"schemaVersion\":1,\"enabled\":true,\"autoStart\":true,\"overlay\":{\"scale\":1.0}}";
+
+			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot snapshot), Is.True);
+			Assert.That(snapshot.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Classic));
+			Assert.That(snapshot.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
+			Assert.That(snapshot.Warning, Does.Not.Contain("Invalid overlay theme"));
+			Assert.That(snapshot.Warning, Does.Not.Contain("Invalid overlay layout"));
+			Assert.That(snapshot.Warning, Does.Not.Contain("Invalid overlay fontFamily"));
 		}
 
 		[Test]

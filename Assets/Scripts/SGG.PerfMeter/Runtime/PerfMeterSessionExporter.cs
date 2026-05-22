@@ -235,6 +235,9 @@ namespace SGG.PerfMeter
 			builder.Append(",\"overlay_visible\":").Append(JsonBool(settings.OverlayVisible));
 			builder.Append(",\"overlay_corner\":").Append(JsonString(settings.OverlayCorner.ToString()));
 			builder.Append(",\"overlay_mode\":").Append(JsonString(settings.OverlayMode.ToString()));
+			builder.Append(",\"overlay_theme\":").Append(JsonString(settings.OverlayTheme.ToString()));
+			builder.Append(",\"overlay_layout\":").Append(JsonString(settings.OverlayLayout.ToString()));
+			builder.Append(",\"overlay_font_family\":").Append(JsonString(settings.OverlayFontFamily.ToString()));
 			builder.Append(",\"target_fps\":").Append((int)settings.TargetFps);
 			builder.Append(",\"active_preset\":").Append(JsonString(settings.ActivePreset));
 			builder.Append(",\"overlay_modules\":").Append(JsonString(settings.OverlayModules.ToString()));

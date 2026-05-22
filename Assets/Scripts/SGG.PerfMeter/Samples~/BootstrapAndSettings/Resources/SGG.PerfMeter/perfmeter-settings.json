@@ -10,6 +10,9 @@
   "activePreset": "AgentDebug",
   "presets": [],
   "overlay": {
+    "theme": "Glass",
+    "layout": "CompactCards",
+    "fontFamily": "Manrope",
     "scale": 1.0,
     "opacity": 0.84,
     "fontSize": 12.0,

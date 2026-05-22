@@ -43,6 +43,9 @@ namespace SGG.PerfMeter
 		private static readonly Color RenderColor = new Color(0.38f, 0.76f, 0.40f, 1f);
 		private static readonly Color GpuColor = new Color(0.62f, 0.24f, 0.34f, 1f);
 		private static readonly Color UnavailableColor = new Color(0.34f, 0.38f, 0.42f, 1f);
+		private static PerfMeterOverlayFontFamily _activeFontFamily = PerfMeterOverlayFontFamily.Manrope;
+		private static PerfMeterOverlayFontResources _fontResources;
+		private static Font _legacyRuntimeFont;
 
 		private readonly StringBuilder _valueBuilder = new StringBuilder(256);
 		private readonly char[] _numberBuffer = new char[64];
@@ -71,6 +74,9 @@ namespace SGG.PerfMeter
 		private string _pendingTextFieldName = string.Empty;
 		private PerfMeterOverlayCorner _corner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _mode = PerfMeterOverlayMode.Full;
+		private PerfMeterOverlayTheme _theme = PerfMeterOverlayTheme.ClassicDark;
+		private PerfMeterOverlayLayout _layout = PerfMeterOverlayLayout.Classic;
+		private PerfMeterOverlayFontFamily _fontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private PerfMeterOverlayModule _modules = PerfMeterOverlayModule.All;
 		private float _overlayScale = 1f;
 		private float _overlayOpacity = 0.84f;
@@ -163,6 +169,53 @@ namespace SGG.PerfMeter
 			{
 				RefreshText(force: true);
 			}
+		}
+
+		internal void SetTheme(PerfMeterOverlayTheme theme)
+		{
+			PerfMeterOverlayTheme normalized = PerfMeterSettingsStore.NormalizeOverlayTheme(theme);
+			if (_theme == normalized)
+			{
+				return;
+			}
+
+			_theme = normalized;
+			ApplyTuningToVisuals();
+
+			if (_isVisible)
+			{
+				RefreshText(force: true);
+			}
+		}
+
+		internal void SetLayout(PerfMeterOverlayLayout layout)
+		{
+			PerfMeterOverlayLayout normalized = PerfMeterSettingsStore.NormalizeOverlayLayout(layout);
+			if (_layout == normalized)
+			{
+				return;
+			}
+
+			_layout = normalized;
+			ApplyModeLayout();
+
+			if (_isVisible)
+			{
+				RefreshText(force: true);
+			}
+		}
+
+		internal void SetFontFamily(PerfMeterOverlayFontFamily fontFamily)
+		{
+			PerfMeterOverlayFontFamily normalized = PerfMeterSettingsStore.NormalizeOverlayFontFamily(fontFamily);
+			if (_fontFamily == normalized)
+			{
+				return;
+			}
+
+			_fontFamily = normalized;
+			SetActiveFontFamily(_fontFamily);
+			RebuildVisualTree();
 		}
 
 		internal void SetModules(PerfMeterOverlayModule modules)
@@ -265,7 +318,8 @@ namespace SGG.PerfMeter
 			_container.style.position = Position.Absolute;
 			_container.style.width = GraphBlockWidth;
 			_container.style.flexDirection = FlexDirection.Column;
-			_container.style.unityFont = GetRuntimeFont();
+			SetActiveFontFamily(_fontFamily);
+			_container.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 
 			_graphBlock = CreateBlock("sgg-perfmeter-graph-block", GraphBlockWidth);
 			_graphBlock.style.marginBottom = BlockGap;
@@ -287,7 +341,7 @@ namespace SGG.PerfMeter
 			_textRows.style.width = Length.Percent(100f);
 			_textRows.style.flexGrow = 1f;
 			_textRows.style.flexDirection = FlexDirection.Column;
-			_textRows.style.unityFont = GetRuntimeFont();
+			_textRows.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 			_textRows.style.unityFontStyleAndWeight = FontStyle.Normal;
 			_textBlock.Add(_textRows);
 
@@ -296,6 +350,38 @@ namespace SGG.PerfMeter
 			root.Add(_container);
 			ApplyModeLayout();
 			ApplyCorner();
+		}
+
+		private void RebuildVisualTree()
+		{
+			if (_document == null || _document.rootVisualElement == null)
+			{
+				return;
+			}
+
+			_document.rootVisualElement.Clear();
+			_container = null;
+			_graphBlock = null;
+			_textBlock = null;
+			_textRows = null;
+			_graphs = null;
+			_cpuGraph = null;
+			_gpuGraph = null;
+			_cpuFrameLegend = null;
+			_cpuMainLegend = null;
+			_cpuRenderLegend = null;
+			_cpuOtherLegend = null;
+			_gpuLegend = null;
+			_textFieldCount = 0;
+			_lastVisibleTextFieldCount = 0;
+			Array.Clear(_textFields, 0, _textFields.Length);
+
+			BuildVisualTree();
+			ApplyVisibility();
+			if (_isVisible)
+			{
+				RefreshText(force: true);
+			}
 		}
 
 		private VisualElement CreateBlock(string name, float width)
@@ -312,7 +398,7 @@ namespace SGG.PerfMeter
 			block.style.paddingBottom = 8f;
 			block.style.backgroundColor = GetBackgroundColor();
 			block.style.flexDirection = FlexDirection.Column;
-			block.style.unityFont = GetRuntimeFont();
+			block.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 			return block;
 		}
 
@@ -367,13 +453,13 @@ namespace SGG.PerfMeter
 			row.style.height = 18f;
 			row.style.alignItems = Align.Center;
 
-			Label titleLabel = CreateSmallLabel(title + ":", TextColor, TextAnchor.MiddleLeft);
+			Label titleLabel = CreateSmallLabel(title + ":", TextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
 			titleLabel.style.marginRight = 5f;
 			row.Add(titleLabel);
 
 			for (int i = 0; i < tokens.Length; i++)
 			{
-				Label tokenLabel = CreateSmallLabel(tokens[i].Name, tokens[i].Color, TextAnchor.MiddleLeft);
+				Label tokenLabel = CreateSmallLabel(tokens[i].Name, tokens[i].Color, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
 				tokenLabel.style.marginRight = 6f;
 				row.Add(tokenLabel);
 			}
@@ -423,7 +509,7 @@ namespace SGG.PerfMeter
 			label.style.width = ScaleLabelWidth;
 			label.style.height = ScaleLabelHeight;
 			label.style.fontSize = 10f;
-			label.style.unityFont = GetRuntimeFont();
+			label.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 			label.style.color = color;
 			label.style.unityTextAlign = TextAnchor.MiddleRight;
 			label.style.whiteSpace = WhiteSpace.NoWrap;
@@ -446,7 +532,7 @@ namespace SGG.PerfMeter
 
 		private static Label CreateLegendLine(string text, Color color)
 		{
-			Label label = CreateSmallLabel(text, GetReadableTextColor(color), TextAnchor.MiddleLeft);
+			Label label = CreateSmallLabel(text, GetReadableTextColor(color), TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
 			label.style.height = 17f;
 			label.style.fontSize = 9.5f;
 			label.style.marginTop = 2f;
@@ -456,7 +542,7 @@ namespace SGG.PerfMeter
 			return label;
 		}
 
-		private static Label CreateSmallLabel(string text, Color color, TextAnchor align)
+		private static Label CreateSmallLabel(string text, Color color, TextAnchor align, PerfMeterOverlayFontRole role = PerfMeterOverlayFontRole.Regular)
 		{
 			Label label = new Label(text)
 			{
@@ -464,7 +550,7 @@ namespace SGG.PerfMeter
 			};
 			label.style.color = color;
 			label.style.fontSize = 11f;
-			label.style.unityFont = GetRuntimeFont();
+			label.style.unityFont = GetRuntimeFont(role);
 			label.style.unityTextAlign = align;
 			label.style.whiteSpace = WhiteSpace.NoWrap;
 			return label;
@@ -481,12 +567,12 @@ namespace SGG.PerfMeter
 			row.style.width = Length.Percent(100f);
 			row.style.minHeight = 16f;
 
-			Label nameLabel = CreateSmallLabel(string.Empty, MutedTextColor, TextAnchor.UpperLeft);
+			Label nameLabel = CreateSmallLabel(string.Empty, MutedTextColor, TextAnchor.UpperLeft, PerfMeterOverlayFontRole.Medium);
 			nameLabel.style.width = TextFieldNameWidth;
 			nameLabel.style.marginRight = TextFieldNameGap;
 			nameLabel.style.flexShrink = 0f;
 
-			Label valueLabel = CreateSmallLabel(string.Empty, TextColor, TextAnchor.UpperLeft);
+			Label valueLabel = CreateSmallLabel(string.Empty, TextColor, TextAnchor.UpperLeft, PerfMeterOverlayFontRole.SemiBold);
 			valueLabel.style.flexGrow = 1f;
 			valueLabel.style.whiteSpace = WhiteSpace.Normal;
 
@@ -496,6 +582,7 @@ namespace SGG.PerfMeter
 
 			PerfMeterOverlayTextField field = new PerfMeterOverlayTextField(row, nameLabel, valueLabel);
 			field.SetFontSize(GetTextFontSize());
+			field.SetFonts(GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.SemiBold));
 			return field;
 		}
 
@@ -970,7 +1057,7 @@ namespace SGG.PerfMeter
 				return _fontAsset;
 			}
 
-			Font font = GetRuntimeFont();
+			Font font = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 			if (font == null)
 			{
 				return null;
@@ -982,9 +1069,62 @@ namespace SGG.PerfMeter
 			return _fontAsset;
 		}
 
-		private static Font GetRuntimeFont()
+
+		private static Font GetRuntimeFont(PerfMeterOverlayFontRole role)
 		{
-			return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+			PerfMeterOverlayFontResources resources = LoadFontResources();
+			if (resources != null)
+			{
+				switch (_activeFontFamily)
+				{
+					case PerfMeterOverlayFontFamily.JetBrainsMono:
+						return role == PerfMeterOverlayFontRole.Regular ? resources.JetBrainsMonoRegular ?? GetLegacyRuntimeFont() : resources.JetBrainsMonoMedium ?? resources.JetBrainsMonoRegular ?? GetLegacyRuntimeFont();
+					case PerfMeterOverlayFontFamily.Manrope:
+						return GetManropeFont(resources, role) ?? GetLegacyRuntimeFont();
+				}
+			}
+
+			return GetLegacyRuntimeFont();
+		}
+
+		private static Font GetManropeFont(PerfMeterOverlayFontResources resources, PerfMeterOverlayFontRole role)
+		{
+			switch (role)
+			{
+				case PerfMeterOverlayFontRole.Bold:
+					return resources.ManropeBold;
+				case PerfMeterOverlayFontRole.SemiBold:
+					return resources.ManropeSemiBold;
+				case PerfMeterOverlayFontRole.Medium:
+					return resources.ManropeMedium;
+				default:
+					return resources.ManropeRegular;
+			}
+		}
+
+		private static PerfMeterOverlayFontResources LoadFontResources()
+		{
+			if (_fontResources == null)
+			{
+				_fontResources = Resources.Load<PerfMeterOverlayFontResources>("PerfMeterOverlayFonts");
+			}
+
+			return _fontResources;
+		}
+
+		private static Font GetLegacyRuntimeFont()
+		{
+			if (_legacyRuntimeFont == null)
+			{
+				_legacyRuntimeFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+			}
+
+			return _legacyRuntimeFont;
+		}
+
+		private static void SetActiveFontFamily(PerfMeterOverlayFontFamily fontFamily)
+		{
+			_activeFontFamily = PerfMeterSettingsStore.NormalizeOverlayFontFamily(fontFamily);
 		}
 
 		private ThemeStyleSheet CreateGeneratedThemeStyleSheet()
@@ -1731,6 +1871,12 @@ namespace SGG.PerfMeter
 				_valueLabel.style.fontSize = fontSize;
 			}
 
+			internal void SetFonts(Font nameFont, Font valueFont)
+			{
+				_nameLabel.style.unityFont = nameFont;
+				_valueLabel.style.unityFont = valueFont;
+			}
+
 			internal void SetVisible(bool visible)
 			{
 				_row.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
@@ -1791,6 +1937,14 @@ namespace SGG.PerfMeter
 		{
 			Line,
 			StackedCpu
+		}
+
+		private enum PerfMeterOverlayFontRole
+		{
+			Regular,
+			Medium,
+			SemiBold,
+			Bold
 		}
 
 		private readonly struct PerfMeterSeriesStats

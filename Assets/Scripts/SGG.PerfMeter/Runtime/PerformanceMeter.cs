@@ -290,6 +290,33 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static PerfMeterOverlayTheme OverlayTheme
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.OverlayTheme : PerfMeterOverlayTheme.ClassicDark;
+			}
+		}
+
+		public static PerfMeterOverlayLayout OverlayLayout
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.OverlayLayout : PerfMeterOverlayLayout.Classic;
+			}
+		}
+
+		public static PerfMeterOverlayFontFamily OverlayFontFamily
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.OverlayFontFamily : PerfMeterOverlayFontFamily.Manrope;
+			}
+		}
+
 		public static PerfMeterOverlayModule OverlayModules
 		{
 			get
@@ -345,6 +372,36 @@ namespace SGG.PerfMeter
 			if (runtime != null)
 			{
 				runtime.SetOverlayPreset(preset);
+			}
+		}
+
+		public static void SetOverlayTheme(PerfMeterOverlayTheme theme)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayTheme(theme);
+			}
+		}
+
+		public static void SetOverlayLayout(PerfMeterOverlayLayout layout)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayLayout(layout);
+			}
+		}
+
+		public static void SetOverlayFontFamily(PerfMeterOverlayFontFamily fontFamily)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayFontFamily(fontFamily);
 			}
 		}
 
