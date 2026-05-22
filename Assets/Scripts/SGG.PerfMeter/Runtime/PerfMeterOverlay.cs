@@ -11,6 +11,7 @@ namespace SGG.PerfMeter
 	{
 		private const float DefaultRefreshIntervalSeconds = 0.25f;
 		private const int TextFieldCapacity = 32;
+		private const int MaxCpuCorePanelCount = 32;
 		private const float GraphBlockWidth = 780f;
 		private const float TextBlockWidth = 520f;
 		private const float TextFieldNameWidth = 118f;
@@ -23,6 +24,8 @@ namespace SGG.PerfMeter
 		private const float LegendWidth = 242f;
 		private const float CpuGraphHeight = 86f;
 		private const float GpuGraphHeight = 52f;
+		private const float CpuCoreGraphCellHeight = 44f;
+		private const float CpuCoreGraphGap = 5f;
 		private const float FpsOnlyHeight = 36f;
 		private const float TextCompactHeight = 260f;
 		private const float GraphsTextHeight = 110f;
@@ -51,6 +54,10 @@ namespace SGG.PerfMeter
 		private const float MetricBarRangeWidth = 54f;
 		private const float MetricBarTrackWidth = 148f;
 		private const float MetricBarCurrentWidth = 78f;
+		private const float MetricBarStatWidth = 48f;
+		private const float MetricBarStatSeparatorWidth = 12f;
+		private const float CpuCoreBarColumnWidth = 34f;
+		private const float CpuCoreBarTrackHeight = 76f;
 
 		private static PerfMeterOverlayThemeTokens _activeTheme = PerfMeterOverlayThemeTokens.ClassicDark;
 		private static Color BackgroundColor => _activeTheme.Background;
@@ -64,6 +71,9 @@ namespace SGG.PerfMeter
 		private static Color WarningColor => _activeTheme.Warning;
 		private static Color AccentColor => _activeTheme.Accent;
 		private static Color UnavailableColor => _activeTheme.Unavailable;
+		private static Color CpuCoreLowLoadColor => new Color(0.18f, 0.74f, 0.23f, 1f);
+		private static Color CpuCoreMediumLoadColor => new Color(1f, 0.72f, 0.18f, 1f);
+		private static Color CpuCoreHighLoadColor => new Color(1f, 0.24f, 0.20f, 1f);
 		private static Color GraphBackgroundColor => _activeTheme.GraphBackground;
 		private static Color GridColor => _activeTheme.Grid;
 		private static Color BudgetColor => _activeTheme.Budget;
@@ -73,6 +83,9 @@ namespace SGG.PerfMeter
 
 		private readonly StringBuilder _valueBuilder = new StringBuilder(256);
 		private readonly StringBuilder _barStatsBuilder = new StringBuilder(192);
+		private readonly StringBuilder _barAverageBuilder = new StringBuilder(32);
+		private readonly StringBuilder _barOnePercentBuilder = new StringBuilder(32);
+		private readonly StringBuilder _barPointOnePercentBuilder = new StringBuilder(32);
 		private readonly StringBuilder _barNameBuilder = new StringBuilder(64);
 		private readonly StringBuilder _barMinBuilder = new StringBuilder(32);
 		private readonly StringBuilder _barMaxBuilder = new StringBuilder(32);
@@ -89,6 +102,7 @@ namespace SGG.PerfMeter
 		private VisualElement _container;
 		private VisualElement _widgetBlock;
 		private VisualElement _graphBlock;
+		private VisualElement _cpuCoreBlock;
 		private VisualElement _textBlock;
 		private VisualElement _textRows;
 		private VisualElement _barRows;
@@ -107,6 +121,10 @@ namespace SGG.PerfMeter
 		private PerfMeterBudgetBar _gpuBudgetBar;
 		private PerfMeterGraphElement _cpuGraph;
 		private PerfMeterGraphElement _gpuGraph;
+		private PerfMeterCpuCoreBarsElement _cpuCoreBars;
+		private PerfMeterCpuCoreGraphsElement _cpuCoreGraphs;
+		private Label _cpuCoreStatusLabel;
+		private string _cpuCoreStatusText = string.Empty;
 		private float _nextRefreshTime;
 		private float _warningVisibleUntil;
 		private string _heldWarning = string.Empty;
@@ -298,6 +316,7 @@ namespace SGG.PerfMeter
 			ApplyTuningToVisuals();
 			_cpuGraph?.SetHistoryCapacity(_graphHistoryLength);
 			_gpuGraph?.SetHistoryCapacity(_graphHistoryLength);
+			_cpuCoreGraphs?.SetHistoryCapacity(_graphHistoryLength);
 		}
 
 		private void EnsureDocument()
@@ -375,6 +394,10 @@ namespace SGG.PerfMeter
 			BuildGraphRows();
 			_graphBlock.Add(_graphs);
 
+			_cpuCoreBlock = CreateBlock("sgg-perfmeter-cpu-core-block", GraphBlockWidth);
+			_cpuCoreBlock.style.marginBottom = BlockGap;
+			BuildCpuCoreRows();
+
 			_textBlock = CreateBlock("sgg-perfmeter-text-block", TextBlockWidth);
 			_textRows = new VisualElement
 			{
@@ -402,6 +425,7 @@ namespace SGG.PerfMeter
 
 			_container.Add(_widgetBlock);
 			_container.Add(_graphBlock);
+			_container.Add(_cpuCoreBlock);
 			_container.Add(_textBlock);
 			root.Add(_container);
 			ApplyModeLayout();
@@ -419,6 +443,7 @@ namespace SGG.PerfMeter
 			_container = null;
 			_widgetBlock = null;
 			_graphBlock = null;
+			_cpuCoreBlock = null;
 			_textBlock = null;
 			_textRows = null;
 			_barRows = null;
@@ -432,6 +457,10 @@ namespace SGG.PerfMeter
 			_gpuBudgetBar = null;
 			_cpuGraph = null;
 			_gpuGraph = null;
+			_cpuCoreBars = null;
+			_cpuCoreGraphs = null;
+			_cpuCoreStatusLabel = null;
+			_cpuCoreStatusText = string.Empty;
 			_cpuFrameLegend = null;
 			_cpuMainLegend = null;
 			_cpuRenderLegend = null;
@@ -556,6 +585,34 @@ namespace SGG.PerfMeter
 			gpuRow.Add(_gpuGraph);
 			gpuRow.Add(gpuLegend);
 			_graphs.Add(gpuRow);
+		}
+
+		private void BuildCpuCoreRows()
+		{
+			VisualElement header = new VisualElement
+			{
+				pickingMode = PickingMode.Ignore
+			};
+			header.style.flexDirection = FlexDirection.Row;
+			header.style.alignItems = Align.Center;
+			header.style.height = 18f;
+
+			Label title = CreateSmallLabel("CPU usage per core", TextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
+			title.style.marginRight = 8f;
+			header.Add(title);
+
+			_cpuCoreStatusLabel = CreateSmallLabel("--", MutedTextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Regular);
+			_cpuCoreStatusLabel.style.flexGrow = 1f;
+			header.Add(_cpuCoreStatusLabel);
+			_cpuCoreBlock.Add(header);
+
+			_cpuCoreBars = new PerfMeterCpuCoreBarsElement(MaxCpuCorePanelCount, GetRuntimeFont(PerfMeterOverlayFontRole.Regular), GetRuntimeFont(PerfMeterOverlayFontRole.Medium));
+			_cpuCoreBars.style.marginTop = 4f;
+			_cpuCoreBlock.Add(_cpuCoreBars);
+
+			_cpuCoreGraphs = new PerfMeterCpuCoreGraphsElement(MaxCpuCorePanelCount, _graphHistoryLength);
+			_cpuCoreGraphs.style.marginTop = 6f;
+			_cpuCoreBlock.Add(_cpuCoreGraphs);
 		}
 
 		private static VisualElement CreateHeaderRow(string title, params LegendToken[] tokens)
@@ -722,6 +779,7 @@ namespace SGG.PerfMeter
 
 			bool showWidgets = ShouldShowWidgetBlock();
 			bool showGraphs = (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
+			bool showCpuCoreBlock = ShouldShowCpuCoreBlock();
 			if (_widgetBlock != null)
 			{
 				_widgetBlock.style.display = showWidgets ? DisplayStyle.Flex : DisplayStyle.None;
@@ -730,9 +788,14 @@ namespace SGG.PerfMeter
 			}
 
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
+			if (_cpuCoreBlock != null)
+			{
+				_cpuCoreBlock.style.display = showCpuCoreBlock ? DisplayStyle.Flex : DisplayStyle.None;
+				_cpuCoreBlock.style.height = showCpuCoreBlock ? StyleKeyword.Auto : 0f;
+			}
 
 			float textWidth = GetTextBlockWidth();
-			float containerWidth = showGraphs || showWidgets ? GraphBlockWidth : textWidth;
+			float containerWidth = showGraphs || showWidgets || showCpuCoreBlock ? GraphBlockWidth : textWidth;
 			_container.style.width = containerWidth;
 			_textBlock.style.width = textWidth;
 			_textBlock.style.height = GetTextBlockHeight();
@@ -761,6 +824,11 @@ namespace SGG.PerfMeter
 		private bool ShouldShowWidgetBlock()
 		{
 			return _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
+		}
+
+		private bool ShouldShowCpuCoreBlock()
+		{
+			return HasModule(PerfMeterOverlayModule.CpuCoreBars) || HasModule(PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
 		private bool ShouldUseMetricBarTextBlock()
@@ -825,6 +893,11 @@ namespace SGG.PerfMeter
 			if (_textBlock != null)
 			{
 				_textBlock.style.backgroundColor = background;
+			}
+
+			if (_cpuCoreBlock != null)
+			{
+				_cpuCoreBlock.style.backgroundColor = background;
 			}
 
 			SetTextFieldFontSize(GetTextFontSize());
@@ -1007,6 +1080,7 @@ namespace SGG.PerfMeter
 			}
 
 			UpdateMetricWidgets(status, metrics, warning);
+			UpdateCpuCorePanel();
 
 			if (ShouldUseMetricBarTextBlock())
 			{
@@ -1103,6 +1177,78 @@ namespace SGG.PerfMeter
 				_gpuLegend,
 				FormatLegend("gpu", gpuStats, gpuLegendReferenceMs, metrics.GpuFrameTimeAvailable),
 				metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor);
+		}
+
+		private void UpdateCpuCorePanel()
+		{
+			if (_cpuCoreBlock == null || !ShouldShowCpuCoreBlock())
+			{
+				return;
+			}
+
+			PerfMeterCpuCoreLoadSnapshot[] loads = GetOverlayCpuCoreLoads(out int count);
+			PerfMeterCpuCoreLoadAvailability availability = GetOverlayCpuCoreLoadAvailability();
+			bool available = availability == PerfMeterCpuCoreLoadAvailability.Available && count > 0;
+			SetCpuCorePanelStatus(availability, count);
+
+			if (_cpuCoreBars != null)
+			{
+				bool showBars = HasModule(PerfMeterOverlayModule.CpuCoreBars);
+				_cpuCoreBars.style.display = showBars ? DisplayStyle.Flex : DisplayStyle.None;
+				if (showBars)
+				{
+					_cpuCoreBars.SetLoads(loads, count, available);
+				}
+			}
+
+			if (_cpuCoreGraphs != null)
+			{
+				bool showGraphs = HasModule(PerfMeterOverlayModule.CpuCoreGraphs);
+				_cpuCoreGraphs.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
+				if (showGraphs)
+				{
+					_cpuCoreGraphs.SetLoads(loads, count, available);
+				}
+			}
+		}
+
+		private void SetCpuCorePanelStatus(PerfMeterCpuCoreLoadAvailability availability, int count)
+		{
+			if (_cpuCoreStatusLabel == null)
+			{
+				return;
+			}
+
+			if (availability == PerfMeterCpuCoreLoadAvailability.Available && count > 0)
+			{
+				_valueBuilder.Length = 0;
+				AppendInt(_valueBuilder, Mathf.Min(count, MaxCpuCorePanelCount));
+				if (count > MaxCpuCorePanelCount)
+				{
+					_valueBuilder.Append('/');
+					AppendInt(_valueBuilder, count);
+				}
+
+				_valueBuilder.Append(" logical cores");
+				string statusText = _valueBuilder.ToString();
+				if (_cpuCoreStatusText != statusText)
+				{
+					_cpuCoreStatusText = statusText;
+					_cpuCoreStatusLabel.text = statusText;
+				}
+
+				_cpuCoreStatusLabel.style.color = MutedTextColor;
+				return;
+			}
+
+			string message = GetCpuCoreLoadMessage(availability);
+			if (_cpuCoreStatusText != message)
+			{
+				_cpuCoreStatusText = message;
+				_cpuCoreStatusLabel.text = message;
+			}
+
+			_cpuCoreStatusLabel.style.color = availability == PerfMeterCpuCoreLoadAvailability.WarmingUp ? AccentColor : UnavailableColor;
 		}
 
 		private void UpdateMetricWidgets(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
@@ -1285,7 +1431,7 @@ namespace SGG.PerfMeter
 				_barNameBuilder.Length = 0;
 				_barNameBuilder.Append("CPU Core ");
 				AppendInt(_barNameBuilder, load.CoreIndex);
-				AddStatBar(_barNameBuilder, load.LoadPercent, _history.CpuCoreLoadPercent[i], load.Available, GetCpuCoreColor(i), PerfMeterStatBarFormat.Percent);
+				AddStatBar(_barNameBuilder, load.LoadPercent, _history.CpuCoreLoadPercent[i], load.Available, GetCpuCoreLoadColor(load.LoadPercent), PerfMeterStatBarFormat.Percent);
 			}
 		}
 
@@ -1395,6 +1541,9 @@ namespace SGG.PerfMeter
 			_barMinBuilder.Length = 0;
 			_barMaxBuilder.Length = 0;
 			_barStatsBuilder.Length = 0;
+			_barAverageBuilder.Length = 0;
+			_barOnePercentBuilder.Length = 0;
+			_barPointOnePercentBuilder.Length = 0;
 			if (available)
 			{
 				AppendStatBarCurrent(_valueBuilder, current, format);
@@ -1408,17 +1557,17 @@ namespace SGG.PerfMeter
 			{
 				AppendStatBarValue(_barMinBuilder, stats.Min, format);
 				AppendStatBarValue(_barMaxBuilder, stats.Max, format);
-				AppendStatBarValue(_barStatsBuilder, stats.Average, format);
-				_barStatsBuilder.Append(" | ");
-				AppendStatBarValue(_barStatsBuilder, stats.OnePercent, format);
-				_barStatsBuilder.Append(" | ");
-				AppendStatBarValue(_barStatsBuilder, stats.PointOnePercent, format);
+				AppendStatBarValue(_barAverageBuilder, stats.Average, format);
+				AppendStatBarValue(_barOnePercentBuilder, stats.OnePercent, format);
+				AppendStatBarValue(_barPointOnePercentBuilder, stats.PointOnePercent, format);
 			}
 			else
 			{
 				_barMinBuilder.Append("--");
 				_barMaxBuilder.Append("--");
-				_barStatsBuilder.Append("-- | -- | --");
+				_barAverageBuilder.Append("--");
+				_barOnePercentBuilder.Append("--");
+				_barPointOnePercentBuilder.Append("--");
 			}
 
 			field.SetValue(
@@ -1427,7 +1576,9 @@ namespace SGG.PerfMeter
 				_barMinBuilder,
 				_barMaxBuilder,
 				_valueBuilder,
-				_barStatsBuilder,
+				_barAverageBuilder,
+				_barOnePercentBuilder,
+				_barPointOnePercentBuilder,
 				available ? GetBarPercent(current, scaleMax) : 0f,
 				GetBarPercent(stats.Average, scaleMax),
 				GetBarPercent(stats.OnePercent, scaleMax),
@@ -2673,19 +2824,14 @@ namespace SGG.PerfMeter
 			return IsFinite(value) && IsFinite(scaleMax) && scaleMax > 0d ? Mathf.Clamp((float)(value / scaleMax * 100d), 0f, 100f) : 0f;
 		}
 
-		private static Color GetCpuCoreColor(int coreIndex)
+		private static Color GetCpuCoreLoadColor(double loadPercent)
 		{
-			switch (coreIndex % 4)
+			if (loadPercent > 75d)
 			{
-				case 1:
-					return MainColor;
-				case 2:
-					return RenderColor;
-				case 3:
-					return OtherCpuColor;
-				default:
-					return FrameColor;
+				return CpuCoreHighLoadColor;
 			}
+
+			return loadPercent >= 25d ? CpuCoreMediumLoadColor : CpuCoreLowLoadColor;
 		}
 
 		private static Color GetReadableTextColor(Color background)
@@ -2764,11 +2910,18 @@ namespace SGG.PerfMeter
 			private readonly Label _minLabel;
 			private readonly Label _maxLabel;
 			private readonly Label _currentLabel;
+			private readonly VisualElement _statsRow;
+			private readonly Label _averageLabel;
+			private readonly Label _onePercentLabel;
+			private readonly Label _pointOnePercentLabel;
 			private readonly Label _statsLabel;
 			private readonly PerfMeterOverlayCachedText _nameCache = new PerfMeterOverlayCachedText();
 			private readonly PerfMeterOverlayCachedText _minCache = new PerfMeterOverlayCachedText();
 			private readonly PerfMeterOverlayCachedText _maxCache = new PerfMeterOverlayCachedText();
 			private readonly PerfMeterOverlayCachedText _currentCache = new PerfMeterOverlayCachedText();
+			private readonly PerfMeterOverlayCachedText _averageCache = new PerfMeterOverlayCachedText();
+			private readonly PerfMeterOverlayCachedText _onePercentCache = new PerfMeterOverlayCachedText();
+			private readonly PerfMeterOverlayCachedText _pointOnePercentCache = new PerfMeterOverlayCachedText();
 			private readonly PerfMeterOverlayCachedText _statsCache = new PerfMeterOverlayCachedText();
 
 			internal PerfMeterStatBarField(string name, Font nameFont, Font valueFont, Font statsFont)
@@ -2801,8 +2954,24 @@ namespace SGG.PerfMeter
 				_currentLabel.style.width = MetricBarCurrentWidth;
 				_currentLabel.style.marginRight = 10f;
 				_currentLabel.style.flexShrink = 0f;
+				_statsRow = new VisualElement
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				_statsRow.style.flexDirection = FlexDirection.Row;
+				_statsRow.style.alignItems = Align.Center;
+				_statsRow.style.flexGrow = 1f;
+				_averageLabel = CreateStatValueLabel(statsFont);
+				_onePercentLabel = CreateStatValueLabel(statsFont);
+				_pointOnePercentLabel = CreateStatValueLabel(statsFont);
+				_statsRow.Add(_averageLabel);
+				_statsRow.Add(CreateStatSeparatorLabel(statsFont));
+				_statsRow.Add(_onePercentLabel);
+				_statsRow.Add(CreateStatSeparatorLabel(statsFont));
+				_statsRow.Add(_pointOnePercentLabel);
 				_statsLabel = CreateLabel(MutedTextColor, TextAnchor.MiddleLeft, statsFont);
 				_statsLabel.style.flexGrow = 1f;
+				_statsLabel.style.display = DisplayStyle.None;
 
 				_track = new VisualElement
 				{
@@ -2829,12 +2998,13 @@ namespace SGG.PerfMeter
 				_root.Add(_track);
 				_root.Add(_maxLabel);
 				_root.Add(_currentLabel);
+				_root.Add(_statsRow);
 				_root.Add(_statsLabel);
 			}
 
 			internal VisualElement Root => _root;
 
-			internal void SetValue(string name, StringBuilder nameBuilder, StringBuilder min, StringBuilder max, StringBuilder current, StringBuilder stats, float currentPercent, float averagePercent, float onePercent, float pointOnePercent, Color accent)
+			internal void SetValue(string name, StringBuilder nameBuilder, StringBuilder min, StringBuilder max, StringBuilder current, StringBuilder average, StringBuilder onePercentValue, StringBuilder pointOnePercentValue, float currentPercent, float averagePercent, float onePercent, float pointOnePercent, Color accent)
 			{
 				if (nameBuilder != null)
 				{
@@ -2847,11 +3017,15 @@ namespace SGG.PerfMeter
 				SetCachedText(_minLabel, _minCache, min);
 				SetCachedText(_maxLabel, _maxCache, max);
 				SetCachedText(_currentLabel, _currentCache, current);
-				SetCachedText(_statsLabel, _statsCache, stats);
+				SetCachedText(_averageLabel, _averageCache, average);
+				SetCachedText(_onePercentLabel, _onePercentCache, onePercentValue);
+				SetCachedText(_pointOnePercentLabel, _pointOnePercentCache, pointOnePercentValue);
 				_minLabel.style.display = DisplayStyle.Flex;
 				_track.style.display = DisplayStyle.Flex;
 				_maxLabel.style.display = DisplayStyle.Flex;
 				_currentLabel.style.display = DisplayStyle.Flex;
+				_statsRow.style.display = DisplayStyle.Flex;
+				_statsLabel.style.display = DisplayStyle.None;
 				_fill.style.width = Length.Percent(currentPercent);
 				_fill.style.backgroundColor = accent;
 				_track.style.backgroundColor = WithAlpha(accent, 0.18f);
@@ -2862,7 +3036,9 @@ namespace SGG.PerfMeter
 				_minLabel.style.color = MutedTextColor;
 				_maxLabel.style.color = MutedTextColor;
 				_currentLabel.style.color = accent;
-				_statsLabel.style.color = TextColor;
+				_averageLabel.style.color = TextColor;
+				_onePercentLabel.style.color = TextColor;
+				_pointOnePercentLabel.style.color = TextColor;
 			}
 
 			internal void SetMessage(string name, string value, Color accent)
@@ -2892,6 +3068,8 @@ namespace SGG.PerfMeter
 				_track.style.display = DisplayStyle.None;
 				_maxLabel.style.display = DisplayStyle.None;
 				_currentLabel.style.display = DisplayStyle.None;
+				_statsRow.style.display = DisplayStyle.None;
+				_statsLabel.style.display = DisplayStyle.Flex;
 				_nameLabel.style.color = accent;
 				_statsLabel.style.color = MutedTextColor;
 			}
@@ -2902,6 +3080,9 @@ namespace SGG.PerfMeter
 				_minLabel.style.fontSize = Mathf.Max(8.5f, fontSize - 1f);
 				_maxLabel.style.fontSize = Mathf.Max(8.5f, fontSize - 1f);
 				_currentLabel.style.fontSize = fontSize + 1.5f;
+				_averageLabel.style.fontSize = Mathf.Max(8.5f, fontSize - 1f);
+				_onePercentLabel.style.fontSize = Mathf.Max(8.5f, fontSize - 1f);
+				_pointOnePercentLabel.style.fontSize = Mathf.Max(8.5f, fontSize - 1f);
 				_statsLabel.style.fontSize = Mathf.Max(8.5f, fontSize - 1f);
 			}
 
@@ -2956,6 +3137,23 @@ namespace SGG.PerfMeter
 				return label;
 			}
 
+			private static Label CreateStatValueLabel(Font font)
+			{
+				Label label = CreateLabel(TextColor, TextAnchor.MiddleRight, font);
+				label.style.width = MetricBarStatWidth;
+				label.style.flexShrink = 0f;
+				return label;
+			}
+
+			private static Label CreateStatSeparatorLabel(Font font)
+			{
+				Label label = CreateLabel(MutedTextColor, TextAnchor.MiddleCenter, font);
+				label.text = "|";
+				label.style.width = MetricBarStatSeparatorWidth;
+				label.style.flexShrink = 0f;
+				return label;
+			}
+
 			private static VisualElement CreateMarkerElement(float height, float top, float width)
 			{
 				VisualElement element = new VisualElement
@@ -2973,6 +3171,357 @@ namespace SGG.PerfMeter
 			{
 				marker.style.left = Length.Percent(percent);
 				marker.style.backgroundColor = color;
+			}
+		}
+
+		private sealed class PerfMeterCpuCoreBarsElement : VisualElement
+		{
+			private readonly CpuCoreBarColumn[] _columns;
+
+			internal PerfMeterCpuCoreBarsElement(int capacity, Font labelFont, Font valueFont)
+			{
+				pickingMode = PickingMode.Ignore;
+				style.flexDirection = FlexDirection.Row;
+				style.flexWrap = Wrap.Wrap;
+				style.alignItems = Align.FlexStart;
+				style.width = Length.Percent(100f);
+				_columns = new CpuCoreBarColumn[Mathf.Max(1, capacity)];
+				for (int i = 0; i < _columns.Length; i++)
+				{
+					CpuCoreBarColumn column = new CpuCoreBarColumn(i, labelFont, valueFont);
+					column.SetVisible(false);
+					_columns[i] = column;
+					Add(column.Root);
+				}
+			}
+
+			internal void SetLoads(PerfMeterCpuCoreLoadSnapshot[] loads, int count, bool available)
+			{
+				int visibleCount = available ? Mathf.Clamp(count, 0, Math.Min(_columns.Length, loads.Length)) : 0;
+				for (int i = 0; i < _columns.Length; i++)
+				{
+					if (i < visibleCount)
+					{
+						_columns[i].SetValue(loads[i]);
+					}
+					else
+					{
+						_columns[i].SetVisible(false);
+					}
+				}
+			}
+
+			private sealed class CpuCoreBarColumn
+			{
+				private readonly VisualElement _root;
+				private readonly VisualElement _fill;
+				private readonly Label _valueLabel;
+				private readonly Label _nameLabel;
+				private int _coreIndex = -1;
+				private int _loadTenths = -1;
+
+				internal CpuCoreBarColumn(int index, Font labelFont, Font valueFont)
+				{
+					_root = new VisualElement
+					{
+						pickingMode = PickingMode.Ignore
+					};
+					_root.style.width = CpuCoreBarColumnWidth;
+					_root.style.height = 112f;
+					_root.style.marginRight = 5f;
+					_root.style.marginBottom = 6f;
+					_root.style.alignItems = Align.Center;
+					_root.style.flexShrink = 0f;
+
+					_valueLabel = CreateCpuCoreBarLabel("--", MutedTextColor, valueFont, 10.5f);
+					_valueLabel.style.height = 16f;
+					_valueLabel.style.marginBottom = 3f;
+					_root.Add(_valueLabel);
+
+					VisualElement track = new VisualElement
+					{
+						pickingMode = PickingMode.Ignore
+					};
+					track.style.position = Position.Relative;
+					track.style.width = CpuCoreBarColumnWidth - 4f;
+					track.style.height = CpuCoreBarTrackHeight;
+					track.style.backgroundColor = WithAlpha(TextColor, 0.11f);
+					track.style.overflow = Overflow.Hidden;
+					_fill = new VisualElement
+					{
+						pickingMode = PickingMode.Ignore
+					};
+					_fill.style.position = Position.Absolute;
+					_fill.style.left = 0f;
+					_fill.style.right = 0f;
+					_fill.style.bottom = 0f;
+					_fill.style.height = Length.Percent(0f);
+					track.Add(_fill);
+					_root.Add(track);
+
+					_nameLabel = CreateCpuCoreBarLabel("cpu" + index.ToString(CultureInfo.InvariantCulture), MutedTextColor, labelFont, 10f);
+					_nameLabel.style.height = 15f;
+					_nameLabel.style.marginTop = 3f;
+					_root.Add(_nameLabel);
+				}
+
+				internal VisualElement Root => _root;
+
+				internal void SetValue(PerfMeterCpuCoreLoadSnapshot load)
+				{
+					SetVisible(true);
+					double percent = Mathf.Clamp((float)load.LoadPercent, 0f, 100f);
+					int loadTenths = Mathf.Clamp(Mathf.RoundToInt((float)percent * 10f), 0, 1000);
+					if (_loadTenths != loadTenths)
+					{
+						_loadTenths = loadTenths;
+						_valueLabel.text = (loadTenths / 10f).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+					}
+
+					if (_coreIndex != load.CoreIndex)
+					{
+						_coreIndex = load.CoreIndex;
+						_nameLabel.text = "cpu" + load.CoreIndex.ToString(CultureInfo.InvariantCulture);
+					}
+
+					Color color = GetCpuCoreLoadColor(percent);
+					_valueLabel.style.color = color;
+					_fill.style.height = Length.Percent((float)percent);
+					_fill.style.backgroundColor = color;
+				}
+
+				internal void SetVisible(bool visible)
+				{
+					_root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+				}
+
+				private static Label CreateCpuCoreBarLabel(string text, Color color, Font font, float size)
+				{
+					Label label = new Label(text)
+					{
+						pickingMode = PickingMode.Ignore
+					};
+					label.style.width = Length.Percent(100f);
+					label.style.color = color;
+					label.style.fontSize = size;
+					label.style.unityFont = font;
+					label.style.unityTextAlign = TextAnchor.MiddleCenter;
+					label.style.whiteSpace = WhiteSpace.NoWrap;
+					label.style.overflow = Overflow.Hidden;
+					return label;
+				}
+			}
+		}
+
+		private sealed class PerfMeterCpuCoreGraphsElement : VisualElement
+		{
+			private readonly int _maxCoreCount;
+			private double[][] _values;
+			private bool[][] _valid;
+			private int _capacity;
+			private int _index;
+			private int _count;
+			private int _coreCount;
+
+			internal PerfMeterCpuCoreGraphsElement(int maxCoreCount, int historyCapacity)
+			{
+				_maxCoreCount = Mathf.Max(1, maxCoreCount);
+				pickingMode = PickingMode.Ignore;
+				style.width = Length.Percent(100f);
+				style.height = CpuCoreGraphCellHeight;
+				SetHistoryCapacity(historyCapacity);
+				generateVisualContent += OnGenerateVisualContent;
+			}
+
+			internal void SetHistoryCapacity(int historyCapacity)
+			{
+				int normalized = Mathf.Clamp(historyCapacity, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength);
+				if (_capacity == normalized && _values != null)
+				{
+					return;
+				}
+
+				_capacity = normalized;
+				_values = new double[_maxCoreCount][];
+				_valid = new bool[_maxCoreCount][];
+				for (int core = 0; core < _maxCoreCount; core++)
+				{
+					_values[core] = new double[_capacity];
+					_valid[core] = new bool[_capacity];
+				}
+
+				_index = 0;
+				_count = 0;
+				MarkDirtyRepaint();
+			}
+
+			internal void SetLoads(PerfMeterCpuCoreLoadSnapshot[] loads, int count, bool available)
+			{
+				if (!available)
+				{
+					_coreCount = 0;
+					_count = 0;
+					_index = 0;
+					style.height = CpuCoreGraphCellHeight;
+					MarkDirtyRepaint();
+					return;
+				}
+
+				_coreCount = Mathf.Clamp(count, 0, Math.Min(_maxCoreCount, loads.Length));
+				for (int core = 0; core < _maxCoreCount; core++)
+				{
+					if (core < _coreCount && loads[core].Available)
+					{
+						_values[core][_index] = Mathf.Clamp((float)loads[core].LoadPercent, 0f, 100f);
+						_valid[core][_index] = true;
+					}
+					else
+					{
+						_values[core][_index] = 0d;
+						_valid[core][_index] = false;
+					}
+				}
+
+				_index = (_index + 1) % _capacity;
+				_count = Mathf.Min(_count + 1, _capacity);
+				style.height = CalculateHeight(_coreCount);
+				MarkDirtyRepaint();
+			}
+
+			private void OnGenerateVisualContent(MeshGenerationContext context)
+			{
+				Rect rect = contentRect;
+				if (_coreCount <= 0 || rect.width <= 1f || rect.height <= 1f)
+				{
+					return;
+				}
+
+				Painter2D painter = context.painter2D;
+				int columns = GetColumnCount(_coreCount);
+				float cellWidth = (rect.width - CpuCoreGraphGap * (columns - 1)) / columns;
+				for (int core = 0; core < _coreCount; core++)
+				{
+					int row = core / columns;
+					int column = core % columns;
+					Rect cell = new Rect(
+						rect.xMin + column * (cellWidth + CpuCoreGraphGap),
+						rect.yMin + row * (CpuCoreGraphCellHeight + CpuCoreGraphGap),
+						cellWidth,
+						CpuCoreGraphCellHeight);
+					DrawCpuCoreGraphCell(painter, cell, core);
+				}
+			}
+
+			private void DrawCpuCoreGraphCell(Painter2D painter, Rect cell, int core)
+			{
+				DrawRect(painter, cell, GraphBackgroundColor, WithAlpha(TextColor, 0.22f));
+				painter.lineWidth = 1f;
+				painter.strokeColor = WithAlpha(GridColor, 0.65f);
+				painter.BeginPath();
+				painter.MoveTo(new Vector2(cell.xMin, cell.yMin + cell.height * 0.5f));
+				painter.LineTo(new Vector2(cell.xMax, cell.yMin + cell.height * 0.5f));
+				painter.Stroke();
+
+				if (_count <= 1)
+				{
+					return;
+				}
+
+				Color color = GetCpuCoreLoadColor(GetLastValue(core));
+				painter.lineWidth = 1.15f;
+				painter.strokeColor = color;
+				bool pathOpen = false;
+				for (int sample = 0; sample < _count; sample++)
+				{
+					int sampleIndex = BufferIndex(sample);
+					if (!_valid[core][sampleIndex])
+					{
+						if (pathOpen)
+						{
+							painter.Stroke();
+							pathOpen = false;
+						}
+
+						continue;
+					}
+
+					float x = cell.xMin + cell.width * sample / (_count - 1);
+					float y = PercentToY(cell, _values[core][sampleIndex]);
+					if (!pathOpen)
+					{
+						painter.BeginPath();
+						painter.MoveTo(new Vector2(x, y));
+						pathOpen = true;
+					}
+					else
+					{
+						painter.LineTo(new Vector2(x, y));
+					}
+				}
+
+				if (pathOpen)
+				{
+					painter.Stroke();
+				}
+			}
+
+			private double GetLastValue(int core)
+			{
+				for (int sample = _count - 1; sample >= 0; sample--)
+				{
+					int sampleIndex = BufferIndex(sample);
+					if (_valid[core][sampleIndex])
+					{
+						return _values[core][sampleIndex];
+					}
+				}
+
+				return 0d;
+			}
+
+			private int BufferIndex(int sample)
+			{
+				return (_index - _count + sample + _capacity) % _capacity;
+			}
+
+			private static void DrawRect(Painter2D painter, Rect rect, Color fill, Color stroke)
+			{
+				painter.fillColor = fill;
+				painter.BeginPath();
+				painter.MoveTo(new Vector2(rect.xMin, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMax));
+				painter.LineTo(new Vector2(rect.xMin, rect.yMax));
+				painter.ClosePath();
+				painter.Fill();
+
+				painter.lineWidth = 1f;
+				painter.strokeColor = stroke;
+				painter.BeginPath();
+				painter.MoveTo(new Vector2(rect.xMin, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMax));
+				painter.LineTo(new Vector2(rect.xMin, rect.yMax));
+				painter.ClosePath();
+				painter.Stroke();
+			}
+
+			private static float PercentToY(Rect rect, double percent)
+			{
+				float normalized = Mathf.Clamp01((float)(percent / 100d));
+				return rect.yMax - normalized * rect.height;
+			}
+
+			private static int GetColumnCount(int count)
+			{
+				return Mathf.Clamp(count, 1, 8);
+			}
+
+			private static float CalculateHeight(int count)
+			{
+				int columns = GetColumnCount(Mathf.Max(1, count));
+				int rows = Mathf.Max(1, Mathf.CeilToInt(count / (float)columns));
+				return rows * CpuCoreGraphCellHeight + Mathf.Max(0, rows - 1) * CpuCoreGraphGap;
 			}
 		}
 

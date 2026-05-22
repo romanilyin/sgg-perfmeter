@@ -128,6 +128,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("\"AgentDebug\""));
 			Assert.That(metadata, Does.Contain("\"CustomMetrics\""));
 			Assert.That(metadata, Does.Contain("\"CpuCores\""));
+			Assert.That(metadata, Does.Contain("\"CpuCoreBars\""));
+			Assert.That(metadata, Does.Contain("\"CpuCoreGraphs\""));
 		}
 
 		[Test]

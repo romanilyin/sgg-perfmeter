@@ -1070,7 +1070,17 @@ namespace SGG.PerfMeter
 
 		private bool ShouldSampleCpuCoreLoads()
 		{
-			return _overlayRequestedVisible && _overlayLayout == PerfMeterOverlayLayout.MetricBars && _overlayMode != PerfMeterOverlayMode.FpsOnly && (_overlayModules & PerfMeterOverlayModule.CpuCores) != 0;
+			if (!_overlayRequestedVisible)
+			{
+				return false;
+			}
+
+			if ((_overlayModules & (PerfMeterOverlayModule.CpuCoreBars | PerfMeterOverlayModule.CpuCoreGraphs)) != 0)
+			{
+				return true;
+			}
+
+			return _overlayLayout == PerfMeterOverlayLayout.MetricBars && _overlayMode != PerfMeterOverlayMode.FpsOnly && (_overlayModules & PerfMeterOverlayModule.CpuCores) != 0;
 		}
 
 		private void ApplyAlertSettings()

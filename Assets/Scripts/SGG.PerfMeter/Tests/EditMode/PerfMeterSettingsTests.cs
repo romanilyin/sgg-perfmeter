@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using NUnit.Framework;
 using UnityEditor.PackageManager;
@@ -49,7 +50,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
-			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
 		[Test]
@@ -195,7 +198,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void AgentDebugPresetIncludesCustomMetricsModule()
+		public void AgentDebugPresetDoesNotEnableCpuCoreModulesByDefault()
 		{
 			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
 			settings.activePreset = "AgentDebug";
@@ -205,11 +208,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
 			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
-			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
 		[Test]
-		public void SettingsJsonParsesCustomMetricsModule()
+		public void SettingsJsonParsesOptionalOverlayModules()
 		{
 			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
 			settings.activePreset = "Custom";
@@ -221,7 +226,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 					overlayVisible = true,
 					overlayMode = nameof(PerfMeterOverlayMode.Full),
 					targetFps = (int)PerfMeterTargetFps.Fps60,
-					modules = new[] { "Fps", "CustomMetrics" }
+					modules = new[] { "Fps", "CustomMetrics", "CpuCoreBars", "CpuCoreGraphs" }
 				}
 			};
 
@@ -229,7 +234,62 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.Memory);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
+		}
+
+		[Test]
+		public void EmptyPresetModulesUsePresetDefaultsWithoutCpuCoreOptIn()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.activePreset = "Custom";
+			settings.presets = new[]
+			{
+				new PerfMeterPresetSettingsJson
+				{
+					id = "Custom",
+					overlayVisible = true,
+					overlayMode = nameof(PerfMeterOverlayMode.Full),
+					targetFps = (int)PerfMeterTargetFps.Fps60,
+					modules = Array.Empty<string>()
+				}
+			};
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Timing);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
+		}
+
+		[Test]
+		public void InvalidPresetModulesUsePresetDefaultsWithoutCpuCoreOptIn()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.activePreset = "Custom";
+			settings.presets = new[]
+			{
+				new PerfMeterPresetSettingsJson
+				{
+					id = "Custom",
+					overlayVisible = true,
+					overlayMode = nameof(PerfMeterOverlayMode.Full),
+					targetFps = (int)PerfMeterTargetFps.Fps60,
+					modules = new[] { "NotAModule" }
+				}
+			};
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
+			Assert.That(snapshot.Warning, Does.Contain("Unknown overlay module"));
 		}
 
 		[Test]

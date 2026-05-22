@@ -193,7 +193,9 @@ namespace SGG.PerfMeter
 		Warnings = 1 << 12,
 		CustomMetrics = 1 << 13,
 		CpuCores = 1 << 14,
-		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings | CustomMetrics | CpuCores
+		CpuCoreBars = 1 << 15,
+		CpuCoreGraphs = 1 << 16,
+		All = Fps | Timing | Graphs | Rendering | SrpBatcher | Brg | Uploads | Memory | Gc | GpuMemory | Overdraw | Heatmap | Warnings | CustomMetrics | CpuCores | CpuCoreBars | CpuCoreGraphs
 	}
 
 	public enum PerfMeterTargetFps

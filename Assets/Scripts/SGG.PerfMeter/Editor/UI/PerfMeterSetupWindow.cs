@@ -325,7 +325,9 @@ namespace SGG.PerfMeter.Editor.UI
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.Heatmap, "Heatmap state");
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.Warnings, "Warnings");
 			AddModuleToggle(moduleList, PerfMeterOverlayModule.CustomMetrics, "Custom metrics");
-			AddModuleToggle(moduleList, PerfMeterOverlayModule.CpuCores, "CPU cores");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.CpuCores, "CPU core rows");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.CpuCoreBars, "CPU core % bars");
+			AddModuleToggle(moduleList, PerfMeterOverlayModule.CpuCoreGraphs, "CPU core graphs");
 			AddControlRow(section, "Modules", moduleList);
 
 			_settingsOverlayScale = new FloatField();
@@ -465,6 +467,12 @@ namespace SGG.PerfMeter.Editor.UI
 			AddOverlayFontButton(fontActions, PerfMeterOverlayFontFamily.JetBrainsMono);
 			AddOverlayFontButton(fontActions, PerfMeterOverlayFontFamily.LegacyRuntime);
 
+			VisualElement cpuCoreActions = AddActions(runtimeSection);
+			AddRuntimeButton(cpuCoreActions, "CPU Core Rows", () => RunRuntimeAction("CPU Core Rows", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCores, true)));
+			AddRuntimeButton(cpuCoreActions, "CPU Core % Bars", () => RunRuntimeAction("CPU Core % Bars", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, true)));
+			AddRuntimeButton(cpuCoreActions, "CPU Core Graphs", () => RunRuntimeAction("CPU Core Graphs", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, true)));
+			AddRuntimeButton(cpuCoreActions, "Hide CPU Cores", () => RunRuntimeAction("Hide CPU Cores", HideCpuCoreModules));
+
 			VisualElement cornerActions = AddActions(runtimeSection);
 			AddRuntimeButton(cornerActions, "Top Left", () => RunRuntimeAction("Top Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopLeft)));
 			AddRuntimeButton(cornerActions, "Top Right", () => RunRuntimeAction("Top Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight)));
@@ -580,6 +588,13 @@ namespace SGG.PerfMeter.Editor.UI
 		private Button AddOverlayFontButton(VisualElement parent, PerfMeterOverlayFontFamily fontFamily)
 		{
 			return AddRuntimeButton(parent, FormatOverlayFontLabel(fontFamily), () => RunRuntimeAction("Font " + fontFamily, () => RuntimePerformanceMeter.SetOverlayFontFamily(fontFamily)));
+		}
+
+		private static void HideCpuCoreModules()
+		{
+			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCores, false);
+			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, false);
+			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, false);
 		}
 
 		private void RunAction(string title, Func<PerfMeterSetupActionResult> action)
@@ -739,6 +754,11 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			_settingsOverlayMode?.SetValueWithoutNotify(PerfMeterSettingsStore.GetPresetMode(preset));
+			if (preset == PerfMeterOverlayPreset.AgentDebug)
+			{
+				_settingsOverlayLayout?.SetValueWithoutNotify(PerfMeterOverlayLayout.MetricBars);
+			}
+
 			SetModuleToggles(PerfMeterSettingsStore.GetPresetModules(preset));
 		}
 

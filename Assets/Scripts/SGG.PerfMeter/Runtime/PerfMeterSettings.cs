@@ -543,9 +543,9 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayPreset.Overdraw:
 					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings;
 				case PerfMeterOverlayPreset.AgentDebug:
-					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics | PerfMeterOverlayModule.CpuCores;
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics;
 				default:
-					return PerfMeterOverlayModule.All;
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics;
 			}
 		}
 
@@ -635,7 +635,7 @@ namespace SGG.PerfMeter
 			warning = string.Empty;
 			if (modules == null || modules.Length == 0)
 			{
-				return PerfMeterOverlayModule.All;
+				return PerfMeterOverlayModule.None;
 			}
 
 			PerfMeterOverlayModule result = PerfMeterOverlayModule.None;
@@ -651,7 +651,7 @@ namespace SGG.PerfMeter
 				}
 			}
 
-			return result == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : result;
+			return result;
 		}
 
 		private static string[] ModulesToNames(PerfMeterOverlayModule modules)
@@ -673,7 +673,9 @@ namespace SGG.PerfMeter
 				PerfMeterOverlayModule.Heatmap,
 				PerfMeterOverlayModule.Warnings,
 				PerfMeterOverlayModule.CustomMetrics,
-				PerfMeterOverlayModule.CpuCores
+				PerfMeterOverlayModule.CpuCores,
+				PerfMeterOverlayModule.CpuCoreBars,
+				PerfMeterOverlayModule.CpuCoreGraphs
 			};
 			int count = 0;
 			for (int i = 0; i < values.Length; i++)
