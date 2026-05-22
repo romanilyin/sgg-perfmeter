@@ -18,7 +18,7 @@ namespace SGG.PerfMeter.Editor.Setup
 		private const string PerfMeterRenderGraphFeatureFullName = "SGG.PerfMeter.PerfMeterRenderGraphFeature";
 		private const string PerfMeterRenderGraphFeatureAssemblyName = "SGG.PerfMeter.URP";
 
-		internal static string InitializationSnippet => BuildInitializationSnippet(true, PerfMeterOverlayCorner.TopRight, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60);
+		internal static string InitializationSnippet => BuildInitializationSnippet(true, PerfMeterOverlayCorner.TopRight, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60, PerfMeterOverlayTheme.ClassicDark, PerfMeterOverlayLayout.Classic, PerfMeterOverlayFontFamily.Manrope);
 
 		internal static bool IsOfficialUnityVersionSupported
 		{
@@ -36,7 +36,7 @@ namespace SGG.PerfMeter.Editor.Setup
 
 		internal static bool IsRendererFeatureSetupSupported => IsOfficialUnityVersionSupported && IsRenderGraphFeatureAvailable;
 
-		internal static string BuildInitializationSnippet(bool overlayVisible, PerfMeterOverlayCorner overlayCorner, PerfMeterOverlayMode overlayMode, PerfMeterTargetFps targetFps)
+		internal static string BuildInitializationSnippet(bool overlayVisible, PerfMeterOverlayCorner overlayCorner, PerfMeterOverlayMode overlayMode, PerfMeterTargetFps targetFps, PerfMeterOverlayTheme overlayTheme, PerfMeterOverlayLayout overlayLayout, PerfMeterOverlayFontFamily overlayFontFamily)
 		{
 			return @"using SGG.PerfMeter;
 using UnityEngine;
@@ -50,6 +50,9 @@ public static class PerfMeterBootstrap
         PerformanceMeter.SetTargetFps(PerfMeterTargetFps." + targetFps + @");
         PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner." + overlayCorner + @");
         PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode." + overlayMode + @");
+        PerformanceMeter.SetOverlayTheme(PerfMeterOverlayTheme." + overlayTheme + @");
+        PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout." + overlayLayout + @");
+        PerformanceMeter.SetOverlayFontFamily(PerfMeterOverlayFontFamily." + overlayFontFamily + @");
         PerformanceMeter.SetOverlayVisible(" + (overlayVisible ? "true" : "false") + @");
     }
 }
