@@ -5,7 +5,7 @@
 - Package identity is `com.sungeargames.perfmeter` / `SGG PerfMeter`; current private release candidate version is `2026.5.20-1`.
 - Runtime API, custom metric providers for project-specific counters, collection modes, device/environment snapshot with monitor names, camera snapshot for reproducible captures, safe Render Graph analytics snapshot, session recorder with bounded samples, warm-up seconds, reset/scene-scope summaries, worst-frame metadata, JSON/CSV export, rule/alert engine with MCP alert commands, JSON settings for zero-code setup, JSON tunables for overlay/rules/session/overdraw, Package Manager samples, the `Presets` tab with overlay presets/modules/tunables, metrics collection, UI Toolkit overlay with modes, module filtering, limited custom metric rows, allocation-conscious text field refresh, stacked CPU/GPU graphs, colored legend labels, and min/max text history, URP Render Graph marker feature, Editor setup/runtime tabs, opt-in numerical overdraw measurement, and visual overdraw heatmap are present.
 - EditMode API/classifier tests and PlayMode runtime smoke tests are present; classifier mixed-load edge cases, overdraw stale-readback safety, and heatmap toggles are covered. Android S23 Vulkan/GLES smoke validation has passed; broader player-build validation is still pending.
-- The package is prepared as a private/internal release candidate for Unity 6000.4 / URP 17 validation; public release remains deferred.
+- The package is prepared as a private/internal release candidate for Unity 6000.4+ / URP 17.4+ validation; public release remains deferred. Unity 2022.3-6000.3 imports are compile-safe only and are not officially supported.
 
 ## Public Runtime API
 
@@ -33,6 +33,7 @@
 - Open `SGG/Perfmeter/Setup` to inspect the project, list active/discovered URP renderer assets, install `PerfMeterRenderGraphFeature` into all or selected editable renderers, configure collection mode and the `Presets` tab, and copy bootstrap code if needed.
 - The `Presets` tab creates and edits `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; this is project-owned JSON, not a `ScriptableObject`. With `enabled=true` and `autoStart=true`, runtime auto-start applies collection mode, overlay settings, rule defaults, session defaults, and overdraw limits without handwritten bootstrap code. The active preset, module toggles, and tunables are saved into JSON and applied to the runtime overlay/alerts/session defaults.
 - For headless/agent setup, call `SGG.PerfMeter.Editor.Setup.PerfMeterSetupActions.RunRecommendedSetup()` from an Editor context.
+- The setup window/status report explicitly marks Unity versions below 6000.4 as import-safe only. Renderer feature installation is disabled unless the optional URP assembly is available on Unity 6000.4+ with URP 17.4+.
 - Package samples cover bootstrap/zero-code settings, runtime workflows, editor setup automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
 - Add `PerfMeterRenderGraphFeature` to the active URP renderer asset when Render Graph markers, numerical overdraw measurement, or visual overdraw heatmap are needed; the setup window does this automatically for discovered URP renderer assets.
 - Enable Player Settings -> Rendering -> Frame Timing Stats before relying on `FrameTimingManager` in builds.

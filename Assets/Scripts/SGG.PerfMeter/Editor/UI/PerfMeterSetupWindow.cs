@@ -549,7 +549,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_rendererStatus.text = status.RendererMessage;
 			BuildRendererList(status);
 			RefreshRendererButtons(status);
-			SetIndicator(_rendererIndicator, status.AllRenderersConfigured, status.Renderers.Count > 0 && !status.AllRenderersConfigured);
+			SetIndicator(_rendererIndicator, status.AllRenderersConfigured, !status.RendererFeatureSetupSupported || (status.Renderers.Count > 0 && !status.AllRenderersConfigured));
 			RefreshSettingsPanel(status);
 			RefreshInitializationCode();
 			RefreshRuntimePanel();
@@ -737,7 +737,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private VisualElement CreateRendererRow(PerfMeterSetupUtility.RendererSetupStatus renderer)
 		{
 			string assetPath = renderer.AssetPath ?? string.Empty;
-			bool canInstall = !renderer.HasPerfMeterFeature && renderer.IsEditable && !string.IsNullOrEmpty(assetPath);
+			bool canInstall = renderer.CanInstallFeature && !renderer.HasPerfMeterFeature && renderer.IsEditable && !string.IsNullOrEmpty(assetPath);
 
 			VisualElement row = new VisualElement();
 			row.AddToClassList("pm-renderer-row");
@@ -805,7 +805,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private void RefreshSelectedRendererButton()
 		{
-			_installSelectedRendererButton?.SetEnabled(_selectedRendererPaths.Count > 0);
+			_installSelectedRendererButton?.SetEnabled(_selectedRendererPaths.Count > 0 && PerfMeterSetupUtility.IsRendererFeatureSetupSupported);
 		}
 
 		private void SelectMissingRenderers()
@@ -815,7 +815,7 @@ namespace SGG.PerfMeter.Editor.UI
 			for (int i = 0; i < status.Renderers.Count; i++)
 			{
 				PerfMeterSetupUtility.RendererSetupStatus renderer = status.Renderers[i];
-				if (!renderer.HasPerfMeterFeature && renderer.IsEditable && !string.IsNullOrEmpty(renderer.AssetPath))
+				if (!renderer.HasPerfMeterFeature && renderer.CanInstallFeature && !string.IsNullOrEmpty(renderer.AssetPath))
 				{
 					_selectedRendererPaths.Add(renderer.AssetPath);
 				}
@@ -838,9 +838,14 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private static bool HasMissingRendererFeature(PerfMeterSetupUtility.PerfMeterSetupStatus status)
 		{
+			if (!status.RendererFeatureSetupSupported)
+			{
+				return false;
+			}
+
 			for (int i = 0; i < status.Renderers.Count; i++)
 			{
-				if (!status.Renderers[i].HasPerfMeterFeature && status.Renderers[i].IsEditable)
+				if (!status.Renderers[i].HasPerfMeterFeature && status.Renderers[i].CanInstallFeature)
 				{
 					return true;
 				}
@@ -859,6 +864,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (!renderer.IsEditable)
 			{
 				return renderer.HasMissingFeatureReference ? "Not editable + broken refs" : "Not editable";
+			}
+
+			if (!renderer.CanInstallFeature)
+			{
+				return renderer.HasMissingFeatureReference ? "Unsupported + broken refs" : "Unsupported";
 			}
 
 			return renderer.HasMissingFeatureReference ? "Missing + broken refs" : "Missing";
@@ -880,6 +890,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (renderer.HasMissingFeatureReference)
 			{
 				details.Add("Missing renderer feature reference present");
+			}
+
+			if (renderer.IsEditable && !renderer.CanInstallFeature)
+			{
+				details.Add("Setup requires Unity 6000.4+ with URP 17.4+");
 			}
 
 			return details.Count > 0 ? string.Join("; ", details) : string.Empty;

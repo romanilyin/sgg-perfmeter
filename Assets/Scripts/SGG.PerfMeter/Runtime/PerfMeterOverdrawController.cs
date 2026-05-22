@@ -215,6 +215,11 @@ namespace SGG.PerfMeter
 
 		private static string GetUnsupportedReason()
 		{
+			if (!PerfMeterRenderGraphAnalytics.IsRenderGraphFeatureAvailable())
+			{
+				return "Overdraw measurement is unsupported: PerfMeter Render Graph overdraw requires Unity 6000.4+ and URP 17.4+; older Unity/URP versions are import-safe only.";
+			}
+
 			if (!SystemInfo.supportsAsyncGPUReadback)
 			{
 				return "Overdraw measurement is unsupported: AsyncGPUReadback is not available on this platform.";

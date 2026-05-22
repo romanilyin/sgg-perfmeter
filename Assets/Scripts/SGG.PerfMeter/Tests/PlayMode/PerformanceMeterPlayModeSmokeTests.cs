@@ -39,8 +39,13 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			yield return null;
 
 			Assert.That(GameObject.Find(RuntimeObjectName), Is.Not.Null);
+		#if UNITY_6000_4_OR_NEWER
 			Assert.That(GameObject.Find(OverlayObjectName), Is.Not.Null);
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.True);
+		#else
+			Assert.That(GameObject.Find(OverlayObjectName), Is.Null);
+			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
+		#endif
 
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
@@ -49,7 +54,11 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(metrics.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(metrics.FrameSampleCount, Is.GreaterThanOrEqualTo(1));
+		#if UNITY_6000_4_OR_NEWER
 			Assert.That(status.OverlayVisible, Is.True);
+		#else
+			Assert.That(status.OverlayVisible, Is.False);
+		#endif
 			Assert.That(status.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
 			Assert.That(status.OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Memory));

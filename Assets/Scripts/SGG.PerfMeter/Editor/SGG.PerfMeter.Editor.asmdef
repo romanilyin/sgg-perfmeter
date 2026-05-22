@@ -1,11 +1,9 @@
 {
-    "name": "SGG.PerfMeter.Editor",
-    "rootNamespace": "SGG.PerfMeter.Editor",
-    "references": [
-        "SGG.PerfMeter",
-        "Unity.RenderPipelines.Core.Runtime",
-        "Unity.RenderPipelines.Universal.Runtime"
-    ],
+	"name": "SGG.PerfMeter.Editor",
+	"rootNamespace": "SGG.PerfMeter.Editor",
+	"references": [
+		"SGG.PerfMeter"
+	],
     "includePlatforms": [
         "Editor"
     ],

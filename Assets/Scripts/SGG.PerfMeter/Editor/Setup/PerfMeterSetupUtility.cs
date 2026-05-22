@@ -4,15 +4,37 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
-using RuntimeRenderGraphFeature = SGG.PerfMeter.PerfMeterRenderGraphFeature;
 
 namespace SGG.PerfMeter.Editor.Setup
 {
 	internal static class PerfMeterSetupUtility
 	{
+		internal const string UnsupportedCompatibilityMessage = "SGG PerfMeter officially supports Unity 6000.4+ with URP 17.4+. Older Unity/URP versions are import-safe only; runtime Render Graph features are unsupported and bug reports for older versions are not accepted.";
+
+		private const string DefaultPackageAssetPath = "Assets/Scripts/SGG.PerfMeter";
+		private const string UniversalRenderPipelineAssetFullName = "UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset";
+		private const string ScriptableRendererDataFullName = "UnityEngine.Rendering.Universal.ScriptableRendererData";
+		private const string PerfMeterRenderGraphFeatureFullName = "SGG.PerfMeter.PerfMeterRenderGraphFeature";
+		private const string PerfMeterRenderGraphFeatureAssemblyName = "SGG.PerfMeter.URP";
+
 		internal static string InitializationSnippet => BuildInitializationSnippet(true, PerfMeterOverlayCorner.TopRight, PerfMeterOverlayMode.Full, PerfMeterTargetFps.Fps60);
+
+		internal static bool IsOfficialUnityVersionSupported
+		{
+			get
+			{
+			#if UNITY_6000_4_OR_NEWER
+				return true;
+			#else
+				return false;
+			#endif
+			}
+		}
+
+		internal static bool IsRenderGraphFeatureAvailable => GetRenderGraphFeatureType() != null;
+
+		internal static bool IsRendererFeatureSetupSupported => IsOfficialUnityVersionSupported && IsRenderGraphFeatureAvailable;
 
 		internal static string BuildInitializationSnippet(bool overlayVisible, PerfMeterOverlayCorner overlayCorner, PerfMeterOverlayMode overlayMode, PerfMeterTargetFps targetFps)
 		{
@@ -34,8 +56,6 @@ public static class PerfMeterBootstrap
 ";
 		}
 
-		private const string DefaultPackageAssetPath = "Assets/Scripts/SGG.PerfMeter";
-
 		internal static string PackageAssetPath
 		{
 			get
@@ -55,6 +75,8 @@ public static class PerfMeterBootstrap
 			PerfMeterSetupStatus status = new PerfMeterSetupStatus
 			{
 				FrameTimingStatsEnabled = PlayerSettings.enableFrameTimingStats,
+				OfficialUnityVersionSupported = IsOfficialUnityVersionSupported,
+				RenderGraphFeatureAvailable = IsRenderGraphFeatureAvailable,
 				PackageAssetPath = PackageAssetPath,
 				Settings = GetSettingsStatus()
 			};
@@ -125,6 +147,11 @@ public static class PerfMeterBootstrap
 
 		internal static InstallResult InstallRendererFeatures()
 		{
+			if (!CanInstallRenderGraphFeature(out string unsupportedMessage))
+			{
+				return InstallResult.Fail(unsupportedMessage);
+			}
+
 			List<RendererSetupStatus> renderers = FindRendererStatuses();
 			if (renderers.Count == 0)
 			{
@@ -135,7 +162,7 @@ public static class PerfMeterBootstrap
 			for (int i = 0; i < renderers.Count; i++)
 			{
 				RendererSetupStatus rendererStatus = renderers[i];
-				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature || !rendererStatus.IsEditable)
+				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature || !rendererStatus.CanInstallFeature)
 				{
 					continue;
 				}
@@ -162,6 +189,11 @@ public static class PerfMeterBootstrap
 			if (rendererAssetPaths == null)
 			{
 				return InstallResult.Fail("No renderer assets selected.");
+			}
+
+			if (!CanInstallRenderGraphFeature(out string unsupportedMessage))
+			{
+				return InstallResult.Fail(unsupportedMessage);
 			}
 
 			HashSet<string> requestedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -195,7 +227,7 @@ public static class PerfMeterBootstrap
 				}
 
 				matchedCount++;
-				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature || !rendererStatus.IsEditable)
+				if (rendererStatus.RendererData == null || rendererStatus.HasPerfMeterFeature || !rendererStatus.CanInstallFeature)
 				{
 					continue;
 				}
@@ -232,12 +264,7 @@ public static class PerfMeterBootstrap
 			for (int i = 0; i < pipelineGuids.Length; i++)
 			{
 				string path = AssetDatabase.GUIDToAssetPath(pipelineGuids[i]);
-				UniversalRenderPipelineAsset pipelineAsset = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(path);
-				if (pipelineAsset == null)
-				{
-					continue;
-				}
-
+				UnityEngine.Object pipelineAsset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
 				AddRendererStatusesFromPipeline(pipelineAsset, result, seenRendererPaths, false);
 			}
 
@@ -245,7 +272,7 @@ public static class PerfMeterBootstrap
 			for (int i = 0; i < rendererGuids.Length; i++)
 			{
 				string path = AssetDatabase.GUIDToAssetPath(rendererGuids[i]);
-				ScriptableRendererData rendererData = AssetDatabase.LoadAssetAtPath<ScriptableRendererData>(path);
+				UnityEngine.Object rendererData = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
 				AddRendererStatus(rendererData, result, seenRendererPaths, false);
 			}
 
@@ -280,13 +307,13 @@ public static class PerfMeterBootstrap
 
 		private static void AddRendererStatusesFromActivePipelineAssets(List<RendererSetupStatus> result, HashSet<string> seenRendererPaths)
 		{
-			AddRendererStatusesFromPipeline(GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset, result, seenRendererPaths, true);
-			AddRendererStatusesFromPipeline(QualitySettings.renderPipeline as UniversalRenderPipelineAsset, result, seenRendererPaths, true);
+			AddRendererStatusesFromPipeline(GraphicsSettings.defaultRenderPipeline, result, seenRendererPaths, true);
+			AddRendererStatusesFromPipeline(QualitySettings.renderPipeline, result, seenRendererPaths, true);
 		}
 
-		private static void AddRendererStatusesFromPipeline(UniversalRenderPipelineAsset pipelineAsset, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths, bool isActive)
+		private static void AddRendererStatusesFromPipeline(UnityEngine.Object pipelineAsset, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths, bool isActive)
 		{
-			if (pipelineAsset == null)
+			if (pipelineAsset == null || !IsUniversalRenderPipelineAsset(pipelineAsset))
 			{
 				return;
 			}
@@ -297,18 +324,20 @@ public static class PerfMeterBootstrap
 			{
 				for (int i = 0; i < rendererDataList.arraySize; i++)
 				{
-					ScriptableRendererData rendererData = rendererDataList.GetArrayElementAtIndex(i).objectReferenceValue as ScriptableRendererData;
-					AddRendererStatus(rendererData, result, seenRendererPaths, isActive);
+					AddRendererStatus(rendererDataList.GetArrayElementAtIndex(i).objectReferenceValue, result, seenRendererPaths, isActive);
 				}
 			}
 
 			SerializedProperty rendererDataProperty = serializedPipeline.FindProperty("m_RendererData");
-			AddRendererStatus(rendererDataProperty?.objectReferenceValue as ScriptableRendererData, result, seenRendererPaths, isActive);
+			if (rendererDataProperty != null)
+			{
+				AddRendererStatus(rendererDataProperty.objectReferenceValue, result, seenRendererPaths, isActive);
+			}
 		}
 
-		private static void AddRendererStatus(ScriptableRendererData rendererData, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths, bool isActive)
+		private static void AddRendererStatus(UnityEngine.Object rendererData, List<RendererSetupStatus> result, HashSet<string> seenRendererPaths, bool isActive)
 		{
-			if (rendererData == null)
+			if (rendererData == null || !IsRendererDataAsset(rendererData))
 			{
 				return;
 			}
@@ -326,6 +355,8 @@ public static class PerfMeterBootstrap
 			}
 
 			bool isInPackage = IsPackageAssetPath(assetPath);
+			bool hasFeature = HasPerfMeterFeature(rendererData);
+			bool hasMissingReference = HasMissingFeatureReference(rendererData);
 
 			result.Add(new RendererSetupStatus
 			{
@@ -335,8 +366,9 @@ public static class PerfMeterBootstrap
 				IsActive = isActive,
 				IsInPackage = isInPackage,
 				IsEditable = !isInPackage,
-				HasPerfMeterFeature = HasPerfMeterFeature(rendererData),
-				HasMissingFeatureReference = HasMissingFeatureReference(rendererData)
+				CanInstallFeature = !isInPackage && IsRendererFeatureSetupSupported,
+				HasPerfMeterFeature = hasFeature,
+				HasMissingFeatureReference = hasMissingReference
 			});
 		}
 
@@ -362,7 +394,7 @@ public static class PerfMeterBootstrap
 			return !string.IsNullOrEmpty(assetPath) && assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase);
 		}
 
-		private static bool AddRendererFeature(ScriptableRendererData rendererData)
+		private static bool AddRendererFeature(UnityEngine.Object rendererData)
 		{
 			if (rendererData == null || HasPerfMeterFeature(rendererData))
 			{
@@ -375,6 +407,12 @@ public static class PerfMeterBootstrap
 				return false;
 			}
 
+			Type featureType = GetRenderGraphFeatureType();
+			if (featureType == null || !typeof(ScriptableObject).IsAssignableFrom(featureType))
+			{
+				throw new InvalidOperationException(GetRenderGraphFeatureUnavailableMessage());
+			}
+
 			SerializedObject serializedRenderer = new SerializedObject(rendererData);
 			SerializedProperty rendererFeatures = serializedRenderer.FindProperty("m_RendererFeatures");
 			SerializedProperty rendererFeatureMap = serializedRenderer.FindProperty("m_RendererFeatureMap");
@@ -384,8 +422,8 @@ public static class PerfMeterBootstrap
 			}
 
 			Undo.RegisterCompleteObjectUndo(rendererData, "Add PerfMeter Renderer Feature");
-			RuntimeRenderGraphFeature feature = ScriptableObject.CreateInstance<RuntimeRenderGraphFeature>();
-			feature.name = typeof(RuntimeRenderGraphFeature).Name;
+			ScriptableObject feature = ScriptableObject.CreateInstance(featureType);
+			feature.name = featureType.Name;
 			Undo.RegisterCreatedObjectUndo(feature, "Add PerfMeter Renderer Feature");
 
 			if (EditorUtility.IsPersistent(rendererData))
@@ -407,18 +445,23 @@ public static class PerfMeterBootstrap
 			}
 
 			serializedRenderer.ApplyModifiedProperties();
-			rendererData.SetDirty();
 			EditorUtility.SetDirty(rendererData);
 			EditorUtility.SetDirty(feature);
 			return true;
 		}
 
-		private static bool HasPerfMeterFeature(ScriptableRendererData rendererData)
+		private static bool HasPerfMeterFeature(UnityEngine.Object rendererData)
 		{
-			List<ScriptableRendererFeature> rendererFeatures = rendererData.rendererFeatures;
-			for (int i = 0; i < rendererFeatures.Count; i++)
+			SerializedProperty rendererFeatures = GetRendererFeaturesProperty(rendererData);
+			if (rendererFeatures == null)
 			{
-				if (rendererFeatures[i] is RuntimeRenderGraphFeature)
+				return false;
+			}
+
+			for (int i = 0; i < rendererFeatures.arraySize; i++)
+			{
+				UnityEngine.Object feature = rendererFeatures.GetArrayElementAtIndex(i).objectReferenceValue;
+				if (IsPerfMeterRenderGraphFeature(feature))
 				{
 					return true;
 				}
@@ -427,15 +470,96 @@ public static class PerfMeterBootstrap
 			return false;
 		}
 
-		private static bool HasMissingFeatureReference(ScriptableRendererData rendererData)
+		private static bool HasMissingFeatureReference(UnityEngine.Object rendererData)
 		{
-			List<ScriptableRendererFeature> rendererFeatures = rendererData.rendererFeatures;
-			for (int i = 0; i < rendererFeatures.Count; i++)
+			SerializedProperty rendererFeatures = GetRendererFeaturesProperty(rendererData);
+			if (rendererFeatures == null)
 			{
-				if (rendererFeatures[i] == null)
+				return false;
+			}
+
+			for (int i = 0; i < rendererFeatures.arraySize; i++)
+			{
+				if (rendererFeatures.GetArrayElementAtIndex(i).objectReferenceValue == null)
 				{
 					return true;
 				}
+			}
+
+			return false;
+		}
+
+		private static SerializedProperty GetRendererFeaturesProperty(UnityEngine.Object rendererData)
+		{
+			if (rendererData == null)
+			{
+				return null;
+			}
+
+			SerializedObject serializedRenderer = new SerializedObject(rendererData);
+			SerializedProperty rendererFeatures = serializedRenderer.FindProperty("m_RendererFeatures");
+			return rendererFeatures != null && rendererFeatures.isArray ? rendererFeatures : null;
+		}
+
+		private static bool CanInstallRenderGraphFeature(out string message)
+		{
+			if (!IsOfficialUnityVersionSupported)
+			{
+				message = UnsupportedCompatibilityMessage;
+				return false;
+			}
+
+			if (!IsRenderGraphFeatureAvailable)
+			{
+				message = GetRenderGraphFeatureUnavailableMessage();
+				return false;
+			}
+
+			message = string.Empty;
+			return true;
+		}
+
+		private static string GetRenderGraphFeatureUnavailableMessage()
+		{
+			return "PerfMeter Render Graph feature assembly is unavailable. Install/use URP 17.4+ in Unity 6000.4+; older Unity/URP versions are import-safe only and unsupported.";
+		}
+
+		private static Type GetRenderGraphFeatureType()
+		{
+			return Type.GetType(PerfMeterRenderGraphFeatureFullName + ", " + PerfMeterRenderGraphFeatureAssemblyName);
+		}
+
+		private static bool IsUniversalRenderPipelineAsset(UnityEngine.Object asset)
+		{
+			return HasTypeInHierarchy(asset, UniversalRenderPipelineAssetFullName);
+		}
+
+		private static bool IsRendererDataAsset(UnityEngine.Object asset)
+		{
+			return HasTypeInHierarchy(asset, ScriptableRendererDataFullName);
+		}
+
+		private static bool IsPerfMeterRenderGraphFeature(UnityEngine.Object feature)
+		{
+			return feature != null && feature.GetType().FullName == PerfMeterRenderGraphFeatureFullName;
+		}
+
+		private static bool HasTypeInHierarchy(UnityEngine.Object asset, string fullName)
+		{
+			if (asset == null)
+			{
+				return false;
+			}
+
+			Type type = asset.GetType();
+			while (type != null)
+			{
+				if (type.FullName == fullName)
+				{
+					return true;
+				}
+
+				type = type.BaseType;
 			}
 
 			return false;
@@ -444,9 +568,13 @@ public static class PerfMeterBootstrap
 		internal sealed class PerfMeterSetupStatus
 		{
 			internal bool FrameTimingStatsEnabled;
+			internal bool OfficialUnityVersionSupported;
+			internal bool RenderGraphFeatureAvailable;
 			internal string PackageAssetPath = string.Empty;
 			internal PerfMeterSettingsSetupStatus Settings = new PerfMeterSettingsSetupStatus();
 			internal readonly List<RendererSetupStatus> Renderers = new List<RendererSetupStatus>();
+
+			internal bool RendererFeatureSetupSupported => OfficialUnityVersionSupported && RenderGraphFeatureAvailable;
 
 			internal int InstalledRendererCount
 			{
@@ -465,12 +593,17 @@ public static class PerfMeterBootstrap
 				}
 			}
 
-			internal bool AllRenderersConfigured => Renderers.Count > 0 && InstalledRendererCount == Renderers.Count;
+			internal bool AllRenderersConfigured => RendererFeatureSetupSupported && Renderers.Count > 0 && InstalledRendererCount == Renderers.Count;
 
 			internal bool HasRendererWarnings
 			{
 				get
 				{
+					if (!RendererFeatureSetupSupported)
+					{
+						return true;
+					}
+
 					for (int i = 0; i < Renderers.Count; i++)
 					{
 						if (Renderers[i].HasMissingFeatureReference || !Renderers[i].IsEditable)
@@ -483,14 +616,36 @@ public static class PerfMeterBootstrap
 				}
 			}
 
-			internal string ProjectSettingsMessage => FrameTimingStatsEnabled
-				? "Frame Timing Stats is enabled."
-				: "Frame Timing Stats is disabled; GPU frame timing can be unavailable in builds.";
+			internal string CompatibilityMessage => OfficialUnityVersionSupported
+				? "Official target: Unity 6000.4+ with URP 17.4+."
+				: UnsupportedCompatibilityMessage;
+
+			internal string ProjectSettingsMessage
+			{
+				get
+				{
+					string frameTimingMessage = FrameTimingStatsEnabled
+						? "Frame Timing Stats is enabled."
+						: "Frame Timing Stats is disabled; GPU frame timing can be unavailable in builds.";
+
+					return CompatibilityMessage + " " + frameTimingMessage;
+				}
+			}
 
 			internal string RendererMessage
 			{
 				get
 				{
+					if (!OfficialUnityVersionSupported)
+					{
+						return UnsupportedCompatibilityMessage;
+					}
+
+					if (!RenderGraphFeatureAvailable)
+					{
+						return GetRenderGraphFeatureUnavailableMessage();
+					}
+
 					if (Renderers.Count == 0)
 					{
 						return "No URP renderer assets were found from project URP assets.";
@@ -526,12 +681,13 @@ public static class PerfMeterBootstrap
 
 		internal sealed class RendererSetupStatus
 		{
-			internal ScriptableRendererData RendererData;
+			internal UnityEngine.Object RendererData;
 			internal string Name = string.Empty;
 			internal string AssetPath = string.Empty;
 			internal bool IsActive;
 			internal bool IsInPackage;
 			internal bool IsEditable = true;
+			internal bool CanInstallFeature;
 			internal bool HasPerfMeterFeature;
 			internal bool HasMissingFeatureReference;
 		}

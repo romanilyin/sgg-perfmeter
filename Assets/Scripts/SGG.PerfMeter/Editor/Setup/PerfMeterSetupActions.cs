@@ -67,6 +67,9 @@ namespace SGG.PerfMeter.Editor.Setup
 			PerfMeterSetupUtility.PerfMeterSetupStatus status = PerfMeterSetupUtility.GetStatus();
 			StringBuilder builder = new StringBuilder(512);
 			builder.Append("SGG PerfMeter Setup Status\n");
+			builder.Append("Compatibility: ");
+			builder.Append(status.CompatibilityMessage);
+			builder.Append('\n');
 			builder.Append("Frame Timing Stats: ");
 			builder.Append(status.FrameTimingStatsEnabled ? "Enabled" : "Disabled");
 			builder.Append('\n');

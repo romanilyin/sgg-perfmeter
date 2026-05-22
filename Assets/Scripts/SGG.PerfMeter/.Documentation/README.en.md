@@ -2,11 +2,13 @@
 
 SGG PerfMeter exposes a public runtime API for safely reading profiler status and the latest performance metrics without scraping UI or Unity Console output.
 
-Positioning: SGG PerfMeter is a Unity 6000+ URP Render Graph diagnostics layer and agent-readable profiling API, not just an FPS counter. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, overdraw diagnostics, device/camera snapshots, session export, rule alerts, custom metrics, UI Toolkit overlay, and MCP commands for Play Mode, builds, smoke tests, and editor/agent automation.
+Positioning: SGG PerfMeter is a Unity 6000.4+ / URP 17.4+ Render Graph diagnostics layer and agent-readable profiling API, not just an FPS counter. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, overdraw diagnostics, device/camera snapshots, session export, rule alerts, custom metrics, UI Toolkit overlay, and MCP commands for Play Mode, builds, smoke tests, and editor/agent automation.
 
 It is intentionally complementary to Unity Profiler, RenderDoc, Profile Analyzer, and Frame Debugger. Use those tools for deep captures; use PerfMeter for lightweight runtime telemetry, structured snapshots, and repeatable automation.
 
 Current package version: `2026.5.20-1`. This is a private release candidate; the repository remains private until the public switch is explicitly approved.
+
+Compatibility note: the package imports on Unity `2022.3` through `6000.3` for compile-safety, but those versions are not officially supported. Runtime overlay, Render Graph features, overdraw passes, and support/bug reports require Unity `6000.4+` with URP `17.4+`.
 
 ## Agent API
 
@@ -30,7 +32,7 @@ Queries are safe before the runtime is started: normal reads return a snapshot w
 
 Open `SGG/Perfmeter/Setup` to prepare the project without editing URP renderer assets by hand.
 
-- `Project Settings` shows `Frame Timing Stats` status and can enable the Player Setting with `Enable Frame Timing`.
+- `Project Settings` shows `Frame Timing Stats` status and the official support target. Unity versions below `6000.4` are shown as import-safe only and unsupported.
 - `URP Renderer Features` lists active Graphics/Quality URP renderer assets first, then renderer assets discovered under `Assets`, with installed/missing/not-editable status; it can add `PerfMeterRenderGraphFeature` to all editable missing renderers or only selected renderers without creating duplicates.
 - The `Presets` tab creates and edits project-owned JSON settings at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`; runtime loads it with `Resources.Load<TextAsset>("SGG.PerfMeter/perfmeter-settings")`. `ScriptableObject` settings are intentionally not used. The tab also chooses the active overlay preset (`Minimal`, `Timing`, `Rendering`, `Memory`, `Overdraw`, `FullDiagnostics`, `AgentDebug`, `Custom`), saves selected overlay modules, and edits overlay/rule/session/overdraw tunables.
 - Zero-code setup is driven by this JSON: when `enabled` and `autoStart` are enabled, runtime auto-start applies collection mode, overlay visible/corner/mode/target FPS/preset/modules, tuning, alert defaults, session defaults, and overdraw limits without handwritten bootstrap code.

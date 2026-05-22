@@ -43,7 +43,7 @@ namespace SGG.PerfMeter
 		internal static PerfMeterRuntime Instance => _instance;
 		internal PerfMeterStatusSnapshot Status => _status;
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
-		internal bool IsOverlayVisible => _overlay != null && _overlay.IsVisible;
+		internal bool IsOverlayVisible => IsRuntimeOverlaySupported && _overlay != null && _overlay.IsVisible;
 		internal PerfMeterOverlayCorner OverlayCorner => _overlayCorner;
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
 		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
@@ -820,6 +820,13 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			if (!IsRuntimeOverlaySupported)
+			{
+				DestroyOverlay();
+				RefreshStatusOverlayState();
+				return;
+			}
+
 			if (_overlay == null)
 			{
 				GameObject overlayObject = new GameObject("SGG PerfMeter Overlay");
@@ -835,6 +842,25 @@ namespace SGG.PerfMeter
 			_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			_overlay.SetVisible(_overlayRequestedVisible);
 			RefreshStatusOverlayState();
+		}
+
+		private void DestroyOverlay()
+		{
+			if (_overlay == null)
+			{
+				return;
+			}
+
+			GameObject overlayObject = _overlay.gameObject;
+			_overlay = null;
+			if (Application.isPlaying)
+			{
+				Destroy(overlayObject);
+			}
+			else
+			{
+				DestroyImmediate(overlayObject);
+			}
 		}
 
 		private void RefreshStatusOverlayState()
@@ -899,6 +925,18 @@ namespace SGG.PerfMeter
 			}
 
 			return _overlayRequestedVisible ? PerfMeterCollectionMode.Overlay : PerfMeterCollectionMode.Background;
+		}
+
+		private static bool IsRuntimeOverlaySupported
+		{
+			get
+			{
+			#if UNITY_6000_4_OR_NEWER
+				return true;
+			#else
+				return false;
+			#endif
+			}
 		}
 
 		private static bool IsOverdrawDiagnosticState(PerfMeterOverdrawMeasurementState state)

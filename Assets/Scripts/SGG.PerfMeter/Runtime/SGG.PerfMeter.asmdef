@@ -1,10 +1,7 @@
 {
-    "name": "SGG.PerfMeter",
-    "rootNamespace": "SGG.PerfMeter",
-	"references": [
-		"Unity.RenderPipelines.Core.Runtime",
-		"Unity.RenderPipelines.Universal.Runtime"
-	],
+	"name": "SGG.PerfMeter",
+	"rootNamespace": "SGG.PerfMeter",
+	"references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

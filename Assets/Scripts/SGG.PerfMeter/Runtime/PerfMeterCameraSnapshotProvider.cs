@@ -1,12 +1,17 @@
 using System;
+using System.Reflection;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 
 namespace SGG.PerfMeter
 {
 	internal static class PerfMeterCameraSnapshotProvider
 	{
+		private const string UniversalAdditionalCameraDataFullName = "UnityEngine.Rendering.Universal.UniversalAdditionalCameraData";
+		private const string UniversalRuntimeAssemblyName = "Unity.RenderPipelines.Universal.Runtime";
+		private const BindingFlags InstanceFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 		private static Camera[] _cameraBuffer = new Camera[8];
+		private static Type _universalAdditionalCameraDataType;
+		private static bool _universalAdditionalCameraDataTypeResolved;
 
 		internal static PerfMeterCameraSnapshot CreateSnapshot(PerfMeterCameraSource source, string cameraNameFilter)
 		{
@@ -16,8 +21,8 @@ namespace SGG.PerfMeter
 				return CreateUnavailable(resolvedSource, gameCameraCount, string.IsNullOrEmpty(cameraNameFilter) ? "No enabled Game camera was found." : "No camera matched the requested name filter.");
 			}
 
-			UniversalAdditionalCameraData urpData = null;
-			bool hasUrpData = camera.TryGetComponent(out urpData);
+			Component urpData = GetUniversalAdditionalCameraData(camera);
+			bool hasUrpData = urpData != null;
 			return new PerfMeterCameraSnapshot(
 				true,
 				string.Empty,
@@ -54,17 +59,65 @@ namespace SGG.PerfMeter
 				camera.allowMSAA,
 				camera.actualRenderingPath,
 				hasUrpData,
-				hasUrpData ? urpData.renderType.ToString() : string.Empty,
-				hasUrpData && urpData.renderPostProcessing,
-				hasUrpData ? urpData.antialiasing.ToString() : string.Empty,
-				hasUrpData ? urpData.antialiasingQuality.ToString() : string.Empty,
-				hasUrpData && urpData.stopNaN,
-				hasUrpData && urpData.renderShadows,
-				hasUrpData && urpData.clearDepth,
-				hasUrpData ? urpData.requiresDepthOption.ToString() : string.Empty,
-				hasUrpData ? urpData.requiresColorOption.ToString() : string.Empty,
-				hasUrpData && urpData.requiresDepthTexture,
-				hasUrpData && urpData.requiresColorTexture);
+				hasUrpData ? GetMemberString(urpData, "renderType") : string.Empty,
+				hasUrpData && GetMemberBool(urpData, "renderPostProcessing"),
+				hasUrpData ? GetMemberString(urpData, "antialiasing") : string.Empty,
+				hasUrpData ? GetMemberString(urpData, "antialiasingQuality") : string.Empty,
+				hasUrpData && GetMemberBool(urpData, "stopNaN"),
+				hasUrpData && GetMemberBool(urpData, "renderShadows"),
+				hasUrpData && GetMemberBool(urpData, "clearDepth"),
+				hasUrpData ? GetMemberString(urpData, "requiresDepthOption") : string.Empty,
+				hasUrpData ? GetMemberString(urpData, "requiresColorOption") : string.Empty,
+				hasUrpData && GetMemberBool(urpData, "requiresDepthTexture"),
+				hasUrpData && GetMemberBool(urpData, "requiresColorTexture"));
+		}
+
+		private static Component GetUniversalAdditionalCameraData(Camera camera)
+		{
+			Type type = GetUniversalAdditionalCameraDataType();
+			return type != null ? camera.GetComponent(type) : null;
+		}
+
+		private static Type GetUniversalAdditionalCameraDataType()
+		{
+			if (_universalAdditionalCameraDataTypeResolved)
+			{
+				return _universalAdditionalCameraDataType;
+			}
+
+			_universalAdditionalCameraDataTypeResolved = true;
+			_universalAdditionalCameraDataType = Type.GetType(UniversalAdditionalCameraDataFullName + ", " + UniversalRuntimeAssemblyName);
+			return _universalAdditionalCameraDataType;
+		}
+
+		private static string GetMemberString(object instance, string memberName)
+		{
+			object value = GetMemberValue(instance, memberName);
+			return value != null ? value.ToString() : string.Empty;
+		}
+
+		private static bool GetMemberBool(object instance, string memberName)
+		{
+			object value = GetMemberValue(instance, memberName);
+			return value is bool boolValue && boolValue;
+		}
+
+		private static object GetMemberValue(object instance, string memberName)
+		{
+			if (instance == null)
+			{
+				return null;
+			}
+
+			Type type = instance.GetType();
+			PropertyInfo property = type.GetProperty(memberName, InstanceFlags);
+			if (property != null && property.GetIndexParameters().Length == 0)
+			{
+				return property.GetValue(instance);
+			}
+
+			FieldInfo field = type.GetField(memberName, InstanceFlags);
+			return field != null ? field.GetValue(instance) : null;
 		}
 
 		private static Camera ResolveCamera(PerfMeterCameraSource source, string cameraNameFilter, out int gameCameraCount, out PerfMeterCameraSource resolvedSource)
