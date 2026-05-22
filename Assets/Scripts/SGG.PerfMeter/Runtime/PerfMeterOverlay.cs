@@ -22,6 +22,9 @@ namespace SGG.PerfMeter
 		private const float ScaleLabelSeparation = 3f;
 		private const float GraphPlotWidth = 448f;
 		private const float LegendWidth = 242f;
+		private const float GraphLegendNameWidth = 50f;
+		private const float GraphLegendCurrentWidth = 46f;
+		private const float GraphLegendStatWidth = 38f;
 		private const float CpuGraphHeight = 86f;
 		private const float GpuGraphHeight = 52f;
 		private const float CpuCoreGraphCellHeight = 44f;
@@ -58,6 +61,7 @@ namespace SGG.PerfMeter
 		private const float MetricBarStatSeparatorWidth = 12f;
 		private const float CpuCoreBarColumnWidth = 34f;
 		private const float CpuCoreBarTrackHeight = 76f;
+		private const float CpuCoreBarsSidePanelWidth = 318f;
 
 		private static PerfMeterOverlayThemeTokens _activeTheme = PerfMeterOverlayThemeTokens.ClassicDark;
 		private static Color BackgroundColor => _activeTheme.Background;
@@ -100,18 +104,20 @@ namespace SGG.PerfMeter
 		private ThemeStyleSheet _themeStyleSheet;
 		private UnityEngine.TextCore.Text.FontAsset _fontAsset;
 		private VisualElement _container;
+		private VisualElement _contentRow;
 		private VisualElement _widgetBlock;
 		private VisualElement _graphBlock;
-		private VisualElement _cpuCoreBlock;
+		private VisualElement _cpuCoreBarsBlock;
+		private VisualElement _cpuCoreGraphsBlock;
 		private VisualElement _textBlock;
 		private VisualElement _textRows;
 		private VisualElement _barRows;
 		private VisualElement _graphs;
-		private Label _cpuFrameLegend;
-		private Label _cpuMainLegend;
-		private Label _cpuRenderLegend;
-		private Label _cpuOtherLegend;
-		private Label _gpuLegend;
+		private PerfMeterGraphLegendLine _cpuFrameLegend;
+		private PerfMeterGraphLegendLine _cpuMainLegend;
+		private PerfMeterGraphLegendLine _cpuRenderLegend;
+		private PerfMeterGraphLegendLine _cpuOtherLegend;
+		private PerfMeterGraphLegendLine _gpuLegend;
 		private PerfMeterMetricCard _fpsCard;
 		private PerfMeterMetricCard _cpuCard;
 		private PerfMeterMetricCard _gpuCard;
@@ -123,8 +129,8 @@ namespace SGG.PerfMeter
 		private PerfMeterGraphElement _gpuGraph;
 		private PerfMeterCpuCoreBarsElement _cpuCoreBars;
 		private PerfMeterCpuCoreGraphsElement _cpuCoreGraphs;
-		private Label _cpuCoreStatusLabel;
-		private string _cpuCoreStatusText = string.Empty;
+		private Label _cpuCoreBarsStatusLabel;
+		private Label _cpuCoreGraphsStatusLabel;
 		private float _nextRefreshTime;
 		private float _warningVisibleUntil;
 		private string _heldWarning = string.Empty;
@@ -394,9 +400,17 @@ namespace SGG.PerfMeter
 			BuildGraphRows();
 			_graphBlock.Add(_graphs);
 
-			_cpuCoreBlock = CreateBlock("sgg-perfmeter-cpu-core-block", GraphBlockWidth);
-			_cpuCoreBlock.style.marginBottom = BlockGap;
-			BuildCpuCoreRows();
+			_cpuCoreGraphsBlock = CreateBlock("sgg-perfmeter-cpu-core-graphs-block", GraphBlockWidth);
+			_cpuCoreGraphsBlock.style.marginBottom = BlockGap;
+			BuildCpuCoreGraphRows();
+
+			_contentRow = new VisualElement
+			{
+				name = "sgg-perfmeter-content-row",
+				pickingMode = PickingMode.Ignore
+			};
+			_contentRow.style.flexDirection = FlexDirection.Row;
+			_contentRow.style.alignItems = Align.FlexStart;
 
 			_textBlock = CreateBlock("sgg-perfmeter-text-block", TextBlockWidth);
 			_textRows = new VisualElement
@@ -423,10 +437,16 @@ namespace SGG.PerfMeter
 			_barRows.style.display = DisplayStyle.None;
 			_textBlock.Add(_barRows);
 
+			_cpuCoreBarsBlock = CreateBlock("sgg-perfmeter-cpu-core-bars-block", CpuCoreBarsSidePanelWidth);
+			BuildCpuCoreBarRows();
+
+			_contentRow.Add(_textBlock);
+			_contentRow.Add(_cpuCoreBarsBlock);
+
 			_container.Add(_widgetBlock);
 			_container.Add(_graphBlock);
-			_container.Add(_cpuCoreBlock);
-			_container.Add(_textBlock);
+			_container.Add(_cpuCoreGraphsBlock);
+			_container.Add(_contentRow);
 			root.Add(_container);
 			ApplyModeLayout();
 			ApplyCorner();
@@ -441,9 +461,11 @@ namespace SGG.PerfMeter
 
 			_document.rootVisualElement.Clear();
 			_container = null;
+			_contentRow = null;
 			_widgetBlock = null;
 			_graphBlock = null;
-			_cpuCoreBlock = null;
+			_cpuCoreBarsBlock = null;
+			_cpuCoreGraphsBlock = null;
 			_textBlock = null;
 			_textRows = null;
 			_barRows = null;
@@ -459,8 +481,8 @@ namespace SGG.PerfMeter
 			_gpuGraph = null;
 			_cpuCoreBars = null;
 			_cpuCoreGraphs = null;
-			_cpuCoreStatusLabel = null;
-			_cpuCoreStatusText = string.Empty;
+			_cpuCoreBarsStatusLabel = null;
+			_cpuCoreGraphsStatusLabel = null;
 			_cpuFrameLegend = null;
 			_cpuMainLegend = null;
 			_cpuRenderLegend = null;
@@ -557,14 +579,14 @@ namespace SGG.PerfMeter
 			VisualElement cpuScale = CreateScaleLabelColumn(CpuGraphHeight, out cpuMaxScaleLabel, out cpuBudgetLabel);
 			_cpuGraph = new PerfMeterGraphElement("sgg-perfmeter-cpu-graph", PerfMeterGraphMode.StackedCpu, CpuGraphHeight, cpuMaxScaleLabel, cpuBudgetLabel, _graphHistoryLength);
 			VisualElement cpuLegend = CreateLegendColumn(CpuGraphHeight);
-			_cpuFrameLegend = CreateLegendLine("frame --", FrameColor);
-			_cpuOtherLegend = CreateLegendLine("other --", OtherCpuColor);
-			_cpuMainLegend = CreateLegendLine("main --", MainColor);
-			_cpuRenderLegend = CreateLegendLine("render --", RenderColor);
-			cpuLegend.Add(_cpuFrameLegend);
-			cpuLegend.Add(_cpuOtherLegend);
-			cpuLegend.Add(_cpuMainLegend);
-			cpuLegend.Add(_cpuRenderLegend);
+			_cpuFrameLegend = CreateLegendLine("frame", FrameColor);
+			_cpuOtherLegend = CreateLegendLine("other", OtherCpuColor);
+			_cpuMainLegend = CreateLegendLine("main", MainColor);
+			_cpuRenderLegend = CreateLegendLine("render", RenderColor);
+			cpuLegend.Add(_cpuFrameLegend.Root);
+			cpuLegend.Add(_cpuOtherLegend.Root);
+			cpuLegend.Add(_cpuMainLegend.Root);
+			cpuLegend.Add(_cpuRenderLegend.Root);
 			cpuRow.Add(cpuScale);
 			cpuRow.Add(_cpuGraph);
 			cpuRow.Add(cpuLegend);
@@ -579,15 +601,33 @@ namespace SGG.PerfMeter
 			VisualElement gpuScale = CreateScaleLabelColumn(GpuGraphHeight, out gpuMaxScaleLabel, out gpuBudgetLabel);
 			_gpuGraph = new PerfMeterGraphElement("sgg-perfmeter-gpu-graph", PerfMeterGraphMode.Line, GpuGraphHeight, gpuMaxScaleLabel, gpuBudgetLabel, _graphHistoryLength);
 			VisualElement gpuLegend = CreateLegendColumn(GpuGraphHeight);
-			_gpuLegend = CreateLegendLine("gpu --", GpuColor);
-			gpuLegend.Add(_gpuLegend);
+			_gpuLegend = CreateLegendLine("gpu", GpuColor);
+			gpuLegend.Add(_gpuLegend.Root);
 			gpuRow.Add(gpuScale);
 			gpuRow.Add(_gpuGraph);
 			gpuRow.Add(gpuLegend);
 			_graphs.Add(gpuRow);
 		}
 
-		private void BuildCpuCoreRows()
+		private void BuildCpuCoreBarRows()
+		{
+			_cpuCoreBarsBlock.Add(CreateCpuCoreHeader("CPU core % bars", out _cpuCoreBarsStatusLabel));
+
+			_cpuCoreBars = new PerfMeterCpuCoreBarsElement(MaxCpuCorePanelCount, GetRuntimeFont(PerfMeterOverlayFontRole.Regular), GetRuntimeFont(PerfMeterOverlayFontRole.Medium));
+			_cpuCoreBars.style.marginTop = 4f;
+			_cpuCoreBarsBlock.Add(_cpuCoreBars);
+		}
+
+		private void BuildCpuCoreGraphRows()
+		{
+			_cpuCoreGraphsBlock.Add(CreateCpuCoreHeader("CPU usage per core", out _cpuCoreGraphsStatusLabel));
+
+			_cpuCoreGraphs = new PerfMeterCpuCoreGraphsElement(MaxCpuCorePanelCount, _graphHistoryLength);
+			_cpuCoreGraphs.style.marginTop = 6f;
+			_cpuCoreGraphsBlock.Add(_cpuCoreGraphs);
+		}
+
+		private static VisualElement CreateCpuCoreHeader(string titleText, out Label statusLabel)
 		{
 			VisualElement header = new VisualElement
 			{
@@ -597,22 +637,14 @@ namespace SGG.PerfMeter
 			header.style.alignItems = Align.Center;
 			header.style.height = 18f;
 
-			Label title = CreateSmallLabel("CPU usage per core", TextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
+			Label title = CreateSmallLabel(titleText, TextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
 			title.style.marginRight = 8f;
 			header.Add(title);
 
-			_cpuCoreStatusLabel = CreateSmallLabel("--", MutedTextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Regular);
-			_cpuCoreStatusLabel.style.flexGrow = 1f;
-			header.Add(_cpuCoreStatusLabel);
-			_cpuCoreBlock.Add(header);
-
-			_cpuCoreBars = new PerfMeterCpuCoreBarsElement(MaxCpuCorePanelCount, GetRuntimeFont(PerfMeterOverlayFontRole.Regular), GetRuntimeFont(PerfMeterOverlayFontRole.Medium));
-			_cpuCoreBars.style.marginTop = 4f;
-			_cpuCoreBlock.Add(_cpuCoreBars);
-
-			_cpuCoreGraphs = new PerfMeterCpuCoreGraphsElement(MaxCpuCorePanelCount, _graphHistoryLength);
-			_cpuCoreGraphs.style.marginTop = 6f;
-			_cpuCoreBlock.Add(_cpuCoreGraphs);
+			statusLabel = CreateSmallLabel("--", MutedTextColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Regular);
+			statusLabel.style.flexGrow = 1f;
+			header.Add(statusLabel);
+			return header;
 		}
 
 		private static VisualElement CreateHeaderRow(string title, params LegendToken[] tokens)
@@ -665,7 +697,6 @@ namespace SGG.PerfMeter
 
 			maxScaleLabel = CreateScaleLabel(MutedTextColor);
 			budgetLabel = CreateScaleLabel(WithAlpha(BudgetColor, 0.95f));
-			column.Add(maxScaleLabel);
 			column.Add(budgetLabel);
 			return column;
 		}
@@ -702,16 +733,9 @@ namespace SGG.PerfMeter
 			return legend;
 		}
 
-		private static Label CreateLegendLine(string text, Color color)
+		private static PerfMeterGraphLegendLine CreateLegendLine(string name, Color color)
 		{
-			Label label = CreateSmallLabel(text, GetReadableTextColor(color), TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
-			label.style.height = 17f;
-			label.style.fontSize = 9.5f;
-			label.style.marginTop = 2f;
-			label.style.paddingLeft = 4f;
-			label.style.paddingRight = 4f;
-			label.style.backgroundColor = color;
-			return label;
+			return new PerfMeterGraphLegendLine(name, color, GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.Regular));
 		}
 
 		private static Label CreateSmallLabel(string text, Color color, TextAnchor align, PerfMeterOverlayFontRole role = PerfMeterOverlayFontRole.Regular)
@@ -779,7 +803,8 @@ namespace SGG.PerfMeter
 
 			bool showWidgets = ShouldShowWidgetBlock();
 			bool showGraphs = (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
-			bool showCpuCoreBlock = ShouldShowCpuCoreBlock();
+			bool showCpuCoreBarsBlock = ShouldShowCpuCoreBarsBlock();
+			bool showCpuCoreGraphsBlock = ShouldShowCpuCoreGraphsBlock();
 			if (_widgetBlock != null)
 			{
 				_widgetBlock.style.display = showWidgets ? DisplayStyle.Flex : DisplayStyle.None;
@@ -788,15 +813,25 @@ namespace SGG.PerfMeter
 			}
 
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
-			if (_cpuCoreBlock != null)
+			if (_cpuCoreGraphsBlock != null)
 			{
-				_cpuCoreBlock.style.display = showCpuCoreBlock ? DisplayStyle.Flex : DisplayStyle.None;
-				_cpuCoreBlock.style.height = showCpuCoreBlock ? StyleKeyword.Auto : 0f;
+				_cpuCoreGraphsBlock.style.display = showCpuCoreGraphsBlock ? DisplayStyle.Flex : DisplayStyle.None;
+				_cpuCoreGraphsBlock.style.height = showCpuCoreGraphsBlock ? StyleKeyword.Auto : 0f;
+				_cpuCoreGraphsBlock.style.width = GraphBlockWidth;
+			}
+
+			if (_cpuCoreBarsBlock != null)
+			{
+				_cpuCoreBarsBlock.style.display = showCpuCoreBarsBlock ? DisplayStyle.Flex : DisplayStyle.None;
+				_cpuCoreBarsBlock.style.height = showCpuCoreBarsBlock ? StyleKeyword.Auto : 0f;
+				_cpuCoreBarsBlock.style.width = CpuCoreBarsSidePanelWidth;
 			}
 
 			float textWidth = GetTextBlockWidth();
-			float containerWidth = showGraphs || showWidgets || showCpuCoreBlock ? GraphBlockWidth : textWidth;
+			float contentRowWidth = textWidth + (showCpuCoreBarsBlock ? BlockGap + CpuCoreBarsSidePanelWidth : 0f);
+			float containerWidth = Mathf.Max(showGraphs || showWidgets || showCpuCoreGraphsBlock ? GraphBlockWidth : 0f, contentRowWidth);
 			_container.style.width = containerWidth;
+			_contentRow.style.width = contentRowWidth;
 			_textBlock.style.width = textWidth;
 			_textBlock.style.height = GetTextBlockHeight();
 			if (showGraphs)
@@ -826,9 +861,14 @@ namespace SGG.PerfMeter
 			return _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
 		}
 
-		private bool ShouldShowCpuCoreBlock()
+		private bool ShouldShowCpuCoreBarsBlock()
 		{
-			return HasModule(PerfMeterOverlayModule.CpuCoreBars) || HasModule(PerfMeterOverlayModule.CpuCoreGraphs);
+			return HasModule(PerfMeterOverlayModule.CpuCoreBars);
+		}
+
+		private bool ShouldShowCpuCoreGraphsBlock()
+		{
+			return HasModule(PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
 		private bool ShouldUseMetricBarTextBlock()
@@ -895,9 +935,14 @@ namespace SGG.PerfMeter
 				_textBlock.style.backgroundColor = background;
 			}
 
-			if (_cpuCoreBlock != null)
+			if (_cpuCoreBarsBlock != null)
 			{
-				_cpuCoreBlock.style.backgroundColor = background;
+				_cpuCoreBarsBlock.style.backgroundColor = background;
+			}
+
+			if (_cpuCoreGraphsBlock != null)
+			{
+				_cpuCoreGraphsBlock.style.backgroundColor = background;
 			}
 
 			SetTextFieldFontSize(GetTextFontSize());
@@ -999,16 +1044,29 @@ namespace SGG.PerfMeter
 
 		private void ApplyBlockAlignment()
 		{
-			if (_textBlock == null || _graphBlock == null || _widgetBlock == null)
+			if (_textBlock == null || _graphBlock == null || _widgetBlock == null || _contentRow == null)
 			{
 				return;
 			}
 
 			bool rightAligned = _corner == PerfMeterOverlayCorner.TopRight || _corner == PerfMeterOverlayCorner.BottomRight;
 			Align align = rightAligned ? Align.FlexEnd : Align.FlexStart;
-			_textBlock.style.alignSelf = align;
-			_widgetBlock.style.alignSelf = Align.FlexStart;
-			_graphBlock.style.alignSelf = Align.FlexStart;
+			_contentRow.style.alignSelf = align;
+			_contentRow.style.flexDirection = rightAligned ? FlexDirection.RowReverse : FlexDirection.Row;
+			_textBlock.style.alignSelf = Align.FlexStart;
+			_widgetBlock.style.alignSelf = align;
+			_graphBlock.style.alignSelf = align;
+			if (_cpuCoreGraphsBlock != null)
+			{
+				_cpuCoreGraphsBlock.style.alignSelf = align;
+			}
+
+			if (_cpuCoreBarsBlock != null)
+			{
+				_cpuCoreBarsBlock.style.alignSelf = Align.FlexStart;
+				_cpuCoreBarsBlock.style.marginLeft = rightAligned ? 0f : BlockGap;
+				_cpuCoreBarsBlock.style.marginRight = rightAligned ? BlockGap : 0f;
+			}
 		}
 
 		private void ApplyCorner()
@@ -1168,20 +1226,24 @@ namespace SGG.PerfMeter
 
 			double cpuLegendReferenceMs = Max(_cpuGraph.ScaleMs, frameStats.Max, mainStats.Max, renderStats.Max, otherStats.Max);
 			double gpuLegendReferenceMs = Max(_gpuGraph.ScaleMs, gpuStats.Max);
-			SetLegendLine(_cpuFrameLegend, FormatLegend("frame", frameStats, cpuLegendReferenceMs), FrameColor);
-			SetLegendLine(_cpuMainLegend, FormatLegend("main", mainStats, cpuLegendReferenceMs), MainColor);
-			SetLegendLine(_cpuRenderLegend, FormatLegend("render", renderStats, cpuLegendReferenceMs), RenderColor);
-			SetLegendLine(_cpuOtherLegend, FormatLegend("other", otherStats, cpuLegendReferenceMs), OtherCpuColor);
+			SetLegendLine(_cpuFrameLegend, frameStats, cpuLegendReferenceMs, FrameColor);
+			SetLegendLine(_cpuMainLegend, mainStats, cpuLegendReferenceMs, MainColor);
+			SetLegendLine(_cpuRenderLegend, renderStats, cpuLegendReferenceMs, RenderColor);
+			SetLegendLine(_cpuOtherLegend, otherStats, cpuLegendReferenceMs, OtherCpuColor);
 
 			SetLegendLine(
 				_gpuLegend,
-				FormatLegend("gpu", gpuStats, gpuLegendReferenceMs, metrics.GpuFrameTimeAvailable),
-				metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor);
+				gpuStats,
+				gpuLegendReferenceMs,
+				metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor,
+				metrics.GpuFrameTimeAvailable);
 		}
 
 		private void UpdateCpuCorePanel()
 		{
-			if (_cpuCoreBlock == null || !ShouldShowCpuCoreBlock())
+			bool showBars = HasModule(PerfMeterOverlayModule.CpuCoreBars);
+			bool showGraphs = HasModule(PerfMeterOverlayModule.CpuCoreGraphs);
+			if (!showBars && !showGraphs)
 			{
 				return;
 			}
@@ -1193,7 +1255,6 @@ namespace SGG.PerfMeter
 
 			if (_cpuCoreBars != null)
 			{
-				bool showBars = HasModule(PerfMeterOverlayModule.CpuCoreBars);
 				_cpuCoreBars.style.display = showBars ? DisplayStyle.Flex : DisplayStyle.None;
 				if (showBars)
 				{
@@ -1203,7 +1264,6 @@ namespace SGG.PerfMeter
 
 			if (_cpuCoreGraphs != null)
 			{
-				bool showGraphs = HasModule(PerfMeterOverlayModule.CpuCoreGraphs);
 				_cpuCoreGraphs.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
 				if (showGraphs)
 				{
@@ -1214,11 +1274,8 @@ namespace SGG.PerfMeter
 
 		private void SetCpuCorePanelStatus(PerfMeterCpuCoreLoadAvailability availability, int count)
 		{
-			if (_cpuCoreStatusLabel == null)
-			{
-				return;
-			}
-
+			string statusText;
+			Color statusColor;
 			if (availability == PerfMeterCpuCoreLoadAvailability.Available && count > 0)
 			{
 				_valueBuilder.Length = 0;
@@ -1230,25 +1287,32 @@ namespace SGG.PerfMeter
 				}
 
 				_valueBuilder.Append(" logical cores");
-				string statusText = _valueBuilder.ToString();
-				if (_cpuCoreStatusText != statusText)
-				{
-					_cpuCoreStatusText = statusText;
-					_cpuCoreStatusLabel.text = statusText;
-				}
+				statusText = _valueBuilder.ToString();
+				statusColor = MutedTextColor;
+			}
+			else
+			{
+				statusText = GetCpuCoreLoadMessage(availability);
+				statusColor = availability == PerfMeterCpuCoreLoadAvailability.WarmingUp ? AccentColor : UnavailableColor;
+			}
 
-				_cpuCoreStatusLabel.style.color = MutedTextColor;
+			SetCpuCoreStatusLabel(_cpuCoreBarsStatusLabel, statusText, statusColor);
+			SetCpuCoreStatusLabel(_cpuCoreGraphsStatusLabel, statusText, statusColor);
+		}
+
+		private static void SetCpuCoreStatusLabel(Label label, string text, Color color)
+		{
+			if (label == null)
+			{
 				return;
 			}
 
-			string message = GetCpuCoreLoadMessage(availability);
-			if (_cpuCoreStatusText != message)
+			if (!string.Equals(label.text, text, StringComparison.Ordinal))
 			{
-				_cpuCoreStatusText = message;
-				_cpuCoreStatusLabel.text = message;
+				label.text = text;
 			}
 
-			_cpuCoreStatusLabel.style.color = availability == PerfMeterCpuCoreLoadAvailability.WarmingUp ? AccentColor : UnavailableColor;
+			label.style.color = color;
 		}
 
 		private void UpdateMetricWidgets(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
@@ -2541,11 +2605,20 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private static void SetLegendLine(Label label, string text, Color background)
+		private static void SetLegendLine(PerfMeterGraphLegendLine line, PerfMeterSeriesStats stats, double scaleMs, Color accent, bool currentAvailable = true)
 		{
-			label.text = text;
-			label.style.backgroundColor = background;
-			label.style.color = GetReadableTextColor(background);
+			if (line == null)
+			{
+				return;
+			}
+
+			bool hasStats = stats.Count > 0;
+			line.SetValue(
+				currentAvailable && hasStats ? FormatMsFixedValue(stats.Current, scaleMs) : FormatMsPlaceholder(scaleMs),
+				hasStats ? FormatMsFixedValue(stats.Average, scaleMs) : FormatMsPlaceholder(scaleMs),
+				hasStats ? FormatMsFixedValue(stats.OnePercentHigh, scaleMs) : FormatMsPlaceholder(scaleMs),
+				hasStats ? FormatMsFixedValue(stats.PointOnePercentHigh, scaleMs) : FormatMsPlaceholder(scaleMs),
+				accent);
 		}
 
 		private double GetDisplayGpuFrameTime(PerfMeterMetricsSnapshot metrics)
@@ -2566,24 +2639,6 @@ namespace SGG.PerfMeter
 		private bool HasModule(PerfMeterOverlayModule module)
 		{
 			return (_modules & module) != 0;
-		}
-
-		private static string FormatLegend(string name, PerfMeterSeriesStats stats, double scaleMs, bool currentAvailable = true)
-		{
-			if (stats.Count <= 0)
-			{
-				return name + " " + FormatLegendValues(default, scaleMs, false);
-			}
-
-			return name + " " + FormatLegendValues(stats, scaleMs, currentAvailable);
-		}
-
-		private static string FormatLegendValues(PerfMeterSeriesStats stats, double scaleMs, bool currentAvailable)
-		{
-			return (currentAvailable ? FormatMsFixedValue(stats.Current, scaleMs) : FormatMsPlaceholder(scaleMs))
-				+ " avg " + FormatMsFixedValue(stats.Average, scaleMs)
-				+ " 1% " + FormatMsFixedValue(stats.OnePercentHigh, scaleMs)
-				+ " .1% " + FormatMsFixedValue(stats.PointOnePercentHigh, scaleMs);
 		}
 
 		private static string FormatMsWithRange(double value, PerfMeterHistorySeries series, bool available = true, bool currentAvailable = true)
@@ -3148,7 +3203,7 @@ namespace SGG.PerfMeter
 			private static Label CreateStatSeparatorLabel(Font font)
 			{
 				Label label = CreateLabel(MutedTextColor, TextAnchor.MiddleCenter, font);
-				label.text = "|";
+				label.text = "   ";
 				label.style.width = MetricBarStatSeparatorWidth;
 				label.style.flexShrink = 0f;
 				return label;
@@ -3522,6 +3577,106 @@ namespace SGG.PerfMeter
 				int columns = GetColumnCount(Mathf.Max(1, count));
 				int rows = Mathf.Max(1, Mathf.CeilToInt(count / (float)columns));
 				return rows * CpuCoreGraphCellHeight + Mathf.Max(0, rows - 1) * CpuCoreGraphGap;
+			}
+		}
+
+		private sealed class PerfMeterGraphLegendLine
+		{
+			private readonly Label _nameLabel;
+			private readonly Label _currentLabel;
+			private readonly Label _averageLabel;
+			private readonly Label _onePercentLabel;
+			private readonly Label _pointOnePercentLabel;
+			private Color _accent;
+
+			internal PerfMeterGraphLegendLine(string name, Color accent, Font nameFont, Font valueFont)
+			{
+				Root = new VisualElement
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				Root.style.flexDirection = FlexDirection.Row;
+				Root.style.height = 17f;
+				Root.style.marginTop = 2f;
+				Root.style.width = Length.Percent(100f);
+
+				_nameLabel = CreateLegendLabel(name, GetReadableTextColor(accent), TextAnchor.MiddleLeft, nameFont, GraphLegendNameWidth);
+				_nameLabel.style.paddingLeft = 4f;
+				_nameLabel.style.paddingRight = 4f;
+				Root.Add(_nameLabel);
+
+				VisualElement values = new VisualElement
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				values.style.flexGrow = 1f;
+				values.style.height = Length.Percent(100f);
+				values.style.flexDirection = FlexDirection.Row;
+				values.style.alignItems = Align.Center;
+				values.style.paddingLeft = 5f;
+				values.style.paddingRight = 5f;
+				values.style.backgroundColor = WithAlpha(GraphBackgroundColor, 0.82f);
+
+				_currentLabel = CreateLegendLabel("--", accent, TextAnchor.MiddleLeft, nameFont, GraphLegendCurrentWidth);
+				_averageLabel = CreateLegendValueLabel(valueFont);
+				_onePercentLabel = CreateLegendValueLabel(valueFont);
+				_pointOnePercentLabel = CreateLegendValueLabel(valueFont);
+				values.Add(_currentLabel);
+				values.Add(_averageLabel);
+				values.Add(_onePercentLabel);
+				values.Add(_pointOnePercentLabel);
+				Root.Add(values);
+				SetValue("--", "--", "--", "--", accent);
+			}
+
+			internal VisualElement Root { get; }
+
+			internal void SetValue(string current, string average, string onePercent, string pointOnePercent, Color accent)
+			{
+				SetText(_currentLabel, current);
+				SetText(_averageLabel, average);
+				SetText(_onePercentLabel, onePercent);
+				SetText(_pointOnePercentLabel, pointOnePercent);
+				if (_accent != accent)
+				{
+					_accent = accent;
+					_nameLabel.style.backgroundColor = accent;
+					_nameLabel.style.color = GetReadableTextColor(accent);
+					_currentLabel.style.color = accent;
+				}
+			}
+
+			private static Label CreateLegendValueLabel(Font font)
+			{
+				Label label = CreateLegendLabel("--", MutedTextColor, TextAnchor.MiddleLeft, font, GraphLegendStatWidth);
+				label.style.marginLeft = 5f;
+				return label;
+			}
+
+			private static Label CreateLegendLabel(string text, Color color, TextAnchor align, Font font, float width)
+			{
+				Label label = new Label(text)
+				{
+					pickingMode = PickingMode.Ignore
+				};
+				label.style.width = width;
+				label.style.height = Length.Percent(100f);
+				label.style.color = color;
+				label.style.fontSize = 9.5f;
+				label.style.unityFont = font;
+				label.style.unityTextAlign = align;
+				label.style.whiteSpace = WhiteSpace.NoWrap;
+				label.style.overflow = Overflow.Hidden;
+				return label;
+			}
+
+			private static void SetText(Label label, string value)
+			{
+				string text = value ?? string.Empty;
+				if (!string.Equals(label.text, text, StringComparison.Ordinal))
+				{
+					label.text = text;
+				}
 			}
 		}
 
