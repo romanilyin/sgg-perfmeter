@@ -13,6 +13,7 @@ namespace SGG.PerfMeter
 		private float _editorWarningCooldownSeconds = 8f;
 		private float _structuredLogCooldownSeconds = 2f;
 		private float _callbackCooldownSeconds = 0.5f;
+		private bool _editorWarningsEnabled = true;
 		private int _firedAlertCount;
 
 		internal PerfMeterAlertEngine()
@@ -35,6 +36,7 @@ namespace SGG.PerfMeter
 			_editorWarningCooldownSeconds = settings.EditorWarningCooldownSeconds;
 			_structuredLogCooldownSeconds = settings.StructuredLogCooldownSeconds;
 			_callbackCooldownSeconds = settings.CallbackCooldownSeconds;
+			_editorWarningsEnabled = settings.EditorWarningsEnabled;
 		}
 
 		internal void Evaluate(PerfMeterMetricsSnapshot metrics, double timeSeconds)
@@ -131,7 +133,7 @@ namespace SGG.PerfMeter
 			}
 
 #if UNITY_EDITOR
-			if ((rule.Actions & PerfMeterAlertAction.EditorWarning) != 0 && CanFire(timeSeconds, state.EditorWarningFired, state.LastEditorWarningTime, cooldown > 0f ? cooldown : _editorWarningCooldownSeconds))
+			if (_editorWarningsEnabled && (rule.Actions & PerfMeterAlertAction.EditorWarning) != 0 && CanFire(timeSeconds, state.EditorWarningFired, state.LastEditorWarningTime, cooldown > 0f ? cooldown : _editorWarningCooldownSeconds))
 			{
 				Debug.LogWarning("[SGG PerfMeter Alert] " + alert.Message);
 				state.LastEditorWarningTime = timeSeconds;

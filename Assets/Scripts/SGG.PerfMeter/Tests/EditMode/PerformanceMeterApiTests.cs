@@ -630,6 +630,44 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void AlertEngineSuppressesEditorWarningsWhenDisabled()
+		{
+			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]
+			{
+				new PerfMeterRule("editor.disabled", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 10d, 1, 0f, PerfMeterAlertAction.EditorWarning)
+			});
+			engine.ApplySettings(new PerfMeterSettingsSnapshot(
+				true,
+				true,
+				PerfMeterCollectionMode.Overlay,
+				true,
+				PerfMeterOverlayCorner.TopRight,
+				PerfMeterOverlayMode.Full,
+				PerfMeterTargetFps.Fps60,
+				PerfMeterSettingsStore.DefaultPresetId,
+				PerfMeterOverlayModule.All,
+				0,
+				0f,
+				0.25f,
+				4096,
+				false,
+				0,
+				0f,
+				5f,
+				0f,
+				0f,
+				PerfMeterSettingsLoadState.Loaded,
+				string.Empty,
+				editorWarningsEnabled: false), PerfMeterTargetFps.Fps60);
+
+			engine.Evaluate(CreateMetrics(1, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0d);
+
+			LogAssert.NoUnexpectedReceived();
+			Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
+			Assert.That(engine.FiredAlertCount, Is.EqualTo(0));
+		}
+
+		[Test]
 		public void AlertEngineClearAlertsResetsStateAndCounters()
 		{
 			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]

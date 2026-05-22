@@ -60,6 +60,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private FloatField _settingsOverlayFontSize;
 		private FloatField _settingsOverlayRefreshInterval;
 		private IntegerField _settingsOverlayGraphHistory;
+		private Toggle _settingsDisableEditorWarnings;
 		private FloatField _settingsEditorWarningCooldown;
 		private FloatField _settingsStructuredLogCooldown;
 		private FloatField _settingsCallbackCooldown;
@@ -344,6 +345,9 @@ namespace SGG.PerfMeter.Editor.UI
 
 			_settingsOverlayGraphHistory = new IntegerField();
 			AddControlRow(section, "Graph History", _settingsOverlayGraphHistory);
+
+			_settingsDisableEditorWarnings = new Toggle();
+			AddControlRow(section, "Disable Editor Warning Logs", _settingsDisableEditorWarnings);
 
 			_settingsEditorWarningCooldown = new FloatField();
 			AddControlRow(section, "Editor Warning Cooldown", _settingsEditorWarningCooldown);
@@ -673,6 +677,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayFontSize?.SetValueWithoutNotify(settings.OverlayFontSize);
 			_settingsOverlayRefreshInterval?.SetValueWithoutNotify(settings.OverlayRefreshIntervalSeconds);
 			_settingsOverlayGraphHistory?.SetValueWithoutNotify(settings.OverlayGraphHistoryLength);
+			_settingsDisableEditorWarnings?.SetValueWithoutNotify(!settings.EditorWarningsEnabled);
 			_settingsEditorWarningCooldown?.SetValueWithoutNotify(settings.EditorWarningCooldownSeconds);
 			_settingsStructuredLogCooldown?.SetValueWithoutNotify(settings.StructuredLogCooldownSeconds);
 			_settingsCallbackCooldown?.SetValueWithoutNotify(settings.CallbackCooldownSeconds);
@@ -734,7 +739,8 @@ namespace SGG.PerfMeter.Editor.UI
 				alertOverdrawConsecutiveFrames: _settingsAlertOverdrawFrames != null ? _settingsAlertOverdrawFrames.value : currentSettings.AlertOverdrawConsecutiveFrames,
 				overlayTheme: _settingsOverlayTheme != null && _settingsOverlayTheme.value is PerfMeterOverlayTheme theme ? theme : currentSettings.OverlayTheme,
 				overlayLayout: _settingsOverlayLayout != null && _settingsOverlayLayout.value is PerfMeterOverlayLayout layout ? layout : currentSettings.OverlayLayout,
-				overlayFontFamily: _settingsOverlayFontFamily != null && _settingsOverlayFontFamily.value is PerfMeterOverlayFontFamily fontFamily ? fontFamily : currentSettings.OverlayFontFamily);
+				overlayFontFamily: _settingsOverlayFontFamily != null && _settingsOverlayFontFamily.value is PerfMeterOverlayFontFamily fontFamily ? fontFamily : currentSettings.OverlayFontFamily,
+				editorWarningsEnabled: _settingsDisableEditorWarnings == null ? currentSettings.EditorWarningsEnabled : !_settingsDisableEditorWarnings.value);
 			return PerfMeterSetupActions.SaveSettings(settings);
 		}
 

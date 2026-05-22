@@ -27,7 +27,8 @@
     "timingConsecutiveFrames": 5,
     "fpsConsecutiveFrames": 60,
     "gpuTimingUnavailableConsecutiveFrames": 120,
-    "overdrawConsecutiveFrames": 3
+    "overdrawConsecutiveFrames": 3,
+    "disableEditorWarnings": false
   },
   "session": {
     "warmupFrames": 0,

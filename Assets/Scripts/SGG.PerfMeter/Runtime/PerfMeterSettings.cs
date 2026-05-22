@@ -50,7 +50,8 @@ namespace SGG.PerfMeter
 			int alertOverdrawConsecutiveFrames = 3,
 			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
 			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.Classic,
-			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope)
+			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
+			bool editorWarningsEnabled = true)
 		{
 			Enabled = enabled;
 			AutoStart = autoStart;
@@ -86,6 +87,7 @@ namespace SGG.PerfMeter
 			AlertFpsConsecutiveFrames = Mathf.Max(1, alertFpsConsecutiveFrames);
 			AlertGpuTimingUnavailableConsecutiveFrames = Mathf.Max(1, alertGpuTimingUnavailableConsecutiveFrames);
 			AlertOverdrawConsecutiveFrames = Mathf.Max(1, alertOverdrawConsecutiveFrames);
+			EditorWarningsEnabled = editorWarningsEnabled;
 			LoadState = loadState;
 			Warning = warning ?? string.Empty;
 		}
@@ -124,6 +126,7 @@ namespace SGG.PerfMeter
 		public int AlertFpsConsecutiveFrames { get; }
 		public int AlertGpuTimingUnavailableConsecutiveFrames { get; }
 		public int AlertOverdrawConsecutiveFrames { get; }
+		public bool EditorWarningsEnabled { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
 
@@ -195,6 +198,7 @@ namespace SGG.PerfMeter
 		public int fpsConsecutiveFrames = 60;
 		public int gpuTimingUnavailableConsecutiveFrames = 120;
 		public int overdrawConsecutiveFrames = 3;
+		public bool disableEditorWarnings = false;
 	}
 
 	[Serializable]
@@ -291,6 +295,7 @@ namespace SGG.PerfMeter
 			settings.ruleDefaults.fpsConsecutiveFrames = snapshot.AlertFpsConsecutiveFrames;
 			settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = snapshot.AlertGpuTimingUnavailableConsecutiveFrames;
 			settings.ruleDefaults.overdrawConsecutiveFrames = snapshot.AlertOverdrawConsecutiveFrames;
+			settings.ruleDefaults.disableEditorWarnings = !snapshot.EditorWarningsEnabled;
 			settings.overdraw.defaultFrameCount = snapshot.OverdrawDefaultFrameCount;
 			settings.overdraw.maxFrameCount = snapshot.OverdrawMaxFrameCount;
 			ApplySnapshotToPreset(settings, snapshot);
@@ -436,7 +441,8 @@ namespace SGG.PerfMeter
 				alertOverdrawConsecutiveFrames: settings.ruleDefaults != null ? settings.ruleDefaults.overdrawConsecutiveFrames : 3,
 				overlayTheme: overlayTheme,
 				overlayLayout: overlayLayout,
-				overlayFontFamily: overlayFontFamily);
+				overlayFontFamily: overlayFontFamily,
+				editorWarningsEnabled: settings.ruleDefaults == null || !settings.ruleDefaults.disableEditorWarnings);
 		}
 
 		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
