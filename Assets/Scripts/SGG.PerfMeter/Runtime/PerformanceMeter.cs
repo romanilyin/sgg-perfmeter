@@ -310,7 +310,7 @@ namespace SGG.PerfMeter
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.OverlayLayout : PerfMeterOverlayLayout.Classic;
+				return runtime != null ? runtime.OverlayLayout : PerfMeterOverlayLayout.MetricBars;
 			}
 		}
 
@@ -328,7 +328,7 @@ namespace SGG.PerfMeter
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.OverlayModules : PerfMeterOverlayModule.All;
+				return runtime != null ? runtime.OverlayModules : PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
 			}
 		}
 

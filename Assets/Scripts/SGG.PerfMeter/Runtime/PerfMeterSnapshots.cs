@@ -384,7 +384,7 @@ namespace SGG.PerfMeter
 			bool applicationFocused = true,
 			bool applicationPaused = false,
 			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
-			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.Classic,
+			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.MetricBars,
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope)
 		{
 			State = state;

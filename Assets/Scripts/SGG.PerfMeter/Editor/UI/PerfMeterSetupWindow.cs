@@ -12,6 +12,7 @@ namespace SGG.PerfMeter.Editor.UI
 	public sealed class PerfMeterSetupWindow : EditorWindow
 	{
 		private readonly List<Button> _runtimeButtons = new List<Button>();
+		private readonly List<RuntimeButtonBinding> _runtimeButtonBindings = new List<RuntimeButtonBinding>();
 		private readonly List<OverlayModuleToggle> _settingsModuleToggles = new List<OverlayModuleToggle>();
 		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private VisualElement _setupPanel;
@@ -105,6 +106,7 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			rootVisualElement.Clear();
 			_runtimeButtons.Clear();
+			_runtimeButtonBindings.Clear();
 			_settingsModuleToggles.Clear();
 			rootVisualElement.AddToClassList("pm-window");
 
@@ -240,7 +242,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_initOverlayTheme.RegisterValueChangedCallback(_ => RefreshInitializationCode());
 			AddControlRow(section, "Overlay Theme", _initOverlayTheme);
 
-			_initOverlayLayout = new EnumField(PerfMeterOverlayLayout.Classic);
+			_initOverlayLayout = new EnumField(PerfMeterOverlayLayout.MetricBars);
 			_initOverlayLayout.RegisterValueChangedCallback(_ => RefreshInitializationCode());
 			AddControlRow(section, "Overlay Layout", _initOverlayLayout);
 
@@ -294,7 +296,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayTheme = new EnumField(PerfMeterOverlayTheme.ClassicDark);
 			AddControlRow(section, "Overlay Theme", _settingsOverlayTheme);
 
-			_settingsOverlayLayout = new EnumField(PerfMeterOverlayLayout.Classic);
+			_settingsOverlayLayout = new EnumField(PerfMeterOverlayLayout.MetricBars);
 			AddControlRow(section, "Overlay Layout", _settingsOverlayLayout);
 
 			_settingsOverlayFontFamily = new EnumField(PerfMeterOverlayFontFamily.Manrope);
@@ -413,32 +415,39 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private void BuildRuntimePanel()
 		{
-			VisualElement runtimeSection = AddSection(_runtimePanel, "Runtime Controls");
+			VisualElement statusSection = AddSection(_runtimePanel, "Runtime Status");
 			_runtimePlayModeInfo = new Label();
 			_runtimePlayModeInfo.AddToClassList("pm-info");
-			runtimeSection.Add(_runtimePlayModeInfo);
-			_runtimeStatus = AddRow(runtimeSection, "State");
-			_runtimeCollectionMode = AddRow(runtimeSection, "Collection Mode");
-			_runtimeOverlayVisible = AddRow(runtimeSection, "Overlay Visible");
-			_runtimeOverlayPreset = AddRow(runtimeSection, "Overlay Preset");
-			_runtimeOverlayModules = AddRow(runtimeSection, "Overlay Modules");
-			_runtimeTargetFps = AddRow(runtimeSection, "Target FPS");
-			_runtimeOverlayCorner = AddRow(runtimeSection, "Overlay Corner");
-			_runtimeOverlayMode = AddRow(runtimeSection, "Overlay Mode");
-			_runtimeOverlayTheme = AddRow(runtimeSection, "Overlay Theme");
-			_runtimeOverlayLayout = AddRow(runtimeSection, "Overlay Layout");
-			_runtimeOverlayFontFamily = AddRow(runtimeSection, "Overlay Font");
-			_runtimeOverdraw = AddRow(runtimeSection, "Overdraw");
+			statusSection.Add(_runtimePlayModeInfo);
+			_runtimeStatus = AddRow(statusSection, "State");
+			_runtimeCollectionMode = AddRow(statusSection, "Collection Mode");
+			_runtimeOverlayVisible = AddRow(statusSection, "Overlay Visible");
+			_runtimeOverlayPreset = AddRow(statusSection, "Overlay Preset");
+			_runtimeOverlayModules = AddRow(statusSection, "Overlay Modules");
+			_runtimeTargetFps = AddRow(statusSection, "Target FPS");
+			_runtimeOverlayCorner = AddRow(statusSection, "Overlay Corner");
+			_runtimeOverlayMode = AddRow(statusSection, "Overlay Mode");
+			_runtimeOverlayTheme = AddRow(statusSection, "Overlay Theme");
+			_runtimeOverlayLayout = AddRow(statusSection, "Overlay Layout");
+			_runtimeOverlayFontFamily = AddRow(statusSection, "Overlay Font");
+			_runtimeOverdraw = AddRow(statusSection, "Overdraw");
 
-			VisualElement lifecycleActions = AddActions(runtimeSection);
-			AddRuntimeButton(lifecycleActions, "Ensure Runtime", () => RunRuntimeAction("Ensure Runtime", RuntimePerformanceMeter.EnsureRunning));
-			AddRuntimeButton(lifecycleActions, "Background Mode", () => RunRuntimeAction("Background Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background)));
-			AddRuntimeButton(lifecycleActions, "Overlay Mode", () => RunRuntimeAction("Overlay Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay)));
-			AddRuntimeButton(lifecycleActions, "Overdraw Diagnostic", () => RunRuntimeAction("Overdraw Diagnostic", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.OverdrawDiagnostic)));
-			AddRuntimeButton(lifecycleActions, "Show Overlay", () => RunRuntimeAction("Show Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(true)));
-			AddRuntimeButton(lifecycleActions, "Hide Overlay", () => RunRuntimeAction("Hide Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(false)));
+			VisualElement lifecycleActions = AddActions(statusSection);
+			AddRuntimeButton(lifecycleActions, "Ensure Runtime", () => RunRuntimeAction("Ensure Runtime", RuntimePerformanceMeter.EnsureRunning), status => status.State == PerfMeterRuntimeState.Running);
 
-			VisualElement targetActions = AddActions(runtimeSection);
+			VisualElement collectionSection = AddSection(_runtimePanel, "Collection");
+			VisualElement collectionActions = AddActions(collectionSection);
+			AddRuntimeButton(collectionActions, "Background Mode", () => RunRuntimeAction("Background Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background)), status => status.CollectionMode == PerfMeterCollectionMode.Background);
+			AddRuntimeButton(collectionActions, "Overlay Mode", () => RunRuntimeAction("Overlay Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay)), status => status.CollectionMode == PerfMeterCollectionMode.Overlay);
+			AddRuntimeButton(collectionActions, "Overdraw Diagnostic", () => RunRuntimeAction("Overdraw Diagnostic", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.OverdrawDiagnostic)), status => status.CollectionMode == PerfMeterCollectionMode.OverdrawDiagnostic);
+
+			VisualElement visibilitySection = AddSection(_runtimePanel, "Overlay Visibility");
+			VisualElement visibilityActions = AddActions(visibilitySection);
+			AddRuntimeButton(visibilityActions, "Show Overlay", () => RunRuntimeAction("Show Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(true)), status => status.OverlayVisible);
+			AddRuntimeButton(visibilityActions, "Hide Overlay", () => RunRuntimeAction("Hide Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(false)), status => !status.OverlayVisible);
+
+			VisualElement targetSection = AddSection(_runtimePanel, "Target FPS");
+			VisualElement targetActions = AddActions(targetSection);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps15);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps30);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps60);
@@ -447,47 +456,54 @@ namespace SGG.PerfMeter.Editor.UI
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps144);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps240);
 
-			VisualElement modeActions = AddActions(runtimeSection);
-			AddRuntimeButton(modeActions, "Fps Only", () => RunRuntimeAction("Fps Only", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.FpsOnly)));
-			AddRuntimeButton(modeActions, "Text Compact", () => RunRuntimeAction("Text Compact", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact)));
-			AddRuntimeButton(modeActions, "Graphs", () => RunRuntimeAction("Graphs", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs)));
-			AddRuntimeButton(modeActions, "Full", () => RunRuntimeAction("Full", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full)));
+			VisualElement modeSection = AddSection(_runtimePanel, "Overlay Mode");
+			VisualElement modeActions = AddActions(modeSection);
+			AddRuntimeButton(modeActions, "Fps Only", () => RunRuntimeAction("Fps Only", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.FpsOnly)), status => status.OverlayMode == PerfMeterOverlayMode.FpsOnly);
+			AddRuntimeButton(modeActions, "Text Compact", () => RunRuntimeAction("Text Compact", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact)), status => status.OverlayMode == PerfMeterOverlayMode.TextCompact);
+			AddRuntimeButton(modeActions, "Graphs", () => RunRuntimeAction("Graphs", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs)), status => status.OverlayMode == PerfMeterOverlayMode.Graphs);
+			AddRuntimeButton(modeActions, "Full", () => RunRuntimeAction("Full", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full)), status => status.OverlayMode == PerfMeterOverlayMode.Full);
 
-			VisualElement themeActions = AddActions(runtimeSection);
-			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.ClassicDark);
-			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.Glass);
-			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.Cyber);
-			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.HighContrast);
-
-			VisualElement layoutActions = AddActions(runtimeSection);
+			VisualElement layoutSection = AddSection(_runtimePanel, "Overlay Layout");
+			VisualElement layoutActions = AddActions(layoutSection);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.Classic);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.CompactCards);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.DiagnosticsWide);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.OverdrawFocus);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.MetricBars);
 
-			VisualElement fontActions = AddActions(runtimeSection);
+			VisualElement themeSection = AddSection(_runtimePanel, "Overlay Theme");
+			VisualElement themeActions = AddActions(themeSection);
+			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.ClassicDark);
+			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.Glass);
+			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.Cyber);
+			AddOverlayThemeButton(themeActions, PerfMeterOverlayTheme.HighContrast);
+
+			VisualElement fontSection = AddSection(_runtimePanel, "Overlay Font");
+			VisualElement fontActions = AddActions(fontSection);
 			AddOverlayFontButton(fontActions, PerfMeterOverlayFontFamily.Manrope);
 			AddOverlayFontButton(fontActions, PerfMeterOverlayFontFamily.JetBrainsMono);
 			AddOverlayFontButton(fontActions, PerfMeterOverlayFontFamily.LegacyRuntime);
 
-			VisualElement cpuCoreActions = AddActions(runtimeSection);
-			AddRuntimeButton(cpuCoreActions, "CPU Core Rows", () => RunRuntimeAction("CPU Core Rows", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCores, true)));
-			AddRuntimeButton(cpuCoreActions, "CPU Core % Bars", () => RunRuntimeAction("CPU Core % Bars", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, true)));
-			AddRuntimeButton(cpuCoreActions, "CPU Core Graphs", () => RunRuntimeAction("CPU Core Graphs", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, true)));
-			AddRuntimeButton(cpuCoreActions, "Hide CPU Cores", () => RunRuntimeAction("Hide CPU Cores", HideCpuCoreModules));
+			VisualElement cornerSection = AddSection(_runtimePanel, "Overlay Corner");
+			VisualElement cornerActions = AddActions(cornerSection);
+			AddRuntimeButton(cornerActions, "Top Left", () => RunRuntimeAction("Top Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopLeft)), status => status.OverlayCorner == PerfMeterOverlayCorner.TopLeft);
+			AddRuntimeButton(cornerActions, "Top Right", () => RunRuntimeAction("Top Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight)), status => status.OverlayCorner == PerfMeterOverlayCorner.TopRight);
+			AddRuntimeButton(cornerActions, "Bottom Left", () => RunRuntimeAction("Bottom Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft)), status => status.OverlayCorner == PerfMeterOverlayCorner.BottomLeft);
+			AddRuntimeButton(cornerActions, "Bottom Right", () => RunRuntimeAction("Bottom Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomRight)), status => status.OverlayCorner == PerfMeterOverlayCorner.BottomRight);
 
-			VisualElement cornerActions = AddActions(runtimeSection);
-			AddRuntimeButton(cornerActions, "Top Left", () => RunRuntimeAction("Top Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopLeft)));
-			AddRuntimeButton(cornerActions, "Top Right", () => RunRuntimeAction("Top Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight)));
-			AddRuntimeButton(cornerActions, "Bottom Left", () => RunRuntimeAction("Bottom Left", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft)));
-			AddRuntimeButton(cornerActions, "Bottom Right", () => RunRuntimeAction("Bottom Right", () => RuntimePerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomRight)));
+			VisualElement cpuCoreSection = AddSection(_runtimePanel, "CPU Core Panels");
+			VisualElement cpuCoreActions = AddActions(cpuCoreSection);
+			AddRuntimeButton(cpuCoreActions, "CPU Core Rows", () => RunRuntimeAction("CPU Core Rows", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCores, true)), status => StatusHasModule(status, PerfMeterOverlayModule.CpuCores));
+			AddRuntimeButton(cpuCoreActions, "CPU Core % Bars", () => RunRuntimeAction("CPU Core % Bars", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, true)), status => StatusHasModule(status, PerfMeterOverlayModule.CpuCoreBars));
+			AddRuntimeButton(cpuCoreActions, "CPU Core Graphs", () => RunRuntimeAction("CPU Core Graphs", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, true)), status => StatusHasModule(status, PerfMeterOverlayModule.CpuCoreGraphs));
+			AddRuntimeButton(cpuCoreActions, "Hide CPU Cores", () => RunRuntimeAction("Hide CPU Cores", HideCpuCoreModules), status => !StatusHasAnyCpuCoreModule(status));
 
-			VisualElement overdrawActions = AddActions(runtimeSection);
-			AddRuntimeButton(overdrawActions, "Measure Overdraw 30f", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerformanceMeter.RequestOverdrawMeasurement(30)));
-			AddRuntimeButton(overdrawActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerformanceMeter.CancelOverdrawMeasurement));
-			AddRuntimeButton(overdrawActions, "Show Heatmap", () => RunRuntimeAction("Show Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(true)));
-			AddRuntimeButton(overdrawActions, "Hide Heatmap", () => RunRuntimeAction("Hide Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(false)));
+			VisualElement overdrawSection = AddSection(_runtimePanel, "Overdraw");
+			VisualElement overdrawActions = AddActions(overdrawSection);
+			AddRuntimeButton(overdrawActions, "Measure Overdraw 30f", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerformanceMeter.RequestOverdrawMeasurement(30)), status => status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring);
+			AddRuntimeButton(overdrawActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerformanceMeter.CancelOverdrawMeasurement), status => status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring);
+			AddRuntimeButton(overdrawActions, "Show Heatmap", () => RunRuntimeAction("Show Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(true)), status => status.OverdrawHeatmapVisible);
+			AddRuntimeButton(overdrawActions, "Hide Heatmap", () => RunRuntimeAction("Hide Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(false)), status => !status.OverdrawHeatmapVisible);
 		}
 
 		private VisualElement AddSection(VisualElement parent, string caption)
@@ -569,29 +585,39 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private Button AddRuntimeButton(VisualElement parent, string text, Action action)
 		{
+			return AddRuntimeButton(parent, text, action, null);
+		}
+
+		private Button AddRuntimeButton(VisualElement parent, string text, Action action, Func<PerfMeterStatusSnapshot, bool> activeWhen)
+		{
 			Button button = AddButton(parent, text, action);
 			_runtimeButtons.Add(button);
+			if (activeWhen != null)
+			{
+				_runtimeButtonBindings.Add(new RuntimeButtonBinding(button, activeWhen));
+			}
+
 			return button;
 		}
 
 		private Button AddTargetFpsButton(VisualElement parent, PerfMeterTargetFps targetFps)
 		{
-			return AddRuntimeButton(parent, FormatTargetFps(targetFps), () => RunRuntimeAction("Target " + FormatTargetFps(targetFps), () => RuntimePerformanceMeter.SetTargetFps(targetFps)));
+			return AddRuntimeButton(parent, FormatTargetFps(targetFps), () => RunRuntimeAction("Target " + FormatTargetFps(targetFps), () => RuntimePerformanceMeter.SetTargetFps(targetFps)), status => status.TargetFps == targetFps);
 		}
 
 		private Button AddOverlayThemeButton(VisualElement parent, PerfMeterOverlayTheme theme)
 		{
-			return AddRuntimeButton(parent, FormatEnumLabel(theme.ToString()), () => RunRuntimeAction("Theme " + theme, () => RuntimePerformanceMeter.SetOverlayTheme(theme)));
+			return AddRuntimeButton(parent, FormatEnumLabel(theme.ToString()), () => RunRuntimeAction("Theme " + theme, () => RuntimePerformanceMeter.SetOverlayTheme(theme)), status => status.OverlayTheme == theme);
 		}
 
 		private Button AddOverlayLayoutButton(VisualElement parent, PerfMeterOverlayLayout layout)
 		{
-			return AddRuntimeButton(parent, FormatEnumLabel(layout.ToString()), () => RunRuntimeAction("Layout " + layout, () => RuntimePerformanceMeter.SetOverlayLayout(layout)));
+			return AddRuntimeButton(parent, FormatEnumLabel(layout.ToString()), () => RunRuntimeAction("Layout " + layout, () => RuntimePerformanceMeter.SetOverlayLayout(layout)), status => status.OverlayLayout == layout);
 		}
 
 		private Button AddOverlayFontButton(VisualElement parent, PerfMeterOverlayFontFamily fontFamily)
 		{
-			return AddRuntimeButton(parent, FormatOverlayFontLabel(fontFamily), () => RunRuntimeAction("Font " + fontFamily, () => RuntimePerformanceMeter.SetOverlayFontFamily(fontFamily)));
+			return AddRuntimeButton(parent, FormatOverlayFontLabel(fontFamily), () => RunRuntimeAction("Font " + fontFamily, () => RuntimePerformanceMeter.SetOverlayFontFamily(fontFamily)), status => status.OverlayFontFamily == fontFamily);
 		}
 
 		private static void HideCpuCoreModules()
@@ -760,7 +786,7 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			_settingsOverlayMode?.SetValueWithoutNotify(PerfMeterSettingsStore.GetPresetMode(preset));
-			if (preset == PerfMeterOverlayPreset.AgentDebug)
+			if (preset == PerfMeterOverlayPreset.FullDiagnostics || preset == PerfMeterOverlayPreset.AgentDebug)
 			{
 				_settingsOverlayLayout?.SetValueWithoutNotify(PerfMeterOverlayLayout.MetricBars);
 			}
@@ -1027,7 +1053,7 @@ namespace SGG.PerfMeter.Editor.UI
 				: PerfMeterOverlayTheme.ClassicDark;
 			PerfMeterOverlayLayout layout = _initOverlayLayout != null && _initOverlayLayout.value is PerfMeterOverlayLayout layoutValue
 				? layoutValue
-				: PerfMeterOverlayLayout.Classic;
+				: PerfMeterOverlayLayout.MetricBars;
 			PerfMeterOverlayFontFamily fontFamily = _initOverlayFontFamily != null && _initOverlayFontFamily.value is PerfMeterOverlayFontFamily fontFamilyValue
 				? fontFamilyValue
 				: PerfMeterOverlayFontFamily.Manrope;
@@ -1171,12 +1197,13 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			bool isPlaying = EditorApplication.isPlaying;
-			SetRuntimeButtonsEnabled(isPlaying);
 			_runtimePlayModeInfo.text = isPlaying
 				? "Runtime controls affect the currently running Play Mode session."
 				: "Runtime controls are read-only in Edit Mode. Enter Play Mode to test overlay modes, appearance, visibility, and short overdraw capture.";
 
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
+			SetRuntimeButtonsEnabled(isPlaying);
+			RefreshRuntimeButtonStates(status);
 			_runtimeStatus.text = status.State + " / " + status.Bottleneck;
 			_runtimeCollectionMode.text = status.CollectionMode.ToString();
 			_runtimeOverlayVisible.text = status.OverlayVisible ? "Visible" : "Hidden";
@@ -1197,6 +1224,53 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				_runtimeButtons[i].SetEnabled(enabled);
 			}
+		}
+
+		private void RefreshRuntimeButtonStates(PerfMeterStatusSnapshot status)
+		{
+			for (int i = 0; i < _runtimeButtonBindings.Count; i++)
+			{
+				RuntimeButtonBinding binding = _runtimeButtonBindings[i];
+				bool active = false;
+				try
+				{
+					active = binding.ActiveWhen(status);
+				}
+				catch (Exception)
+				{
+					active = false;
+				}
+
+				SetButtonActive(binding.Button, active);
+			}
+		}
+
+		private static void SetButtonActive(Button button, bool active)
+		{
+			if (button == null)
+			{
+				return;
+			}
+
+			if (active)
+			{
+				button.AddToClassList("pm-button--active");
+			}
+			else
+			{
+				button.RemoveFromClassList("pm-button--active");
+			}
+		}
+
+		private static bool StatusHasModule(PerfMeterStatusSnapshot status, PerfMeterOverlayModule module)
+		{
+			return (status.OverlayModules & module) == module;
+		}
+
+		private static bool StatusHasAnyCpuCoreModule(PerfMeterStatusSnapshot status)
+		{
+			PerfMeterOverlayModule cpuCoreModules = PerfMeterOverlayModule.CpuCores | PerfMeterOverlayModule.CpuCoreBars | PerfMeterOverlayModule.CpuCoreGraphs;
+			return (status.OverlayModules & cpuCoreModules) != 0;
 		}
 
 		private static string FormatTargetFps(PerfMeterTargetFps targetFps)
@@ -1273,6 +1347,18 @@ namespace SGG.PerfMeter.Editor.UI
 
 			internal PerfMeterOverlayModule Module { get; }
 			internal Toggle Toggle { get; }
+		}
+
+		private readonly struct RuntimeButtonBinding
+		{
+			internal RuntimeButtonBinding(Button button, Func<PerfMeterStatusSnapshot, bool> activeWhen)
+			{
+				Button = button;
+				ActiveWhen = activeWhen;
+			}
+
+			internal Button Button { get; }
+			internal Func<PerfMeterStatusSnapshot, bool> ActiveWhen { get; }
 		}
 	}
 }

@@ -21,7 +21,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(settings.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
-			Assert.That(settings.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Classic));
+			Assert.That(settings.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			Assert.That(settings.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
 			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(settings.ActivePreset, Is.EqualTo(PerfMeterSettingsStore.DefaultPresetId));
@@ -52,7 +52,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
 			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCores);
-			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
 			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
@@ -181,7 +181,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.OverlayRefreshIntervalSeconds, Is.EqualTo(PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds).Within(0.001f));
 			Assert.That(snapshot.OverlayGraphHistoryLength, Is.EqualTo(PerfMeterSettingsStore.MinOverlayGraphHistoryLength));
 			Assert.That(snapshot.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
-			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Classic));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			Assert.That(snapshot.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
 			Assert.That(snapshot.Warning, Does.Contain("Invalid overlay theme"));
 			Assert.That(snapshot.Warning, Does.Contain("Invalid overlay layout"));
@@ -255,7 +255,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void EmptyPresetModulesUsePresetDefaultsWithoutCpuCoreOptIn()
+		public void EmptyPresetModulesUsePresetDefaultsWithDefaultCpuCoreBars()
 		{
 			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
 			settings.activePreset = "Custom";
@@ -276,12 +276,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Timing);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
-			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
 		[Test]
-		public void InvalidPresetModulesUsePresetDefaultsWithoutCpuCoreOptIn()
+		public void InvalidPresetModulesUsePresetDefaultsWithDefaultCpuCoreBars()
 		{
 			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
 			settings.activePreset = "Custom";
@@ -301,7 +301,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Fps);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
-			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(snapshot.Warning, Does.Contain("Unknown overlay module"));
 		}
@@ -313,7 +313,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot snapshot), Is.True);
 			Assert.That(snapshot.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
-			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Classic));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			Assert.That(snapshot.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
 			Assert.That(snapshot.Warning, Does.Not.Contain("Invalid overlay theme"));
 			Assert.That(snapshot.Warning, Does.Not.Contain("Invalid overlay layout"));

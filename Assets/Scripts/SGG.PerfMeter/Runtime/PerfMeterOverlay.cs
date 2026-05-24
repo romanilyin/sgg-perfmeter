@@ -138,9 +138,9 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayCorner _corner = PerfMeterOverlayCorner.TopRight;
 		private PerfMeterOverlayMode _mode = PerfMeterOverlayMode.Full;
 		private PerfMeterOverlayTheme _theme = PerfMeterOverlayTheme.ClassicDark;
-		private PerfMeterOverlayLayout _layout = PerfMeterOverlayLayout.Classic;
+		private PerfMeterOverlayLayout _layout = PerfMeterOverlayLayout.MetricBars;
 		private PerfMeterOverlayFontFamily _fontFamily = PerfMeterOverlayFontFamily.Manrope;
-		private PerfMeterOverlayModule _modules = PerfMeterOverlayModule.All;
+		private PerfMeterOverlayModule _modules = PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
 		private float _overlayScale = 1f;
 		private float _overlayOpacity = 0.84f;
 		private float _overlayFontSize = 12f;
@@ -4207,14 +4207,16 @@ namespace SGG.PerfMeter
 
 			private void UpdateScaleLabels()
 			{
-				_maxScaleLabel.text = FormatMsFixedValue(ScaleMs, ScaleMs) + " ms";
-				_maxScaleLabel.style.top = 0f;
+				if (_maxScaleLabel != null)
+				{
+					_maxScaleLabel.text = FormatMsFixedValue(ScaleMs, ScaleMs) + " ms";
+					_maxScaleLabel.style.top = 0f;
+				}
 
 				_budgetLabel.text = FormatMsFixedValue(_frameBudgetMs, ScaleMs) + " ms";
 				float budgetTop = ValueToY(new Rect(0f, 0f, GraphPlotWidth, _height), _frameBudgetMs, ScaleMs) - ScaleLabelHeight * 0.5f;
-				float minBudgetTop = ScaleLabelHeight + ScaleLabelSeparation;
-				float maxBudgetTop = Mathf.Max(minBudgetTop, _height - ScaleLabelHeight);
-				_budgetLabel.style.top = Mathf.Clamp(budgetTop, minBudgetTop, maxBudgetTop);
+				float maxBudgetTop = Mathf.Max(0f, _height - ScaleLabelHeight);
+				_budgetLabel.style.top = Mathf.Clamp(budgetTop, 0f, maxBudgetTop);
 			}
 
 			internal PerfMeterSeriesStats GetStats(int series)

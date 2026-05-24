@@ -134,6 +134,16 @@
     margin-bottom: 4px;
 }
 
+.pm-button--active {
+    background-color: var(--pm-accent);
+    color: #1b1b1b;
+    border-top-color: var(--pm-accent);
+    border-right-color: var(--pm-accent);
+    border-bottom-color: var(--pm-accent);
+    border-left-color: var(--pm-accent);
+    -unity-font-style: bold;
+}
+
 .pm-renderer-list {
     flex-grow: 1;
     min-width: 0;

@@ -35,6 +35,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.CollectionFrame, Is.EqualTo(-1));
 			Assert.That(status.GraphicsDeviceName, Is.Not.Null);
 			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
+			Assert.That(status.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
+			AssertHasModule(status.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(status.OverdrawHeatmapVisible, Is.False);
 			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Idle));
@@ -57,6 +61,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(status.Warning, Is.Not.Null);
 			Assert.That(status.Bottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+			Assert.That(status.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
+			Assert.That(status.OverlayModules, Is.Not.EqualTo(PerfMeterOverlayModule.All));
+			AssertHasModule(status.OverlayModules, PerfMeterOverlayModule.Graphs);
+			AssertHasModule(status.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Idle));
 		}
 
@@ -100,6 +110,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
 			Assert.That(PerformanceMeter.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(PerformanceMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
+			Assert.That(PerformanceMeter.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
+			AssertHasModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCores);
+			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
@@ -790,6 +804,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.Fail("Rule not found: " + id);
 			return default;
+		}
+
+		private static void AssertHasModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)
+		{
+			Assert.That((actual & expected) == expected, Is.True);
+		}
+
+		private static void AssertDoesNotHaveModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)
+		{
+			Assert.That((actual & expected) == 0, Is.True);
 		}
 
 		private sealed class TestCustomMetricProvider : IPerfMeterCustomMetricProvider

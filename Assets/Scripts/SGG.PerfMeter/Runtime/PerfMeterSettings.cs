@@ -49,7 +49,7 @@ namespace SGG.PerfMeter
 			int alertGpuTimingUnavailableConsecutiveFrames = 120,
 			int alertOverdrawConsecutiveFrames = 3,
 			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
-			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.Classic,
+			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.MetricBars,
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
 			bool editorWarningsEnabled = true)
 		{
@@ -168,7 +168,7 @@ namespace SGG.PerfMeter
 	internal sealed class PerfMeterOverlaySettingsJson
 	{
 		public string theme = nameof(PerfMeterOverlayTheme.ClassicDark);
-		public string layout = nameof(PerfMeterOverlayLayout.Classic);
+		public string layout = nameof(PerfMeterOverlayLayout.MetricBars);
 		public string fontFamily = nameof(PerfMeterOverlayFontFamily.Manrope);
 		public float scale = 1f;
 		public float opacity = 0.84f;
@@ -385,7 +385,7 @@ namespace SGG.PerfMeter
 			bool overlayVisible = settings.overlayVisible;
 			PerfMeterOverlayModule overlayModules = GetPresetModules(activePresetId);
 			PerfMeterOverlayTheme overlayTheme = settings.overlay != null ? ParseOverlayTheme(settings.overlay.theme) : PerfMeterOverlayTheme.ClassicDark;
-			PerfMeterOverlayLayout overlayLayout = settings.overlay != null ? ParseOverlayLayout(settings.overlay.layout) : PerfMeterOverlayLayout.Classic;
+			PerfMeterOverlayLayout overlayLayout = settings.overlay != null ? ParseOverlayLayout(settings.overlay.layout) : PerfMeterOverlayLayout.MetricBars;
 			PerfMeterOverlayFontFamily overlayFontFamily = settings.overlay != null ? ParseOverlayFontFamily(settings.overlay.fontFamily) : PerfMeterOverlayFontFamily.Manrope;
 
 			if (activePreset != null)
@@ -502,7 +502,7 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayLayout.MetricBars:
 					return layout;
 				default:
-					return PerfMeterOverlayLayout.Classic;
+					return PerfMeterOverlayLayout.MetricBars;
 			}
 		}
 
@@ -526,7 +526,7 @@ namespace SGG.PerfMeter
 
 		internal static PerfMeterOverlayLayout ParseOverlayLayout(string value)
 		{
-			return TryParseOverlayLayout(value, out PerfMeterOverlayLayout layout) ? layout : PerfMeterOverlayLayout.Classic;
+			return TryParseOverlayLayout(value, out PerfMeterOverlayLayout layout) ? layout : PerfMeterOverlayLayout.MetricBars;
 		}
 
 		internal static PerfMeterOverlayFontFamily ParseOverlayFontFamily(string value)
@@ -551,7 +551,7 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayPreset.AgentDebug:
 					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics;
 				default:
-					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics;
+					return PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics | PerfMeterOverlayModule.CpuCoreBars;
 			}
 		}
 
@@ -802,12 +802,12 @@ namespace SGG.PerfMeter
 
 			if (string.IsNullOrEmpty(settings.overlay.layout))
 			{
-				settings.overlay.layout = nameof(PerfMeterOverlayLayout.Classic);
+				settings.overlay.layout = nameof(PerfMeterOverlayLayout.MetricBars);
 			}
 			else if (!TryParseOverlayLayout(settings.overlay.layout, out PerfMeterOverlayLayout layout))
 			{
-				settings.overlay.layout = nameof(PerfMeterOverlayLayout.Classic);
-				warning = CombineWarnings(warning, "Invalid overlay layout; Classic is used.");
+				settings.overlay.layout = nameof(PerfMeterOverlayLayout.MetricBars);
+				warning = CombineWarnings(warning, "Invalid overlay layout; MetricBars is used.");
 			}
 			else
 			{
