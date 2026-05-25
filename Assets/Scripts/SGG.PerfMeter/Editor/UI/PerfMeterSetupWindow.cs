@@ -21,10 +21,12 @@ namespace SGG.PerfMeter.Editor.UI
 		private VisualElement _setupPanel;
 		private VisualElement _presetsPanel;
 		private VisualElement _runtimePanel;
+		private VisualElement _debugPanel;
 		private VisualElement _settingsPanel;
 		private ToolbarToggle _setupTab;
 		private ToolbarToggle _presetsTab;
 		private ToolbarToggle _runtimeTab;
+		private ToolbarToggle _debugTab;
 		private ToolbarToggle _settingsTab;
 		private string _currentTab = "Setup";
 
@@ -97,6 +99,8 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _runtimeOverlayFontFamily;
 		private Label _runtimeEditorWarnings;
 		private Label _runtimeOverdraw;
+		private Label _debugWidgetSummary;
+		private VisualElement _debugWidgetRows;
 		private PopupField<string> _languageField;
 		private Label _settingsLanguageCurrent;
 
@@ -138,15 +142,18 @@ namespace SGG.PerfMeter.Editor.UI
 			_setupPanel = new VisualElement();
 			_presetsPanel = new VisualElement();
 			_runtimePanel = new VisualElement();
+			_debugPanel = new VisualElement();
 			_settingsPanel = new VisualElement();
 			scroll.Add(_setupPanel);
 			scroll.Add(_presetsPanel);
 			scroll.Add(_runtimePanel);
+			scroll.Add(_debugPanel);
 			scroll.Add(_settingsPanel);
 
 			BuildSetupPanel();
 			BuildPresetsPanel();
 			BuildRuntimePanel();
+			BuildDebugPanel();
 			BuildSettingsPanel();
 
 			_lastActionLabel = new Label();
@@ -164,10 +171,12 @@ namespace SGG.PerfMeter.Editor.UI
 			_setupTab = new ToolbarToggle { text = "Setup" };
 			_presetsTab = new ToolbarToggle { text = "Presets" };
 			_runtimeTab = new ToolbarToggle { text = "Runtime" };
+			_debugTab = new ToolbarToggle { text = "Debug" };
 			_settingsTab = new ToolbarToggle { text = "Settings" };
 			_setupTab.AddToClassList("pm-tab");
 			_presetsTab.AddToClassList("pm-tab");
 			_runtimeTab.AddToClassList("pm-tab");
+			_debugTab.AddToClassList("pm-tab");
 			_settingsTab.AddToClassList("pm-tab");
 			_setupTab.RegisterValueChangedCallback(evt =>
 			{
@@ -190,6 +199,13 @@ namespace SGG.PerfMeter.Editor.UI
 					SelectRuntimeTab();
 				}
 			});
+			_debugTab.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue)
+				{
+					SelectDebugTab();
+				}
+			});
 			_settingsTab.RegisterValueChangedCallback(evt =>
 			{
 				if (evt.newValue)
@@ -200,6 +216,7 @@ namespace SGG.PerfMeter.Editor.UI
 			toolbar.Add(_setupTab);
 			toolbar.Add(_presetsTab);
 			toolbar.Add(_runtimeTab);
+			toolbar.Add(_debugTab);
 			toolbar.Add(_settingsTab);
 			rootVisualElement.Add(toolbar);
 		}
@@ -562,6 +579,184 @@ namespace SGG.PerfMeter.Editor.UI
 			AddRuntimeButton(overdrawActions, "Hide Heatmap", () => RunRuntimeAction("Hide Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(false)), status => !status.OverdrawHeatmapVisible);
 		}
 
+		private void BuildDebugPanel()
+		{
+			VisualElement section = AddSection(_debugPanel, "Widget Debug");
+			AddInfo(section, "Lists overlay widgets available from this package plus project custom metric providers. Source shows whether the widget is implemented inside this package or in the Unity project.");
+			_debugWidgetSummary = AddRow(section, "Summary");
+
+			_debugWidgetRows = new VisualElement();
+			_debugWidgetRows.AddToClassList("pm-debug-table");
+			section.Add(_debugWidgetRows);
+
+			VisualElement actions = AddActions(section);
+			AddButton(actions, "Refresh", () =>
+			{
+				RefreshDebugPanel();
+				ApplyLocalization();
+			});
+		}
+
+		private void RefreshDebugPanel()
+		{
+			if (_debugWidgetRows == null)
+			{
+				return;
+			}
+
+			List<DebugWidgetInfo> widgets = BuildDebugWidgetList();
+			int packageCount = 0;
+			int projectCount = 0;
+			for (int i = 0; i < widgets.Count; i++)
+			{
+				if (string.Equals(widgets[i].Source, "Inside this package", StringComparison.Ordinal))
+				{
+					packageCount++;
+				}
+				else if (string.Equals(widgets[i].Source, "In project", StringComparison.Ordinal))
+				{
+					projectCount++;
+				}
+			}
+
+			if (_debugWidgetSummary != null)
+			{
+				_debugWidgetSummary.text = widgets.Count + " widgets: " + packageCount + " inside this package, " + projectCount + " in project.";
+			}
+
+			_debugWidgetRows.Clear();
+			_debugWidgetRows.Add(CreateDebugWidgetRow("Source", "Widget", "Widget type", "Module", "Details", true));
+			for (int i = 0; i < widgets.Count; i++)
+			{
+				DebugWidgetInfo widget = widgets[i];
+				_debugWidgetRows.Add(CreateDebugWidgetRow(widget.Source, widget.Name, widget.Type, widget.Module, widget.Details, false));
+			}
+
+			if (projectCount == 0)
+			{
+				_debugWidgetRows.Add(CreateDebugWidgetRow("In project", "No project custom metric providers discovered", "Custom metric provider", "CustomMetrics", "Implement IPerfMeterCustomMetricProvider and register it with PerformanceMeter.RegisterCustomMetricProvider().", false));
+			}
+		}
+
+		private List<DebugWidgetInfo> BuildDebugWidgetList()
+		{
+			List<DebugWidgetInfo> widgets = new List<DebugWidgetInfo>();
+			AddBuiltInDebugWidgets(widgets);
+			AddProjectCustomMetricWidgets(widgets);
+			return widgets;
+		}
+
+		private static void AddBuiltInDebugWidgets(List<DebugWidgetInfo> widgets)
+		{
+			AddDebugWidget(widgets, "Inside this package", "FPS summary card", "Metric card", "Fps", "Average FPS, 1% low, 0.1% low, and current budget state.");
+			AddDebugWidget(widgets, "Inside this package", "CPU timing card", "Metric card", "Timing", "CPU frame, main thread, render thread, and frame budget state.");
+			AddDebugWidget(widgets, "Inside this package", "GPU timing card", "Metric card", "Timing", "GPU frame timing and valid sample count when FrameTimingManager provides GPU data.");
+			AddDebugWidget(widgets, "Inside this package", "Frame spike card", "Metric card", "Fps / Warnings", "Frame spike counters and active warning state.");
+			AddDebugWidget(widgets, "Inside this package", "Overdraw card", "Metric card", "Overdraw / Heatmap", "Overdraw ratio, measurement progress, and heatmap state.");
+			AddDebugWidget(widgets, "Inside this package", "CPU budget bar", "Budget bar", "Timing", "CPU frame time against target FPS budget.");
+			AddDebugWidget(widgets, "Inside this package", "GPU budget bar", "Budget bar", "Timing", "GPU frame time against target FPS budget.");
+			AddDebugWidget(widgets, "Inside this package", "CPU timing graph", "Time-series graph", "Graphs / Timing", "Stacked CPU frame, main, render, and other timing history.");
+			AddDebugWidget(widgets, "Inside this package", "GPU timing graph", "Time-series graph", "Graphs / Timing", "GPU frame timing history with budget line.");
+			AddDebugWidget(widgets, "Inside this package", "CPU core percent bars", "CPU core panel", "CpuCoreBars", "Per-logical-core load bars; uses platform CPU load sampling when available.");
+			AddDebugWidget(widgets, "Inside this package", "CPU core graphs", "CPU core panel", "CpuCoreGraphs", "Per-logical-core load history graphs.");
+			AddDebugWidget(widgets, "Inside this package", "FPS row / bar", "Text row / metric bar", "Fps", "FPS summary rendered in text layouts or MetricBars layout.");
+			AddDebugWidget(widgets, "Inside this package", "CPU timing rows / bars", "Text row / metric bar", "Timing", "CPU frame, main, render, present wait, and range statistics.");
+			AddDebugWidget(widgets, "Inside this package", "GPU validity row / bar", "Text row / metric bar", "Timing", "GPU valid sample count versus collected frame samples.");
+			AddDebugWidget(widgets, "Inside this package", "Rendering counters rows / bars", "Text row / metric bar", "Rendering", "Draw calls, SetPass calls, batches, and vertices.");
+			AddDebugWidget(widgets, "Inside this package", "SRP Batcher row / bar", "Text row / metric bar", "SrpBatcher", "SRP Batcher instance counter when Unity exposes it.");
+			AddDebugWidget(widgets, "Inside this package", "BRG/GRD rows / bars", "Text row / metric bar", "Brg", "Batch Renderer Group / GPU Resident Drawer draw and instance counters.");
+			AddDebugWidget(widgets, "Inside this package", "Index upload row / bar", "Text row / metric bar", "Uploads", "Index buffer upload bytes in frame.");
+			AddDebugWidget(widgets, "Inside this package", "Overdraw status row / bar", "Text row / metric bar", "Overdraw / Heatmap", "Measurement state, progress, ratio, and heatmap visibility.");
+			AddDebugWidget(widgets, "Inside this package", "System memory row / bar", "Text row / metric bar", "Memory", "System used memory in MB.");
+			AddDebugWidget(widgets, "Inside this package", "GC memory row / bar", "Text row / metric bar", "Gc", "GC reserved memory in MB.");
+			AddDebugWidget(widgets, "Inside this package", "GPU memory row / bar", "Text row / metric bar", "GpuMemory", "GPU memory counter in MB when Unity exposes it.");
+			AddDebugWidget(widgets, "Inside this package", "Warning row", "Text row", "Warnings", "Current overlay warning with short hold time.");
+			AddDebugWidget(widgets, "Inside this package", "Custom metric slot", "Custom metric row / bar", "CustomMetrics", "Renders metrics supplied by project IPerfMeterCustomMetricProvider implementations.");
+		}
+
+		private static void AddProjectCustomMetricWidgets(List<DebugWidgetInfo> widgets)
+		{
+			List<Type> providerTypes = new List<Type>(TypeCache.GetTypesDerivedFrom<IPerfMeterCustomMetricProvider>());
+			providerTypes.Sort((left, right) => string.Compare(left.FullName, right.FullName, StringComparison.OrdinalIgnoreCase));
+			for (int i = 0; i < providerTypes.Count; i++)
+			{
+				Type type = providerTypes[i];
+				if (type == null || type.IsAbstract || type.IsInterface)
+				{
+					continue;
+				}
+
+				string assetPath = GetScriptAssetPath(type);
+				string source = IsInsideThisPackage(type, assetPath) ? "Inside this package" : "In project";
+				string details = string.IsNullOrEmpty(assetPath) ? type.FullName : assetPath;
+				AddDebugWidget(widgets, source, type.Name, "Custom metric provider", "CustomMetrics", details);
+			}
+		}
+
+		private static void AddDebugWidget(List<DebugWidgetInfo> widgets, string source, string name, string type, string module, string details)
+		{
+			widgets.Add(new DebugWidgetInfo(source, name, type, module, details));
+		}
+
+		private static VisualElement CreateDebugWidgetRow(string source, string name, string type, string module, string details, bool header)
+		{
+			VisualElement row = new VisualElement();
+			row.AddToClassList("pm-debug-row");
+			if (header)
+			{
+				row.AddToClassList("pm-debug-row--header");
+			}
+
+			row.Add(CreateDebugCell(source, "pm-debug-cell--source"));
+			row.Add(CreateDebugCell(name, "pm-debug-cell--name"));
+			row.Add(CreateDebugCell(type, "pm-debug-cell--type"));
+			row.Add(CreateDebugCell(module, "pm-debug-cell--module"));
+			row.Add(CreateDebugCell(details, "pm-debug-cell--details"));
+			return row;
+		}
+
+		private static Label CreateDebugCell(string text, string className)
+		{
+			Label label = new Label(text);
+			label.AddToClassList("pm-debug-cell");
+			label.AddToClassList(className);
+			return label;
+		}
+
+		private static string GetScriptAssetPath(Type type)
+		{
+			Type scriptType = type.IsNested && type.DeclaringType != null ? type.DeclaringType : type;
+			string[] guids = AssetDatabase.FindAssets(scriptType.Name + " t:MonoScript");
+			for (int i = 0; i < guids.Length; i++)
+			{
+				string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+				MonoScript script = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
+				if (script != null && script.GetClass() == scriptType)
+				{
+					return path;
+				}
+			}
+
+			return string.Empty;
+		}
+
+		private static bool IsInsideThisPackage(Type type, string assetPath)
+		{
+			string packageAssetPath = PerfMeterSetupUtility.PackageAssetPath;
+			string normalizedPath = string.IsNullOrEmpty(assetPath) ? string.Empty : assetPath.Replace('\\', '/');
+			if (!string.IsNullOrEmpty(packageAssetPath) && normalizedPath.StartsWith(packageAssetPath, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+
+			if (normalizedPath.StartsWith("Packages/com.sungeargames.perfmeter/", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+
+			return type.Assembly == typeof(RuntimePerformanceMeter).Assembly;
+		}
+
 		private void BuildSettingsPanel()
 		{
 			VisualElement section = AddSection(_settingsPanel, "Localization");
@@ -826,6 +1021,7 @@ namespace SGG.PerfMeter.Editor.UI
 			RefreshSettingsPanel(status);
 			RefreshInitializationCode();
 			RefreshRuntimePanel();
+			RefreshDebugPanel();
 			RefreshWindowSettingsPanel();
 			ApplyLocalization();
 		}
@@ -1278,6 +1474,9 @@ namespace SGG.PerfMeter.Editor.UI
 				case "Runtime":
 					SelectRuntimeTab();
 					break;
+				case "Debug":
+					SelectDebugTab();
+					break;
 				case "Settings":
 					SelectSettingsTab();
 					break;
@@ -1305,6 +1504,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_presetsTab.SetValueWithoutNotify(false);
 			}
 
+			if (_debugTab != null)
+			{
+				_debugTab.SetValueWithoutNotify(false);
+			}
+
 			if (_settingsTab != null)
 			{
 				_settingsTab.SetValueWithoutNotify(false);
@@ -1323,6 +1527,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_runtimePanel != null)
 			{
 				_runtimePanel.style.display = DisplayStyle.None;
+			}
+
+			if (_debugPanel != null)
+			{
+				_debugPanel.style.display = DisplayStyle.None;
 			}
 
 			if (_settingsPanel != null)
@@ -1349,6 +1558,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_runtimeTab.SetValueWithoutNotify(false);
 			}
 
+			if (_debugTab != null)
+			{
+				_debugTab.SetValueWithoutNotify(false);
+			}
+
 			if (_settingsTab != null)
 			{
 				_settingsTab.SetValueWithoutNotify(false);
@@ -1367,6 +1581,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_runtimePanel != null)
 			{
 				_runtimePanel.style.display = DisplayStyle.None;
+			}
+
+			if (_debugPanel != null)
+			{
+				_debugPanel.style.display = DisplayStyle.None;
 			}
 
 			if (_settingsPanel != null)
@@ -1393,6 +1612,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_presetsTab.SetValueWithoutNotify(false);
 			}
 
+			if (_debugTab != null)
+			{
+				_debugTab.SetValueWithoutNotify(false);
+			}
+
 			if (_settingsTab != null)
 			{
 				_settingsTab.SetValueWithoutNotify(false);
@@ -1413,12 +1637,74 @@ namespace SGG.PerfMeter.Editor.UI
 				_runtimePanel.style.display = DisplayStyle.Flex;
 			}
 
+			if (_debugPanel != null)
+			{
+				_debugPanel.style.display = DisplayStyle.None;
+			}
+
 			if (_settingsPanel != null)
 			{
 				_settingsPanel.style.display = DisplayStyle.None;
 			}
 
 			RefreshRuntimePanel();
+			ApplyLocalization();
+		}
+
+		private void SelectDebugTab()
+		{
+			_currentTab = "Debug";
+			if (_setupTab != null)
+			{
+				_setupTab.SetValueWithoutNotify(false);
+			}
+
+			if (_presetsTab != null)
+			{
+				_presetsTab.SetValueWithoutNotify(false);
+			}
+
+			if (_runtimeTab != null)
+			{
+				_runtimeTab.SetValueWithoutNotify(false);
+			}
+
+			if (_debugTab != null)
+			{
+				_debugTab.SetValueWithoutNotify(true);
+			}
+
+			if (_settingsTab != null)
+			{
+				_settingsTab.SetValueWithoutNotify(false);
+			}
+
+			if (_setupPanel != null)
+			{
+				_setupPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_presetsPanel != null)
+			{
+				_presetsPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_runtimePanel != null)
+			{
+				_runtimePanel.style.display = DisplayStyle.None;
+			}
+
+			if (_debugPanel != null)
+			{
+				_debugPanel.style.display = DisplayStyle.Flex;
+			}
+
+			if (_settingsPanel != null)
+			{
+				_settingsPanel.style.display = DisplayStyle.None;
+			}
+
+			RefreshDebugPanel();
 			ApplyLocalization();
 		}
 
@@ -1440,6 +1726,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_runtimeTab.SetValueWithoutNotify(false);
 			}
 
+			if (_debugTab != null)
+			{
+				_debugTab.SetValueWithoutNotify(false);
+			}
+
 			if (_settingsTab != null)
 			{
 				_settingsTab.SetValueWithoutNotify(true);
@@ -1458,6 +1749,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_runtimePanel != null)
 			{
 				_runtimePanel.style.display = DisplayStyle.None;
+			}
+
+			if (_debugPanel != null)
+			{
+				_debugPanel.style.display = DisplayStyle.None;
 			}
 
 			if (_settingsPanel != null)
@@ -1661,6 +1957,24 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				indicator.AddToClassList("pm-indicator--error");
 			}
+		}
+
+		private readonly struct DebugWidgetInfo
+		{
+			internal DebugWidgetInfo(string source, string name, string type, string module, string details)
+			{
+				Source = source;
+				Name = name;
+				Type = type;
+				Module = module;
+				Details = details;
+			}
+
+			internal string Source { get; }
+			internal string Name { get; }
+			internal string Type { get; }
+			internal string Module { get; }
+			internal string Details { get; }
 		}
 
 		private readonly struct OverlayModuleToggle

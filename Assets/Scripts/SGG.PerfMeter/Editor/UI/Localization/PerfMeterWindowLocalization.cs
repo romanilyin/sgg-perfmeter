@@ -238,6 +238,11 @@ namespace SGG.PerfMeter.Editor.UI.Localization
 				return Format("Selected {0} renderer asset(s) missing PerfMeter feature.", match.Groups[1].Value);
 			}
 
+			if (TryMatch(source, "^(\\d+) widgets: (\\d+) inside this package, (\\d+) in project\\.$", out match))
+			{
+				return Format("{0} widgets: {1} inside this package, {2} in project.", match.Groups[1].Value, match.Groups[2].Value, match.Groups[3].Value);
+			}
+
 			if (TryMatch(source, "^Installed PerfMeter Render Graph feature in (\\d+) renderer asset\\(s\\)\\.$", out match))
 			{
 				return Format("Installed PerfMeter Render Graph feature in {0} renderer asset(s).", match.Groups[1].Value);

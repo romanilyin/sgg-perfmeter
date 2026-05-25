@@ -272,6 +272,75 @@
     white-space: normal;
 }
 
+.pm-debug-table {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    margin-top: 4px;
+}
+
+.pm-debug-row {
+    flex-direction: row;
+    align-items: stretch;
+    min-width: 0;
+    background-color: rgba(20, 20, 20, 0.28);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.pm-debug-row--header {
+    background-color: rgba(30, 40, 40, 0.9);
+}
+
+.pm-debug-row--header .pm-debug-cell {
+    -unity-font-style: bold;
+    color: rgb(80, 140, 140);
+}
+
+.pm-debug-cell {
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+    overflow: hidden;
+    padding-top: 4px;
+    padding-right: 6px;
+    padding-bottom: 4px;
+    padding-left: 6px;
+    border-right-width: 1px;
+    border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+.pm-debug-cell--source {
+    width: 128px;
+    min-width: 128px;
+    color: var(--pm-text-muted);
+}
+
+.pm-debug-cell--name {
+    width: 150px;
+    min-width: 150px;
+}
+
+.pm-debug-cell--type {
+    width: 138px;
+    min-width: 138px;
+    color: var(--pm-text-muted);
+}
+
+.pm-debug-cell--module {
+    width: 130px;
+    min-width: 130px;
+    color: var(--pm-text-muted);
+}
+
+.pm-debug-cell--details {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
 .pm-log {
     white-space: normal;
     color: var(--pm-text-muted);

@@ -38,6 +38,7 @@ Open `SGG/Perfmeter/Setup` to prepare the project without editing URP renderer a
 - Zero-code setup is driven by this JSON: when `enabled` and `autoStart` are enabled, runtime auto-start applies collection mode, overlay visible/corner/theme/layout/font/target FPS/preset/modules, tuning, alert defaults, session defaults, and overdraw limits without handwritten bootstrap code.
 - `Initialization Code` shows the runtime overlay bootstrap; `Overlay Visible`, `Target FPS`, `Overlay Corner`, `Overlay Theme`, `Overlay Layout`, and `Overlay Font` options immediately update the code copied by `Copy Init Code`.
 - The `Runtime` tab is for Play Mode: buttons are disabled in Edit Mode, grouped by runtime status, collection, visibility, target FPS, overlay layout/theme/font/corner, CPU core panels, Editor warning logs, and overdraw. Active radio/toggle buttons are highlighted with a yellow background.
+- The `Debug` tab lists overlay widgets from this package and project `IPerfMeterCustomMetricProvider` implementations in a source/type/module/details table, with `Inside this package` and `In project` counts.
 - The `Settings` tab selects the setup window language. Localization is loaded from XLIFF files in `Editor/UI/Localization/perfmeter-window.<lang>.xlf` and affects only this Editor window; runtime overlay text, JSON keys, generated snippets, paths, and logs stay unchanged.
 
 The same actions are available to agents and Editor scripts without opening the window through the public Editor API:

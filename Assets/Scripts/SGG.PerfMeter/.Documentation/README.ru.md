@@ -38,6 +38,7 @@ Compatibility note: пакет импортируется в Unity `2022.3`-`600
 - Zero-code setup включается через этот JSON: если `enabled` и `autoStart` включены, runtime auto-start применяет collection mode, overlay visible/corner/theme/layout/font/target FPS/preset/modules, tuning, alert defaults, session defaults и overdraw limits без ручного bootstrap-кода.
 - `Initialization Code` показывает bootstrap-код для запуска runtime overlay; настройки `Overlay Visible`, `Target FPS`, `Overlay Corner`, `Overlay Theme`, `Overlay Layout` и `Overlay Font` сразу меняют код, который копирует `Copy Init Code`.
 - Вкладка `Runtime` предназначена для Play Mode: в Edit Mode кнопки отключены, а в Play Mode они сгруппированы по runtime status, collection, visibility, target FPS, overlay layout/theme/font/corner, CPU core panels, Editor warning logs и overdraw. Активные radio/toggle кнопки подсвечиваются желтым фоном.
+- Вкладка `Debug` показывает overlay widgets из этого пакета и project implementations `IPerfMeterCustomMetricProvider` в таблице source/type/module/details, включая счетчики `Inside this package` и `In project`.
 - Вкладка `Settings` выбирает язык setup window. Локализация загружается из XLIFF-файлов `Editor/UI/Localization/perfmeter-window.<lang>.xlf` и влияет только на это Editor-окно; runtime overlay text, JSON keys, generated snippets, пути и логи остаются без изменений.
 
 Те же действия доступны агентам и Editor-скриптам без открытия окна через публичный Editor API:
