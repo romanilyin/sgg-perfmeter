@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SGG.PerfMeter.Editor.Setup;
+using SGG.PerfMeter.Editor.UI.Localization;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -20,9 +21,12 @@ namespace SGG.PerfMeter.Editor.UI
 		private VisualElement _setupPanel;
 		private VisualElement _presetsPanel;
 		private VisualElement _runtimePanel;
+		private VisualElement _settingsPanel;
 		private ToolbarToggle _setupTab;
 		private ToolbarToggle _presetsTab;
 		private ToolbarToggle _runtimeTab;
+		private ToolbarToggle _settingsTab;
+		private string _currentTab = "Setup";
 
 		private Label _projectStatus;
 		private Label _frameTimingStats;
@@ -93,6 +97,8 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _runtimeOverlayFontFamily;
 		private Label _runtimeEditorWarnings;
 		private Label _runtimeOverdraw;
+		private PopupField<string> _languageField;
+		private Label _settingsLanguageCurrent;
 
 		[MenuItem("SGG/Perfmeter/Setup")]
 		public static void Open()
@@ -132,19 +138,22 @@ namespace SGG.PerfMeter.Editor.UI
 			_setupPanel = new VisualElement();
 			_presetsPanel = new VisualElement();
 			_runtimePanel = new VisualElement();
+			_settingsPanel = new VisualElement();
 			scroll.Add(_setupPanel);
 			scroll.Add(_presetsPanel);
 			scroll.Add(_runtimePanel);
+			scroll.Add(_settingsPanel);
 
 			BuildSetupPanel();
 			BuildPresetsPanel();
 			BuildRuntimePanel();
+			BuildSettingsPanel();
 
 			_lastActionLabel = new Label();
 			_lastActionLabel.AddToClassList("pm-log");
 			rootVisualElement.Add(_lastActionLabel);
 
-			SelectSetupTab();
+			SelectCurrentTab();
 			RefreshAll();
 		}
 
@@ -155,9 +164,11 @@ namespace SGG.PerfMeter.Editor.UI
 			_setupTab = new ToolbarToggle { text = "Setup" };
 			_presetsTab = new ToolbarToggle { text = "Presets" };
 			_runtimeTab = new ToolbarToggle { text = "Runtime" };
+			_settingsTab = new ToolbarToggle { text = "Settings" };
 			_setupTab.AddToClassList("pm-tab");
 			_presetsTab.AddToClassList("pm-tab");
 			_runtimeTab.AddToClassList("pm-tab");
+			_settingsTab.AddToClassList("pm-tab");
 			_setupTab.RegisterValueChangedCallback(evt =>
 			{
 				if (evt.newValue)
@@ -179,9 +190,17 @@ namespace SGG.PerfMeter.Editor.UI
 					SelectRuntimeTab();
 				}
 			});
+			_settingsTab.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue)
+				{
+					SelectSettingsTab();
+				}
+			});
 			toolbar.Add(_setupTab);
 			toolbar.Add(_presetsTab);
 			toolbar.Add(_runtimeTab);
+			toolbar.Add(_settingsTab);
 			rootVisualElement.Add(toolbar);
 		}
 
@@ -443,7 +462,7 @@ namespace SGG.PerfMeter.Editor.UI
 			AddButton(actions, "Load JSON", () =>
 			{
 				LoadSettingsIntoControls(PerfMeterSetupActions.LoadSettings());
-				_lastActionLabel.text = "Load JSON: settings loaded from project JSON or defaults.";
+				_lastActionLabel.text = PerfMeterWindowLocalization.Text("Load JSON: settings loaded from project JSON or defaults.");
 			});
 			AddButton(actions, "Save JSON", () => RunAction("Save JSON", SaveSettingsFromControls));
 			AddButton(actions, "Apply In Play Mode", () => RunAction("Apply Settings", PerfMeterSetupActions.ApplySettingsToRuntime));
@@ -541,6 +560,41 @@ namespace SGG.PerfMeter.Editor.UI
 			AddRuntimeButton(overdrawActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerformanceMeter.CancelOverdrawMeasurement), status => status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring);
 			AddRuntimeButton(overdrawActions, "Show Heatmap", () => RunRuntimeAction("Show Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(true)), status => status.OverdrawHeatmapVisible);
 			AddRuntimeButton(overdrawActions, "Hide Heatmap", () => RunRuntimeAction("Hide Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(false)), status => !status.OverdrawHeatmapVisible);
+		}
+
+		private void BuildSettingsPanel()
+		{
+			VisualElement section = AddSection(_settingsPanel, "Localization");
+			AddInfo(section, "Language affects only this setup window. Runtime overlay text, generated C# snippets, JSON keys, paths, and logs stay unchanged.");
+
+			List<string> languageNames = PerfMeterWindowLocalization.LanguageDisplayNames();
+			int languageIndex = Math.Min(PerfMeterWindowLocalization.LanguageIndex(PerfMeterWindowLocalization.CurrentLanguage), languageNames.Count - 1);
+			_languageField = new PopupField<string>(string.Empty, languageNames, Math.Max(0, languageIndex));
+			_languageField.RegisterValueChangedCallback(evt => OnLanguageChanged(evt.newValue));
+			AddControlRow(section, "Language", _languageField);
+			_settingsLanguageCurrent = AddRow(section, "Current language", PerfMeterWindowLocalization.CurrentLanguageDisplayName());
+			AddRow(section, "Scope", "Only SGG PerfMeter Setup window UI text; runtime output and generated snippets stay unchanged.");
+		}
+
+		private void OnLanguageChanged(string displayName)
+		{
+			string language = PerfMeterWindowLocalization.LanguageCodeForDisplayName(displayName);
+			if (string.Equals(language, PerfMeterWindowLocalization.CurrentLanguage, StringComparison.OrdinalIgnoreCase))
+			{
+				return;
+			}
+
+			PerfMeterWindowLocalization.CurrentLanguage = language;
+			CreateGUI();
+			if (_lastActionLabel != null)
+			{
+				_lastActionLabel.text = PerfMeterWindowLocalization.Text("Language changed. PerfMeter Setup window UI text has been refreshed.");
+			}
+		}
+
+		private void ApplyLocalization()
+		{
+			PerfMeterWindowLocalization.ApplyTo(rootVisualElement);
 		}
 
 		private VisualElement AddSection(VisualElement parent, string caption)
@@ -742,13 +796,13 @@ namespace SGG.PerfMeter.Editor.UI
 				_lastActionLabel.text = title + ": " + result.Message;
 				if (!result.Success)
 				{
-					EditorUtility.DisplayDialog(title + " Failed", result.Message, "OK");
+					EditorUtility.DisplayDialog(PerfMeterWindowLocalization.Text(title + " Failed"), PerfMeterWindowLocalization.Text(result.Message), "OK");
 				}
 			}
 			catch (Exception exception)
 			{
 				_lastActionLabel.text = title + ": " + exception.Message;
-				EditorUtility.DisplayDialog(title + " Failed", exception.Message, "OK");
+				EditorUtility.DisplayDialog(PerfMeterWindowLocalization.Text(title + " Failed"), exception.Message, "OK");
 			}
 			finally
 			{
@@ -772,6 +826,27 @@ namespace SGG.PerfMeter.Editor.UI
 			RefreshSettingsPanel(status);
 			RefreshInitializationCode();
 			RefreshRuntimePanel();
+			RefreshWindowSettingsPanel();
+			ApplyLocalization();
+		}
+
+		private void RefreshWindowSettingsPanel()
+		{
+			if (_settingsLanguageCurrent == null)
+			{
+				return;
+			}
+
+			_settingsLanguageCurrent.text = PerfMeterWindowLocalization.CurrentLanguageDisplayName();
+			if (_languageField != null)
+			{
+				List<string> languageNames = PerfMeterWindowLocalization.LanguageDisplayNames();
+				int languageIndex = PerfMeterWindowLocalization.LanguageIndex(PerfMeterWindowLocalization.CurrentLanguage);
+				if (languageIndex >= 0 && languageIndex < languageNames.Count)
+				{
+					_languageField.SetValueWithoutNotify(languageNames[languageIndex]);
+				}
+			}
 		}
 
 		private void RefreshSettingsPanel(PerfMeterSetupUtility.PerfMeterSetupStatus status)
@@ -1083,6 +1158,8 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				_lastActionLabel.text = "Selected " + _selectedRendererPaths.Count + " renderer asset(s) missing PerfMeter feature.";
 			}
+
+			ApplyLocalization();
 		}
 
 		private string[] GetSelectedRendererPaths()
@@ -1159,7 +1236,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void CopyInitializationCode()
 		{
 			GUIUtility.systemCopyBuffer = _initCode != null ? _initCode.value : BuildInitializationSnippetFromOptions();
-			_lastActionLabel.text = "Initialization code copied to clipboard.";
+			_lastActionLabel.text = PerfMeterWindowLocalization.Text("Initialization code copied to clipboard.");
 		}
 
 		private void RefreshInitializationCode()
@@ -1191,8 +1268,28 @@ namespace SGG.PerfMeter.Editor.UI
 			return PerfMeterSetupUtility.BuildInitializationSnippet(visible, corner, targetFps, theme, layout, fontFamily);
 		}
 
+		private void SelectCurrentTab()
+		{
+			switch (_currentTab)
+			{
+				case "Presets":
+					SelectPresetsTab();
+					break;
+				case "Runtime":
+					SelectRuntimeTab();
+					break;
+				case "Settings":
+					SelectSettingsTab();
+					break;
+				default:
+					SelectSetupTab();
+					break;
+			}
+		}
+
 		private void SelectSetupTab()
 		{
+			_currentTab = "Setup";
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(true);
@@ -1206,6 +1303,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_presetsTab != null)
 			{
 				_presetsTab.SetValueWithoutNotify(false);
+			}
+
+			if (_settingsTab != null)
+			{
+				_settingsTab.SetValueWithoutNotify(false);
 			}
 
 			if (_setupPanel != null)
@@ -1222,10 +1324,16 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				_runtimePanel.style.display = DisplayStyle.None;
 			}
+
+			if (_settingsPanel != null)
+			{
+				_settingsPanel.style.display = DisplayStyle.None;
+			}
 		}
 
 		private void SelectPresetsTab()
 		{
+			_currentTab = "Presets";
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(false);
@@ -1239,6 +1347,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_runtimeTab != null)
 			{
 				_runtimeTab.SetValueWithoutNotify(false);
+			}
+
+			if (_settingsTab != null)
+			{
+				_settingsTab.SetValueWithoutNotify(false);
 			}
 
 			if (_setupPanel != null)
@@ -1255,10 +1368,16 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				_runtimePanel.style.display = DisplayStyle.None;
 			}
+
+			if (_settingsPanel != null)
+			{
+				_settingsPanel.style.display = DisplayStyle.None;
+			}
 		}
 
 		private void SelectRuntimeTab()
 		{
+			_currentTab = "Runtime";
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(false);
@@ -1272,6 +1391,11 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_presetsTab != null)
 			{
 				_presetsTab.SetValueWithoutNotify(false);
+			}
+
+			if (_settingsTab != null)
+			{
+				_settingsTab.SetValueWithoutNotify(false);
 			}
 
 			if (_setupPanel != null)
@@ -1289,7 +1413,60 @@ namespace SGG.PerfMeter.Editor.UI
 				_runtimePanel.style.display = DisplayStyle.Flex;
 			}
 
+			if (_settingsPanel != null)
+			{
+				_settingsPanel.style.display = DisplayStyle.None;
+			}
+
 			RefreshRuntimePanel();
+			ApplyLocalization();
+		}
+
+		private void SelectSettingsTab()
+		{
+			_currentTab = "Settings";
+			if (_setupTab != null)
+			{
+				_setupTab.SetValueWithoutNotify(false);
+			}
+
+			if (_presetsTab != null)
+			{
+				_presetsTab.SetValueWithoutNotify(false);
+			}
+
+			if (_runtimeTab != null)
+			{
+				_runtimeTab.SetValueWithoutNotify(false);
+			}
+
+			if (_settingsTab != null)
+			{
+				_settingsTab.SetValueWithoutNotify(true);
+			}
+
+			if (_setupPanel != null)
+			{
+				_setupPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_presetsPanel != null)
+			{
+				_presetsPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_runtimePanel != null)
+			{
+				_runtimePanel.style.display = DisplayStyle.None;
+			}
+
+			if (_settingsPanel != null)
+			{
+				_settingsPanel.style.display = DisplayStyle.Flex;
+			}
+
+			RefreshWindowSettingsPanel();
+			ApplyLocalization();
 		}
 
 		private void RunRuntimeAction(string title, Action action)
@@ -1298,6 +1475,7 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				_lastActionLabel.text = title + ": enter Play Mode to use runtime controls.";
 				RefreshRuntimePanel();
+				ApplyLocalization();
 				return;
 			}
 
@@ -1309,11 +1487,12 @@ namespace SGG.PerfMeter.Editor.UI
 			catch (Exception exception)
 			{
 				_lastActionLabel.text = title + ": " + exception.Message;
-				EditorUtility.DisplayDialog(title + " Failed", exception.Message, "OK");
+				EditorUtility.DisplayDialog(PerfMeterWindowLocalization.Text(title + " Failed"), exception.Message, "OK");
 			}
 			finally
 			{
 				RefreshRuntimePanel();
+				ApplyLocalization();
 			}
 		}
 
