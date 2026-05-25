@@ -5,13 +5,12 @@
   "collectionMode": "Background",
   "overlayVisible": false,
   "overlayCorner": "TopRight",
-  "overlayMode": "TextCompact",
   "targetFps": 60,
   "activePreset": "AgentDebug",
   "presets": [],
   "overlay": {
     "theme": "Glass",
-    "layout": "MetricBars",
+    "layout": "TextCompact",
     "fontFamily": "Manrope",
     "scale": 1.0,
     "opacity": 0.84,
@@ -28,7 +27,7 @@
     "fpsConsecutiveFrames": 60,
     "gpuTimingUnavailableConsecutiveFrames": 120,
     "overdrawConsecutiveFrames": 3,
-    "disableEditorWarnings": false
+    "editorWarningsEnabled": true
   },
   "session": {
     "warmupFrames": 0,

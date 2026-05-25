@@ -341,6 +341,15 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static bool EditorWarningLogsEnabled
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.EditorWarningLogsEnabled : GetSettings().EditorWarningsEnabled;
+			}
+		}
+
 		public static void SetOverlayVisible(bool visible)
 		{
 			PerfMeterRuntime.EnsureRunning();
@@ -438,6 +447,16 @@ namespace SGG.PerfMeter
 			if (runtime != null)
 			{
 				runtime.SetTargetFps(targetFps);
+			}
+		}
+
+		public static void SetEditorWarningLogsEnabled(bool enabled)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetEditorWarningLogsEnabled(enabled);
 			}
 		}
 

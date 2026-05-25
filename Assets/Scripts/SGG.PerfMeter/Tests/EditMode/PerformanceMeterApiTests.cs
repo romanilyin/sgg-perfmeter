@@ -45,6 +45,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.IsSessionRecording, Is.False);
 			Assert.That(status.ApplicationFocused, Is.True);
 			Assert.That(status.ApplicationPaused, Is.False);
+			Assert.That(status.EditorWarningsEnabled, Is.True);
 			Assert.That(PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot tryStatus), Is.True);
 			Assert.That(tryStatus.State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 		}
@@ -115,6 +116,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCores);
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.True);
 			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(true));
@@ -131,7 +133,17 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs));
 			Assert.That(PerformanceMeter.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
+			Assert.That(PerformanceMeter.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Graphs));
 			Assert.That(PerformanceMeter.GetStatus().OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
+			Assert.That(PerformanceMeter.GetStatus().OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Graphs));
+			Assert.That(PerformanceMeter.GetStatus().OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Custom));
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetEditorWarningLogsEnabled(false));
+			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.False);
+			Assert.That(PerformanceMeter.GetStatus().EditorWarningsEnabled, Is.False);
+			Assert.DoesNotThrow(() => PerformanceMeter.SetEditorWarningLogsEnabled(true));
+			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.GetStatus().EditorWarningsEnabled, Is.True);
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps120));
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));

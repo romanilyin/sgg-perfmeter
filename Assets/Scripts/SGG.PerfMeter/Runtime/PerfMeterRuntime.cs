@@ -57,6 +57,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
+		internal bool EditorWarningLogsEnabled => _settings.EditorWarningsEnabled;
 		internal PerfMeterCollectionMode CollectionMode => GetCollectionMode();
 		internal bool IsSessionRecording => _sessionRecorder.IsRecording;
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
@@ -416,12 +417,15 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayMode(PerfMeterOverlayMode mode)
 		{
-			_overlayMode = mode;
+			_overlayLayout = PerfMeterSettingsStore.GetLayoutForMode(mode);
+			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
+			MarkOverlayPresetCustomIfLayoutChanged();
 			EnsureOverlayState();
 
 			if (_overlay != null)
 			{
-				_overlay.SetMode(mode);
+				_overlay.SetMode(_overlayMode);
+				_overlay.SetLayout(_overlayLayout);
 			}
 
 			ResetCpuCoreSamplerIfInactive();
@@ -444,10 +448,13 @@ namespace SGG.PerfMeter
 		internal void SetOverlayLayout(PerfMeterOverlayLayout layout)
 		{
 			_overlayLayout = PerfMeterSettingsStore.NormalizeOverlayLayout(layout);
+			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
+			MarkOverlayPresetCustomIfLayoutChanged();
 			EnsureOverlayState();
 
 			if (_overlay != null)
 			{
+				_overlay.SetMode(_overlayMode);
 				_overlay.SetLayout(_overlayLayout);
 			}
 
@@ -472,11 +479,8 @@ namespace SGG.PerfMeter
 		{
 			_overlayPreset = NormalizeOverlayPreset(preset);
 			_overlayModules = PerfMeterSettingsStore.GetPresetModules(_overlayPreset);
-			_overlayMode = PerfMeterSettingsStore.GetPresetMode(_overlayPreset);
-			if (_overlayPreset == PerfMeterOverlayPreset.AgentDebug)
-			{
-				_overlayLayout = PerfMeterOverlayLayout.MetricBars;
-			}
+			_overlayLayout = PerfMeterSettingsStore.GetPresetLayout(_overlayPreset);
+			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
 
 			EnsureOverlayState();
 
@@ -493,7 +497,13 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayModules(PerfMeterOverlayModule modules)
 		{
-			_overlayModules = NormalizeOverlayModules(modules, _overlayPreset);
+			PerfMeterOverlayModule normalizedModules = NormalizeOverlayModules(modules, _overlayPreset);
+			if (_overlayPreset != PerfMeterOverlayPreset.Custom && normalizedModules != PerfMeterSettingsStore.GetPresetModules(_overlayPreset))
+			{
+				_overlayPreset = PerfMeterOverlayPreset.Custom;
+			}
+
+			_overlayModules = normalizedModules;
 			EnsureOverlayState();
 
 			if (_overlay != null)
@@ -543,6 +553,7 @@ namespace SGG.PerfMeter
 			_overlayGraphHistoryLength = settings.OverlayGraphHistoryLength;
 			_overlayTheme = settings.OverlayTheme;
 			_overlayLayout = settings.OverlayLayout;
+			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, settings.OverlayMode);
 			_overlayFontFamily = settings.OverlayFontFamily;
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
@@ -550,6 +561,7 @@ namespace SGG.PerfMeter
 
 			if (_overlay != null)
 			{
+				_overlay.SetMode(_overlayMode);
 				_overlay.SetTheme(_overlayTheme);
 				_overlay.SetLayout(_overlayLayout);
 				_overlay.SetFontFamily(_overlayFontFamily);
@@ -557,6 +569,13 @@ namespace SGG.PerfMeter
 			}
 
 			ResetCpuCoreSamplerIfInactive();
+			RefreshStatusOverlayState();
+		}
+
+		internal void SetEditorWarningLogsEnabled(bool enabled)
+		{
+			_settings = PerfMeterSettingsStore.WithEditorWarningsEnabled(_settings, enabled);
+			ApplyAlertSettings(_settings);
 			RefreshStatusOverlayState();
 		}
 
@@ -619,7 +638,8 @@ namespace SGG.PerfMeter
 				_overlayPreset,
 				_overlayModules,
 				applicationFocused: _applicationFocused,
-				applicationPaused: _applicationPaused);
+				applicationPaused: _applicationPaused,
+				editorWarningsEnabled: _settings.EditorWarningsEnabled);
 
 			_latestMetrics = new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -717,7 +737,8 @@ namespace SGG.PerfMeter
 			string latestAlertRuleId = "",
 			string latestAlertMessage = "",
 			bool applicationFocused = true,
-			bool applicationPaused = false)
+			bool applicationPaused = false,
+			bool editorWarningsEnabled = true)
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -754,7 +775,8 @@ namespace SGG.PerfMeter
 				applicationPaused,
 				overlayTheme: PerfMeterSettingsStore.NormalizeOverlayTheme(overlayTheme),
 				overlayLayout: PerfMeterSettingsStore.NormalizeOverlayLayout(overlayLayout),
-				overlayFontFamily: PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily));
+				overlayFontFamily: PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily),
+				editorWarningsEnabled: editorWarningsEnabled);
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -897,7 +919,8 @@ namespace SGG.PerfMeter
 				_alertEngine.LatestAlert.RuleId,
 				_alertEngine.LatestAlert.Message,
 				_applicationFocused,
-				_applicationPaused);
+				_applicationPaused,
+				_settings.EditorWarningsEnabled);
 		}
 
 		private static string CombineWarnings(string first, string second)
@@ -1007,7 +1030,8 @@ namespace SGG.PerfMeter
 				_alertEngine.LatestAlert.RuleId,
 				_alertEngine.LatestAlert.Message,
 				_applicationFocused,
-				_applicationPaused);
+				_applicationPaused,
+				_settings.EditorWarningsEnabled);
 		}
 
 		private PerfMeterCounterAvailability GetAvailableCounters()
@@ -1065,6 +1089,14 @@ namespace SGG.PerfMeter
 			{
 				_cpuCoreSampler.Reset();
 				_cpuCoreSamplingActive = false;
+			}
+		}
+
+		private void MarkOverlayPresetCustomIfLayoutChanged()
+		{
+			if (_overlayPreset != PerfMeterOverlayPreset.Custom && _overlayLayout != PerfMeterSettingsStore.GetPresetLayout(_overlayPreset))
+			{
+				_overlayPreset = PerfMeterOverlayPreset.Custom;
 			}
 		}
 

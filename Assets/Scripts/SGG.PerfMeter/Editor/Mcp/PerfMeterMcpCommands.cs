@@ -113,11 +113,6 @@ namespace SGG.PerfMeter.Editor.Mcp
 				RuntimePerformanceMeter.SetOverlayCorner(ParseOverlayCorner(corner));
 			}
 
-			if (TryExtractString(argsJson, "mode", out string mode))
-			{
-				RuntimePerformanceMeter.SetOverlayMode(ParseOverlayMode(mode));
-			}
-
 			if (TryExtractString(argsJson, "theme", out string theme))
 			{
 				RuntimePerformanceMeter.SetOverlayTheme(ParseOverlayTheme(theme));
@@ -1031,7 +1026,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 				return layout;
 			}
 
-			throw new InvalidOperationException("schema_validation_failed\nArgument layout must be Classic, CompactCards, DiagnosticsWide, OverdrawFocus, or MetricBars");
+			throw new InvalidOperationException("schema_validation_failed\nArgument layout must be FpsOnly, TextCompact, Graphs, Classic, CompactCards, DiagnosticsWide, OverdrawFocus, MetricBars, or Custom");
 		}
 
 		private static PerfMeterOverlayFontFamily ParseOverlayFontFamily(string value)
@@ -1074,32 +1069,6 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument corner must be TopLeft, TopRight, BottomLeft, or BottomRight");
-		}
-
-		private static PerfMeterOverlayMode ParseOverlayMode(string value)
-		{
-			string normalized = NormalizeEnumToken(value);
-			if (string.Equals(normalized, "FpsOnly", StringComparison.OrdinalIgnoreCase))
-			{
-				return PerfMeterOverlayMode.FpsOnly;
-			}
-
-			if (string.Equals(normalized, "TextCompact", StringComparison.OrdinalIgnoreCase))
-			{
-				return PerfMeterOverlayMode.TextCompact;
-			}
-
-			if (string.Equals(normalized, "Graphs", StringComparison.OrdinalIgnoreCase))
-			{
-				return PerfMeterOverlayMode.Graphs;
-			}
-
-			if (string.Equals(normalized, "Full", StringComparison.OrdinalIgnoreCase))
-			{
-				return PerfMeterOverlayMode.Full;
-			}
-
-			throw new InvalidOperationException("schema_validation_failed\nArgument mode must be FpsOnly, TextCompact, Graphs, or Full");
 		}
 
 		private static PerfMeterTargetFps ParseTargetFps(int value)

@@ -13,6 +13,8 @@ namespace SGG.PerfMeter.Editor.UI
 	{
 		private readonly List<Button> _runtimeButtons = new List<Button>();
 		private readonly List<RuntimeButtonBinding> _runtimeButtonBindings = new List<RuntimeButtonBinding>();
+		private readonly List<Button> _settingsButtons = new List<Button>();
+		private readonly List<SettingsButtonBinding> _settingsButtonBindings = new List<SettingsButtonBinding>();
 		private readonly List<OverlayModuleToggle> _settingsModuleToggles = new List<OverlayModuleToggle>();
 		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private VisualElement _setupPanel;
@@ -38,7 +40,6 @@ namespace SGG.PerfMeter.Editor.UI
 		private Toggle _initOverlayVisible;
 		private EnumField _initTargetFps;
 		private EnumField _initOverlayCorner;
-		private EnumField _initOverlayMode;
 		private EnumField _initOverlayTheme;
 		private EnumField _initOverlayLayout;
 		private EnumField _initOverlayFontFamily;
@@ -51,7 +52,6 @@ namespace SGG.PerfMeter.Editor.UI
 		private Toggle _settingsOverlayVisible;
 		private EnumField _settingsTargetFps;
 		private EnumField _settingsOverlayCorner;
-		private EnumField _settingsOverlayMode;
 		private EnumField _settingsOverlayTheme;
 		private EnumField _settingsOverlayLayout;
 		private EnumField _settingsOverlayFontFamily;
@@ -61,7 +61,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private FloatField _settingsOverlayFontSize;
 		private FloatField _settingsOverlayRefreshInterval;
 		private IntegerField _settingsOverlayGraphHistory;
-		private Toggle _settingsDisableEditorWarnings;
+		private Toggle _settingsEditorWarningsEnabled;
 		private FloatField _settingsEditorWarningCooldown;
 		private FloatField _settingsStructuredLogCooldown;
 		private FloatField _settingsCallbackCooldown;
@@ -88,10 +88,10 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _runtimeOverlayModules;
 		private Label _runtimeTargetFps;
 		private Label _runtimeOverlayCorner;
-		private Label _runtimeOverlayMode;
 		private Label _runtimeOverlayTheme;
 		private Label _runtimeOverlayLayout;
 		private Label _runtimeOverlayFontFamily;
+		private Label _runtimeEditorWarnings;
 		private Label _runtimeOverdraw;
 
 		[MenuItem("SGG/Perfmeter/Setup")]
@@ -107,6 +107,8 @@ namespace SGG.PerfMeter.Editor.UI
 			rootVisualElement.Clear();
 			_runtimeButtons.Clear();
 			_runtimeButtonBindings.Clear();
+			_settingsButtons.Clear();
+			_settingsButtonBindings.Clear();
 			_settingsModuleToggles.Clear();
 			rootVisualElement.AddToClassList("pm-window");
 
@@ -234,10 +236,6 @@ namespace SGG.PerfMeter.Editor.UI
 			_initOverlayCorner.RegisterValueChangedCallback(_ => RefreshInitializationCode());
 			AddControlRow(section, "Overlay Corner", _initOverlayCorner);
 
-			_initOverlayMode = new EnumField(PerfMeterOverlayMode.Full);
-			_initOverlayMode.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Overlay Mode", _initOverlayMode);
-
 			_initOverlayTheme = new EnumField(PerfMeterOverlayTheme.ClassicDark);
 			_initOverlayTheme.RegisterValueChangedCallback(_ => RefreshInitializationCode());
 			AddControlRow(section, "Overlay Theme", _initOverlayTheme);
@@ -278,30 +276,10 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsAutoStart = new Toggle();
 			AddControlRow(section, "Auto Start", _settingsAutoStart);
 
-			_settingsCollectionMode = new EnumField(PerfMeterCollectionMode.Overlay);
-			AddControlRow(section, "Collection Mode", _settingsCollectionMode);
-
 			_settingsOverlayVisible = new Toggle();
 			AddControlRow(section, "Overlay Visible", _settingsOverlayVisible);
 
-			_settingsTargetFps = new EnumField(PerfMeterTargetFps.Fps60);
-			AddControlRow(section, "Target FPS", _settingsTargetFps);
-
-			_settingsOverlayCorner = new EnumField(PerfMeterOverlayCorner.TopRight);
-			AddControlRow(section, "Overlay Corner", _settingsOverlayCorner);
-
-			_settingsOverlayMode = new EnumField(PerfMeterOverlayMode.Full);
-			AddControlRow(section, "Overlay Mode", _settingsOverlayMode);
-
-			_settingsOverlayTheme = new EnumField(PerfMeterOverlayTheme.ClassicDark);
-			AddControlRow(section, "Overlay Theme", _settingsOverlayTheme);
-
-			_settingsOverlayLayout = new EnumField(PerfMeterOverlayLayout.MetricBars);
-			AddControlRow(section, "Overlay Layout", _settingsOverlayLayout);
-
-			_settingsOverlayFontFamily = new EnumField(PerfMeterOverlayFontFamily.Manrope);
-			AddControlRow(section, "Overlay Font", _settingsOverlayFontFamily);
-
+			_settingsCollectionMode = new EnumField(PerfMeterCollectionMode.Overlay);
 			_settingsActivePreset = new EnumField(PerfMeterOverlayPreset.FullDiagnostics);
 			_settingsActivePreset.RegisterValueChangedCallback(evt =>
 			{
@@ -310,7 +288,64 @@ namespace SGG.PerfMeter.Editor.UI
 					ApplyPresetDefaultsToSettingsControls(preset);
 				}
 			});
-			AddControlRow(section, "Active Preset", _settingsActivePreset);
+			_settingsTargetFps = new EnumField(PerfMeterTargetFps.Fps60);
+			_settingsOverlayCorner = new EnumField(PerfMeterOverlayCorner.TopRight);
+			_settingsOverlayTheme = new EnumField(PerfMeterOverlayTheme.ClassicDark);
+			_settingsOverlayLayout = new EnumField(PerfMeterOverlayLayout.MetricBars);
+			_settingsOverlayFontFamily = new EnumField(PerfMeterOverlayFontFamily.Manrope);
+
+			VisualElement collectionActions = AddChoiceGroup(section, "Collection Mode");
+			AddSettingsCollectionModeButton(collectionActions, PerfMeterCollectionMode.Background);
+			AddSettingsCollectionModeButton(collectionActions, PerfMeterCollectionMode.Overlay);
+			AddSettingsCollectionModeButton(collectionActions, PerfMeterCollectionMode.OverdrawDiagnostic);
+			AddSettingsCollectionModeButton(collectionActions, PerfMeterCollectionMode.Stopped);
+
+			VisualElement presetActions = AddChoiceGroup(section, "Active Preset");
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.Minimal);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.Timing);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.Rendering);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.Memory);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.Overdraw);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.FullDiagnostics);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.AgentDebug);
+			AddSettingsPresetButton(presetActions, PerfMeterOverlayPreset.Custom);
+
+			VisualElement targetActions = AddChoiceGroup(section, "Target FPS");
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps15);
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps30);
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps60);
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps90);
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps120);
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps144);
+			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps240);
+
+			VisualElement cornerActions = AddChoiceGroup(section, "Overlay Corner");
+			AddSettingsCornerButton(cornerActions, PerfMeterOverlayCorner.TopLeft);
+			AddSettingsCornerButton(cornerActions, PerfMeterOverlayCorner.TopRight);
+			AddSettingsCornerButton(cornerActions, PerfMeterOverlayCorner.BottomLeft);
+			AddSettingsCornerButton(cornerActions, PerfMeterOverlayCorner.BottomRight);
+
+			VisualElement layoutActions = AddChoiceGroup(section, "Overlay Layout");
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.FpsOnly);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.TextCompact);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.Graphs);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.Classic);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.CompactCards);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.DiagnosticsWide);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.OverdrawFocus);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.MetricBars);
+			AddSettingsLayoutButton(layoutActions, PerfMeterOverlayLayout.Custom);
+
+			VisualElement themeActions = AddChoiceGroup(section, "Overlay Theme");
+			AddSettingsThemeButton(themeActions, PerfMeterOverlayTheme.ClassicDark);
+			AddSettingsThemeButton(themeActions, PerfMeterOverlayTheme.Glass);
+			AddSettingsThemeButton(themeActions, PerfMeterOverlayTheme.Cyber);
+			AddSettingsThemeButton(themeActions, PerfMeterOverlayTheme.HighContrast);
+
+			VisualElement fontActions = AddChoiceGroup(section, "Overlay Font");
+			AddSettingsFontButton(fontActions, PerfMeterOverlayFontFamily.Manrope);
+			AddSettingsFontButton(fontActions, PerfMeterOverlayFontFamily.JetBrainsMono);
+			AddSettingsFontButton(fontActions, PerfMeterOverlayFontFamily.LegacyRuntime);
 
 			VisualElement moduleList = new VisualElement();
 			moduleList.AddToClassList("pm-module-list");
@@ -348,8 +383,9 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayGraphHistory = new IntegerField();
 			AddControlRow(section, "Graph History", _settingsOverlayGraphHistory);
 
-			_settingsDisableEditorWarnings = new Toggle();
-			AddControlRow(section, "Disable Editor Warning Logs", _settingsDisableEditorWarnings);
+
+			_settingsEditorWarningsEnabled = new Toggle();
+			AddControlRow(section, "Enable Editor Warning Logs", _settingsEditorWarningsEnabled);
 
 			_settingsEditorWarningCooldown = new FloatField();
 			AddControlRow(section, "Editor Warning Cooldown", _settingsEditorWarningCooldown);
@@ -426,10 +462,10 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeOverlayModules = AddRow(statusSection, "Overlay Modules");
 			_runtimeTargetFps = AddRow(statusSection, "Target FPS");
 			_runtimeOverlayCorner = AddRow(statusSection, "Overlay Corner");
-			_runtimeOverlayMode = AddRow(statusSection, "Overlay Mode");
 			_runtimeOverlayTheme = AddRow(statusSection, "Overlay Theme");
 			_runtimeOverlayLayout = AddRow(statusSection, "Overlay Layout");
 			_runtimeOverlayFontFamily = AddRow(statusSection, "Overlay Font");
+			_runtimeEditorWarnings = AddRow(statusSection, "Editor Warning Logs");
 			_runtimeOverdraw = AddRow(statusSection, "Overdraw");
 
 			VisualElement lifecycleActions = AddActions(statusSection);
@@ -438,7 +474,7 @@ namespace SGG.PerfMeter.Editor.UI
 			VisualElement collectionSection = AddSection(_runtimePanel, "Collection");
 			VisualElement collectionActions = AddActions(collectionSection);
 			AddRuntimeButton(collectionActions, "Background Mode", () => RunRuntimeAction("Background Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background)), status => status.CollectionMode == PerfMeterCollectionMode.Background);
-			AddRuntimeButton(collectionActions, "Overlay Mode", () => RunRuntimeAction("Overlay Mode", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay)), status => status.CollectionMode == PerfMeterCollectionMode.Overlay);
+			AddRuntimeButton(collectionActions, "Overlay Collection", () => RunRuntimeAction("Overlay Collection", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay)), status => status.CollectionMode == PerfMeterCollectionMode.Overlay);
 			AddRuntimeButton(collectionActions, "Overdraw Diagnostic", () => RunRuntimeAction("Overdraw Diagnostic", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.OverdrawDiagnostic)), status => status.CollectionMode == PerfMeterCollectionMode.OverdrawDiagnostic);
 
 			VisualElement visibilitySection = AddSection(_runtimePanel, "Overlay Visibility");
@@ -456,20 +492,17 @@ namespace SGG.PerfMeter.Editor.UI
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps144);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps240);
 
-			VisualElement modeSection = AddSection(_runtimePanel, "Overlay Mode");
-			VisualElement modeActions = AddActions(modeSection);
-			AddRuntimeButton(modeActions, "Fps Only", () => RunRuntimeAction("Fps Only", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.FpsOnly)), status => status.OverlayMode == PerfMeterOverlayMode.FpsOnly);
-			AddRuntimeButton(modeActions, "Text Compact", () => RunRuntimeAction("Text Compact", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact)), status => status.OverlayMode == PerfMeterOverlayMode.TextCompact);
-			AddRuntimeButton(modeActions, "Graphs", () => RunRuntimeAction("Graphs", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Graphs)), status => status.OverlayMode == PerfMeterOverlayMode.Graphs);
-			AddRuntimeButton(modeActions, "Full", () => RunRuntimeAction("Full", () => RuntimePerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full)), status => status.OverlayMode == PerfMeterOverlayMode.Full);
-
 			VisualElement layoutSection = AddSection(_runtimePanel, "Overlay Layout");
 			VisualElement layoutActions = AddActions(layoutSection);
+			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.FpsOnly);
+			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.TextCompact);
+			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.Graphs);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.Classic);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.CompactCards);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.DiagnosticsWide);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.OverdrawFocus);
 			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.MetricBars);
+			AddOverlayLayoutButton(layoutActions, PerfMeterOverlayLayout.Custom);
 
 			VisualElement themeSection = AddSection(_runtimePanel, "Overlay Theme");
 			VisualElement themeActions = AddActions(themeSection);
@@ -497,6 +530,10 @@ namespace SGG.PerfMeter.Editor.UI
 			AddRuntimeButton(cpuCoreActions, "CPU Core % Bars", () => RunRuntimeAction("CPU Core % Bars", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, true)), status => StatusHasModule(status, PerfMeterOverlayModule.CpuCoreBars));
 			AddRuntimeButton(cpuCoreActions, "CPU Core Graphs", () => RunRuntimeAction("CPU Core Graphs", () => RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, true)), status => StatusHasModule(status, PerfMeterOverlayModule.CpuCoreGraphs));
 			AddRuntimeButton(cpuCoreActions, "Hide CPU Cores", () => RunRuntimeAction("Hide CPU Cores", HideCpuCoreModules), status => !StatusHasAnyCpuCoreModule(status));
+
+			VisualElement warningSection = AddSection(_runtimePanel, "Editor Warning Logs");
+			VisualElement warningActions = AddActions(warningSection);
+			AddRuntimeButton(warningActions, "Enable Editor Warning Logs", () => RunRuntimeAction("Enable Editor Warning Logs", ToggleEditorWarningLogs), status => status.EditorWarningsEnabled);
 
 			VisualElement overdrawSection = AddSection(_runtimePanel, "Overdraw");
 			VisualElement overdrawActions = AddActions(overdrawSection);
@@ -575,6 +612,20 @@ namespace SGG.PerfMeter.Editor.UI
 			return actions;
 		}
 
+		private VisualElement AddChoiceGroup(VisualElement parent, string caption)
+		{
+			VisualElement group = new VisualElement();
+			group.AddToClassList("pm-choice-group");
+			Label label = new Label(caption);
+			label.AddToClassList("pm-choice-caption");
+			VisualElement actions = new VisualElement();
+			actions.AddToClassList("pm-actions");
+			group.Add(label);
+			group.Add(actions);
+			parent.Add(group);
+			return actions;
+		}
+
 		private Button AddButton(VisualElement parent, string text, Action action)
 		{
 			Button button = new Button(action) { text = text };
@@ -598,6 +649,57 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			return button;
+		}
+
+		private Button AddSettingsButton(VisualElement parent, string text, Action action, Func<bool> activeWhen)
+		{
+			Button button = AddButton(parent, text, () =>
+			{
+				action();
+				RefreshSettingsButtonStates();
+			});
+			_settingsButtons.Add(button);
+			if (activeWhen != null)
+			{
+				_settingsButtonBindings.Add(new SettingsButtonBinding(button, activeWhen));
+			}
+
+			return button;
+		}
+
+		private Button AddSettingsCollectionModeButton(VisualElement parent, PerfMeterCollectionMode mode)
+		{
+			return AddSettingsButton(parent, FormatEnumLabel(mode.ToString()), () => _settingsCollectionMode?.SetValueWithoutNotify(mode), () => _settingsCollectionMode != null && _settingsCollectionMode.value is PerfMeterCollectionMode value && value == mode);
+		}
+
+		private Button AddSettingsPresetButton(VisualElement parent, PerfMeterOverlayPreset preset)
+		{
+			return AddSettingsButton(parent, FormatEnumLabel(preset.ToString()), () => SetSettingsActivePreset(preset), () => _settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset value && value == preset);
+		}
+
+		private Button AddSettingsTargetFpsButton(VisualElement parent, PerfMeterTargetFps targetFps)
+		{
+			return AddSettingsButton(parent, FormatTargetFps(targetFps), () => _settingsTargetFps?.SetValueWithoutNotify(targetFps), () => _settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps value && value == targetFps);
+		}
+
+		private Button AddSettingsCornerButton(VisualElement parent, PerfMeterOverlayCorner corner)
+		{
+			return AddSettingsButton(parent, FormatEnumLabel(corner.ToString()), () => _settingsOverlayCorner?.SetValueWithoutNotify(corner), () => _settingsOverlayCorner != null && _settingsOverlayCorner.value is PerfMeterOverlayCorner value && value == corner);
+		}
+
+		private Button AddSettingsLayoutButton(VisualElement parent, PerfMeterOverlayLayout layout)
+		{
+			return AddSettingsButton(parent, FormatEnumLabel(layout.ToString()), () => SetSettingsOverlayLayout(layout), () => _settingsOverlayLayout != null && _settingsOverlayLayout.value is PerfMeterOverlayLayout value && value == layout);
+		}
+
+		private Button AddSettingsThemeButton(VisualElement parent, PerfMeterOverlayTheme theme)
+		{
+			return AddSettingsButton(parent, FormatEnumLabel(theme.ToString()), () => _settingsOverlayTheme?.SetValueWithoutNotify(theme), () => _settingsOverlayTheme != null && _settingsOverlayTheme.value is PerfMeterOverlayTheme value && value == theme);
+		}
+
+		private Button AddSettingsFontButton(VisualElement parent, PerfMeterOverlayFontFamily fontFamily)
+		{
+			return AddSettingsButton(parent, FormatOverlayFontLabel(fontFamily), () => _settingsOverlayFontFamily?.SetValueWithoutNotify(fontFamily), () => _settingsOverlayFontFamily != null && _settingsOverlayFontFamily.value is PerfMeterOverlayFontFamily value && value == fontFamily);
 		}
 
 		private Button AddTargetFpsButton(VisualElement parent, PerfMeterTargetFps targetFps)
@@ -625,6 +727,11 @@ namespace SGG.PerfMeter.Editor.UI
 			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCores, false);
 			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, false);
 			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, false);
+		}
+
+		private static void ToggleEditorWarningLogs()
+		{
+			RuntimePerformanceMeter.SetEditorWarningLogsEnabled(!RuntimePerformanceMeter.EditorWarningLogsEnabled);
 		}
 
 		private void RunAction(string title, Func<PerfMeterSetupActionResult> action)
@@ -688,7 +795,6 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayVisible?.SetValueWithoutNotify(settings.OverlayVisible);
 			_settingsTargetFps?.SetValueWithoutNotify(settings.TargetFps);
 			_settingsOverlayCorner?.SetValueWithoutNotify(settings.OverlayCorner);
-			_settingsOverlayMode?.SetValueWithoutNotify(settings.OverlayMode);
 			_settingsOverlayTheme?.SetValueWithoutNotify(settings.OverlayTheme);
 			_settingsOverlayLayout?.SetValueWithoutNotify(settings.OverlayLayout);
 			_settingsOverlayFontFamily?.SetValueWithoutNotify(settings.OverlayFontFamily);
@@ -703,7 +809,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayFontSize?.SetValueWithoutNotify(settings.OverlayFontSize);
 			_settingsOverlayRefreshInterval?.SetValueWithoutNotify(settings.OverlayRefreshIntervalSeconds);
 			_settingsOverlayGraphHistory?.SetValueWithoutNotify(settings.OverlayGraphHistoryLength);
-			_settingsDisableEditorWarnings?.SetValueWithoutNotify(!settings.EditorWarningsEnabled);
+			_settingsEditorWarningsEnabled?.SetValueWithoutNotify(settings.EditorWarningsEnabled);
 			_settingsEditorWarningCooldown?.SetValueWithoutNotify(settings.EditorWarningCooldownSeconds);
 			_settingsStructuredLogCooldown?.SetValueWithoutNotify(settings.StructuredLogCooldownSeconds);
 			_settingsCallbackCooldown?.SetValueWithoutNotify(settings.CallbackCooldownSeconds);
@@ -721,6 +827,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsSessionSceneLoadIgnoreSeconds?.SetValueWithoutNotify(settings.SessionSceneLoadIgnoreSeconds);
 			_settingsOverdrawDefaultFrameCount?.SetValueWithoutNotify(settings.OverdrawDefaultFrameCount);
 			_settingsOverdrawMaxFrameCount?.SetValueWithoutNotify(settings.OverdrawMaxFrameCount);
+			RefreshSettingsButtonStates();
 		}
 
 		private PerfMeterSetupActionResult SaveSettingsFromControls()
@@ -729,13 +836,16 @@ namespace SGG.PerfMeter.Editor.UI
 			PerfMeterOverlayPreset activePreset = _settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset
 				? preset
 				: PerfMeterOverlayPreset.FullDiagnostics;
+			PerfMeterOverlayLayout overlayLayout = _settingsOverlayLayout != null && _settingsOverlayLayout.value is PerfMeterOverlayLayout layout
+				? layout
+				: currentSettings.OverlayLayout;
 			PerfMeterSettingsSnapshot settings = new PerfMeterSettingsSnapshot(
 				_settingsEnabled == null || _settingsEnabled.value,
 				_settingsAutoStart == null || _settingsAutoStart.value,
 				_settingsCollectionMode != null && _settingsCollectionMode.value is PerfMeterCollectionMode collectionMode ? collectionMode : currentSettings.CollectionMode,
 				_settingsOverlayVisible == null || _settingsOverlayVisible.value,
 				_settingsOverlayCorner != null && _settingsOverlayCorner.value is PerfMeterOverlayCorner corner ? corner : PerfMeterOverlayCorner.TopRight,
-				_settingsOverlayMode != null && _settingsOverlayMode.value is PerfMeterOverlayMode mode ? mode : PerfMeterOverlayMode.Full,
+				PerfMeterSettingsStore.GetLayoutMode(overlayLayout, currentSettings.OverlayMode),
 				_settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps targetFps ? targetFps : PerfMeterTargetFps.Fps60,
 				activePreset.ToString(),
 				GetSelectedOverlayModules(activePreset),
@@ -764,9 +874,9 @@ namespace SGG.PerfMeter.Editor.UI
 				alertGpuTimingUnavailableConsecutiveFrames: _settingsAlertGpuTimingUnavailableFrames != null ? _settingsAlertGpuTimingUnavailableFrames.value : currentSettings.AlertGpuTimingUnavailableConsecutiveFrames,
 				alertOverdrawConsecutiveFrames: _settingsAlertOverdrawFrames != null ? _settingsAlertOverdrawFrames.value : currentSettings.AlertOverdrawConsecutiveFrames,
 				overlayTheme: _settingsOverlayTheme != null && _settingsOverlayTheme.value is PerfMeterOverlayTheme theme ? theme : currentSettings.OverlayTheme,
-				overlayLayout: _settingsOverlayLayout != null && _settingsOverlayLayout.value is PerfMeterOverlayLayout layout ? layout : currentSettings.OverlayLayout,
+				overlayLayout: overlayLayout,
 				overlayFontFamily: _settingsOverlayFontFamily != null && _settingsOverlayFontFamily.value is PerfMeterOverlayFontFamily fontFamily ? fontFamily : currentSettings.OverlayFontFamily,
-				editorWarningsEnabled: _settingsDisableEditorWarnings == null ? currentSettings.EditorWarningsEnabled : !_settingsDisableEditorWarnings.value);
+				editorWarningsEnabled: _settingsEditorWarningsEnabled == null ? currentSettings.EditorWarningsEnabled : _settingsEditorWarningsEnabled.value);
 			return PerfMeterSetupActions.SaveSettings(settings);
 		}
 
@@ -774,8 +884,33 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			Toggle toggle = new Toggle(label);
 			toggle.AddToClassList("pm-module-toggle");
+			toggle.RegisterValueChangedCallback(_ => MarkSettingsPresetCustom());
 			_settingsModuleToggles.Add(new OverlayModuleToggle(module, toggle));
 			parent.Add(toggle);
+		}
+
+		private void SetSettingsActivePreset(PerfMeterOverlayPreset preset)
+		{
+			_settingsActivePreset?.SetValueWithoutNotify(preset);
+			ApplyPresetDefaultsToSettingsControls(preset);
+		}
+
+		private void SetSettingsOverlayLayout(PerfMeterOverlayLayout layout)
+		{
+			_settingsOverlayLayout?.SetValueWithoutNotify(layout);
+			if (_settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset && preset != PerfMeterOverlayPreset.Custom && layout != PerfMeterSettingsStore.GetPresetLayout(preset))
+			{
+				_settingsActivePreset.SetValueWithoutNotify(PerfMeterOverlayPreset.Custom);
+			}
+		}
+
+		private void MarkSettingsPresetCustom()
+		{
+			if (_settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset && preset != PerfMeterOverlayPreset.Custom)
+			{
+				_settingsActivePreset.SetValueWithoutNotify(PerfMeterOverlayPreset.Custom);
+				RefreshSettingsButtonStates();
+			}
 		}
 
 		private void ApplyPresetDefaultsToSettingsControls(PerfMeterOverlayPreset preset)
@@ -785,13 +920,9 @@ namespace SGG.PerfMeter.Editor.UI
 				return;
 			}
 
-			_settingsOverlayMode?.SetValueWithoutNotify(PerfMeterSettingsStore.GetPresetMode(preset));
-			if (preset == PerfMeterOverlayPreset.FullDiagnostics || preset == PerfMeterOverlayPreset.AgentDebug)
-			{
-				_settingsOverlayLayout?.SetValueWithoutNotify(PerfMeterOverlayLayout.MetricBars);
-			}
-
+			_settingsOverlayLayout?.SetValueWithoutNotify(PerfMeterSettingsStore.GetPresetLayout(preset));
 			SetModuleToggles(PerfMeterSettingsStore.GetPresetModules(preset));
+			RefreshSettingsButtonStates();
 		}
 
 		private void SetModuleToggles(PerfMeterOverlayModule modules)
@@ -1045,9 +1176,6 @@ namespace SGG.PerfMeter.Editor.UI
 			PerfMeterOverlayCorner corner = _initOverlayCorner != null && _initOverlayCorner.value is PerfMeterOverlayCorner cornerValue
 				? cornerValue
 				: PerfMeterOverlayCorner.TopRight;
-			PerfMeterOverlayMode mode = _initOverlayMode != null && _initOverlayMode.value is PerfMeterOverlayMode modeValue
-				? modeValue
-				: PerfMeterOverlayMode.Full;
 			PerfMeterOverlayTheme theme = _initOverlayTheme != null && _initOverlayTheme.value is PerfMeterOverlayTheme themeValue
 				? themeValue
 				: PerfMeterOverlayTheme.ClassicDark;
@@ -1060,7 +1188,7 @@ namespace SGG.PerfMeter.Editor.UI
 			PerfMeterTargetFps targetFps = _initTargetFps != null && _initTargetFps.value is PerfMeterTargetFps targetFpsValue
 				? targetFpsValue
 				: PerfMeterTargetFps.Fps60;
-			return PerfMeterSetupUtility.BuildInitializationSnippet(visible, corner, mode, targetFps, theme, layout, fontFamily);
+			return PerfMeterSetupUtility.BuildInitializationSnippet(visible, corner, targetFps, theme, layout, fontFamily);
 		}
 
 		private void SelectSetupTab()
@@ -1199,7 +1327,7 @@ namespace SGG.PerfMeter.Editor.UI
 			bool isPlaying = EditorApplication.isPlaying;
 			_runtimePlayModeInfo.text = isPlaying
 				? "Runtime controls affect the currently running Play Mode session."
-				: "Runtime controls are read-only in Edit Mode. Enter Play Mode to test overlay modes, appearance, visibility, and short overdraw capture.";
+				: "Runtime controls are read-only in Edit Mode. Enter Play Mode to test overlay layouts, appearance, visibility, and short overdraw capture.";
 
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			SetRuntimeButtonsEnabled(isPlaying);
@@ -1211,10 +1339,10 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeOverlayModules.text = status.OverlayModules.ToString();
 			_runtimeTargetFps.text = FormatTargetFps(status.TargetFps) + " / " + (1000d / (int)status.TargetFps).ToString("0.00") + " ms";
 			_runtimeOverlayCorner.text = status.OverlayCorner.ToString();
-			_runtimeOverlayMode.text = status.OverlayMode.ToString();
 			_runtimeOverlayTheme.text = status.OverlayTheme.ToString();
 			_runtimeOverlayLayout.text = status.OverlayLayout.ToString();
 			_runtimeOverlayFontFamily.text = status.OverlayFontFamily.ToString();
+			_runtimeEditorWarnings.text = status.EditorWarningsEnabled ? "Enabled" : "Disabled";
 			_runtimeOverdraw.text = status.OverdrawState + " " + (status.OverdrawProgress * 100f).ToString("0") + "% / heatmap " + (status.OverdrawHeatmapVisible ? "on" : "off");
 		}
 
@@ -1235,6 +1363,25 @@ namespace SGG.PerfMeter.Editor.UI
 				try
 				{
 					active = binding.ActiveWhen(status);
+				}
+				catch (Exception)
+				{
+					active = false;
+				}
+
+				SetButtonActive(binding.Button, active);
+			}
+		}
+
+		private void RefreshSettingsButtonStates()
+		{
+			for (int i = 0; i < _settingsButtonBindings.Count; i++)
+			{
+				SettingsButtonBinding binding = _settingsButtonBindings[i];
+				bool active = false;
+				try
+				{
+					active = binding.ActiveWhen();
 				}
 				catch (Exception)
 				{
@@ -1359,6 +1506,18 @@ namespace SGG.PerfMeter.Editor.UI
 
 			internal Button Button { get; }
 			internal Func<PerfMeterStatusSnapshot, bool> ActiveWhen { get; }
+		}
+
+		private readonly struct SettingsButtonBinding
+		{
+			internal SettingsButtonBinding(Button button, Func<bool> activeWhen)
+			{
+				Button = button;
+				ActiveWhen = activeWhen;
+			}
+
+			internal Button Button { get; }
+			internal Func<bool> ActiveWhen { get; }
 		}
 	}
 }

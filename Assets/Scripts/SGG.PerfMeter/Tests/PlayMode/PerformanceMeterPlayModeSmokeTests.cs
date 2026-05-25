@@ -30,7 +30,6 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerformanceMeter.EnsureRunning();
 			PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.Memory);
 			PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft);
-			PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.TextCompact);
 			PerformanceMeter.SetOverlayTheme(PerfMeterOverlayTheme.Glass);
 			PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout.CompactCards);
 			PerformanceMeter.SetOverlayFontFamily(PerfMeterOverlayFontFamily.JetBrainsMono);
@@ -63,11 +62,11 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(status.OverlayVisible, Is.False);
 		#endif
 			Assert.That(status.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));
-			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
+			Assert.That(status.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(status.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.Glass));
 			Assert.That(status.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.CompactCards));
 			Assert.That(status.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.JetBrainsMono));
-			Assert.That(status.OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Memory));
+			Assert.That(status.OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Custom));
 			Assert.That((status.OverlayModules & PerfMeterOverlayModule.Memory) == PerfMeterOverlayModule.Memory, Is.True);
 			Assert.That((status.OverlayModules & PerfMeterOverlayModule.Overdraw) == 0, Is.True);
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps30));

@@ -65,7 +65,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PerfMeterCollectionMode.Background,
 				false,
 				PerfMeterOverlayCorner.BottomLeft,
-				PerfMeterOverlayMode.Graphs,
+				PerfMeterOverlayMode.Full,
 				PerfMeterTargetFps.Fps120,
 				"Timing",
 				PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs,
@@ -104,18 +104,19 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"theme\": \"Cyber\""));
 			Assert.That(json, Does.Contain("\"layout\": \"DiagnosticsWide\""));
 			Assert.That(json, Does.Contain("\"fontFamily\": \"JetBrainsMono\""));
-			Assert.That(json, Does.Contain("\"disableEditorWarnings\": true"));
+			Assert.That(json, Does.Contain("\"editorWarningsEnabled\": false"));
+			Assert.That(json, Does.Not.Contain("disableEditorWarnings"));
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot loaded), Is.True);
 			Assert.That(loaded.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Loaded));
 			Assert.That(loaded.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(loaded.OverlayVisible, Is.False);
 			Assert.That(loaded.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));
-			Assert.That(loaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
+			Assert.That(loaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(loaded.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.Cyber));
 			Assert.That(loaded.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.DiagnosticsWide));
 			Assert.That(loaded.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.JetBrainsMono));
 			Assert.That(loaded.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
-			Assert.That(loaded.ActivePreset, Is.EqualTo("Timing"));
+			Assert.That(loaded.ActivePreset, Is.EqualTo(nameof(PerfMeterOverlayPreset.Custom)));
 			Assert.That(loaded.SessionWarmupFrames, Is.EqualTo(3));
 			Assert.That(loaded.SessionWarmupSeconds, Is.EqualTo(1.25f).Within(0.001f));
 			Assert.That(loaded.SessionSampleIntervalSeconds, Is.EqualTo(0.5f).Within(0.001f));
@@ -141,6 +142,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.AlertOverdrawConsecutiveFrames, Is.EqualTo(4));
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Graphs);
 			AssertHasModule(loaded.OverlayModules, PerfMeterOverlayModule.Timing);
+		}
+
+		[Test]
+		public void SnapshotUsesCustomLayoutForLegacyModeLayoutMismatch()
+		{
+			PerfMeterSettingsSnapshot snapshot = new PerfMeterSettingsSnapshot(
+				true,
+				true,
+				PerfMeterCollectionMode.Overlay,
+				true,
+				PerfMeterOverlayCorner.TopRight,
+				PerfMeterOverlayMode.Graphs,
+				PerfMeterTargetFps.Fps60,
+				PerfMeterSettingsStore.DefaultPresetId,
+				PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics),
+				0,
+				0f,
+				0.25f,
+				4096,
+				false,
+				0,
+				0f,
+				8f,
+				2f,
+				0.5f,
+				PerfMeterSettingsLoadState.Loaded,
+				string.Empty,
+				overlayLayout: PerfMeterOverlayLayout.DiagnosticsWide);
+
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.Custom));
+			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Graphs));
 		}
 
 		[Test]
@@ -212,15 +244,32 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void LayoutMismatchMarksActivePresetCustom()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.activePreset = "Timing";
+			settings.overlay.layout = nameof(PerfMeterOverlayLayout.MetricBars);
+
+			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
+
+			Assert.That(snapshot.ActivePreset, Is.EqualTo(nameof(PerfMeterOverlayPreset.Custom)));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
+			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Timing);
+			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.Graphs);
+		}
+
+		[Test]
 		public void AgentDebugPresetDoesNotEnableCpuCoreModulesByDefault()
 		{
 			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
 			settings.activePreset = "AgentDebug";
+			settings.overlay.layout = nameof(PerfMeterOverlayLayout.TextCompact);
 
 			PerfMeterSettingsSnapshot snapshot = PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty);
 
 			Assert.That(snapshot.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.TextCompact));
-			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
+			Assert.That(snapshot.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.TextCompact));
 			AssertHasModule(snapshot.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCores);
 			AssertDoesNotHaveModule(snapshot.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
@@ -238,7 +287,6 @@ namespace SGG.PerfMeter.Tests.EditMode
 				{
 					id = "Custom",
 					overlayVisible = true,
-					overlayMode = nameof(PerfMeterOverlayMode.Full),
 					targetFps = (int)PerfMeterTargetFps.Fps60,
 					modules = new[] { "Fps", "CustomMetrics", "CpuCoreBars", "CpuCoreGraphs" }
 				}
@@ -265,7 +313,6 @@ namespace SGG.PerfMeter.Tests.EditMode
 				{
 					id = "Custom",
 					overlayVisible = true,
-					overlayMode = nameof(PerfMeterOverlayMode.Full),
 					targetFps = (int)PerfMeterTargetFps.Fps60,
 					modules = Array.Empty<string>()
 				}
@@ -291,7 +338,6 @@ namespace SGG.PerfMeter.Tests.EditMode
 				{
 					id = "Custom",
 					overlayVisible = true,
-					overlayMode = nameof(PerfMeterOverlayMode.Full),
 					targetFps = (int)PerfMeterTargetFps.Fps60,
 					modules = new[] { "NotAModule" }
 				}

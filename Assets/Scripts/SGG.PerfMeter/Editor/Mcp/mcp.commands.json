@@ -224,7 +224,7 @@
     {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
-      "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, display mode, theme, layout, font family, and target FPS.",
+      "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, theme, display layout, font family, and target FPS.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverlaySet",
       "risk": "write",
       "idempotency": "idempotent",
@@ -243,17 +243,13 @@
             "type": "string",
             "enum": ["TopLeft", "TopRight", "BottomLeft", "BottomRight"]
           },
-          "mode": {
-            "type": "string",
-            "enum": ["FpsOnly", "TextCompact", "Graphs", "Full"]
-          },
           "theme": {
             "type": "string",
             "enum": ["ClassicDark", "Glass", "Cyber", "HighContrast"]
           },
           "layout": {
             "type": "string",
-            "enum": ["Classic", "CompactCards", "DiagnosticsWide", "OverdrawFocus", "MetricBars"]
+            "enum": ["FpsOnly", "TextCompact", "Graphs", "Classic", "CompactCards", "DiagnosticsWide", "OverdrawFocus", "MetricBars", "Custom"]
           },
           "font_family": {
             "type": "string",

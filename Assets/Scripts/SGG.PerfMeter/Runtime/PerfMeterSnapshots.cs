@@ -152,7 +152,11 @@ namespace SGG.PerfMeter
 		CompactCards = 1,
 		DiagnosticsWide = 2,
 		OverdrawFocus = 3,
-		MetricBars = 4
+		MetricBars = 4,
+		FpsOnly = 5,
+		TextCompact = 6,
+		Graphs = 7,
+		Custom = 8
 	}
 
 	public enum PerfMeterOverlayFontFamily
@@ -385,7 +389,8 @@ namespace SGG.PerfMeter
 			bool applicationPaused = false,
 			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
 			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.MetricBars,
-			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope)
+			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
+			bool editorWarningsEnabled = true)
 		{
 			State = state;
 			Availability = availability;
@@ -422,6 +427,7 @@ namespace SGG.PerfMeter
 			LatestAlertMessage = latestAlertMessage ?? string.Empty;
 			ApplicationFocused = applicationFocused;
 			ApplicationPaused = applicationPaused;
+			EditorWarningsEnabled = editorWarningsEnabled;
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -459,6 +465,7 @@ namespace SGG.PerfMeter
 		public string LatestAlertMessage { get; }
 		public bool ApplicationFocused { get; }
 		public bool ApplicationPaused { get; }
+		public bool EditorWarningsEnabled { get; }
 	}
 
 	public readonly struct PerfMeterSessionOptions

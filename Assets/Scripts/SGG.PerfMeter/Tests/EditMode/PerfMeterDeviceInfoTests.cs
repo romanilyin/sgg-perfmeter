@@ -96,13 +96,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			string json = PerfMeterMcpCommands.OverlaySet("{\"visible\":true,\"preset\":\"Timing\",\"modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\",\"CustomMetrics\"],\"theme\":\"Glass\",\"layout\":\"CompactCards\",\"font_family\":\"JetBrainsMono\",\"target_fps\":30}");
 
-			Assert.That(json, Does.Contain("\"overlay_preset\":\"Timing\""));
+			Assert.That(json, Does.Contain("\"overlay_preset\":\"Custom\""));
 			Assert.That(json, Does.Contain("\"overlay_theme\":\"Glass\""));
 			Assert.That(json, Does.Contain("\"overlay_layout\":\"CompactCards\""));
 			Assert.That(json, Does.Contain("\"overlay_font_family\":\"JetBrainsMono\""));
 			Assert.That(json, Does.Contain("\"overlay_modules\":[\"Fps\",\"Timing\",\"Graphs\",\"Warnings\",\"CustomMetrics\"]"));
 			Assert.That(json, Does.Contain("\"target_fps\":30"));
-			Assert.That(PerformanceMeter.GetStatus().OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Timing));
+			Assert.That(PerformanceMeter.GetStatus().OverlayPreset, Is.EqualTo(PerfMeterOverlayPreset.Custom));
 			Assert.That(PerformanceMeter.GetStatus().OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.Glass));
 			Assert.That(PerformanceMeter.GetStatus().OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.CompactCards));
 			Assert.That(PerformanceMeter.GetStatus().OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.JetBrainsMono));
@@ -121,9 +121,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("\"theme\""));
 			Assert.That(metadata, Does.Contain("\"layout\""));
 			Assert.That(metadata, Does.Contain("\"font_family\""));
+			Assert.That(metadata, Does.Contain("\"FpsOnly\""));
+			Assert.That(metadata, Does.Contain("\"TextCompact\""));
 			Assert.That(metadata, Does.Contain("\"Cyber\""));
 			Assert.That(metadata, Does.Contain("\"CompactCards\""));
 			Assert.That(metadata, Does.Contain("\"MetricBars\""));
+			Assert.That(metadata, Does.Contain("\"Custom\""));
 			Assert.That(metadata, Does.Contain("\"JetBrainsMono\""));
 			Assert.That(metadata, Does.Contain("\"AgentDebug\""));
 			Assert.That(metadata, Does.Contain("\"CustomMetrics\""));

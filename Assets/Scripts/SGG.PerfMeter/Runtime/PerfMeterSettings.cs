@@ -58,13 +58,21 @@ namespace SGG.PerfMeter
 			CollectionMode = NormalizeCollectionMode(collectionMode);
 			OverlayVisible = overlayVisible;
 			OverlayCorner = overlayCorner;
-			OverlayMode = overlayMode;
+			PerfMeterOverlayMode normalizedMode = PerfMeterSettingsStore.NormalizeOverlayMode(overlayMode);
+			PerfMeterOverlayLayout resolvedLayout = PerfMeterSettingsStore.ResolveOverlayLayout(normalizedMode, overlayLayout);
+			OverlayMode = PerfMeterSettingsStore.GetLayoutMode(resolvedLayout, normalizedMode);
 			OverlayTheme = PerfMeterSettingsStore.NormalizeOverlayTheme(overlayTheme);
-			OverlayLayout = PerfMeterSettingsStore.NormalizeOverlayLayout(overlayLayout);
+			OverlayLayout = resolvedLayout;
 			OverlayFontFamily = PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily);
 			TargetFps = targetFps;
-			ActivePreset = string.IsNullOrEmpty(activePreset) ? PerfMeterSettingsStore.DefaultPresetId : activePreset;
-			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(PerfMeterSettingsStore.ParseOverlayPreset(ActivePreset)) : overlayModules;
+			PerfMeterOverlayPreset normalizedPreset = PerfMeterSettingsStore.ParseOverlayPreset(string.IsNullOrEmpty(activePreset) ? PerfMeterSettingsStore.DefaultPresetId : activePreset);
+			if (normalizedPreset != PerfMeterOverlayPreset.Custom && OverlayLayout != PerfMeterSettingsStore.GetPresetLayout(normalizedPreset))
+			{
+				normalizedPreset = PerfMeterOverlayPreset.Custom;
+			}
+
+			ActivePreset = normalizedPreset.ToString();
+			OverlayModules = overlayModules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(normalizedPreset) : overlayModules;
 			SessionWarmupFrames = Mathf.Max(0, sessionWarmupFrames);
 			SessionWarmupSeconds = Mathf.Max(0f, sessionWarmupSeconds);
 			SessionSampleIntervalSeconds = sessionSampleIntervalSeconds > 0f ? sessionSampleIntervalSeconds : PerfMeterSessionOptions.DefaultSampleIntervalSeconds;
@@ -154,7 +162,6 @@ namespace SGG.PerfMeter
 		public string collectionMode = nameof(PerfMeterCollectionMode.Overlay);
 		public bool overlayVisible = true;
 		public string overlayCorner = nameof(PerfMeterOverlayCorner.TopRight);
-		public string overlayMode = nameof(PerfMeterOverlayMode.Full);
 		public int targetFps = (int)PerfMeterTargetFps.Fps60;
 		public string activePreset = PerfMeterSettingsStore.DefaultPresetId;
 		public PerfMeterPresetSettingsJson[] presets = Array.Empty<PerfMeterPresetSettingsJson>();
@@ -182,7 +189,6 @@ namespace SGG.PerfMeter
 	{
 		public string id = string.Empty;
 		public bool overlayVisible = true;
-		public string overlayMode = nameof(PerfMeterOverlayMode.Full);
 		public int targetFps = (int)PerfMeterTargetFps.Fps60;
 		public string[] modules = Array.Empty<string>();
 	}
@@ -198,7 +204,7 @@ namespace SGG.PerfMeter
 		public int fpsConsecutiveFrames = 60;
 		public int gpuTimingUnavailableConsecutiveFrames = 120;
 		public int overdrawConsecutiveFrames = 3;
-		public bool disableEditorWarnings = false;
+		public bool editorWarningsEnabled = true;
 	}
 
 	[Serializable]
@@ -250,7 +256,6 @@ namespace SGG.PerfMeter
 				collectionMode = nameof(PerfMeterCollectionMode.Overlay),
 				overlayVisible = true,
 				overlayCorner = nameof(PerfMeterOverlayCorner.TopRight),
-				overlayMode = nameof(PerfMeterOverlayMode.Full),
 				targetFps = (int)PerfMeterTargetFps.Fps60,
 				activePreset = DefaultPresetId,
 				presets = CreateDefaultPresets(),
@@ -269,7 +274,6 @@ namespace SGG.PerfMeter
 			settings.collectionMode = snapshot.CollectionMode.ToString();
 			settings.overlayVisible = snapshot.OverlayVisible;
 			settings.overlayCorner = snapshot.OverlayCorner.ToString();
-			settings.overlayMode = snapshot.OverlayMode.ToString();
 			settings.targetFps = (int)snapshot.TargetFps;
 			settings.activePreset = string.IsNullOrEmpty(snapshot.ActivePreset) ? DefaultPresetId : snapshot.ActivePreset;
 			settings.overlay.theme = snapshot.OverlayTheme.ToString();
@@ -295,11 +299,53 @@ namespace SGG.PerfMeter
 			settings.ruleDefaults.fpsConsecutiveFrames = snapshot.AlertFpsConsecutiveFrames;
 			settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = snapshot.AlertGpuTimingUnavailableConsecutiveFrames;
 			settings.ruleDefaults.overdrawConsecutiveFrames = snapshot.AlertOverdrawConsecutiveFrames;
-			settings.ruleDefaults.disableEditorWarnings = !snapshot.EditorWarningsEnabled;
+			settings.ruleDefaults.editorWarningsEnabled = snapshot.EditorWarningsEnabled;
 			settings.overdraw.defaultFrameCount = snapshot.OverdrawDefaultFrameCount;
 			settings.overdraw.maxFrameCount = snapshot.OverdrawMaxFrameCount;
 			ApplySnapshotToPreset(settings, snapshot);
 			return settings;
+		}
+
+		internal static PerfMeterSettingsSnapshot WithEditorWarningsEnabled(PerfMeterSettingsSnapshot snapshot, bool editorWarningsEnabled)
+		{
+			return new PerfMeterSettingsSnapshot(
+				snapshot.Enabled,
+				snapshot.AutoStart,
+				snapshot.CollectionMode,
+				snapshot.OverlayVisible,
+				snapshot.OverlayCorner,
+				snapshot.OverlayMode,
+				snapshot.TargetFps,
+				snapshot.ActivePreset,
+				snapshot.OverlayModules,
+				snapshot.SessionWarmupFrames,
+				snapshot.SessionWarmupSeconds,
+				snapshot.SessionSampleIntervalSeconds,
+				snapshot.SessionMaxSamples,
+				snapshot.SessionResetOnSceneLoad,
+				snapshot.SessionSceneLoadIgnoreFrames,
+				snapshot.SessionSceneLoadIgnoreSeconds,
+				snapshot.EditorWarningCooldownSeconds,
+				snapshot.StructuredLogCooldownSeconds,
+				snapshot.CallbackCooldownSeconds,
+				snapshot.LoadState,
+				snapshot.Warning,
+				overlayScale: snapshot.OverlayScale,
+				overlayOpacity: snapshot.OverlayOpacity,
+				overlayFontSize: snapshot.OverlayFontSize,
+				overlayRefreshIntervalSeconds: snapshot.OverlayRefreshIntervalSeconds,
+				overlayGraphHistoryLength: snapshot.OverlayGraphHistoryLength,
+				overdrawDefaultFrameCount: snapshot.OverdrawDefaultFrameCount,
+				overdrawMaxFrameCount: snapshot.OverdrawMaxFrameCount,
+				alertOverdrawRatioThreshold: snapshot.AlertOverdrawRatioThreshold,
+				alertTimingConsecutiveFrames: snapshot.AlertTimingConsecutiveFrames,
+				alertFpsConsecutiveFrames: snapshot.AlertFpsConsecutiveFrames,
+				alertGpuTimingUnavailableConsecutiveFrames: snapshot.AlertGpuTimingUnavailableConsecutiveFrames,
+				alertOverdrawConsecutiveFrames: snapshot.AlertOverdrawConsecutiveFrames,
+				overlayTheme: snapshot.OverlayTheme,
+				overlayLayout: snapshot.OverlayLayout,
+				overlayFontFamily: snapshot.OverlayFontFamily,
+				editorWarningsEnabled: editorWarningsEnabled);
 		}
 
 		internal static string ToJson(PerfMeterSettingsJson settings)
@@ -379,7 +425,6 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayPreset activePresetId = ParseOverlayPreset(settings.activePreset);
 			PerfMeterPresetSettingsJson activePreset = FindPreset(settings, settings.activePreset);
 			string moduleWarning = string.Empty;
-			PerfMeterOverlayMode overlayMode = ParseOverlayMode(settings.overlayMode);
 			PerfMeterTargetFps targetFps = ParseTargetFps(settings.targetFps);
 			PerfMeterCollectionMode collectionMode = ParseCollectionMode(settings.collectionMode, settings.overlayVisible);
 			bool overlayVisible = settings.overlayVisible;
@@ -387,11 +432,11 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayTheme overlayTheme = settings.overlay != null ? ParseOverlayTheme(settings.overlay.theme) : PerfMeterOverlayTheme.ClassicDark;
 			PerfMeterOverlayLayout overlayLayout = settings.overlay != null ? ParseOverlayLayout(settings.overlay.layout) : PerfMeterOverlayLayout.MetricBars;
 			PerfMeterOverlayFontFamily overlayFontFamily = settings.overlay != null ? ParseOverlayFontFamily(settings.overlay.fontFamily) : PerfMeterOverlayFontFamily.Manrope;
+			PerfMeterOverlayMode overlayMode = GetLayoutMode(overlayLayout, PerfMeterOverlayMode.Full);
 
 			if (activePreset != null)
 			{
 				overlayVisible = activePreset.overlayVisible;
-				overlayMode = ParseOverlayMode(activePreset.overlayMode);
 				targetFps = ParseTargetFps(activePreset.targetFps);
 				overlayModules = ParseModules(activePreset.modules, out moduleWarning);
 			}
@@ -400,9 +445,9 @@ namespace SGG.PerfMeter
 				moduleWarning = "Active overlay preset was not found; top-level overlay settings are used.";
 			}
 
-			if (activePresetId == PerfMeterOverlayPreset.AgentDebug)
+			if (activePresetId != PerfMeterOverlayPreset.Custom && overlayLayout != GetPresetLayout(activePresetId))
 			{
-				overlayLayout = PerfMeterOverlayLayout.MetricBars;
+				activePresetId = PerfMeterOverlayPreset.Custom;
 			}
 
 			return new PerfMeterSettingsSnapshot(
@@ -413,7 +458,7 @@ namespace SGG.PerfMeter
 				ParseOverlayCorner(settings.overlayCorner),
 				overlayMode,
 				targetFps,
-				settings.activePreset,
+				activePresetId.ToString(),
 				overlayModules,
 				settings.session != null ? settings.session.warmupFrames : 0,
 				settings.session != null ? settings.session.warmupSeconds : PerfMeterSessionOptions.DefaultWarmupSeconds,
@@ -442,7 +487,7 @@ namespace SGG.PerfMeter
 				overlayTheme: overlayTheme,
 				overlayLayout: overlayLayout,
 				overlayFontFamily: overlayFontFamily,
-				editorWarningsEnabled: settings.ruleDefaults == null || !settings.ruleDefaults.disableEditorWarnings);
+				editorWarningsEnabled: settings.ruleDefaults == null || settings.ruleDefaults.editorWarningsEnabled);
 		}
 
 		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
@@ -456,13 +501,12 @@ namespace SGG.PerfMeter
 			PerformanceMeter.EnsureRunning();
 			PerformanceMeter.ApplyOverlayTuning(settings);
 			PerformanceMeter.SetOverlayTheme(settings.OverlayTheme);
-			PerformanceMeter.SetOverlayLayout(settings.OverlayLayout);
 			PerformanceMeter.SetOverlayFontFamily(settings.OverlayFontFamily);
 			PerformanceMeter.SetOverlayPreset(ParseOverlayPreset(settings.ActivePreset));
 			PerformanceMeter.SetOverlayModules(settings.OverlayModules);
+			PerformanceMeter.SetOverlayLayout(settings.OverlayLayout);
 			PerformanceMeter.SetTargetFps(settings.TargetFps);
 			PerformanceMeter.SetOverlayCorner(settings.OverlayCorner);
-			PerformanceMeter.SetOverlayMode(settings.OverlayMode);
 			PerformanceMeter.SetCollectionMode(settings.CollectionMode);
 			if (settings.CollectionMode == PerfMeterCollectionMode.Overlay)
 			{
@@ -500,9 +544,96 @@ namespace SGG.PerfMeter
 				case PerfMeterOverlayLayout.DiagnosticsWide:
 				case PerfMeterOverlayLayout.OverdrawFocus:
 				case PerfMeterOverlayLayout.MetricBars:
+				case PerfMeterOverlayLayout.FpsOnly:
+				case PerfMeterOverlayLayout.TextCompact:
+				case PerfMeterOverlayLayout.Graphs:
+				case PerfMeterOverlayLayout.Custom:
 					return layout;
 				default:
 					return PerfMeterOverlayLayout.MetricBars;
+			}
+		}
+
+		internal static PerfMeterOverlayMode GetLayoutMode(PerfMeterOverlayLayout layout, PerfMeterOverlayMode fallback)
+		{
+			switch (NormalizeOverlayLayout(layout))
+			{
+				case PerfMeterOverlayLayout.FpsOnly:
+					return PerfMeterOverlayMode.FpsOnly;
+				case PerfMeterOverlayLayout.TextCompact:
+					return PerfMeterOverlayMode.TextCompact;
+				case PerfMeterOverlayLayout.Graphs:
+					return PerfMeterOverlayMode.Graphs;
+				case PerfMeterOverlayLayout.Custom:
+					return fallback;
+				default:
+					return PerfMeterOverlayMode.Full;
+			}
+		}
+
+		internal static PerfMeterOverlayLayout GetLayoutForMode(PerfMeterOverlayMode mode)
+		{
+			switch (NormalizeOverlayMode(mode))
+			{
+				case PerfMeterOverlayMode.FpsOnly:
+					return PerfMeterOverlayLayout.FpsOnly;
+				case PerfMeterOverlayMode.TextCompact:
+					return PerfMeterOverlayLayout.TextCompact;
+				case PerfMeterOverlayMode.Graphs:
+					return PerfMeterOverlayLayout.Graphs;
+				default:
+					return PerfMeterOverlayLayout.MetricBars;
+			}
+		}
+
+		internal static PerfMeterOverlayLayout GetPresetLayout(PerfMeterOverlayPreset preset)
+		{
+			switch (preset)
+			{
+				case PerfMeterOverlayPreset.Minimal:
+					return PerfMeterOverlayLayout.FpsOnly;
+				case PerfMeterOverlayPreset.Timing:
+					return PerfMeterOverlayLayout.Graphs;
+				case PerfMeterOverlayPreset.Overdraw:
+					return PerfMeterOverlayLayout.OverdrawFocus;
+				case PerfMeterOverlayPreset.AgentDebug:
+					return PerfMeterOverlayLayout.TextCompact;
+				case PerfMeterOverlayPreset.Custom:
+					return PerfMeterOverlayLayout.Custom;
+				default:
+					return PerfMeterOverlayLayout.MetricBars;
+			}
+		}
+
+		internal static PerfMeterOverlayLayout ResolveOverlayLayout(PerfMeterOverlayMode mode, PerfMeterOverlayLayout layout)
+		{
+			PerfMeterOverlayMode normalizedMode = NormalizeOverlayMode(mode);
+			PerfMeterOverlayLayout normalizedLayout = NormalizeOverlayLayout(layout);
+			if (normalizedLayout == PerfMeterOverlayLayout.Custom)
+			{
+				return PerfMeterOverlayLayout.Custom;
+			}
+
+			PerfMeterOverlayMode layoutMode = GetLayoutMode(normalizedLayout, normalizedMode);
+			if (layoutMode == normalizedMode)
+			{
+				return normalizedLayout;
+			}
+
+			return PerfMeterOverlayLayout.Custom;
+		}
+
+		internal static PerfMeterOverlayMode NormalizeOverlayMode(PerfMeterOverlayMode mode)
+		{
+			switch (mode)
+			{
+				case PerfMeterOverlayMode.FpsOnly:
+				case PerfMeterOverlayMode.TextCompact:
+				case PerfMeterOverlayMode.Graphs:
+				case PerfMeterOverlayMode.Full:
+					return mode;
+				default:
+					return PerfMeterOverlayMode.Full;
 			}
 		}
 
@@ -555,42 +686,26 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		internal static PerfMeterOverlayMode GetPresetMode(PerfMeterOverlayPreset preset)
-		{
-			switch (preset)
-			{
-				case PerfMeterOverlayPreset.Minimal:
-					return PerfMeterOverlayMode.FpsOnly;
-				case PerfMeterOverlayPreset.Timing:
-					return PerfMeterOverlayMode.Graphs;
-				case PerfMeterOverlayPreset.AgentDebug:
-					return PerfMeterOverlayMode.TextCompact;
-				default:
-					return PerfMeterOverlayMode.Full;
-			}
-		}
-
 		private static PerfMeterPresetSettingsJson[] CreateDefaultPresets()
 		{
 			return new[]
 			{
-				CreatePreset("Minimal", true, GetPresetMode(PerfMeterOverlayPreset.Minimal), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Minimal))),
-				CreatePreset("Timing", true, GetPresetMode(PerfMeterOverlayPreset.Timing), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Timing))),
-				CreatePreset("Rendering", true, GetPresetMode(PerfMeterOverlayPreset.Rendering), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Rendering))),
-				CreatePreset("Memory", true, GetPresetMode(PerfMeterOverlayPreset.Memory), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Memory))),
-				CreatePreset("Overdraw", true, GetPresetMode(PerfMeterOverlayPreset.Overdraw), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Overdraw))),
-				CreatePreset(DefaultPresetId, true, GetPresetMode(PerfMeterOverlayPreset.FullDiagnostics), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics))),
-				CreatePreset("AgentDebug", true, GetPresetMode(PerfMeterOverlayPreset.AgentDebug), PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.AgentDebug)))
+				CreatePreset("Minimal", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Minimal))),
+				CreatePreset("Timing", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Timing))),
+				CreatePreset("Rendering", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Rendering))),
+				CreatePreset("Memory", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Memory))),
+				CreatePreset("Overdraw", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Overdraw))),
+				CreatePreset(DefaultPresetId, true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics))),
+				CreatePreset("AgentDebug", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.AgentDebug)))
 			};
 		}
 
-		private static PerfMeterPresetSettingsJson CreatePreset(string id, bool overlayVisible, PerfMeterOverlayMode overlayMode, PerfMeterTargetFps targetFps, params string[] modules)
+		private static PerfMeterPresetSettingsJson CreatePreset(string id, bool overlayVisible, PerfMeterTargetFps targetFps, params string[] modules)
 		{
 			return new PerfMeterPresetSettingsJson
 			{
 				id = id,
 				overlayVisible = overlayVisible,
-				overlayMode = overlayMode.ToString(),
 				targetFps = (int)targetFps,
 				modules = modules ?? Array.Empty<string>()
 			};
@@ -598,6 +713,7 @@ namespace SGG.PerfMeter
 
 		private static void ApplySnapshotToPreset(PerfMeterSettingsJson settings, PerfMeterSettingsSnapshot snapshot)
 		{
+			string activePreset = string.IsNullOrEmpty(snapshot.ActivePreset) ? DefaultPresetId : snapshot.ActivePreset;
 			if (settings.presets == null || settings.presets.Length == 0)
 			{
 				settings.presets = CreateDefaultPresets();
@@ -606,15 +722,17 @@ namespace SGG.PerfMeter
 			for (int i = 0; i < settings.presets.Length; i++)
 			{
 				PerfMeterPresetSettingsJson preset = settings.presets[i];
-				if (preset != null && string.Equals(preset.id, snapshot.ActivePreset, StringComparison.OrdinalIgnoreCase))
+				if (preset != null && string.Equals(preset.id, activePreset, StringComparison.OrdinalIgnoreCase))
 				{
 					preset.overlayVisible = snapshot.OverlayVisible;
-					preset.overlayMode = snapshot.OverlayMode.ToString();
 					preset.targetFps = (int)snapshot.TargetFps;
 					preset.modules = ModulesToNames(snapshot.OverlayModules);
 					return;
 				}
 			}
+
+			Array.Resize(ref settings.presets, settings.presets.Length + 1);
+			settings.presets[settings.presets.Length - 1] = CreatePreset(activePreset, snapshot.OverlayVisible, snapshot.TargetFps, ModulesToNames(snapshot.OverlayModules));
 		}
 
 		private static PerfMeterPresetSettingsJson FindPreset(PerfMeterSettingsJson settings, string presetId)
@@ -726,16 +844,6 @@ namespace SGG.PerfMeter
 			else
 			{
 				settings.overlayCorner = corner.ToString();
-			}
-
-			if (string.IsNullOrEmpty(settings.overlayMode) || !TryParseOverlayMode(settings.overlayMode, out PerfMeterOverlayMode mode))
-			{
-				settings.overlayMode = nameof(PerfMeterOverlayMode.Full);
-				warning = CombineWarnings(warning, "Invalid overlayMode; Full is used.");
-			}
-			else
-			{
-				settings.overlayMode = mode.ToString();
 			}
 
 			PerfMeterTargetFps targetFps = ParseTargetFps(settings.targetFps);
@@ -878,11 +986,6 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private static PerfMeterOverlayMode ParseOverlayMode(string value)
-		{
-			return TryParseOverlayMode(value, out PerfMeterOverlayMode mode) ? mode : PerfMeterOverlayMode.Full;
-		}
-
 		private static bool TryParseOverlayTheme(string value, out PerfMeterOverlayTheme theme)
 		{
 			return Enum.TryParse(value, true, out theme) && Enum.IsDefined(typeof(PerfMeterOverlayTheme), theme);
@@ -901,11 +1004,6 @@ namespace SGG.PerfMeter
 		private static bool TryParseOverlayCorner(string value, out PerfMeterOverlayCorner corner)
 		{
 			return Enum.TryParse(value, true, out corner) && Enum.IsDefined(typeof(PerfMeterOverlayCorner), corner);
-		}
-
-		private static bool TryParseOverlayMode(string value, out PerfMeterOverlayMode mode)
-		{
-			return Enum.TryParse(value, true, out mode) && Enum.IsDefined(typeof(PerfMeterOverlayMode), mode);
 		}
 
 		private static bool TryParseCollectionMode(string value, out PerfMeterCollectionMode mode)

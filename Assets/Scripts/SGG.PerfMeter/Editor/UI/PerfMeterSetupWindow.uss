@@ -128,6 +128,22 @@
     margin-top: 6px;
 }
 
+.pm-choice-group {
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(20, 20, 20, 0.22);
+    padding-top: 5px;
+    padding-right: 6px;
+    padding-bottom: 3px;
+    padding-left: 6px;
+    margin-bottom: 6px;
+}
+
+.pm-choice-caption {
+    color: var(--pm-text-muted);
+    -unity-font-style: bold;
+}
+
 .pm-button {
     min-width: 140px;
     margin-right: 6px;
