@@ -2,7 +2,7 @@
 
 Russian localization: `CONTRIBUTING.ru.md`.
 
-Read `AGENTS.md` and `_Docs/perfmeter_theory.md` before changing profiler behavior or architecture.
+Read `AGENTS.md` and `_DevelopmentDocs/perfmeter_theory.md` before changing profiler behavior or architecture.
 
 ## Pull Requests
 

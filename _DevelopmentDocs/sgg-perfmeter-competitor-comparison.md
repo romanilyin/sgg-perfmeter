@@ -1,6 +1,6 @@
 # SGG PerfMeter vs Advanced FPS Counter vs Graphy
 
-This file is the historical competitor-derived roadmap reference kept at its original path. The current marketing comparison lives in `_Docs/marketing/competitor-comparison.en.md` and `_Docs/marketing/competitor-comparison.ru.md`.
+This file is the historical competitor-derived roadmap reference kept at its migrated development-docs path. The current marketing comparison lives in `_DevelopmentDocs/marketing/competitor-comparison.en.md` and `_DevelopmentDocs/marketing/competitor-comparison.ru.md`.
 
 ## Current Positioning
 

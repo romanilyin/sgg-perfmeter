@@ -88,8 +88,8 @@ This file is the working implementation plan. Update readiness after every itera
 - Iteration 43 adds `PerformanceMeter.GetRenderGraphSnapshot()` and MCP `perfmeter.rendergraph.snapshot`; internal URP Render Graph counters safely degrade to `-1` with warnings when reflection cannot read them. Compile, EditMode, and PlayMode verification passed.
 - Latest Unity editor metadata commit is `09f1c9d`; it updates project version metadata to `6000.4.7f1` and Rider package metadata to `3.0.40`.
 - Latest Android player validation passed in `Logs/opencode-android-s23-build-terminal.log` and `Logs/opencode-android-s23-gles-build.log` plus filtered S23 logcat smoke markers.
-- `_Docs/temp_feedback_15_05_2026.md` is an untracked user feedback file; do not commit it unless explicitly requested.
-- `_Docs/sgg-perfmeter-competitor-comparison-updated.md` is an untracked updated comparison source; do not commit it by user request.
+- `_DevelopmentDocs/temp_feedback_15_05_2026.md` is an untracked user feedback file; do not commit it unless explicitly requested.
+- `_DevelopmentDocs/sgg-perfmeter-competitor-comparison-updated.md` is an untracked updated comparison source; do not commit it by user request.
 
 ## Known Verification Issues
 - Unity `-runTests` must be launched without `-quit`; adding `-quit` exits batchmode before Test Runner writes XML results.

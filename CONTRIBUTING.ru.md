@@ -2,7 +2,7 @@
 
 Английская версия: `CONTRIBUTING.md`.
 
-Перед изменением поведения или архитектуры profiler прочитайте `AGENTS.md` и `_Docs/perfmeter_theory.md`.
+Перед изменением поведения или архитектуры profiler прочитайте `AGENTS.md` и `_DevelopmentDocs/perfmeter_theory.md`.
 
 ## Pull Requests
 

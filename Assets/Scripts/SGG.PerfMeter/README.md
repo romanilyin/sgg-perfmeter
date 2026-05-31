@@ -1,33 +1,55 @@
 # SGG PerfMeter
 
-SGG PerfMeter is a low-overhead runtime performance diagnostics layer and agent-readable profiling API for Unity 6000.4+ URP Render Graph projects.
+**Runtime performance diagnostics and agent-readable profiling API for Unity 6000+ URP Render Graph projects.**
 
-It is not just an FPS counter: it combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, overdraw diagnostics, device/camera snapshots, session export, rule alerts, custom metrics, UI Toolkit overlay, and MCP commands. It is not a replacement for Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
+Package name: `com.sungeargames.perfmeter`
 
-Package version: `2026.5.20-1`.
+SGG PerfMeter is not just an FPS counter. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, Render Graph diagnostics, and MCP command metadata.
 
-This package is in private release-candidate validation. The repository remains private until the public switch is explicitly approved.
+The main user documentation lives in the repository-level GitHub docs:
 
-## Documentation
+- English: `../../../docs/en/README.md`
+- Russian: `../../../docs/ru/README.md`
+- Quick Start: `../../../docs/en/quick-start.md`
+- API: `../../../docs/en/api.md`
+- Comparison: `../../../docs/en/comparison.md`
 
-- English: `.Documentation/README.en.md`
-- Russian: `.Documentation/README.ru.md`
-- English status: `.Documentation/STATUS.en.md`
-- Russian status: `.Documentation/STATUS.ru.md`
+## Requirements
 
-Root repository release docs, outside this package path:
+- Unity `6000.4+` for supported runtime usage.
+- URP `17.4+` with Render Graph path.
+- Frame Timing Stats enabled for reliable frame timing in builds.
+- Vulkan preferred on Android when GPU frame timing matters.
 
-- `docs/release-2026.5.20-1.md`
-- `docs/release-notes-2026.5.20-1.md`
-- `docs/release-process.md`
+Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`.
+
+## Install
+
+Install this folder as a Git UPM package with the path:
+
+```text
+Assets/Scripts/SGG.PerfMeter
+```
+
+Example `Packages/manifest.json` entry:
+
+```json
+{
+  "dependencies": {
+    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter"
+  }
+}
+```
+
+NPM distribution is not documented as a current install path yet.
 
 ## Quick Start
 
-1. Install this folder as a Git UPM package using `?path=/Assets/Scripts/SGG.PerfMeter`.
-2. Open `SGG/Perfmeter/Setup`.
-3. Enable `Frame Timing Stats`.
-4. Install `PerfMeterRenderGraphFeature` into the active URP renderer.
-5. Save JSON settings from the `Presets` tab for zero-code setup, or add the generated initialization snippet to project-owned runtime code.
+1. Open `SGG/Perfmeter/Setup`.
+2. Enable Frame Timing Stats.
+3. Install `PerfMeterRenderGraphFeature` into editable active URP renderer assets.
+4. Save JSON settings from the `Presets` tab for zero-code setup, or copy the generated initialization snippet.
+5. Enter Play Mode and verify the overlay.
 
 Minimal runtime API:
 
@@ -35,23 +57,21 @@ Minimal runtime API:
 using SGG.PerfMeter;
 
 PerformanceMeter.EnsureRunning();
-PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.FullDiagnostics);
+PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout.MetricBars);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 PerformanceMeter.SetOverlayVisible(true);
 
-PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
-PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 ```
 
 ## Samples
 
-Import package samples from Package Manager or copy them from `Samples~` when developing from this repository.
+Import package samples from Package Manager or copy them from `Samples~` while developing from this repository.
 
-- `Bootstrap and Zero-Code Settings`: minimal bootstrap component plus a `Resources/SGG.PerfMeter/perfmeter-settings.json` example with overlay/rule/session/overdraw tunables.
-- `Runtime Workflows`: overlay preset switching, bounded session export, alert callbacks, overdraw/heatmap controls, and camera snapshot replay.
-- `Editor and MCP Automation`: setup menu actions and MCP command examples for agent-driven profiling runs.
+- `Bootstrap and Zero-Code Settings`: minimal bootstrap and Resources JSON settings.
+- `Runtime Workflows`: overlay switching, session export, alerts, overdraw/heatmap, and camera replay.
+- `Editor and MCP Automation`: setup actions and MCP command examples.
 
 ## License
 

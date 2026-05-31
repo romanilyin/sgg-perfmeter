@@ -1,94 +1,51 @@
+<div align="center">
+
 # SGG PerfMeter
 
-**SGG PerfMeter** is a low-overhead runtime performance diagnostics layer and agent-readable profiling API for **Unity 6000.4+ URP Render Graph** projects.
+**Runtime performance diagnostics and agent-readable profiling API for Unity 6000+ URP Render Graph projects.**
 
-It is designed for builds and Play Mode where you need fast answers to practical questions:
+[English Docs](./docs/en/README.md) |
+[Russian Docs](./docs/ru/README.md) |
+[Quick Start](./docs/en/quick-start.md) |
+[API](./docs/en/api.md) |
+[Comparison](./docs/en/comparison.md) |
+[Changelog](./CHANGELOG.md)
 
-- Is the frame CPU-bound, GPU-bound, render-thread-bound, or only waiting for presentation/VSync?
-- Are draw calls, SetPass calls, SRP Batcher, BRG/GRD, buffer uploads, memory, or overdraw suspicious?
-- Can an AI agent or editor tool read profiler state without scraping UI text or Unity Console logs?
+<p>
+  <a href="./docs/en/installation.md"><img src="./docs/assets/readme/cards/unity.svg" alt="Unity" height="48"></a>
+  <a href="./docs/en/installation.md"><img src="./docs/assets/readme/cards/urp.svg" alt="URP" height="48"></a>
+  <a href="./docs/en/workflows.md#runtime-overlay"><img src="./docs/assets/readme/cards/uitk.svg" alt="UI Toolkit" height="48"></a>
+  <a href="./docs/en/api.md"><img src="./docs/assets/readme/cards/csharp.svg" alt="C#" height="48"></a>
+  <a href="./docs/en/limitations.md"><img src="./docs/assets/readme/cards/android.svg" alt="Android" height="48"></a>
+  <a href="./docs/en/limitations.md"><img src="./docs/assets/readme/cards/ios.svg" alt="iOS" height="48"></a>
+  <a href="./docs/en/README.md"><img src="./docs/assets/readme/cards/docs.svg" alt="Docs" height="48"></a>
+</p>
 
-Most FPS counters answer "What is the FPS right now?" SGG PerfMeter is built to answer why a frame is slow, what changed, how an agent can read it, and how a capture can be reproduced.
+</div>
 
-Compared with general-purpose Unity FPS overlays such as Advanced FPS Counter and Graphy, SGG PerfMeter focuses on modern URP diagnostics, reproducible runtime sessions, structured snapshots, and agent-readable automation.
+SGG PerfMeter is not just an FPS counter. It is a lightweight runtime diagnostics layer for Unity URP projects that need to understand why a frame is slow, what changed, how to reproduce the capture, and how tools or agents can read the same data without scraping screenshots or Console text.
 
-The package is intentionally focused on runtime metrics. It does not replace Unity Profiler, RenderDoc, Profile Analyzer, or Frame Debugger.
+Most FPS overlays answer: **what is the FPS right now?**
 
-Target private release candidate: `2026.5.20-1`. The repository remains private until the release preparation is reviewed; the release plan is tracked in `docs/release-2026.5.20-1.md`, and release notes are drafted in `docs/release-notes-2026.5.20-1.md`.
+SGG PerfMeter answers: **is this CPU-bound, GPU-bound, render-thread-bound, present-limited, overdraw-heavy, or missing platform counters, and can that state be exported or automated?**
 
-## Status
+## Highlights
 
-Current state: **private release candidate / internal validation**.
+- Unity `6000.4+` and URP `17.4+` focus, with Render Graph renderer feature integration.
+- FrameTimingManager CPU/GPU timing, main-thread, render-thread, and present-wait visibility.
+- ProfilerRecorder render, SRP Batcher, BRG/GRD, upload, memory, and GPU-memory counters when available.
+- Bottleneck classification for GPU, CPU main thread, CPU render thread, present/VSync, balanced, or unknown frames.
+- UI Toolkit runtime overlay with presets, layouts, graphs, metric bars, themes, and custom metric rows.
+- Session recording with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
+- Rule alerts with structured logs, callbacks, Editor warning cooldowns, and MCP alert commands.
+- Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph.
+- Device, camera, Render Graph, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 
-Implemented:
+## Quick Start
 
-- runtime public API for status and latest metrics snapshots;
-- device/environment snapshots with screen, display, and monitor-name information;
-- camera snapshots with transform, projection, clipping, target display, and URP camera settings for reproducible captures;
-- `FrameTimingManager`-based CPU/GPU timing collection;
-- `ProfilerRecorder`-based render, memory, SRP Batcher, BRG/GRD, and upload counters;
-- UI Toolkit overlay with compact, graph, full modes, and allocation-conscious text field refresh;
-- URP Render Graph renderer feature with marker, overdraw, heatmap, and safe analytics snapshot paths;
-- bounded numerical overdraw measurement using a hidden replacement shader and `AsyncGPUReadback`;
-- visual overdraw heatmap using an additive replacement shader;
-- session recording with warm-up, reset, scene scope, worst-frame summaries, and JSON/CSV export;
-- rule alerts with callback/log/Editor warning cooldowns;
-- editor setup window with JSON `Presets` and zero-code setup;
-- MCP command definitions for setup, runtime control, metrics, device/environment info, camera snapshots, Render Graph snapshots, overlay, sessions, alerts, overdraw measurement, and overdraw heatmap;
-- Package Manager samples for bootstrap/settings, runtime workflows, editor automation, MCP commands, session export, alerts, overdraw, and camera replay;
-- English and Russian package documentation;
-- release readiness docs, changelog, security policy, contributing policy, and a manual-only release workflow;
-- edit-mode API safety tests and Play Mode runtime smoke tests.
-
-Still pending / needs validation:
-
-- broader target-device validation for GPU timings and counter availability;
-- broader Play Mode coverage and player-build tests;
-- fully validated self-overhead subtraction;
-- CI workflow for Unity batchmode compile/tests.
-
-## Requirements
-
-- Unity `6000.4+`.
-- URP `17.4+`.
-- Render Graph path.
-- UI Toolkit runtime support.
-- `Frame Timing Stats` enabled for reliable frame timing in builds.
-
-Recommended graphics APIs:
-
-- Windows: D3D12, D3D11, or Vulkan.
-- Android: Vulkan preferred.
-- iOS/macOS: Metal.
-
-Known platform caveats:
-
-- GPU timing can be unavailable, delayed, or unreliable on some platforms and graphics APIs.
-- OpenGL/OpenGLES should be treated as degraded mode for GPU timing and overdraw instrumentation.
-- Numerical overdraw requires fragment-stage UAV/storage-buffer support, compute shader support, a supported graphics API, and async GPU readback support; unsupported targets report `OverdrawState = Unsupported` instead of entering measurement.
-- WebGL/XR/mobile backends may return partial metrics or mark GPU timing as unavailable.
-
-## Installation
-
-### Option A: install as a Git UPM package
-
-The package lives inside this repository under:
-
-```text
-Assets/Scripts/SGG.PerfMeter
-```
-
-While the repository is private, use SSH or an authenticated HTTPS Git dependency. Add the package to your Unity project's `Packages/manifest.json`:
-
-```json
-{
-  "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter"
-  }
-}
-```
-
-For a private repository over SSH:
+1. Install the Unity package from this repository with the package path `Assets/Scripts/SGG.PerfMeter`.
+2. Open `SGG/Perfmeter/Setup` in Unity.
+3. Run the recommended setup, enter Play Mode, and confirm that the overlay appears.
 
 ```json
 {
@@ -98,496 +55,65 @@ For a private repository over SSH:
 }
 ```
 
-For a fixed version, pin a tag or commit:
+For the full setup guide, see [Installation](./docs/en/installation.md) and [Quick Start](./docs/en/quick-start.md).
 
-```json
-{
-  "dependencies": {
-    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.5.20-1"
-  }
-}
-```
+## Who It Is For
 
-### Option B: copy into Assets
+- Unity URP developers validating performance in Play Mode, development builds, and device smoke tests.
+- Rendering engineers and technical artists who need draw calls, SetPass, upload, memory, SRP Batcher, BRG/GRD, overdraw, and frame timing visibility.
+- Tooling developers who need stable runtime snapshots instead of a visual HUD only.
+- Teams using Unity MCP or editor agents for profiling automation and regression checks.
+- Solo developers who want a more diagnostic alternative to a basic FPS overlay.
 
-Copy this folder into your Unity project:
+## Common Workflows
 
-```text
-Assets/Scripts/SGG.PerfMeter
-```
+- **Zero-code overlay**: create `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` from the setup window and let PerfMeter auto-start.
+- **Runtime API**: call `PerformanceMeter.EnsureRunning()`, then read immutable status, metrics, device, camera, and session snapshots.
+- **Session export**: record bounded profiling windows and export JSON/CSV with scene, device, camera, settings, counters, warnings, and worst-frame metadata.
+- **Overdraw diagnostics**: request a bounded numerical measurement or enable the visual heatmap when the URP renderer feature is installed.
+- **Agent automation**: use MCP command metadata to start collection, switch overlay modes, export sessions, inspect alerts, and read snapshots.
 
-This is useful while developing the package locally or when you do not want to use Git dependencies.
+See [Workflows](./docs/en/workflows.md), [API](./docs/en/api.md), and [MCP](./docs/en/mcp.md).
 
-## Quick setup
+## Screenshots
 
-Open the setup window:
+Screenshots are being captured as part of the documentation refresh. The planned gallery lives under `docs/assets/screenshots/` and will cover the setup window, overlay modes, widget presets, overdraw heatmap, and session export.
 
-```text
-SGG/Perfmeter/Setup
-```
+Expected filenames are listed in [Screenshots](./docs/en/screenshots.md).
 
-Run the recommended setup:
+## Compared With FPS Counters
 
-1. Enable **Frame Timing Stats**.
-2. Review active and discovered URP renderer assets, then install `PerfMeterRenderGraphFeature` into all editable missing renderers or only the selected ones.
-3. Open the **Presets** tab and save JSON settings to `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` for zero-code setup, or copy the initialization snippet if you prefer manual bootstrap code.
-4. Enter Play Mode and verify the overlay.
+Advanced FPS Counter and Graphy are strong general-purpose drop-in visual overlays. SGG PerfMeter intentionally focuses on modern Unity URP diagnostics: structured timing and render counters, bottleneck classification, reproducible sessions, device/camera snapshots, overdraw diagnostics, Render Graph state, and agent-readable automation.
 
-Minimal runtime bootstrap:
+This is a product and architecture comparison, not a measured runtime benchmark. See [Comparison](./docs/en/comparison.md).
 
-```csharp
-using SGG.PerfMeter;
-using UnityEngine;
+## Requirements
 
-public static class PerfMeterBootstrap
-{
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void StartPerfMeter()
-    {
-        PerformanceMeter.EnsureRunning();
-        PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
-        PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-        PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-        PerformanceMeter.SetOverlayVisible(true);
-    }
-}
-```
+- Unity `6000.4+` for supported runtime usage.
+- URP `17.4+` with Render Graph path.
+- Frame Timing Stats enabled before relying on FrameTimingManager in builds.
+- Vulkan is preferred on Android when GPU timing matters.
 
-The setup window can also be driven from editor scripts:
+Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`.
 
-```csharp
-using SGG.PerfMeter.Editor.Setup;
-using UnityEngine;
+## Documentation
 
-Debug.Log(PerfMeterSetupActions.GetStatusReport());
-Debug.Log(PerfMeterSetupActions.RunRecommendedSetup());
-Debug.Log(PerfMeterSetupActions.CreateDefaultSettings());
-Debug.Log(PerfMeterSetupActions.CopyInitializationSnippetToClipboard());
-```
+- [English documentation](./docs/en/README.md)
+- [Russian documentation](./docs/ru/README.md)
+- [Installation](./docs/en/installation.md)
+- [Quick Start](./docs/en/quick-start.md)
+- [Workflows](./docs/en/workflows.md)
+- [API](./docs/en/api.md)
+- [MCP](./docs/en/mcp.md)
+- [Comparison](./docs/en/comparison.md)
+- [Limitations](./docs/en/limitations.md)
 
-## Samples
-
-When installed through Package Manager, import the package samples from the package details panel.
-
-- `Bootstrap and Zero-Code Settings`: minimal runtime bootstrap and a Resources JSON settings example.
-- `Runtime Workflows`: overlay preset switching, session export, alert callbacks, overdraw/heatmap controls, and camera snapshot replay.
-- `Editor and MCP Automation`: Editor setup menu actions and MCP command examples for agent-driven profiling.
-
-## Runtime API
-
-Namespace:
-
-```csharp
-using SGG.PerfMeter;
-```
-
-Lifecycle:
-
-```csharp
-PerformanceMeter.EnsureRunning();
-PerformanceMeter.Stop();
-```
-
-Status:
-
-```csharp
-PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
-
-if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
-{
-    Debug.Log($"PerfMeter state: {safeStatus.State}, GPU: {safeStatus.GraphicsDeviceType}");
-}
-```
-
-Structured snapshots for reproducible reports:
-
-```csharp
-PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
-PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
-PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapshot();
-```
-
-Metrics:
-
-```csharp
-PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
-
-Debug.Log(
-    $"CPU {metrics.CpuFrameTimeMs:0.00} ms, " +
-    $"GPU {(metrics.GpuFrameTimeAvailable ? metrics.GpuFrameTimeMs.ToString("0.00") : "N/A")} ms, " +
-    $"Draws {metrics.DrawCalls}, SetPass {metrics.SetPassCalls}, " +
-    $"Bottleneck {metrics.Bottleneck}");
-```
-
-Custom metrics from project providers:
-
-```csharp
-foreach (PerfMeterCustomMetricSnapshot customMetric in PerformanceMeter.GetCustomMetrics())
-{
-    Debug.Log($"{customMetric.Name}: {(customMetric.Available ? customMetric.Value.ToString("0.###") : "n/a")} {customMetric.Unit}");
-}
-```
-
-Sessions and alerts:
-
-```csharp
-PerformanceMeter.AlertFired += alert => Debug.Log(alert.Message);
-
-PerformanceMeter.StartSession(new PerfMeterSessionOptions(30, 0.25f, 600));
-
-// Later, after the measured window.
-PerformanceMeter.StopSession();
-PerfMeterSessionSummarySnapshot summary = PerformanceMeter.GetSessionSummary();
-PerformanceMeter.ExportSessionJson("Logs/perfmeter-session.json");
-PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
-
-PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
-```
-
-Overlay:
-
-```csharp
-PerformanceMeter.SetOverlayVisible(true);
-PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
-```
-
-Overdraw:
-
-```csharp
-PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
-PerformanceMeter.SetOverdrawHeatmapVisible(true);
-
-PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
-Debug.Log($"Overdraw: {status.OverdrawState}, {status.OverdrawProgress:P0}, ratio {status.OverdrawRatio:0.00}, heatmap {status.OverdrawHeatmapVisible}");
-```
-
-Cancel overdraw measurement:
-
-```csharp
-PerformanceMeter.CancelOverdrawMeasurement();
-```
-
-All read APIs are safe before the runtime starts. A read before startup returns a stopped snapshot instead of throwing.
-
-## Metrics
-
-### Snapshot frame identity
-
-| Field | Meaning |
-| --- | --- |
-| `CollectionFrame` | Unity `Time.frameCount` when PerfMeter collected the snapshot. This is not guaranteed to be the exact frame represented by `FrameTimingManager`, because Unity frame timings can arrive delayed by a few frames. |
-
-### Timing
-
-| Field | Meaning |
-| --- | --- |
-| `CpuFrameTimeMs` | Total CPU frame time from Unity frame timing data. |
-| `CpuMainThreadFrameTimeMs` | Main thread frame time. Useful for scripts, physics, animation, jobs, and game logic bottlenecks. |
-| `CpuRenderThreadFrameTimeMs` | Render thread frame time. Useful for draw submission and render-state bottlenecks. |
-| `CpuMainThreadPresentWaitTimeMs` | Main thread wait time around present/VSync/GPU synchronization. |
-| `GpuFrameTimeMs` | GPU frame time when available. |
-| `GpuFrameTimeAvailable` | `false` when GPU timing returned no valid value. |
-
-### FPS statistics
-
-| Field | Meaning |
-| --- | --- |
-| `AverageFps` | Average FPS over the internal frame window. |
-| `OnePercentLowFps` | 1% low FPS estimate from slow frames. |
-| `PointOnePercentLowFps` | 0.1% low FPS estimate from slow frames. |
-| `FrameSpikeCount` | Number of frames above the spike threshold in the history window. |
-| `SevereFrameSpikeCount` | Number of frames above the severe spike threshold in the history window. |
-
-The source for these values is frame timing data, not `Time.deltaTime`.
-
-### Rendering counters
-
-| Field | Meaning |
-| --- | --- |
-| `DrawCalls` | Aggregated draw-call count. |
-| `SetPassCalls` | Render-state/shader pass changes. Often more important than raw draw-call count. |
-| `Batches` | Dynamic/static/instanced batch count when counters are available. |
-| `Vertices` | Submitted vertex count. |
-| `SrpBatcherInstances` | SRP Batcher instance count when available. |
-| `BrgDrawCalls` | BatchRendererGroup / GPU Resident Drawer draw calls when available. |
-| `BrgInstances` | BatchRendererGroup / GPU Resident Drawer instances when available. |
-| `IndexBufferUploadInFrameBytes` | Index-buffer upload traffic during the frame. |
-
-Counter availability is exposed through:
-
-```csharp
-PerfMeterStatusSnapshot.AvailableCounters
-PerfMeterStatusSnapshot.UnavailableCounters
-```
-
-### Memory counters
-
-| Field | Meaning |
-| --- | --- |
-| `SystemUsedMemoryBytes` | System/app memory counter when available. |
-| `GcReservedMemoryBytes` | Reserved managed heap memory. |
-| `GpuMemoryBytes` | GPU/graphics memory counter when available. |
-
-### Bottleneck classification
-
-Current enum:
-
-```csharp
-PerfMeterBottleneck.Unknown
-PerfMeterBottleneck.Balanced
-PerfMeterBottleneck.GpuBound
-PerfMeterBottleneck.CpuMainThreadBound
-PerfMeterBottleneck.CpuRenderThreadBound
-PerfMeterBottleneck.PresentLimited
-```
-
-`PresentLimited` means present/VSync/frame pacing wait is significant while CPU main work, render-thread work, and available GPU work are below the target frame budget.
-
-The frame budget comes from:
-
-```csharp
-PerfMeterTargetFps.Fps15
-PerfMeterTargetFps.Fps30
-PerfMeterTargetFps.Fps60
-PerfMeterTargetFps.Fps90
-PerfMeterTargetFps.Fps120
-PerfMeterTargetFps.Fps144
-PerfMeterTargetFps.Fps240
-```
-
-## Overlay modes
-
-| Mode | Description |
-| --- | --- |
-| `FpsOnly` | One compact FPS / 1% low / 0.1% low line. |
-| `TextCompact` | Compact text summary with timings, counters, memory, and warnings. |
-| `Graphs` | CPU/GPU graphs plus small text summary. |
-| `Full` | Full text diagnostics plus CPU/GPU graphs. |
-
-Corners:
-
-```csharp
-TopLeft
-TopRight
-BottomLeft
-BottomRight
-```
-
-Default:
-
-```csharp
-TopRight + Full + Fps60
-```
-
-## URP Render Graph feature
-
-The package includes `PerfMeterRenderGraphFeature`.
-
-Recommended installation:
-
-```text
-SGG/Perfmeter/Setup -> URP Renderer Features -> Install All Missing / Install Selected
-```
-
-The setup window checks active URP assets from Graphics and Quality settings first, then falls back to renderer assets found under `Assets`. Renderer assets inside `Packages` are listed as not editable and must be copied or configured manually.
-
-Manual installation:
-
-1. Open your active URP renderer asset.
-2. Add renderer feature: `PerfMeterRenderGraphFeature`.
-3. Keep it enabled.
-4. Keep the default render pass event unless you have a specific ordering reason to move it.
-
-The feature currently provides:
-
-- an opt-in diagnostic Render Graph marker pass for future self-overhead measurement;
-- optional overdraw instrumentation pass while overdraw measurement is active;
-- optional visual overdraw heatmap pass while heatmap visibility is enabled;
-- overdraw camera filtering, defaulting to Game cameras only, with optional camera-name filtering in the renderer feature settings;
-- hidden replacement shader lookup through `Shader.Find` / `Resources.Load`;
-- async readback of the numeric overdraw counter.
-
-## Numerical overdraw
-
-Numerical overdraw measurement is opt-in and bounded.
-
-```csharp
-PerformanceMeter.RequestOverdrawMeasurement(60);
-```
-
-The Render Graph feature redraws the scene with a hidden replacement shader that uses:
-
-- `ZTest Always`;
-- `ZWrite Off`;
-- `ColorMask 0`;
-- fragment-stage atomic increment into a GPU buffer;
-- `AsyncGPUReadback` for result collection.
-
-The ratio is:
-
-```text
-OverdrawRatio = TotalFragmentCount / RenderedCameraPixelCount
-```
-
-Notes:
-
-- This is a diagnostic measurement, not a steady-state metric.
-- It can be expensive and should not be left on permanently.
-- It depends on graphics API and device support; unsupported targets return `OverdrawState = Unsupported` with a warning before scheduling the Render Graph pass.
-- Transparent objects, particles, UI, renderer queues, replacement-shader compatibility, and camera selection can affect the result.
-- Readbacks are tied to a measurement session id, so stale `AsyncGPUReadback` callbacks from a canceled or restarted measurement are ignored.
-
-## Visual overdraw heatmap
-
-Visual overdraw heatmap is controlled separately from numerical measurement:
-
-```csharp
-PerformanceMeter.SetOverdrawHeatmapVisible(true);
-PerformanceMeter.SetOverdrawHeatmapVisible(false);
-```
-
-The heatmap pass redraws the scene renderer list with `Hidden/SGG/PerfMeter/OverdrawHeatmap` using `ZTest Always`, `ZWrite Off`, and additive blending over the active camera color target. Brighter red/orange areas indicate more repeated fragment coverage.
-
-Notes:
-
-- Heatmap visibility is exposed through `PerformanceMeter.IsOverdrawHeatmapVisible`, `PerfMeterStatusSnapshot.OverdrawHeatmapVisible`, overlay text, setup runtime controls, and MCP status JSON.
-- The heatmap is visual only; it does not update `OverdrawRatio`.
-- It uses the same renderer feature camera filtering and replacement-shader compatibility constraints as numerical overdraw.
-
-## MCP commands
-
-The package includes MCP command metadata under:
-
-```text
-Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
-```
-
-Available command IDs:
-
-| Command | Purpose |
-| --- | --- |
-| `perfmeter.setup.status` | Read setup status. |
-| `perfmeter.setup.run` | Run recommended setup actions. |
-| `perfmeter.runtime.status` | Read runtime status. |
-| `perfmeter.runtime.ensure` | Start runtime if needed. |
-| `perfmeter.runtime.stop` | Stop runtime. |
-| `perfmeter.runtime.reset_stats` | Reset rolling stats, alert counters, and active session counters. |
-| `perfmeter.runtime.mode.set` | Switch `Stopped`, `Background`, `Overlay`, or `OverdrawDiagnostic` collection mode. |
-| `perfmeter.metrics.latest` | Read latest metrics snapshot. |
-| `perfmeter.alerts.latest` | Read active alerts, alert counters, status fields, and Editor state. |
-| `perfmeter.alerts.clear` | Clear active alerts, counters, and per-rule cooldown state. |
-| `perfmeter.device.info` | Read device, graphics, display, monitor, render pipeline, and Unity environment info. |
-| `perfmeter.camera.snapshot` | Read camera transform/projection/URP settings for reproducible captures. |
-| `perfmeter.rendergraph.snapshot` | Read the latest observed PerfMeter Render Graph feature diagnostics. |
-| `perfmeter.overlay.set` | Show/hide overlay and set preset/modules/corner/mode/target FPS. |
-| `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
-| `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
-| `perfmeter.overdraw.heatmap.set` | Show or hide visual overdraw heatmap. |
-| `perfmeter.session.start` | Start bounded session recording with optional warm-up, scene-load, interval, and sample-count overrides. |
-| `perfmeter.session.stop` | Stop the active session and return its summary. |
-| `perfmeter.session.summary` | Read the current session summary. |
-| `perfmeter.session.export` | Export the current session to a project-local JSON or CSV file. |
-
-These commands are intended for Unity MCP / editor automation workflows where an agent needs structured JSON output instead of screenshots or log scraping.
-
-## Package layout
-
-```text
-Assets/Scripts/SGG.PerfMeter/
-  package.json
-  README.md
-  CHANGELOG.md
-  Runtime/
-    PerfMeterAlertEngine.cs
-    PerformanceMeter.cs
-    PerfMeterCameraSnapshot.cs
-    PerfMeterCameraSnapshotProvider.cs
-    PerfMeterDeviceInfoProvider.cs
-    PerfMeterRuntime.cs
-    PerfMeterCollector.cs
-    PerfMeterFrameStatsSampler.cs
-    PerfMeterOverlay.cs
-    PerfMeterOverdrawController.cs
-    PerfMeterRenderGraphFeature.cs
-    PerfMeterSessionExporter.cs
-    PerfMeterSessionRecorder.cs
-    PerfMeterSettings.cs
-    PerfMeterSnapshots.cs
-    Resources/
-      SGGPerfMeterOverdrawCounter.shader
-      SGGPerfMeterOverdrawHeatmap.shader
-  Editor/
-    Setup/
-    UI/
-    Mcp/
-  Tests/
-    EditMode/
-    PlayMode/
-  .Documentation/
-    README.en.md
-    README.ru.md
-    STATUS.en.md
-    STATUS.ru.md
-  LICENSE.md
-  LICENSE.ru.md
-  NOTICE.md
-  NOTICE.ru.md
-```
-
-## Development and verification
-
-Recommended local compile check:
-
-```bash
-Unity.exe -batchmode -quit -projectPath <path-to-project> -logFile <path-to-log>
-```
-
-Recommended local Test Runner checks use `-runTests` without `-quit`, because Unity exits after the run and writes the XML results itself:
-
-```bash
-Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform EditMode -testResults <path-to-editmode-results.xml> -logFile <path-to-editmode-log>
-Unity.exe -batchmode -projectPath <path-to-project> -runTests -testPlatform PlayMode -testResults <path-to-playmode-results.xml> -logFile <path-to-playmode-log>
-```
-
-Release-readiness docs:
-
-- `docs/release-2026.5.20-1.md`
-- `docs/release-notes-2026.5.20-1.md`
-- `docs/release-process.md`
-- `docs/manual-checks.md`
-- `docs/versioning.md`
-
-Recommended next verification targets:
-
-- Windows Player: D3D11 and D3D12.
-- Additional Android devices: Vulkan timing/counter availability.
-- Additional Android devices: OpenGLES3 degraded-mode behavior.
-- macOS/iOS Player: Metal.
-- Play Mode overlay stability.
-- Release Player metric availability.
-- Overdraw measurement and heatmap behavior on real devices.
-
-## Known limitations
-
-- Root project is currently a sample Unity project plus a nested UPM package; install through `?path=/Assets/Scripts/SGG.PerfMeter` when using Git dependencies.
-- GPU timings can be delayed or unavailable depending on platform and graphics API; `CollectionFrame` identifies when the snapshot was collected, not the original hardware timing frame.
-- Bottleneck classification is heuristic and should be validated against Unity Profiler captures before treating it as authoritative.
-- The overlay refresh is allocation-conscious and throttled, but changed numeric values and graph legend labels can still materialize managed strings at the refresh interval.
-- Self-overhead marker pass is opt-in diagnostic mode, and full overhead subtraction is not finalized.
-- Overdraw heatmap is diagnostic and uses an extra scene redraw while visible.
-- Render Graph pass/resource/aliasing/merge analytics are conservative; internal Unity counters can report `-1` with a warning when URP does not expose them safely.
-- CI is not configured yet.
+Internal development, historical roadmap, release-readiness, and architecture notes are kept under `_DevelopmentDocs/`.
 
 ## License
 
 This package is licensed under **Stinger Royalty-Free EULA 1.0**.
 
-- Primary controlling text: `LICENSE.ru.md`.
-- English convenience translation: `LICENSE.md`.
-- Notices: `NOTICE.md` and `NOTICE.ru.md`.
-- SPDX identifier: `LicenseRef-Stinger-Royalty-Free-EULA-1.0`.
-- Licensor: `ROMAN ILYIN`.
-
-Free for personal, internal, open, and commercial End Products. Royalty-free. Standalone sale, resale, paid redistribution, or standalone commercialization of this asset or derivative assets is prohibited.
+- Authoritative license text: [LICENSE.ru.md](./LICENSE.ru.md)
+- English convenience translation: [LICENSE.md](./LICENSE.md)
+- Notices: [NOTICE.md](./NOTICE.md) and [NOTICE.ru.md](./NOTICE.ru.md)

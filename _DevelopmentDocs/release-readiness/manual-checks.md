@@ -48,7 +48,7 @@ Manually confirm:
 - `Assets/Scripts/SGG.PerfMeter/package.json` uses the target version.
 - `README.md` fixed-version install example uses the target tag.
 - Root and package-local changelogs include the target version.
-- `docs/release-<version>.md` and `docs/release-notes-<version>.md` exist.
+- `_DevelopmentDocs/release-readiness/release-<version>.md` and `_DevelopmentDocs/release-readiness/release-notes-<version>.md` exist.
 - Package-local `README.md`, `LICENSE.md`, `LICENSE.ru.md`, `NOTICE.md`, and `NOTICE.ru.md` are present inside `Assets/Scripts/SGG.PerfMeter/` for Git UPM consumers.
 - New assets under `Assets/` have matching `.meta` files.
 

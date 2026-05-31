@@ -2,7 +2,7 @@
 
 Release publishing automation is not implemented yet. The repository has local Unity verification and a manual release-readiness workflow that validates documentation and metadata gates without publishing packages or opening the repository.
 
-Current release plan: `docs/release-2026.5.20-1.md`.
+Current release plan: `_DevelopmentDocs/release-readiness/release-2026.5.20-1.md`.
 
 ## Coordinates
 
@@ -67,4 +67,4 @@ Public release is deferred. Before opening the repository:
 
 ## Post-Release Notes
 
-Use `docs/release-notes-2026.5.20-1.md` as the private release notes draft. If a public GitHub Release is later created, review the notes for public wording and mark the release as pre-release if any shipped surface remains experimental.
+Use `_DevelopmentDocs/release-readiness/release-notes-2026.5.20-1.md` as the private release notes draft. If a public GitHub Release is later created, review the notes for public wording and mark the release as pre-release if any shipped surface remains experimental.

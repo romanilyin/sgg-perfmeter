@@ -42,7 +42,7 @@ Final pre-tag checks completed for `2026.5.20-1`:
 - Android S23 Vulkan smoke validation passed with GPU timing available and `overdraw_state=Completed`.
 - Android S23 OpenGLES3 fallback validation passed with expected `overdraw_state=Unsupported`.
 
-Release tagging should re-run the local gates listed in `docs/release-2026.5.20-1.md`.
+Release tagging should re-run the local gates listed in `_DevelopmentDocs/release-readiness/release-2026.5.20-1.md`.
 
 ## Known Limitations
 

@@ -1,8 +1,8 @@
 # План развития SGG PerfMeter по итогам сравнения с AFPS и Graphy
 
-Источник: исходное сравнение `_Docs/sgg-perfmeter-competitor-comparison.md` и актуализированный локальный reference от 2026-05-19.
+Источник: исходное сравнение `_DevelopmentDocs/sgg-perfmeter-competitor-comparison.md` и актуализированный локальный reference от 2026-05-19.
 Дата: 2026-05-19  
-Статус: historical roadmap / implementation mostly completed после iteration 43. Current release-facing comparison lives in `_Docs/marketing/`.
+Статус: historical roadmap / implementation mostly completed после iteration 43. Current release-facing comparison lives in `_DevelopmentDocs/marketing/`.
 
 Примечание: разделы с `[Done]` ниже оставлены как historical implementation requirements, а не как новые задачи. Не начинать повторную реализацию этих пунктов без отдельного запроса.
 
@@ -430,8 +430,8 @@ public interface IPerfMeterCustomMetricProvider
 - `.Documentation/README.en.md`;
 - `.Documentation/STATUS.ru.md`;
 - `.Documentation/STATUS.en.md`;
-- `_Docs/perfmeter_status.md`;
-- `_Docs/perfmeter_iterations.md`.
+- `_DevelopmentDocs/perfmeter_status.md`;
+- `_DevelopmentDocs/perfmeter_iterations.md`.
 
 Проверки:
 

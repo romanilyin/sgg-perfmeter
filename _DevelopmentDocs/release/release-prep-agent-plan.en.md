@@ -42,16 +42,16 @@ Do not leave stale claims that CSV/JSON session export or Render Graph analytics
 - `Assets/Scripts/SGG.PerfMeter/.Documentation/STATUS.ru.md`
 - `CHANGELOG.md`
 - `Assets/Scripts/SGG.PerfMeter/CHANGELOG.md`
-- `docs/release-2026.5.20-1.md`
-- `docs/release-notes-2026.5.20-1.md`
-- `_Docs/perfmeter_status.md`
-- `_Docs/perfmeter_iterations.md`
-- `_Docs/marketing/positioning.en.md`
-- `_Docs/marketing/positioning.ru.md`
-- `_Docs/marketing/competitor-comparison.en.md`
-- `_Docs/marketing/competitor-comparison.ru.md`
+- `_DevelopmentDocs/release-readiness/release-2026.5.20-1.md`
+- `_DevelopmentDocs/release-readiness/release-notes-2026.5.20-1.md`
+- `_DevelopmentDocs/perfmeter_status.md`
+- `_DevelopmentDocs/perfmeter_iterations.md`
+- `_DevelopmentDocs/marketing/positioning.en.md`
+- `_DevelopmentDocs/marketing/positioning.ru.md`
+- `_DevelopmentDocs/marketing/competitor-comparison.en.md`
+- `_DevelopmentDocs/marketing/competitor-comparison.ru.md`
 
-`_Docs/sgg-perfmeter-competitor-comparison-updated.md` is a local reference source and must not be committed.
+`_DevelopmentDocs/sgg-perfmeter-competitor-comparison-updated.md` is a local reference source and must not be committed.
 
 ## Package Metadata
 

@@ -74,6 +74,6 @@
 
 ## Handoff Notes
 
-- Next implementation work follows `_Docs/sgg-perfmeter-roadmap-from-competitors.ru.md`: custom metric overlay support is intentionally limited to bounded text rows behind a module flag, not a generic dashboard.
-- `_Docs/sgg-perfmeter-competitor-comparison-updated.md` is a local reference source and must remain uncommitted by user request.
+- Next implementation work follows `_DevelopmentDocs/sgg-perfmeter-roadmap-from-competitors.ru.md`: custom metric overlay support is intentionally limited to bounded text rows behind a module flag, not a generic dashboard.
+- `_DevelopmentDocs/sgg-perfmeter-competitor-comparison-updated.md` is a local reference source and must remain uncommitted by user request.
 - `ProjectSettings/ProjectSettings.asset` currently has `enableFrameTimingStats: 1`; keep it enabled before depending on `FrameTimingManager` in builds.

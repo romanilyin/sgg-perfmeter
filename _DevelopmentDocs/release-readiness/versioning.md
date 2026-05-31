@@ -52,8 +52,8 @@ Keep these values aligned for each release candidate:
 Assets/Scripts/SGG.PerfMeter/package.json version
 README.md fixed-version install examples
 CHANGELOG.md release entry
-docs/release-<version>.md
-docs/release-notes-<version>.md
+_DevelopmentDocs/release-readiness/release-<version>.md
+_DevelopmentDocs/release-readiness/release-notes-<version>.md
 Assets/Scripts/SGG.PerfMeter/CHANGELOG.md release entry
 ```
 

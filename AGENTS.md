@@ -4,7 +4,7 @@
 - Unity project, not a standalone .NET/npm repo; project version is Unity `6000.4.7f1` with URP `17.4.0`.
 - Current Android validation uses Unity `6000.4.7f1` with Android Build Support.
 - Main build scene is `Assets/Scenes/SampleScene.unity`.
-- Read `_Docs/perfmeter_theory.md` before implementing profiler features; it is the current product/architecture spec.
+- Read `_DevelopmentDocs/perfmeter_theory.md` before implementing profiler features; it is the current product/architecture spec.
 - Chat with the user in Russian.
 
 ## Package Layout
@@ -14,7 +14,7 @@
 
 ## Documentation
 - User-facing documentation lives in `Assets/Scripts/SGG.PerfMeter/.Documentation/` and must be maintained in both Russian and English.
-- Development/spec documentation lives in `_Docs/`; read it before changing profiler architecture.
+- Development/spec documentation lives in `_DevelopmentDocs/`; read it before changing profiler architecture.
 
 ## Unity/URP Settings
 - Active pipeline is `Assets/Settings/PC_RPAsset.asset`; Quality maps Standalone to `PC` and Android/iOS to `Mobile`.
