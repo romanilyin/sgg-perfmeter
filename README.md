@@ -4,8 +4,13 @@
 
 **Runtime performance diagnostics and agent-readable profiling API for Unity 6000+ URP Render Graph projects.**
 
-[English Docs](./docs/en/README.md) |
-[Russian Docs](./docs/ru/README.md) |
+[English](./docs/en/README.md) |
+[Russian](./docs/ru/README.md)
+
+<sub>Translation targets: .de · .es · .fr · .it · .ja · .ko · .pt-BR · .ru · .zh-CN</sub>
+
+—
+
 [Quick Start](./docs/en/quick-start.md) |
 [API](./docs/en/api.md) |
 [Comparison](./docs/en/comparison.md) |
