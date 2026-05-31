@@ -30,6 +30,7 @@ Shader "Hidden/SGG/PerfMeter/OverdrawCounter"
 			#pragma vertex Vert
 			#pragma fragment Frag
 			#pragma multi_compile_instancing
+			#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 

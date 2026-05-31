@@ -34,6 +34,8 @@ namespace SGG.PerfMeter
 		private const float TextCompactHeight = 260f;
 		private const float GraphsTextHeight = 110f;
 		private const float FullTextHeight = 430f;
+		private const float TextRowStride = 18f;
+		private const float TextBlockVerticalPadding = 16f;
 		private const float OverlayMargin = 12f;
 		private const float BlockGap = 6f;
 		private const float WarningHoldSeconds = 1.25f;
@@ -1000,40 +1002,123 @@ namespace SGG.PerfMeter
 		{
 			if (_layout == PerfMeterOverlayLayout.MetricBars)
 			{
+				int reservedRows = GetReservedMetricBarRowCount();
 				switch (_mode)
 				{
 					case PerfMeterOverlayMode.TextCompact:
-						return MetricBarsCompactHeight;
+						return GetStableTextBlockHeight(reservedRows, MetricBarsCompactHeight);
 					case PerfMeterOverlayMode.Graphs:
-						return MetricBarsGraphsHeight;
+						return GetStableTextBlockHeight(reservedRows, MetricBarsGraphsHeight);
 					case PerfMeterOverlayMode.FpsOnly:
-						return FpsOnlyHeight;
+						return GetStableTextBlockHeight(GetReservedTextRowCount(), FpsOnlyHeight + TextRowStride);
 					default:
-						return MetricBarsTextHeight;
+						return GetStableTextBlockHeight(reservedRows, MetricBarsTextHeight);
 				}
 			}
 
 			if (_layout == PerfMeterOverlayLayout.CompactCards && _mode == PerfMeterOverlayMode.Full)
 			{
-				return CompactCardsTextHeight;
+				return GetStableTextBlockHeight(GetReservedTextRowCount(), CompactCardsTextHeight);
 			}
 
 			if (_layout == PerfMeterOverlayLayout.OverdrawFocus && _mode == PerfMeterOverlayMode.Full)
 			{
-				return OverdrawFocusTextHeight;
+				return GetStableTextBlockHeight(GetReservedTextRowCount(), OverdrawFocusTextHeight);
 			}
 
 			switch (_mode)
 			{
 				case PerfMeterOverlayMode.FpsOnly:
-					return FpsOnlyHeight;
+					return GetStableTextBlockHeight(GetReservedTextRowCount(), FpsOnlyHeight + TextRowStride);
 				case PerfMeterOverlayMode.TextCompact:
-					return TextCompactHeight;
+					return GetStableTextBlockHeight(GetReservedTextRowCount(), TextCompactHeight);
 				case PerfMeterOverlayMode.Graphs:
-					return GraphsTextHeight;
+					return GetStableTextBlockHeight(GetReservedTextRowCount(), GraphsTextHeight);
 				default:
-					return FullTextHeight;
+					return GetStableTextBlockHeight(GetReservedTextRowCount(), FullTextHeight);
 			}
+		}
+
+		private static float GetStableTextBlockHeight(int reservedRows, float maxHeight)
+		{
+			float contentHeight = TextBlockVerticalPadding + Mathf.Max(1, reservedRows) * TextRowStride;
+			return Mathf.Min(maxHeight, Mathf.Max(FpsOnlyHeight, contentHeight));
+		}
+
+		private int GetReservedTextRowCount()
+		{
+			switch (_mode)
+			{
+				case PerfMeterOverlayMode.FpsOnly:
+					return Mathf.Max(1, (HasModule(PerfMeterOverlayModule.Fps) ? 1 : 0) + (HasModule(PerfMeterOverlayModule.Warnings) ? 1 : 0));
+				case PerfMeterOverlayMode.TextCompact:
+					return GetReservedTextCompactRowCount();
+				case PerfMeterOverlayMode.Graphs:
+					return GetReservedGraphsRowCount();
+				default:
+					return GetReservedFullRowCount();
+			}
+		}
+
+		private int GetReservedTextCompactRowCount()
+		{
+			int rows = 1;
+			rows += HasModule(PerfMeterOverlayModule.Fps) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Timing) ? 3 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Rendering) ? 2 : 0;
+			rows += HasModule(PerfMeterOverlayModule.SrpBatcher) || HasModule(PerfMeterOverlayModule.Brg) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Memory) || HasModule(PerfMeterOverlayModule.GpuMemory) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.CustomMetrics) ? MaxCustomMetricRows : 0;
+			rows += HasModule(PerfMeterOverlayModule.Warnings) ? 1 : 0;
+			return rows;
+		}
+
+		private int GetReservedGraphsRowCount()
+		{
+			int rows = 2;
+			rows += HasModule(PerfMeterOverlayModule.Fps) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Timing) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.CustomMetrics) ? MaxCustomMetricRows : 0;
+			rows += HasModule(PerfMeterOverlayModule.Warnings) ? 1 : 0;
+			return rows;
+		}
+
+		private int GetReservedFullRowCount()
+		{
+			int rows = 1;
+			rows += HasModule(PerfMeterOverlayModule.Fps) ? 2 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Timing) ? 6 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Rendering) ? 4 : 0;
+			rows += HasModule(PerfMeterOverlayModule.SrpBatcher) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Brg) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Uploads) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Memory) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Gc) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.GpuMemory) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.CustomMetrics) ? MaxCustomMetricRows : 0;
+			rows += HasModule(PerfMeterOverlayModule.Warnings) ? 1 : 0;
+			return rows;
+		}
+
+		private int GetReservedMetricBarRowCount()
+		{
+			int rows = 1;
+			rows += HasModule(PerfMeterOverlayModule.Warnings) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Fps) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Timing) ? 6 : 0;
+			rows += HasModule(PerfMeterOverlayModule.CpuCores) ? MaxCpuCoreRows : 0;
+			rows += HasModule(PerfMeterOverlayModule.CustomMetrics) ? MaxCustomMetricRows : 0;
+			rows += HasModule(PerfMeterOverlayModule.Rendering) ? 4 : 0;
+			rows += HasModule(PerfMeterOverlayModule.SrpBatcher) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Brg) ? 2 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Uploads) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Memory) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.Gc) ? 1 : 0;
+			rows += HasModule(PerfMeterOverlayModule.GpuMemory) ? 1 : 0;
+			return rows;
 		}
 
 		private int GetMetricBarFieldLimit()
