@@ -390,7 +390,8 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
 			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.MetricBars,
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
-			bool editorWarningsEnabled = true)
+			bool editorWarningsEnabled = true,
+			string visualOverlayPresetId = "")
 		{
 			State = state;
 			Availability = availability;
@@ -428,6 +429,7 @@ namespace SGG.PerfMeter
 			ApplicationFocused = applicationFocused;
 			ApplicationPaused = applicationPaused;
 			EditorWarningsEnabled = editorWarningsEnabled;
+			VisualOverlayPresetId = visualOverlayPresetId ?? string.Empty;
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -466,6 +468,7 @@ namespace SGG.PerfMeter
 		public bool ApplicationFocused { get; }
 		public bool ApplicationPaused { get; }
 		public bool EditorWarningsEnabled { get; }
+		public string VisualOverlayPresetId { get; }
 	}
 
 	public readonly struct PerfMeterSessionOptions

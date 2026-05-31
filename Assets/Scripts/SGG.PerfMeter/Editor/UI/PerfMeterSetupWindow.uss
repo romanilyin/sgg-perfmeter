@@ -1,5 +1,10 @@
 .pm-window {
     --pm-accent: rgba(255, 208, 92, 0.95);
+    --pm-info: #a99be6;
+    --pm-ok: #20a8e8;
+    --pm-warn: #f2ab06;
+    --pm-optional: #d6b449;
+    --pm-error: #ff534a;
     --pm-panel: #2d2d2d;
     --pm-panel-dark: #252525;
     --pm-panel-header: rgb(30, 40, 40);
@@ -24,11 +29,18 @@
 }
 
 .pm-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    height: auto;
+    overflow: visible;
     margin-bottom: 8px;
 }
 
 .pm-tab {
     min-width: 110px;
+    flex-shrink: 0;
+    margin-bottom: 4px;
 }
 
 .pm-tab:checked {
@@ -49,7 +61,7 @@
 
 .pm-section-caption {
     background-color: var(--pm-panel-header);
-    color: rgb(80, 140, 140);
+    color: #5fa8a8;
     font-size: 14px;
     -unity-font-style: bold;
     padding-top: 5px;
@@ -87,6 +99,8 @@
     min-width: 0;
     white-space: normal;
     background-color: rgba(20, 20, 20, 0.35);
+    border-left-width: 2px;
+    border-left-color: var(--pm-info);
     padding-top: 2px;
     padding-right: 6px;
     padding-bottom: 2px;
@@ -113,7 +127,122 @@
 .pm-info {
     white-space: normal;
     color: var(--pm-text-muted);
-    margin-bottom: 6px;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-left-width: 2px;
+    border-left-color: var(--pm-info);
+    padding-top: 6px;
+    padding-right: 8px;
+    padding-bottom: 6px;
+    padding-left: 8px;
+    margin-bottom: 8px;
+}
+
+.pm-checklist-row {
+    margin-bottom: 5px;
+}
+
+.pm-checklist-field {
+    flex-direction: row;
+    align-items: flex-start;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+    background-color: rgba(20, 20, 20, 0.45);
+    border-left-width: 3px;
+    border-left-color: var(--pm-warn);
+    padding-top: 3px;
+    padding-right: 6px;
+    padding-bottom: 3px;
+    padding-left: 4px;
+}
+
+.pm-checklist-icon {
+    width: 22px;
+    min-width: 22px;
+    margin-right: 4px;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+}
+
+.pm-checklist-value {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+}
+
+.pm-checklist--ok {
+    border-left-color: var(--pm-ok);
+}
+
+.pm-checklist--warn {
+    border-left-color: var(--pm-warn);
+}
+
+.pm-checklist--error {
+    border-left-color: var(--pm-error);
+}
+
+.pm-checklist--optional {
+    border-left-color: var(--pm-optional);
+}
+
+.pm-checklist-icon--ok {
+    color: var(--pm-ok);
+}
+
+.pm-checklist-icon--warn {
+    color: var(--pm-warn);
+}
+
+.pm-checklist-icon--error {
+    color: var(--pm-error);
+}
+
+.pm-checklist-icon--optional {
+    color: var(--pm-optional);
+}
+
+.pm-copy-button {
+    width: 24px;
+    min-width: 24px;
+    height: 22px;
+    margin-left: 4px;
+    padding-left: 0;
+    padding-right: 0;
+    -unity-text-align: middle-center;
+    align-items: center;
+    justify-content: center;
+    color: #b3b3b3;
+}
+
+.pm-copy-icon {
+    position: relative;
+    width: 14px;
+    height: 14px;
+}
+
+.pm-copy-icon-back {
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 7px;
+    height: 9px;
+    border-width: 1px;
+    border-color: #b3b3b3;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.pm-copy-icon-front {
+    position: absolute;
+    left: 2px;
+    top: 4px;
+    width: 7px;
+    height: 9px;
+    border-width: 1px;
+    border-color: #b3b3b3;
+    background-color: rgba(0, 0, 0, 0);
 }
 
 .pm-code {
@@ -148,6 +277,40 @@
     min-width: 140px;
     margin-right: 6px;
     margin-bottom: 4px;
+}
+
+.pm-workmode-toggle {
+    min-width: 170px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    padding-top: 3px;
+    padding-right: 8px;
+    padding-bottom: 3px;
+    padding-left: 8px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(20, 20, 20, 0.35);
+    color: #f2f2f2;
+}
+
+.pm-workmode-toggle--off {
+    color: #d0d0d0;
+}
+
+.pm-workmode-toggle .unity-toggle__input {
+    margin-right: 6px;
+}
+
+.pm-workmode-toggle .unity-toggle__text {
+    color: #f2f2f2;
+}
+
+.pm-workmode-toggle--off .unity-toggle__text {
+    color: #d0d0d0;
+}
+
+.pm-workmode-toggle.pm-button--active .unity-toggle__text {
+    color: #1b1b1b;
 }
 
 .pm-button--active {
@@ -240,25 +403,25 @@
 }
 
 .pm-indicator {
-    width: 10px;
-    height: 10px;
-    min-width: 10px;
-    margin-top: 4px;
+    width: 22px;
+    min-width: 22px;
+    margin-top: 1px;
     margin-right: 6px;
-    border-radius: 5px;
-    background-color: #777777;
+    background-color: rgba(0, 0, 0, 0);
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
 }
 
 .pm-indicator--ok {
-    background-color: #35b66f;
+    color: var(--pm-ok);
 }
 
 .pm-indicator--warn {
-    background-color: #ffc107;
+    color: var(--pm-warn);
 }
 
 .pm-indicator--error {
-    background-color: #ff534a;
+    color: var(--pm-error);
 }
 
 .pm-status-line {
@@ -296,7 +459,7 @@
 
 .pm-debug-row--header .pm-debug-cell {
     -unity-font-style: bold;
-    color: rgb(80, 140, 140);
+    color: #5fa8a8;
 }
 
 .pm-debug-cell {

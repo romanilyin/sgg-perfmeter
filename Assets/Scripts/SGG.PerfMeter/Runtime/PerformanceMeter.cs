@@ -296,6 +296,15 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static string VisualOverlayPresetId
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.VisualOverlayPresetId : string.Empty;
+			}
+		}
+
 		public static PerfMeterOverlayTheme OverlayTheme
 		{
 			get
@@ -390,6 +399,16 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static void ApplyVisualOverlayPreset(string presetId, PerfMeterOverlayPresetJson preset)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.ApplyVisualOverlayPreset(presetId, preset);
+			}
+		}
+
 		public static void SetOverlayTheme(PerfMeterOverlayTheme theme)
 		{
 			PerfMeterRuntime.EnsureRunning();
@@ -447,6 +466,16 @@ namespace SGG.PerfMeter
 			if (runtime != null)
 			{
 				runtime.SetTargetFps(targetFps);
+			}
+		}
+
+		public static void SetOverlayUpdateOptions(float refreshIntervalSeconds, int graphHistoryLength)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetOverlayUpdateOptions(refreshIntervalSeconds, graphHistoryLength);
 			}
 		}
 

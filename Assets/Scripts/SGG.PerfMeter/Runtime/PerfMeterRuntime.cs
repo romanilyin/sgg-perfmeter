@@ -28,6 +28,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayLayout _overlayLayout = PerfMeterOverlayLayout.MetricBars;
 		private PerfMeterOverlayFontFamily _overlayFontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
+		private string _visualOverlayPresetId = PerfMeterOverlayPresetDefaults.FullDiagnosticsId;
 		private PerfMeterOverlayModule _overlayModules = PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
 		private float _overlayScale = 1f;
@@ -55,6 +56,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterOverlayLayout OverlayLayout => _overlayLayout;
 		internal PerfMeterOverlayFontFamily OverlayFontFamily => _overlayFontFamily;
 		internal PerfMeterOverlayPreset OverlayPreset => _overlayPreset;
+		internal string VisualOverlayPresetId => _visualOverlayPresetId;
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
 		internal bool EditorWarningLogsEnabled => _settings.EditorWarningsEnabled;
@@ -417,6 +419,7 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayMode(PerfMeterOverlayMode mode)
 		{
+			_visualOverlayPresetId = string.Empty;
 			_overlayLayout = PerfMeterSettingsStore.GetLayoutForMode(mode);
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
 			MarkOverlayPresetCustomIfLayoutChanged();
@@ -434,6 +437,7 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayTheme(PerfMeterOverlayTheme theme)
 		{
+			_visualOverlayPresetId = string.Empty;
 			_overlayTheme = PerfMeterSettingsStore.NormalizeOverlayTheme(theme);
 			EnsureOverlayState();
 
@@ -447,6 +451,7 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayLayout(PerfMeterOverlayLayout layout)
 		{
+			_visualOverlayPresetId = string.Empty;
 			_overlayLayout = PerfMeterSettingsStore.NormalizeOverlayLayout(layout);
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
 			MarkOverlayPresetCustomIfLayoutChanged();
@@ -464,6 +469,7 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayFontFamily(PerfMeterOverlayFontFamily fontFamily)
 		{
+			_visualOverlayPresetId = string.Empty;
 			_overlayFontFamily = PerfMeterSettingsStore.NormalizeOverlayFontFamily(fontFamily);
 			EnsureOverlayState();
 
@@ -478,6 +484,7 @@ namespace SGG.PerfMeter
 		internal void SetOverlayPreset(PerfMeterOverlayPreset preset)
 		{
 			_overlayPreset = NormalizeOverlayPreset(preset);
+			_visualOverlayPresetId = _overlayPreset.ToString();
 			_overlayModules = PerfMeterSettingsStore.GetPresetModules(_overlayPreset);
 			_overlayLayout = PerfMeterSettingsStore.GetPresetLayout(_overlayPreset);
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
@@ -497,10 +504,12 @@ namespace SGG.PerfMeter
 
 		internal void SetOverlayModules(PerfMeterOverlayModule modules)
 		{
+			_visualOverlayPresetId = string.Empty;
 			PerfMeterOverlayModule normalizedModules = NormalizeOverlayModules(modules, _overlayPreset);
 			if (_overlayPreset != PerfMeterOverlayPreset.Custom && normalizedModules != PerfMeterSettingsStore.GetPresetModules(_overlayPreset))
 			{
 				_overlayPreset = PerfMeterOverlayPreset.Custom;
+				_visualOverlayPresetId = string.Empty;
 			}
 
 			_overlayModules = normalizedModules;
@@ -524,8 +533,52 @@ namespace SGG.PerfMeter
 			}
 
 			_overlayPreset = PerfMeterOverlayPreset.Custom;
+			_visualOverlayPresetId = string.Empty;
 			_overlayModules = visible ? _overlayModules | normalizedModule : _overlayModules & ~normalizedModule;
 			SetOverlayModules(_overlayModules);
+		}
+
+		internal void ApplyVisualOverlayPreset(string presetId, PerfMeterOverlayPresetJson preset)
+		{
+			if (preset == null)
+			{
+				return;
+			}
+
+			PerfMeterOverlayPresetValidationResult validation = PerfMeterOverlayPresetUtility.Validate(preset);
+			if (!validation.IsValid)
+			{
+				_lastCollectorWarning = PerfMeterOverlayPresetUtility.CombineWarnings(_lastCollectorWarning, validation.Warning);
+				RefreshStatusOverlayState();
+				return;
+			}
+
+			_visualOverlayPresetId = string.IsNullOrEmpty(presetId) ? preset.id : presetId;
+			_overlayPreset = PerfMeterOverlayPreset.Custom;
+			_overlayCorner = PerfMeterOverlayPresetUtility.GetCorner(preset);
+			_overlayTheme = PerfMeterOverlayPresetUtility.GetTheme(preset);
+			_overlayLayout = PerfMeterOverlayPresetUtility.GetLayout(preset);
+			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
+			_overlayFontFamily = PerfMeterOverlayPresetUtility.GetFontFamily(preset);
+			_overlayModules = PerfMeterOverlayPresetUtility.GetEnabledModules(preset, out string widgetWarning);
+			_overlayScale = PerfMeterOverlayPresetUtility.GetScale(preset, _overlayScale);
+			_overlayOpacity = PerfMeterOverlayPresetUtility.GetOpacity(preset, _overlayOpacity);
+			_lastCollectorWarning = PerfMeterOverlayPresetUtility.CombineWarnings(_lastCollectorWarning, PerfMeterOverlayPresetUtility.CombineWarnings(validation.Warning, widgetWarning));
+			EnsureOverlayState();
+
+			if (_overlay != null)
+			{
+				_overlay.SetCorner(_overlayCorner);
+				_overlay.SetMode(_overlayMode);
+				_overlay.SetTheme(_overlayTheme);
+				_overlay.SetLayout(_overlayLayout);
+				_overlay.SetFontFamily(_overlayFontFamily);
+				_overlay.SetModules(_overlayModules);
+				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
+			}
+
+			ResetCpuCoreSamplerIfInactive();
+			RefreshStatusOverlayState();
 		}
 
 		internal void SetTargetFps(PerfMeterTargetFps targetFps)
@@ -543,6 +596,19 @@ namespace SGG.PerfMeter
 			RefreshStatusOverlayState();
 		}
 
+		internal void SetOverlayUpdateOptions(float refreshIntervalSeconds, int graphHistoryLength)
+		{
+			_overlayRefreshIntervalSeconds = Mathf.Clamp(refreshIntervalSeconds, PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds, PerfMeterSettingsStore.MaxOverlayRefreshIntervalSeconds);
+			_overlayGraphHistoryLength = Mathf.Clamp(graphHistoryLength, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength);
+			EnsureOverlayState();
+			if (_overlay != null)
+			{
+				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
+			}
+
+			RefreshStatusOverlayState();
+		}
+
 		internal void SetOverlayTuning(PerfMeterSettingsSnapshot settings)
 		{
 			_settings = settings;
@@ -555,6 +621,7 @@ namespace SGG.PerfMeter
 			_overlayLayout = settings.OverlayLayout;
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, settings.OverlayMode);
 			_overlayFontFamily = settings.OverlayFontFamily;
+			_visualOverlayPresetId = settings.ActiveOverlayPresetId;
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
 			ApplyAlertSettings(settings);
@@ -639,7 +706,8 @@ namespace SGG.PerfMeter
 				_overlayModules,
 				applicationFocused: _applicationFocused,
 				applicationPaused: _applicationPaused,
-				editorWarningsEnabled: _settings.EditorWarningsEnabled);
+				editorWarningsEnabled: _settings.EditorWarningsEnabled,
+				visualOverlayPresetId: _visualOverlayPresetId);
 
 			_latestMetrics = new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -738,7 +806,8 @@ namespace SGG.PerfMeter
 			string latestAlertMessage = "",
 			bool applicationFocused = true,
 			bool applicationPaused = false,
-			bool editorWarningsEnabled = true)
+			bool editorWarningsEnabled = true,
+			string visualOverlayPresetId = "")
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -776,7 +845,8 @@ namespace SGG.PerfMeter
 				overlayTheme: PerfMeterSettingsStore.NormalizeOverlayTheme(overlayTheme),
 				overlayLayout: PerfMeterSettingsStore.NormalizeOverlayLayout(overlayLayout),
 				overlayFontFamily: PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily),
-				editorWarningsEnabled: editorWarningsEnabled);
+				editorWarningsEnabled: editorWarningsEnabled,
+				visualOverlayPresetId: visualOverlayPresetId);
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
@@ -920,7 +990,8 @@ namespace SGG.PerfMeter
 				_alertEngine.LatestAlert.Message,
 				_applicationFocused,
 				_applicationPaused,
-				_settings.EditorWarningsEnabled);
+				_settings.EditorWarningsEnabled,
+				_visualOverlayPresetId);
 		}
 
 		private static string CombineWarnings(string first, string second)
@@ -1031,7 +1102,8 @@ namespace SGG.PerfMeter
 				_alertEngine.LatestAlert.Message,
 				_applicationFocused,
 				_applicationPaused,
-				_settings.EditorWarningsEnabled);
+				_settings.EditorWarningsEnabled,
+				_visualOverlayPresetId);
 		}
 
 		private PerfMeterCounterAvailability GetAvailableCounters()
@@ -1097,6 +1169,7 @@ namespace SGG.PerfMeter
 			if (_overlayPreset != PerfMeterOverlayPreset.Custom && _overlayLayout != PerfMeterSettingsStore.GetPresetLayout(_overlayPreset))
 			{
 				_overlayPreset = PerfMeterOverlayPreset.Custom;
+				_visualOverlayPresetId = string.Empty;
 			}
 		}
 

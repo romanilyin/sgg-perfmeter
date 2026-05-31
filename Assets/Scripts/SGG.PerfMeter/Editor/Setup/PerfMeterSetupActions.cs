@@ -42,6 +42,11 @@ namespace SGG.PerfMeter.Editor.Setup
 			return ToPublicResult(PerfMeterSetupUtility.CreateDefaultSettings());
 		}
 
+		public static PerfMeterSetupActionResult EnsureDefaultOverlayPresets()
+		{
+			return ToPublicResult(PerfMeterOverlayPresetEditorUtility.EnsureDefaultOverlayPresets());
+		}
+
 		public static PerfMeterSetupActionResult SaveSettings(PerfMeterSettingsSnapshot settings)
 		{
 			return ToPublicResult(PerfMeterSetupUtility.SaveSettingsSnapshot(settings));

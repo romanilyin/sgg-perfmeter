@@ -14,6 +14,7 @@ namespace SGG.PerfMeter
 		private const int MaxCpuCorePanelCount = 32;
 		private const float GraphBlockWidth = 780f;
 		private const float TextBlockWidth = 520f;
+		private const float FpsOnlyTextBlockWidth = 356f;
 		private const float TextFieldNameWidth = 118f;
 		private const float TextFieldNameGap = 8f;
 		private const float ScaleLabelWidth = 64f;
@@ -29,7 +30,7 @@ namespace SGG.PerfMeter
 		private const float GpuGraphHeight = 52f;
 		private const float CpuCoreGraphCellHeight = 44f;
 		private const float CpuCoreGraphGap = 5f;
-		private const float FpsOnlyHeight = 36f;
+		private const float FpsOnlyHeight = 30f;
 		private const float TextCompactHeight = 260f;
 		private const float GraphsTextHeight = 110f;
 		private const float FullTextHeight = 430f;
@@ -858,7 +859,7 @@ namespace SGG.PerfMeter
 
 		private bool ShouldShowWidgetBlock()
 		{
-			return _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
+			return _mode != PerfMeterOverlayMode.FpsOnly && _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
 		}
 
 		private bool ShouldShowCpuCoreBarsBlock()
@@ -878,6 +879,11 @@ namespace SGG.PerfMeter
 
 		private float GetTextBlockWidth()
 		{
+			if (_mode == PerfMeterOverlayMode.FpsOnly)
+			{
+				return FpsOnlyTextBlockWidth;
+			}
+
 			return _layout == PerfMeterOverlayLayout.DiagnosticsWide || _layout == PerfMeterOverlayLayout.MetricBars ? DiagnosticsWideTextWidth : TextBlockWidth;
 		}
 
@@ -1734,8 +1740,23 @@ namespace SGG.PerfMeter
 		{
 			if (HasModule(PerfMeterOverlayModule.Fps))
 			{
-				BeginTextField("FPS");
-				AppendFpsSummary(_valueBuilder, metrics);
+				BeginTextField(string.Empty);
+				_valueBuilder.Append("FPS ");
+				AppendFpsValue(_valueBuilder, FpsFromFrameMs(metrics.CpuFrameTimeMs));
+				_valueBuilder.Append("  AVG ");
+				double averageFps = metrics.AverageFps > 1d ? metrics.AverageFps : FpsFromFrameMs(metrics.CpuFrameTimeMs);
+				AppendFpsValue(_valueBuilder, averageFps);
+				_valueBuilder.Append("  1% ");
+				AppendFpsValue(_valueBuilder, metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps);
+				_valueBuilder.Append("  .1% ");
+				AppendFpsValue(_valueBuilder, metrics.PointOnePercentLowFps > 1d ? metrics.PointOnePercentLowFps : metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps);
+				if (HasModule(PerfMeterOverlayModule.Timing))
+				{
+					_valueBuilder.Append("  REN ");
+					AppendMsValue(_valueBuilder, metrics.CpuRenderThreadFrameTimeMs);
+					_valueBuilder.Append(" MS");
+				}
+
 				EndTextField();
 			}
 
@@ -2311,6 +2332,7 @@ namespace SGG.PerfMeter
 
 			field.SetName(_pendingTextFieldName);
 			field.SetValue(_valueBuilder);
+			field.SetCompact(_mode == PerfMeterOverlayMode.FpsOnly);
 			field.SetVisible(true);
 			_textFieldCount++;
 		}
@@ -2945,6 +2967,14 @@ namespace SGG.PerfMeter
 			{
 				_nameLabel.style.unityFont = nameFont;
 				_valueLabel.style.unityFont = valueFont;
+			}
+
+			internal void SetCompact(bool compact)
+			{
+				_nameLabel.style.display = compact ? DisplayStyle.None : DisplayStyle.Flex;
+				_nameLabel.style.width = compact ? 0f : TextFieldNameWidth;
+				_nameLabel.style.marginRight = compact ? 0f : TextFieldNameGap;
+				_valueLabel.style.whiteSpace = compact ? WhiteSpace.NoWrap : WhiteSpace.Normal;
 			}
 
 			internal void SetVisible(bool visible)

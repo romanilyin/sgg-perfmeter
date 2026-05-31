@@ -200,9 +200,15 @@ namespace SGG.PerfMeter.Editor.UI.Localization
 				return;
 			}
 
-			if (element is Toggle toggle && !string.IsNullOrEmpty(toggle.label))
+			if (element is Toggle toggle && !string.IsNullOrEmpty(toggle.text))
 			{
-				toggle.label = Text(toggle.label);
+				toggle.text = Text(toggle.text);
+				return;
+			}
+
+			if (element is Toggle toggleWithLabel && !string.IsNullOrEmpty(toggleWithLabel.label))
+			{
+				toggleWithLabel.label = Text(toggleWithLabel.label);
 				return;
 			}
 
@@ -266,6 +272,46 @@ namespace SGG.PerfMeter.Editor.UI.Localization
 			if (TryMatch(source, "^PerfMeter settings JSON is invalid: (.+)$", out match))
 			{
 				return Format("PerfMeter settings JSON is invalid: {0}", match.Groups[1].Value);
+			}
+
+			if (TryMatch(source, "^Active - package path (.+)\\.$", out match))
+			{
+				return Format("Active - package path {0}.", match.Groups[1].Value);
+			}
+
+			if (TryMatch(source, "^Active - (\\d+) / (\\d+) renderers have PerfMeter Render Graph feature\\.$", out match))
+			{
+				return Format("Active - {0} / {1} renderers have PerfMeter Render Graph feature.", match.Groups[1].Value, match.Groups[2].Value);
+			}
+
+			if (TryMatch(source, "^Active - (\\d+) visual overlay preset JSON file\\(s\\) available\\.$", out match))
+			{
+				return Format("Active - {0} visual overlay preset JSON file(s) available.", match.Groups[1].Value);
+			}
+
+			if (TryMatch(source, "^Warning - (.+)$", out match))
+			{
+				return Format("Warning - {0}", Text(match.Groups[1].Value));
+			}
+
+			if (TryMatch(source, "^Active - (.+)$", out match))
+			{
+				return Format("Active - {0}", Text(match.Groups[1].Value));
+			}
+
+			if (TryMatch(source, "^(.+) · (.+)$", out match))
+			{
+				return Format("{0} · {1}", Text(match.Groups[1].Value), Text(match.Groups[2].Value));
+			}
+
+			if (TryMatch(source, "^Copy (.+)$", out match))
+			{
+				return Format("Copy {0}", Text(match.Groups[1].Value));
+			}
+
+			if (TryMatch(source, "^(.+) copied to clipboard\\.$", out match))
+			{
+				return Format("{0} copied to clipboard.", Text(match.Groups[1].Value));
 			}
 
 			if (TryMatch(source, "^(.+) (\\d+)% / heatmap (on|off)$", out match))

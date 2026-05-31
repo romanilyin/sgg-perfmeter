@@ -111,6 +111,7 @@ public static class PerfMeterBootstrap
 			{
 				EnsureSettingsFolder();
 				PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateFromSnapshot(snapshot);
+				PerfMeterOverlayPresetEditorUtility.BakeOverlayPresetsIntoSettings(settings);
 				string json = PerfMeterSettingsStore.ToJson(settings);
 				File.WriteAllText(PerfMeterSettingsStore.ResourcesAssetPath, json);
 				AssetDatabase.ImportAsset(PerfMeterSettingsStore.ResourcesAssetPath);
@@ -676,7 +677,8 @@ public static class PerfMeterBootstrap
 					}
 
 					string warning = string.IsNullOrEmpty(Snapshot.Warning) ? string.Empty : " Warning: " + Snapshot.Warning;
-					return "JSON settings " + Snapshot.LoadState + ": " + (Snapshot.Enabled ? "enabled" : "disabled") + ", auto-start " + (Snapshot.AutoStart ? "on" : "off") + ", preset " + Snapshot.ActivePreset + "." + warning;
+					string preset = string.IsNullOrEmpty(Snapshot.ActiveOverlayPresetId) ? Snapshot.ActivePreset : Snapshot.ActiveOverlayPresetId;
+					return "JSON settings " + Snapshot.LoadState + ": " + (Snapshot.Enabled ? "enabled" : "disabled") + ", auto-start " + (Snapshot.AutoStart ? "on" : "off") + ", preset " + preset + "." + warning;
 				}
 			}
 		}
