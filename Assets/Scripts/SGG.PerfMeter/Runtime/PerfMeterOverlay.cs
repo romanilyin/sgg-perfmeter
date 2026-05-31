@@ -81,6 +81,11 @@ namespace SGG.PerfMeter
 		private static Color CpuCoreLowLoadColor => new Color(0.18f, 0.74f, 0.23f, 1f);
 		private static Color CpuCoreMediumLoadColor => new Color(1f, 0.72f, 0.18f, 1f);
 		private static Color CpuCoreHighLoadColor => new Color(1f, 0.24f, 0.20f, 1f);
+		private static Color FpsExcellentColor => new Color(0.20f, 0.62f, 1f, 1f);
+		private static Color FpsGoodColor => new Color(0.26f, 0.92f, 0.42f, 1f);
+		private static Color FpsCautionColor => new Color(1f, 0.82f, 0.24f, 1f);
+		private static Color FpsWarningColor => new Color(1f, 0.48f, 0.18f, 1f);
+		private static Color FpsCriticalColor => new Color(1f, 0.24f, 0.20f, 1f);
 		private static Color GraphBackgroundColor => _activeTheme.GraphBackground;
 		private static Color GridColor => _activeTheme.Grid;
 		private static Color BudgetColor => _activeTheme.Budget;
@@ -116,6 +121,13 @@ namespace SGG.PerfMeter
 		private VisualElement _textRows;
 		private VisualElement _barRows;
 		private VisualElement _graphs;
+		private VisualElement _fpsOnlyRow;
+		private Label _fpsOnlyCurrentLabel;
+		private Label _fpsOnlyAverageLabel;
+		private Label _fpsOnlyOnePercentLabel;
+		private Label _fpsOnlyPointOnePercentLabel;
+		private Label _fpsOnlyRenderLabel;
+		private Label _fpsOnlyWarningLabel;
 		private PerfMeterGraphLegendLine _cpuFrameLegend;
 		private PerfMeterGraphLegendLine _cpuMainLegend;
 		private PerfMeterGraphLegendLine _cpuRenderLegend;
@@ -158,7 +170,7 @@ namespace SGG.PerfMeter
 		private bool _isVisible = true;
 
 		internal bool IsVisible => _isVisible && isActiveAndEnabled;
-		internal int ActiveTextFieldCount => _textFieldCount + _barFieldCount;
+		internal int ActiveTextFieldCount => _mode == PerfMeterOverlayMode.FpsOnly ? 1 : _textFieldCount + _barFieldCount;
 
 		private void Awake()
 		{
@@ -426,6 +438,7 @@ namespace SGG.PerfMeter
 			_textRows.style.flexDirection = FlexDirection.Column;
 			_textRows.style.unityFont = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
 			_textRows.style.unityFontStyleAndWeight = FontStyle.Normal;
+			BuildFpsOnlyRow();
 			_textBlock.Add(_textRows);
 
 			_barRows = new VisualElement
@@ -473,6 +486,13 @@ namespace SGG.PerfMeter
 			_textRows = null;
 			_barRows = null;
 			_graphs = null;
+			_fpsOnlyRow = null;
+			_fpsOnlyCurrentLabel = null;
+			_fpsOnlyAverageLabel = null;
+			_fpsOnlyOnePercentLabel = null;
+			_fpsOnlyPointOnePercentLabel = null;
+			_fpsOnlyRenderLabel = null;
+			_fpsOnlyWarningLabel = null;
 			_fpsCard = null;
 			_cpuCard = null;
 			_gpuCard = null;
@@ -755,6 +775,65 @@ namespace SGG.PerfMeter
 			return label;
 		}
 
+		private void BuildFpsOnlyRow()
+		{
+			_fpsOnlyRow = new VisualElement
+			{
+				name = "sgg-perfmeter-fps-only-row",
+				pickingMode = PickingMode.Ignore
+			};
+			_fpsOnlyRow.style.flexDirection = FlexDirection.Row;
+			_fpsOnlyRow.style.alignItems = Align.Center;
+			_fpsOnlyRow.style.justifyContent = Justify.Center;
+			_fpsOnlyRow.style.width = Length.Percent(100f);
+			_fpsOnlyRow.style.minHeight = 16f;
+			_fpsOnlyRow.style.display = DisplayStyle.None;
+
+			_fpsOnlyCurrentLabel = CreateFpsOnlyLabel("FPS --", AccentColor, true);
+			_fpsOnlyAverageLabel = CreateFpsOnlyLabel("AVG --", TextColor, true);
+			_fpsOnlyOnePercentLabel = CreateFpsOnlyLabel("1% --", TextColor, true);
+			_fpsOnlyPointOnePercentLabel = CreateFpsOnlyLabel(".1% --", TextColor, true);
+			_fpsOnlyRenderLabel = CreateFpsOnlyLabel("REN -- MS", TextColor, true);
+			_fpsOnlyWarningLabel = CreateFpsOnlyLabel("WARN", WarningColor, false);
+
+			_fpsOnlyRow.Add(_fpsOnlyCurrentLabel);
+			_fpsOnlyRow.Add(_fpsOnlyAverageLabel);
+			_fpsOnlyRow.Add(_fpsOnlyOnePercentLabel);
+			_fpsOnlyRow.Add(_fpsOnlyPointOnePercentLabel);
+			_fpsOnlyRow.Add(_fpsOnlyRenderLabel);
+			_fpsOnlyRow.Add(_fpsOnlyWarningLabel);
+			_textRows.Add(_fpsOnlyRow);
+		}
+
+		private static Label CreateFpsOnlyLabel(string text, Color color, bool addGap)
+		{
+			Label label = CreateSmallLabel(text, color, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.SemiBold);
+			label.style.marginRight = addGap ? 8f : 0f;
+			return label;
+		}
+
+		private static void SetLabelText(Label label, string value)
+		{
+			if (label == null)
+			{
+				return;
+			}
+
+			string text = value ?? string.Empty;
+			if (!string.Equals(label.text, text, StringComparison.Ordinal))
+			{
+				label.text = text;
+			}
+		}
+
+		private static void SetLabelVisible(Label label, bool visible)
+		{
+			if (label != null)
+			{
+				label.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+		}
+
 		private PerfMeterOverlayTextField CreateTextField(int index)
 		{
 			VisualElement row = new VisualElement
@@ -968,6 +1047,41 @@ namespace SGG.PerfMeter
 			for (int i = 0; i < _textFields.Length; i++)
 			{
 				_textFields[i]?.SetFontSize(fontSize);
+			}
+
+			SetFpsOnlyFontSize(fontSize);
+		}
+
+		private void SetFpsOnlyFontSize(float fontSize)
+		{
+			if (_fpsOnlyCurrentLabel != null)
+			{
+				_fpsOnlyCurrentLabel.style.fontSize = fontSize;
+			}
+
+			if (_fpsOnlyAverageLabel != null)
+			{
+				_fpsOnlyAverageLabel.style.fontSize = fontSize;
+			}
+
+			if (_fpsOnlyOnePercentLabel != null)
+			{
+				_fpsOnlyOnePercentLabel.style.fontSize = fontSize;
+			}
+
+			if (_fpsOnlyPointOnePercentLabel != null)
+			{
+				_fpsOnlyPointOnePercentLabel.style.fontSize = fontSize;
+			}
+
+			if (_fpsOnlyRenderLabel != null)
+			{
+				_fpsOnlyRenderLabel.style.fontSize = fontSize;
+			}
+
+			if (_fpsOnlyWarningLabel != null)
+			{
+				_fpsOnlyWarningLabel.style.fontSize = fontSize;
 			}
 		}
 
@@ -1233,6 +1347,7 @@ namespace SGG.PerfMeter
 
 			if (ShouldUseMetricBarTextBlock())
 			{
+				HideFpsOnlyRow();
 				_textRows.style.display = DisplayStyle.None;
 				_barRows.style.display = DisplayStyle.Flex;
 				_textFieldCount = 0;
@@ -1253,15 +1368,18 @@ namespace SGG.PerfMeter
 			switch (_mode)
 			{
 				case PerfMeterOverlayMode.FpsOnly:
-					BuildFpsOnlyText(metrics, warning);
+					BuildFpsOnlyText(status, metrics, warning);
 					break;
 				case PerfMeterOverlayMode.TextCompact:
+					HideFpsOnlyRow();
 					BuildTextCompactText(status, metrics, warning);
 					break;
 				case PerfMeterOverlayMode.Graphs:
+					HideFpsOnlyRow();
 					BuildGraphsText(status, metrics, warning);
 					break;
 				default:
+					HideFpsOnlyRow();
 					BuildFullText(status, metrics, warning);
 					break;
 			}
@@ -1821,36 +1939,87 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private void BuildFpsOnlyText(PerfMeterMetricsSnapshot metrics, string warning)
+		private void BuildFpsOnlyText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)
 		{
-			if (HasModule(PerfMeterOverlayModule.Fps))
+			if (_fpsOnlyRow == null)
 			{
-				BeginTextField(string.Empty);
-				_valueBuilder.Append("FPS ");
-				AppendFpsValue(_valueBuilder, FpsFromFrameMs(metrics.CpuFrameTimeMs));
-				_valueBuilder.Append("  AVG ");
-				double averageFps = metrics.AverageFps > 1d ? metrics.AverageFps : FpsFromFrameMs(metrics.CpuFrameTimeMs);
-				AppendFpsValue(_valueBuilder, averageFps);
-				_valueBuilder.Append("  1% ");
-				AppendFpsValue(_valueBuilder, metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps);
-				_valueBuilder.Append("  .1% ");
-				AppendFpsValue(_valueBuilder, metrics.PointOnePercentLowFps > 1d ? metrics.PointOnePercentLowFps : metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps);
-				if (HasModule(PerfMeterOverlayModule.Timing))
-				{
-					_valueBuilder.Append("  REN ");
-					AppendMsValue(_valueBuilder, metrics.CpuRenderThreadFrameTimeMs);
-					_valueBuilder.Append(" MS");
-				}
-
-				EndTextField();
+				return;
 			}
 
-			if (!string.IsNullOrEmpty(warning) && HasModule(PerfMeterOverlayModule.Warnings))
+			_fpsOnlyRow.style.display = DisplayStyle.Flex;
+			bool showFps = HasModule(PerfMeterOverlayModule.Fps);
+			double currentFps = FpsFromFrameMs(metrics.CpuFrameTimeMs);
+			double averageFps = metrics.AverageFps > 1d ? metrics.AverageFps : currentFps;
+			double onePercentLowFps = metrics.OnePercentLowFps > 1d ? metrics.OnePercentLowFps : averageFps;
+			double pointOnePercentLowFps = metrics.PointOnePercentLowFps > 1d ? metrics.PointOnePercentLowFps : onePercentLowFps;
+			int targetFps = Math.Max(1, (int)status.TargetFps);
+
+			SetFpsOnlyMetric(_fpsOnlyCurrentLabel, "FPS ", currentFps, targetFps, showFps);
+			SetFpsOnlyMetric(_fpsOnlyAverageLabel, "AVG ", averageFps, targetFps, showFps);
+			SetFpsOnlyMetric(_fpsOnlyOnePercentLabel, "1% ", onePercentLowFps, targetFps, showFps);
+			SetFpsOnlyMetric(_fpsOnlyPointOnePercentLabel, ".1% ", pointOnePercentLowFps, targetFps, showFps);
+
+			bool showRender = HasModule(PerfMeterOverlayModule.Timing);
+			SetLabelVisible(_fpsOnlyRenderLabel, showRender);
+			if (showRender)
 			{
-				BeginTextField("Warn");
-				_valueBuilder.Append("active");
-				EndTextField();
+				SetLabelText(_fpsOnlyRenderLabel, "REN " + FormatMsValue(metrics.CpuRenderThreadFrameTimeMs) + " MS");
+				_fpsOnlyRenderLabel.style.color = GetFpsValueColor(FpsFromFrameMs(metrics.CpuRenderThreadFrameTimeMs), targetFps);
 			}
+
+			bool showWarning = !string.IsNullOrEmpty(warning) && HasModule(PerfMeterOverlayModule.Warnings);
+			SetLabelVisible(_fpsOnlyWarningLabel, showWarning);
+			if (showWarning)
+			{
+				SetLabelText(_fpsOnlyWarningLabel, "WARN");
+				_fpsOnlyWarningLabel.style.color = WarningColor;
+			}
+		}
+
+		private void HideFpsOnlyRow()
+		{
+			if (_fpsOnlyRow != null)
+			{
+				_fpsOnlyRow.style.display = DisplayStyle.None;
+			}
+		}
+
+		private static void SetFpsOnlyMetric(Label label, string prefix, double value, int targetFps, bool visible)
+		{
+			SetLabelVisible(label, visible);
+			if (!visible || label == null)
+			{
+				return;
+			}
+
+			SetLabelText(label, prefix + FormatFpsValue(value));
+			label.style.color = GetFpsValueColor(value, targetFps);
+		}
+
+		private static Color GetFpsValueColor(double fps, int targetFps)
+		{
+			if (fps <= 0d || double.IsNaN(fps) || double.IsInfinity(fps) || targetFps <= 0)
+			{
+				return UnavailableColor;
+			}
+
+			double ratio = fps / targetFps;
+			if (ratio > 2d)
+			{
+				return FpsExcellentColor;
+			}
+
+			if (ratio >= 1d)
+			{
+				return FpsGoodColor;
+			}
+
+			if (ratio >= 0.75d)
+			{
+				return FpsCautionColor;
+			}
+
+			return ratio >= 0.25d ? FpsWarningColor : FpsCriticalColor;
 		}
 
 		private void BuildTextCompactText(PerfMeterStatusSnapshot status, PerfMeterMetricsSnapshot metrics, string warning)

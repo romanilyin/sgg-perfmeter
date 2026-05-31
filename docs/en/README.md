@@ -9,11 +9,14 @@ It combines a UI Toolkit overlay with structured snapshots, session export, over
 - [Installation](./installation.md): add the Unity package from Git or local source.
 - [Quick Start](./quick-start.md): get the first overlay running through `SGG/Perfmeter/Setup`.
 - [Workflows](./workflows.md): overlay, sessions, alerts, overdraw, custom metrics, and agent automation.
+- [Implemented Widgets](./widgets.md): current runtime overlay widget inventory.
+- [Visual Presets](./presets.md): default visual presets and fullscreen captures.
 - [API](./api.md): runtime C# API and snapshot types.
 - [MCP](./mcp.md): command surface for Unity MCP/editor agents.
 - [Comparison](./comparison.md): SGG PerfMeter vs Advanced FPS Counter and Graphy.
 - [Limitations](./limitations.md): platform, timing, overdraw, and validation notes.
-- [Screenshots](./screenshots.md): planned screenshot gallery and filenames.
+- [Screenshots](./screenshots.md): screenshot index and asset paths.
+- [Setup Window Screenshots](./setup-window-screenshots.md): setup window pages in English.
 
 ## What It Solves
 

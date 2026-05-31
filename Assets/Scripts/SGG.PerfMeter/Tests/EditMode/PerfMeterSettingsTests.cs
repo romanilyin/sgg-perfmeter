@@ -25,7 +25,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(settings.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
-			Assert.That(settings.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.DiagnosticsWide));
+			Assert.That(settings.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			Assert.That(settings.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
 			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
 			Assert.That(settings.ActivePreset, Is.EqualTo(nameof(PerfMeterOverlayPreset.Custom)));
@@ -282,6 +282,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(presets.Length, Is.GreaterThan(0));
 			Assert.That(presets[0].id, Is.EqualTo(PerfMeterOverlayPresetDefaults.DefaultId));
 			Assert.That(presets[0].displayName, Is.EqualTo("Default"));
+			Assert.That(presets[0].style.layout, Is.EqualTo(nameof(PerfMeterOverlayLayout.MetricBars)));
 			Assert.That(PerfMeterOverlayPresetUtility.Validate(presets[0]).IsValid, Is.True);
 		}
 

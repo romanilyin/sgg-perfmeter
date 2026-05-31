@@ -497,7 +497,8 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayPresetJson preset = CreateFullDiagnostics();
 			preset.id = DefaultId;
 			preset.displayName = "Default";
-			preset.description = "Default PerfMeter diagnostics overlay for zero-code setup.";
+			preset.description = "Default PerfMeter diagnostics overlay for zero-code setup with compact metric bars.";
+			preset.style.layout = nameof(PerfMeterOverlayLayout.MetricBars);
 			return preset;
 		}
 

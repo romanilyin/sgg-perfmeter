@@ -1,23 +1,25 @@
 # Скриншоты
 
-Скриншоты готовятся во время обновления документации. Храните source images в:
+Скриншоты документации лежат в:
 
 ```text
 docs/assets/screenshots/
 ```
 
-## План Галереи
+## Текущие assets
 
-| File | Purpose |
+| File | Назначение |
 | --- | --- |
-| `hero-overlay-full-diagnostics.png` | Главный hero image для GitHub README с overlay в реальной сцене. |
-| `setup-project-settings.png` | Frame Timing Stats и support-target state в setup window. |
-| `setup-renderer-features.png` | URP renderer feature detection и install controls. |
-| `setup-presets.png` | JSON settings, zero-code setup, work mode и visual preset authoring. |
-| `setup-runtime.png` | Play Mode runtime controls. |
-| `overlay-fps-only.png` | Minimal FPS/lows overlay. |
-| `overlay-graphs.png` | CPU/GPU graphs layout. |
-| `overlay-metric-bars.png` | Default metric bars layout. |
+| `presets/preset-default.png` | Default screenshot для лэндинга и capture дефолтного visual preset. |
+| `setup-window/setup-window-en-*.png` | Английские страницы setup window. См. English docs. |
+| `setup-window/setup-window-ru-*.png` | Русские страницы setup window. См. [Скриншоты Setup Window](./setup-window-screenshots.md). |
+| `presets/preset-*.png` | Fullscreen captures визуальных пресетов. См. [Визуальные пресеты](./presets.md). |
+| `widgets/*.png` | Зарезервированные paths для runtime widget screenshots. См. [Реализованные виджеты](./widgets.md). |
+
+## Планируемые дополнения
+
+| File | Назначение |
+| --- | --- |
 | `overlay-overdraw-heatmap.png` | Visual overdraw heatmap. |
 | `session-export-summary.png` | Session summary/export result или JSON summary preview. |
 

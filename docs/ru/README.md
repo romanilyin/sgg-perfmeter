@@ -9,11 +9,14 @@ SGG PerfMeter - runtime diagnostics layer и agent-readable profiling API для
 - [Установка](./installation.md): подключить Unity package из Git или локального source.
 - [Быстрый старт](./quick-start.md): запустить первый overlay через `SGG/Perfmeter/Setup`.
 - [Workflow](./workflows.md): overlay, sessions, alerts, overdraw, custom metrics и agent automation.
+- [Реализованные виджеты](./widgets.md): текущий список runtime overlay widgets.
+- [Визуальные пресеты](./presets.md): default visual presets и fullscreen captures.
 - [API](./api.md): runtime C# API и snapshot types.
 - [MCP](./mcp.md): command surface для Unity MCP/editor agents.
 - [Сравнение](./comparison.md): SGG PerfMeter vs Advanced FPS Counter и Graphy.
 - [Ограничения](./limitations.md): platform, timing, overdraw и validation notes.
-- [Скриншоты](./screenshots.md): план галереи и имена файлов.
+- [Скриншоты](./screenshots.md): index скриншотов и asset paths.
+- [Скриншоты Setup Window](./setup-window-screenshots.md): страницы setup window на русском.
 
 ## Что решает PerfMeter
 

@@ -26,6 +26,10 @@
   <a href="./docs/en/README.md"><img src="./docs/assets/readme/cards/docs.svg" alt="Docs" height="48"></a>
 </p>
 
+<p>
+  <a href="./docs/en/presets.md#default"><img src="./docs/assets/screenshots/presets/preset-default.png" alt="SGG PerfMeter default overlay preset" width="960"></a>
+</p>
+
 </div>
 
 SGG PerfMeter is not just an FPS counter. It is a lightweight runtime diagnostics layer for Unity URP projects that need to understand why a frame is slow, what changed, how to reproduce the capture, and how tools or agents can read the same data without scraping screenshots or Console text.
@@ -82,9 +86,9 @@ See [Workflows](./docs/en/workflows.md), [API](./docs/en/api.md), and [MCP](./do
 
 ## Screenshots
 
-Screenshots are being captured as part of the documentation refresh. The planned gallery lives under `docs/assets/screenshots/` and will cover the setup window, overlay modes, widget presets, overdraw heatmap, and session export.
+The landing screenshot uses the default visual preset from `docs/assets/screenshots/presets/preset-default.png`.
 
-Expected filenames are listed in [Screenshots](./docs/en/screenshots.md).
+See [Visual Presets](./docs/en/presets.md), [Setup Window Screenshots](./docs/en/setup-window-screenshots.md), and [Screenshots](./docs/en/screenshots.md).
 
 ## Compared With FPS Counters
 
