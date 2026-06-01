@@ -9,9 +9,19 @@
 
 —
 
+[Установка](./installation.md) |
 [Быстрый старт](./quick-start.md) |
+[Workflow](./workflows.md) |
+[Визуальные пресеты](./presets.md) |
+[Реализованные виджеты](./widgets.md) |
 [API](./api.md) |
+[MCP](./mcp.md) |
 [Сравнение](./comparison.md) |
+[Ограничения](./limitations.md) |
+[Troubleshooting](./troubleshooting.md) |
+[Скриншоты](./screenshots.md) |
+[Скриншоты Setup Window](./setup-window-screenshots.md) |
+[Проверки contributor changes](./contributor-checks.md) |
 [Changelog](../../CHANGELOG.md)
 
 <p>
@@ -104,24 +114,6 @@ Advanced FPS Counter и Graphy - сильные general-purpose drop-in visual o
 - Vulkan предпочтителен на Android, если важен GPU timing.
 
 Unity `2022.3` through `6000.3` может быть import-safe для compile checks, но runtime overlay, Render Graph features, overdraw passes и support expectations требуют Unity `6000.4+` с URP `17.4+`.
-
-## Документация
-
-- [Установка](./installation.md)
-- [Быстрый старт](./quick-start.md)
-- [Workflow](./workflows.md)
-- [Визуальные пресеты](./presets.md)
-- [Реализованные виджеты](./widgets.md)
-- [API](./api.md)
-- [MCP](./mcp.md)
-- [Сравнение](./comparison.md)
-- [Ограничения](./limitations.md)
-- [Troubleshooting](./troubleshooting.md)
-- [Скриншоты](./screenshots.md)
-- [Скриншоты Setup Window](./setup-window-screenshots.md)
-- [Проверки contributor changes](./contributor-checks.md)
-
-Внутренние development, historical roadmap, release-readiness и architecture notes лежат в `_DevelopmentDocs/`.
 
 ## Лицензия
 

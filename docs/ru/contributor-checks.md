@@ -14,7 +14,7 @@ git diff --check
 
 Запустите Unity compile check для целевого проекта и укажите команду в pull request. Если tests релевантны, запустите EditMode и/или PlayMode Test Runner checks.
 
-Подробные внутренние команды, device smoke-test notes и release-readiness gates лежат в `_DevelopmentDocs/release-readiness/`.
+Для maintainer-only release gates или device smoke tests используйте актуальный project-maintainer checklist и укажите команду или окружение в pull request.
 
 ## Перед Pull Request
 

@@ -9,9 +9,19 @@
 
 —
 
+[Installation](./docs/en/installation.md) |
 [Quick Start](./docs/en/quick-start.md) |
+[Workflows](./docs/en/workflows.md) |
+[Visual Presets](./docs/en/presets.md) |
+[Implemented Widgets](./docs/en/widgets.md) |
 [API](./docs/en/api.md) |
+[MCP](./docs/en/mcp.md) |
 [Comparison](./docs/en/comparison.md) |
+[Limitations](./docs/en/limitations.md) |
+[Troubleshooting](./docs/en/troubleshooting.md) |
+[Screenshots](./docs/en/screenshots.md) |
+[Setup Window Screenshots](./docs/en/setup-window-screenshots.md) |
+[Contributor Checks](./docs/en/contributor-checks.md) |
 [Changelog](./CHANGELOG.md)
 
 <p>
@@ -104,25 +114,6 @@ This is a product and architecture comparison, not a measured runtime benchmark.
 - Vulkan is preferred on Android when GPU timing matters.
 
 Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`.
-
-## Documentation
-
-- [Russian landing page](./docs/ru/README.md)
-- [Installation](./docs/en/installation.md)
-- [Quick Start](./docs/en/quick-start.md)
-- [Workflows](./docs/en/workflows.md)
-- [Visual Presets](./docs/en/presets.md)
-- [Implemented Widgets](./docs/en/widgets.md)
-- [API](./docs/en/api.md)
-- [MCP](./docs/en/mcp.md)
-- [Comparison](./docs/en/comparison.md)
-- [Limitations](./docs/en/limitations.md)
-- [Troubleshooting](./docs/en/troubleshooting.md)
-- [Screenshots](./docs/en/screenshots.md)
-- [Setup Window Screenshots](./docs/en/setup-window-screenshots.md)
-- [Contributor Checks](./docs/en/contributor-checks.md)
-
-Internal development, historical roadmap, release-readiness, and architecture notes are kept under `_DevelopmentDocs/`.
 
 ## License
 
