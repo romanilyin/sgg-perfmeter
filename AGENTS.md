@@ -25,8 +25,8 @@
 - Android graphics APIs are explicit (`m_Automatic: 0`) with Vulkan before OpenGLES3; GPU timing can differ or be unavailable on GLES.
 
 ## Commands
-- There are no repo-local build/test/lint scripts; validation normally requires the Unity editor/batchmode for this project. `.github/workflows/release.yml` is a manual-only metadata/docs release-readiness gate and does not run Unity.
-- Release-readiness docs are under `docs/`; the current private release candidate is `2026.5.20-1`, and public release remains deferred.
+- There are no repo-local build/test/lint scripts; validation normally requires the Unity editor/batchmode for this project. The previous manual release-readiness workflow is disabled while docs/release gates are being reorganized.
+- Release-readiness docs are under `_DevelopmentDocs/release-readiness/`; the current private release candidate is `2026.5.20-1`, and public release remains deferred.
 - Reliable local compile check: `<Unity> -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter-local -logFile C:\Work\Unity\sgg-perfmeter-local\Logs\opencode-compile.log`.
 - Reliable local Test Runner checks: `<Unity> -batchmode -projectPath C:\Work\Unity\sgg-perfmeter -runTests -testPlatform EditMode -testResults C:\Work\Unity\sgg-perfmeter\Logs\editmode-results.xml -logFile C:\Work\Unity\sgg-perfmeter\Logs\editmode.log` and the same command with `-testPlatform PlayMode`.
 - Do not combine Unity `-runTests` with `-quit`; Unity exits by itself after tests and writes XML only without `-quit` in this setup.

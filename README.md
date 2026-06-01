@@ -7,8 +7,6 @@
 [English](./docs/en/README.md) |
 [Russian](./docs/ru/README.md)
 
-<sub>Translation targets: .de · .es · .fr · .it · .ja · .ko · .pt-BR · .ru · .zh-CN</sub>
-
 —
 
 [Quick Start](./docs/en/quick-start.md) |
@@ -86,9 +84,9 @@ See [Workflows](./docs/en/workflows.md), [API](./docs/en/api.md), and [MCP](./do
 
 ## Screenshots
 
-The landing screenshot uses the default visual preset from `docs/assets/screenshots/presets/preset-default.png`.
+See the default overlay preset, setup window pages, visual presets, and runtime widgets in the screenshot galleries.
 
-See [Visual Presets](./docs/en/presets.md), [Setup Window Screenshots](./docs/en/setup-window-screenshots.md), and [Screenshots](./docs/en/screenshots.md).
+Start with [Visual Presets](./docs/en/presets.md), [Setup Window Screenshots](./docs/en/setup-window-screenshots.md), [Implemented Widgets](./docs/en/widgets.md), and [Screenshots](./docs/en/screenshots.md).
 
 ## Compared With FPS Counters
 
@@ -112,10 +110,13 @@ Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runti
 - [Installation](./docs/en/installation.md)
 - [Quick Start](./docs/en/quick-start.md)
 - [Workflows](./docs/en/workflows.md)
+- [Visual Presets](./docs/en/presets.md)
+- [Implemented Widgets](./docs/en/widgets.md)
 - [API](./docs/en/api.md)
 - [MCP](./docs/en/mcp.md)
 - [Comparison](./docs/en/comparison.md)
 - [Limitations](./docs/en/limitations.md)
+- [Troubleshooting](./docs/en/troubleshooting.md)
 
 Internal development, historical roadmap, release-readiness, and architecture notes are kept under `_DevelopmentDocs/`.
 

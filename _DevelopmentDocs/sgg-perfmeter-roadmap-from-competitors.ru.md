@@ -428,8 +428,8 @@ public interface IPerfMeterCustomMetricProvider
 
 - `.Documentation/README.ru.md`;
 - `.Documentation/README.en.md`;
-- `.Documentation/STATUS.ru.md`;
-- `.Documentation/STATUS.en.md`;
+- `_DevelopmentDocs/status/STATUS.ru.md`;
+- `_DevelopmentDocs/status/STATUS.en.md`;
 - `_DevelopmentDocs/perfmeter_status.md`;
 - `_DevelopmentDocs/perfmeter_iterations.md`.
 

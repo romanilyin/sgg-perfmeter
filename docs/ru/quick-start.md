@@ -2,7 +2,7 @@
 
 Этот путь запускает видимый overlay без написания кода.
 
-## 1. Откройте Setup Window
+## 1. Откройте Окно Настройки
 
 В Unity откройте:
 
@@ -12,12 +12,12 @@ SGG/Perfmeter/Setup
 
 ## 2. Запустите Recommended Setup
 
-Через setup window можно:
+Через окно настройки можно:
 
 - включить Frame Timing Stats;
 - установить `PerfMeterRenderGraphFeature` в editable active URP renderers;
 - создать default project-owned JSON settings;
-- настроить overlay visibility, corner, target FPS, visual preset и collection mode.
+- настроить видимость overlay, corner, target FPS, visual preset и collection mode.
 
 Zero-code settings сохраняются в:
 
@@ -58,7 +58,7 @@ public static class PerfMeterBootstrap
 }
 ```
 
-## Первые Полезные Чтения
+## Первые Полезные API-Вызовы
 
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();

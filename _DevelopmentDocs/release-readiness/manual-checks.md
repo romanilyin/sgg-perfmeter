@@ -52,18 +52,8 @@ Manually confirm:
 - Package-local `README.md`, `LICENSE.md`, `LICENSE.ru.md`, `NOTICE.md`, and `NOTICE.ru.md` are present inside `Assets/Scripts/SGG.PerfMeter/` for Git UPM consumers.
 - New assets under `Assets/` have matching `.meta` files.
 
-## Manual GitHub Workflow
+## GitHub Workflow
 
-The manual release-readiness workflow is:
+The previous manual release-readiness workflow was disabled during the documentation restructure. See `_DevelopmentDocs/release-readiness/workflow-disabled.md`.
 
-```text
-.github/workflows/release.yml
-```
-
-It must stay manually triggered by:
-
-```text
-workflow_dispatch
-```
-
-Do not add automatic `push`, `pull_request`, `schedule`, or `workflow_run` triggers while the repository remains private unless the project policy changes.
+Do not re-enable automatic `push`, `pull_request`, `schedule`, or `workflow_run` triggers unless the project policy changes.

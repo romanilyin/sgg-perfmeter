@@ -1,6 +1,6 @@
 # Установка
 
-SGG PerfMeter сейчас распространяется как Unity package с именем `com.sungeargames.perfmeter`. NPM-дистрибуция пока не документируется как текущий способ установки.
+SGG PerfMeter сейчас распространяется как Unity package с именем `com.sungeargames.perfmeter`. NPM-дистрибуция пока не является текущим способом установки.
 
 ## Требования
 
@@ -55,11 +55,11 @@ Assets/Scripts/SGG.PerfMeter
 Assets/Scripts/SGG.PerfMeter
 ```
 
-Это удобно для локальной разработки пакета или если Git dependencies не подходят.
+Этот вариант удобен для локальной разработки пакета или проектов, где Git dependencies не подходят.
 
 ## Первичная Настройка Проекта
 
-Откройте:
+Откройте окно:
 
 ```text
 SGG/Perfmeter/Setup

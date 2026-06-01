@@ -1,6 +1,6 @@
 # Сравнение С Advanced FPS Counter И Graphy
 
-Это product/architecture comparison, а не измеренный runtime benchmark. Поведение конкурентов используется только как UX reference. Не копируйте proprietary assets/code и не импортируйте Graphy как dependency.
+Это product/architecture comparison, а не измеренный runtime benchmark.
 
 ## Коротко
 

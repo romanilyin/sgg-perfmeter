@@ -6,9 +6,9 @@ Read `AGENTS.md` and `_DevelopmentDocs/perfmeter_theory.md` before changing prof
 
 ## Pull Requests
 
-All changes to `main` should go through a pull request once the repository moves out of owner-only private preparation. Keep PRs focused on one behavior or repository-maintenance change.
+All changes to `main` should go through a pull request. Keep PRs focused on one behavior, documentation, or repository-maintenance change.
 
-Use the PR template checklist and include the local verification command you ran. If a change affects runtime profiler behavior, update tests and bilingual package documentation in the same PR.
+Use the PR template checklist and include the local verification command you ran. If a change affects runtime profiler behavior, update tests and user-facing documentation in the same PR.
 
 ## Branch Naming
 
@@ -23,7 +23,6 @@ Allowed types:
 ```text
 feature
 fix
-docs
 l10n
 refactor
 chore
@@ -36,9 +35,9 @@ Examples:
 ```text
 feature/render-graph-analytics
 fix/overdraw-readback-session
-docs/private-release-notes
+docs/readme-screenshots
 l10n/russian-docs
-release/2026-5-18-1
+release/2026-5-20-1
 ```
 
 Rules:
@@ -51,7 +50,7 @@ Rules:
 
 ## Local Checks
 
-For code changes, run Unity compile and Test Runner checks listed in `docs/manual-checks.md`.
+For public contributor guidance, see [Contributor Checks](./docs/en/contributor-checks.md).
 
 For docs/metadata-only changes, at minimum run:
 
@@ -59,4 +58,4 @@ For docs/metadata-only changes, at minimum run:
 git diff --check
 ```
 
-Keep package user-facing documentation synchronized in English and Russian under `Assets/Scripts/SGG.PerfMeter/.Documentation/`.
+Keep user-facing documentation synchronized in English and Russian under `docs/en` and `docs/ru` when a change affects both audiences.

@@ -6,26 +6,25 @@
 docs/assets/screenshots/
 ```
 
-## Текущие assets
+## Текущие Assets
 
-| File | Назначение |
-| --- | --- |
-| `presets/preset-default.png` | Default screenshot для лэндинга и capture дефолтного visual preset. |
-| `setup-window/setup-window-en-*.png` | Английские страницы setup window. См. English docs. |
-| `setup-window/setup-window-ru-*.png` | Русские страницы setup window. См. [Скриншоты Setup Window](./setup-window-screenshots.md). |
-| `presets/preset-*.png` | Fullscreen captures визуальных пресетов. См. [Визуальные пресеты](./presets.md). |
-| `widgets/*.png` | Зарезервированные paths для runtime widget screenshots. См. [Реализованные виджеты](./widgets.md). |
+| Раздел | Файлы | Документ |
+| --- | --- | --- |
+| Лэндинг и overlay по умолчанию | `presets/preset-default.png` | [Визуальные пресеты](./presets.md#default) |
+| Визуальные пресеты | `presets/preset-*.png` | [Визуальные пресеты](./presets.md) |
+| Окно настройки, английский UI | `setup-window/setup-window-en-*.png` | [English setup screenshots](../en/setup-window-screenshots.md) |
+| Окно настройки, русский UI | `setup-window/setup-window-ru-*.png` | [Скриншоты окна настройки](./setup-window-screenshots.md) |
+| Runtime-виджеты | `widgets/*.png` | [Реализованные виджеты](./widgets.md) |
 
-## Планируемые дополнения
+## Галереи
 
-| File | Назначение |
-| --- | --- |
-| `overlay-overdraw-heatmap.png` | Visual overdraw heatmap. |
-| `session-export-summary.png` | Session summary/export result или JSON summary preview. |
+- [Визуальные пресеты](./presets.md)
+- [Скриншоты окна настройки](./setup-window-screenshots.md)
+- [Реализованные виджеты](./widgets.md)
 
-## Guidelines
+## Рекомендации
 
-- Сначала сделайте readable desktop screenshots, затем добавьте mobile/device examples.
-- По возможности используйте реальные Unity scenes вместо пустых test scenes.
+- Сначала делайте читаемые desktop screenshots, а mobile/device examples добавляйте после проверки на устройствах.
+- По возможности используйте реальные Unity-сцены вместо пустых тестовых сцен.
 - Не используйте local `.ScreenReferences/` images напрямую; это design references, а не product screenshots.
-- Держите screenshots достаточно маленькими для GitHub browsing и package documentation.
+- Держите screenshots достаточно компактными для GitHub и package documentation.

@@ -66,4 +66,4 @@
 - Release notes draft: `_DevelopmentDocs/release-readiness/release-notes-2026.5.20-1.md`.
 - Release process: `_DevelopmentDocs/release-readiness/release-process.md`.
 - Local/manual gates: Unity compile, EditMode tests, PlayMode tests, `git diff --check`, and optional Android Vulkan/GLES smoke builds.
-- The GitHub release workflow is manual-only (`workflow_dispatch`) and does not publish packages.
+- The old GitHub release workflow is disabled while docs/release gates are being reorganized.

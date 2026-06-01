@@ -8,24 +8,23 @@ docs/assets/screenshots/
 
 ## Current Assets
 
-| File | Purpose |
-| --- | --- |
-| `presets/preset-default.png` | Default landing screenshot and default visual preset capture. |
-| `setup-window/setup-window-en-*.png` | English setup window pages. See [Setup Window Screenshots](./setup-window-screenshots.md). |
-| `setup-window/setup-window-ru-*.png` | Russian setup window pages. See Russian docs. |
-| `presets/preset-*.png` | Fullscreen visual preset captures. See [Visual Presets](./presets.md). |
-| `widgets/*.png` | Reserved runtime widget screenshot paths. See [Implemented Widgets](./widgets.md). |
+| Area | Files | Related Doc |
+| --- | --- | --- |
+| Landing and default overlay | `presets/preset-default.png` | [Visual Presets](./presets.md#default) |
+| Visual presets | `presets/preset-*.png` | [Visual Presets](./presets.md) |
+| Setup window, English UI | `setup-window/setup-window-en-*.png` | [Setup Window Screenshots](./setup-window-screenshots.md) |
+| Setup window, Russian UI | `setup-window/setup-window-ru-*.png` | [Russian setup screenshots](../ru/setup-window-screenshots.md) |
+| Runtime widgets | `widgets/*.png` | [Implemented Widgets](./widgets.md) |
 
-## Planned Additions
+## Available Galleries
 
-| File | Purpose |
-| --- | --- |
-| `overlay-overdraw-heatmap.png` | Visual overdraw heatmap. |
-| `session-export-summary.png` | Session summary/export result or JSON summary preview. |
+- [Visual Presets](./presets.md)
+- [Setup Window Screenshots](./setup-window-screenshots.md)
+- [Implemented Widgets](./widgets.md)
 
 ## Guidelines
 
-- Capture readable desktop screenshots first, then add mobile/device examples later.
+- Capture readable desktop screenshots first, then add mobile/device examples when they are validated.
 - Prefer real Unity scenes over empty test scenes when possible.
 - Do not use local `.ScreenReferences/` images directly; they are design references, not product screenshots.
 - Keep screenshots small enough for GitHub browsing and package documentation.

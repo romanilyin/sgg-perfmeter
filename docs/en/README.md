@@ -15,8 +15,10 @@ It combines a UI Toolkit overlay with structured snapshots, session export, over
 - [MCP](./mcp.md): command surface for Unity MCP/editor agents.
 - [Comparison](./comparison.md): SGG PerfMeter vs Advanced FPS Counter and Graphy.
 - [Limitations](./limitations.md): platform, timing, overdraw, and validation notes.
-- [Screenshots](./screenshots.md): screenshot index and asset paths.
+- [Troubleshooting](./troubleshooting.md): quick checks when overlay or counters do not work.
+- [Screenshots](./screenshots.md): screenshot galleries for setup, presets, and runtime widgets.
 - [Setup Window Screenshots](./setup-window-screenshots.md): setup window pages in English.
+- [Contributor Checks](./contributor-checks.md): minimal checks for PRs and documentation changes.
 
 ## What It Solves
 

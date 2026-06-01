@@ -1,6 +1,6 @@
 # Comparison With Advanced FPS Counter And Graphy
 
-This is a product and architecture comparison, not a measured runtime benchmark. Competitor behavior is used as UX reference only. Do not copy proprietary assets/code, and do not import Graphy as a dependency.
+This is a product and architecture comparison, not a measured runtime benchmark.
 
 ## Short Version
 

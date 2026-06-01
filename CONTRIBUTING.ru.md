@@ -6,9 +6,9 @@
 
 ## Pull Requests
 
-Все изменения в `main` должны проходить через pull request после выхода репозитория из owner-only private preparation. Держите PR сфокусированным на одном изменении поведения или одной задаче по обслуживанию репозитория.
+Все изменения в `main` должны проходить через pull request. Держите PR сфокусированным на одном изменении поведения, документации или обслуживания репозитория.
 
-Используйте checklist из PR template и указывайте локальную команду проверки, которую вы запускали. Если изменение влияет на runtime profiler behavior, обновляйте tests и bilingual package documentation в том же PR.
+Используйте checklist из PR template и указывайте локальную команду проверки, которую запускали. Если изменение влияет на runtime profiler behavior, обновляйте tests и пользовательскую документацию в том же PR.
 
 ## Именование Веток
 
@@ -37,9 +37,9 @@ release
 ```text
 feature/render-graph-analytics
 fix/overdraw-readback-session
-docs/private-release-notes
+docs/readme-screenshots
 l10n/russian-docs
-release/2026-5-18-1
+release/2026-5-20-1
 ```
 
 Правила:
@@ -52,7 +52,7 @@ release/2026-5-18-1
 
 ## Локальные Проверки
 
-Для code changes запускайте Unity compile и Test Runner checks из `docs/manual-checks.md`.
+Публичные рекомендации для contributor checks: [Проверки contributor changes](./docs/ru/contributor-checks.md).
 
 Для docs/metadata-only changes минимум:
 
@@ -60,4 +60,4 @@ release/2026-5-18-1
 git diff --check
 ```
 
-User-facing package documentation нужно синхронизировать на английском и русском в `Assets/Scripts/SGG.PerfMeter/.Documentation/`.
+Синхронизируйте пользовательскую документацию в `docs/en` и `docs/ru`, если изменение влияет на обе аудитории.

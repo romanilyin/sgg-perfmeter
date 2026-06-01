@@ -64,7 +64,7 @@
 - Recent hardening compile logs: `Logs/opencode-iter2-setup-ui-compile.log`, `Logs/opencode-iter3-bottleneck-compile.log`, `Logs/opencode-iter4-collection-frame-compile.log`, `Logs/opencode-iter5-overdraw-unsupported-compile-2.log`, `Logs/opencode-setup-discovery-compile.log`, and `Logs/opencode-marker-optin-compile.log`.
 - Do not add `-quit` to Unity `-runTests` commands; Unity writes XML results and exits after the run.
 - Broader target-device validation is still useful for older GPUs/OS versions and platform-specific ProfilerRecorder counter availability.
-- Public release is explicitly deferred; `.github/workflows/release.yml` is manual-only and should stay free of `push`/`pull_request` triggers while the repository remains private.
+- Public release is explicitly deferred; the old manual release workflow is disabled while docs/release gates are being reorganized.
 
 ## Overlay GC Checklist
 

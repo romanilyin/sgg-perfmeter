@@ -44,8 +44,8 @@ Do not push the tag until the final release commit is reviewed and verified. Do 
 - Package metadata includes `licensesUrl`, `changelogUrl`, and `documentationUrl` pointing at canonical repository files.
 - Root and package-local changelogs track `2026.5.20-1`.
 - Package-local README/CHANGELOG are included for Git UPM consumers.
-- Security policy, contributing policy, CODEOWNERS, PR template, issue security routing, and manual-only release workflow are present.
-- Manual release workflow uses `workflow_dispatch` only and does not publish packages.
+- Security policy, contributing policy, CODEOWNERS, PR template, and issue security routing are present.
+- The old manual release workflow was disabled during the documentation restructure; see `_DevelopmentDocs/release-readiness/workflow-disabled.md`.
 - Public switch and registry publication are explicitly deferred.
 
 ## Verification Baseline

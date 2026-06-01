@@ -38,8 +38,8 @@ Release state: private release candidate. Не делать репозитори
 - `Assets/Scripts/SGG.PerfMeter/README.md`
 - `Assets/Scripts/SGG.PerfMeter/.Documentation/README.en.md`
 - `Assets/Scripts/SGG.PerfMeter/.Documentation/README.ru.md`
-- `Assets/Scripts/SGG.PerfMeter/.Documentation/STATUS.en.md`
-- `Assets/Scripts/SGG.PerfMeter/.Documentation/STATUS.ru.md`
+- `_DevelopmentDocs/status/STATUS.en.md`
+- `_DevelopmentDocs/status/STATUS.ru.md`
 - `CHANGELOG.md`
 - `Assets/Scripts/SGG.PerfMeter/CHANGELOG.md`
 - `_DevelopmentDocs/release-readiness/release-2026.5.20-1.md`
