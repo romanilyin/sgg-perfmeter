@@ -12,17 +12,17 @@ SGG PerfMeter is intentionally narrower and more diagnostic: Unity `6000.4+`, UR
 
 | Area | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
-| Primary positioning | URP Render Graph diagnostics + agent-readable profiling API | Flexible in-game FPS/memory/device counter | Visual FPS/memory/audio stats monitor + debugger |
-| Unity target | Unity `6000.4+`, URP `17.4+` | Broad older Unity support | Broad older Unity support |
-| UI backend | UI Toolkit overlay | uGUI Canvas/Text labels | uGUI Text/Image modules |
-| Timing source | `FrameTimingManager` + rolling stats | Runtime frame/update sampling | `Time.unscaledDeltaTime` history sampling |
-| CPU/GPU split | CPU frame, main thread, render thread, present wait, GPU when available | No equivalent split | No equivalent split |
-| Bottleneck classification | GPU, CPU main, CPU render, present-limited, balanced, unknown | No equivalent | No equivalent |
-| Render counters | Draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory | No URP/SRP counter set | No URP/SRP counter set |
-| Device/camera reproducibility | Structured device and camera snapshots | Device panel only | Device panel only |
-| Sessions | Bounded recorder, warm-up, scene scope, worst frames, JSON/CSV export | Not a primary feature | Roadmap-like idea |
-| Overdraw | Numerical measurement + visual heatmap through URP Render Graph | No | No |
-| Automation | MCP command surface and public snapshots | No | No |
+| Primary positioning | 🔵 URP Render Graph diagnostics + agent-readable profiling API | ⚠️ Flexible in-game FPS/memory/device counter | ⚠️ Visual FPS/memory/audio stats monitor + debugger |
+| Unity target | ⚠️ Unity `6000.4+`, URP `17.4+` | 🔵 Broad older Unity support | 🔵 Broad older Unity support |
+| UI backend | 🔵 UI Toolkit overlay | ⚠️ uGUI Canvas/Text labels | ⚠️ uGUI Text/Image modules |
+| Timing source | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Runtime frame/update sampling | ⚠️ `Time.unscaledDeltaTime` history sampling |
+| CPU/GPU split | 🔵 CPU frame, main thread, render thread, present wait, GPU when available | 🛑 No equivalent split | 🛑 No equivalent split |
+| Bottleneck classification | 🔵 GPU, CPU main, CPU render, present-limited, balanced, unknown | 🛑 No equivalent | 🛑 No equivalent |
+| Render counters | 🔵 Draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory | 🛑 No URP/SRP counter set | 🛑 No URP/SRP counter set |
+| Device/camera reproducibility | 🔵 Structured device and camera snapshots | ⚠️ Device panel only | ⚠️ Device panel only |
+| Sessions | 🔵 Bounded recorder, warm-up, scene scope, worst frames, JSON/CSV export | 🛑 Not a primary feature | ⚠️ Roadmap-like idea |
+| Overdraw | 🔵 Numerical measurement + visual heatmap through URP Render Graph | 🛑 No | 🛑 No |
+| Automation | 🔵 MCP command surface and public snapshots | 🛑 No | 🛑 No |
 
 ## What SGG PerfMeter Does Better
 
@@ -34,6 +34,7 @@ SGG PerfMeter is intentionally narrower and more diagnostic: Unity `6000.4+`, UR
 
 ## What Competitors Still Do Better
 
+- Both competitors support a broader range of older Unity versions, which is an advantage for legacy projects.
 - Advanced FPS Counter has very direct drop-in visual counter UX, mature inspector customization, hotkeys/circle gesture toggles, min/max/average UI patterns, and VR/world-space examples.
 - Graphy has strong public marketing material, clear module states, visual customization, hotkeys/background mode, mature debugger packet UX, and broad public awareness.
 
