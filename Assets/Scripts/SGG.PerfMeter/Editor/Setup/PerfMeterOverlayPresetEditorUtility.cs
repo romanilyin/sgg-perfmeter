@@ -12,7 +12,7 @@ namespace SGG.PerfMeter.Editor.Setup
 		internal const string CustomPresetFolder = ProjectPresetFolder + "/custom";
 		internal const string PresetFileSuffix = ".perfmeter.overlay.json";
 
-		[MenuItem("Tools/SGG PerfMeter/Ensure Default Overlay Presets")]
+		[MenuItem("SGG/Perfmeter/Ensure Default Overlay Presets")]
 		private static void EnsureDefaultOverlayPresetsMenu()
 		{
 			PerfMeterSetupUtility.InstallResult result = EnsureDefaultOverlayPresets();
