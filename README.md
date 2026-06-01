@@ -42,21 +42,30 @@
 
 SGG PerfMeter is not just an FPS counter. It is a lightweight runtime diagnostics layer for Unity URP projects that need to understand why a frame is slow, what changed, and how to reproduce the capture.
 
-The same performance data is available through several surfaces: the runtime overlay, public C# API snapshots, JSON/CSV session exports, alerts, and MCP command metadata for editor/agent automation.
+Unlike familiar FPS overlays, SGG PerfMeter does more than show the current FPS. It helps explain whether a frame is limited by CPU, GPU, render thread, present/VSync, overdraw, or unavailable platform counters, and lets you save that state for later analysis.
 
-Most FPS overlays answer: **what is the FPS right now?**
+## Why It Helps
 
-SGG PerfMeter answers: **is this CPU-bound, GPU-bound, render-thread-bound, present-limited, overdraw-heavy, or missing platform counters, and can that state be exported or automated?**
+- See why a frame is slow while the game is running, not just the current FPS.
+- Switch between visual presets, graphs, metric bars, compact layouts, and custom metric rows for different debugging situations.
+- Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
+- Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
+- Give tools and agents structured data for comparisons, A/B tests, and hotspot search instead of relying on screenshots or Console scraping.
 
-## Highlights
+## How It Exposes The Data
 
-- Unity `6000.4+` and URP `17.4+` focus, with Render Graph renderer feature integration.
-- FrameTimingManager CPU/GPU timing, main-thread, render-thread, and present-wait visibility.
-- ProfilerRecorder render, SRP Batcher, BRG/GRD, upload, memory, and GPU-memory counters when available.
+- **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
+- **Public C# API**: immutable snapshots for status, metrics, device, camera, Render Graph, alerts, sessions, and custom metrics.
+- **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
+- **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
+- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, and search for hotspots through structured data.
+
+## What It Measures
+
+- Unity `6000.4+` / URP `17.4+` Render Graph runtime state.
+- FrameTimingManager CPU/GPU timing: CPU frame, main thread, render thread, present wait, and GPU frame time when available.
+- ProfilerRecorder render counters: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, upload bytes, memory, and GPU memory when available.
 - Bottleneck classification for GPU, CPU main thread, CPU render thread, present/VSync, balanced, or unknown frames.
-- UI Toolkit runtime overlay with presets, layouts, graphs, metric bars, themes, and custom metric rows.
-- Session recording with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
-- Rule alerts with structured logs, callbacks, Editor warning cooldowns, and MCP alert commands.
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph.
 - Device, camera, Render Graph, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 
@@ -75,14 +84,6 @@ SGG PerfMeter answers: **is this CPU-bound, GPU-bound, render-thread-bound, pres
 ```
 
 For the full setup guide, see [Installation](./docs/en/installation.md) and [Quick Start](./docs/en/quick-start.md).
-
-## Who It Is For
-
-- Unity URP developers validating performance in Play Mode, development builds, and device smoke tests.
-- Rendering engineers and technical artists who need draw calls, SetPass, upload, memory, SRP Batcher, BRG/GRD, overdraw, and frame timing visibility.
-- Tooling developers who need stable runtime snapshots instead of a visual HUD only.
-- Teams using Unity MCP or editor agents for profiling automation and regression checks.
-- Solo developers who want a more diagnostic alternative to a basic FPS overlay.
 
 ## Common Workflows
 

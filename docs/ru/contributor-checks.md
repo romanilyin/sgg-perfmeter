@@ -1,8 +1,8 @@
-# Проверки Contributor Changes
+# Проверки изменений контрибьюторов
 
-Выбирайте самый легкий check, который соответствует изменению. Unity compile и Test Runner checks дорогие, поэтому они нужны для runtime/editor behavior changes, а не для каждой documentation-only правки.
+Выбирайте самую легкую проверку, которая соответствует изменению. Проверки компиляции Unity и Test Runner дорогие, поэтому они нужны для изменений поведения runtime/editor, а не для каждой правки только документации.
 
-## Только Документация Или Metadata
+## Только документация или метаданные
 
 ```bash
 git diff --check
@@ -10,15 +10,15 @@ git diff --check
 
 Также проверьте затронутые ссылки и синхронизируйте английскую/русскую документацию, если изменение касается обеих версий.
 
-## Runtime Или Editor Code Changes
+## Изменения runtime/editor-кода
 
-Запустите Unity compile check для целевого проекта и укажите команду в pull request. Если tests релевантны, запустите EditMode и/или PlayMode Test Runner checks.
+Запустите проверку компиляции Unity для целевого проекта и укажите команду в pull request. Если тесты релевантны, запустите EditMode и/или PlayMode через Test Runner.
 
-Для maintainer-only release gates или device smoke tests используйте актуальный project-maintainer checklist и укажите команду или окружение в pull request.
+Для релизных проверок только для мейнтейнеров или smoke-тестов на устройствах используйте актуальный чеклист мейнтейнеров проекта и укажите команду или окружение в pull request.
 
-## Перед Pull Request
+## Перед pull request
 
-- Проверьте `git status` и stage только intended files.
-- Не коммитьте generated Unity state: `Library/`, `Logs/`, `Temp/`, `Obj/` или локальные build outputs.
-- Не коммитьте secrets, `.env` files, device dumps, private logs или unrelated screenshots.
-- Если меняется runtime profiler behavior, обновите tests и user-facing docs в том же PR.
+- Проверьте `git status` и добавьте в stage только нужные файлы.
+- Не коммитьте сгенерированное состояние Unity: `Library/`, `Logs/`, `Temp/`, `Obj/` или локальные результаты сборки.
+- Не коммитьте секреты, файлы `.env`, дампы устройств, приватные логи или несвязанные скриншоты.
+- Если меняется поведение runtime-профайлера, обновите тесты и пользовательскую документацию в том же PR.

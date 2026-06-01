@@ -1,14 +1,14 @@
 # Runtime API
 
-Namespace:
+Пространство имен:
 
 ```csharp
 using SGG.PerfMeter;
 ```
 
-Все read APIs безопасны до запуска runtime. Чтение возвращает stopped/default snapshots, а не исключение из-за неактивного runtime.
+Все API чтения безопасны до запуска runtime. Чтение возвращает снимки остановленного состояния или значения по умолчанию, а не исключение из-за неактивного runtime.
 
-## Lifecycle
+## Жизненный цикл
 
 ```csharp
 PerformanceMeter.EnsureRunning();
@@ -16,14 +16,14 @@ PerformanceMeter.Stop();
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```
 
-Collection modes:
+Режимы сбора:
 
 - `Stopped`
 - `Background`
 - `Overlay`
 - `OverdrawDiagnostic`
 
-## Status И Metrics
+## Статус и метрики
 
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
@@ -37,16 +37,16 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Основные группы метрик:
 
-- FPS: average, 1% low, 0.1% low, spike counts.
-- Timing: CPU frame, CPU main thread, CPU render thread, present wait, GPU frame when available.
-- Rendering: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads.
-- Memory: system/app memory, GC reserved memory, GPU memory when available.
-- Bottleneck: GPU, CPU main, CPU render, present-limited, balanced или unknown.
+- FPS: средний FPS, 1% low, 0.1% low и счетчики spikes.
+- Тайминги: CPU frame, CPU main thread, CPU render thread, present wait и GPU frame, когда доступно.
+- Рендеринг: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD и uploads.
+- Память: system/app memory, GC reserved memory и GPU memory, когда доступно.
+- Узкое место: GPU, CPU main, CPU render, present-limited, balanced или unknown.
 - Overdraw: state, progress, ratio и heatmap visibility.
 
-Counter availability доступна через `AvailableCounters`, `UnavailableCounters` и warnings.
+Доступность счетчиков видна через `AvailableCounters`, `UnavailableCounters` и warnings.
 
-## Structured Snapshots
+## Структурированные снимки
 
 ```csharp
 PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
@@ -55,9 +55,9 @@ PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapsh
 PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 ```
 
-Device snapshots содержат Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots содержат scene, transform, projection, clipping, pixel rect, target display и URP camera settings, когда доступно.
+Снимки устройства содержат информацию о Unity, платформе, OS, CPU, GPU, API, дисплее, окне и поддержке возможностей. Снимки камеры содержат scene, transform, projection, clipping, pixel rect, target display и URP camera settings, когда доступно.
 
-## Overlay
+## Оверлей
 
 ```csharp
 PerformanceMeter.SetOverlayVisible(true);
@@ -69,9 +69,9 @@ PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.FullDiagnostics);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 ```
 
-Legacy overlay modes и semantic module flags остаются доступными для compatibility и filtering.
+Устаревшие режимы оверлея и семантические флаги модулей остаются доступными для совместимости и фильтрации.
 
-## Sessions
+## Сессии
 
 ```csharp
 PerformanceMeter.StartSession();
@@ -86,7 +86,7 @@ PerformanceMeter.ExportSessionJson("Logs/perfmeter-session.json");
 PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
 ```
 
-Session options включают warm-up frames/seconds, sample interval, maximum samples, reset-on-scene-load и scene-load ignore windows.
+Опции сессии включают кадры/секунды warm-up, интервал сэмплов, максимальное количество сэмплов, reset-on-scene-load и окна игнорирования после загрузки сцены.
 
 ## Alerts
 
@@ -97,7 +97,7 @@ PerformanceMeter.ClearAlerts();
 PerformanceMeter.SetEditorWarningLogsEnabled(false);
 ```
 
-## Custom Metrics
+## Пользовательские метрики
 
 ```csharp
 PerformanceMeter.RegisterCustomMetricProvider(provider);
@@ -106,7 +106,7 @@ PerformanceMeter.UnregisterCustomMetricProvider(provider);
 PerformanceMeter.ClearCustomMetricProviders();
 ```
 
-Provider exceptions превращаются в unavailable custom metric snapshots и не прерывают core metric collection.
+Исключения провайдеров превращаются в недоступные снимки пользовательских метрик и не прерывают основной сбор метрик.
 
 ## Overdraw
 
@@ -116,4 +116,4 @@ PerformanceMeter.CancelOverdrawMeasurement();
 PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
-Overdraw diagnostics - явные diagnostic modes, которые могут добавлять GPU work.
+Диагностика overdraw - явные диагностические режимы, которые могут добавлять работу GPU.

@@ -1,10 +1,10 @@
-# SGG PerfMeter: Package Notes
+# SGG PerfMeter: заметки пакета
 
-Эта package-local документация намеренно короткая. Основная пользовательская документация поддерживается на уровне репозитория, чтобы GitHub показывал единую структуру по языкам.
+Эта локальная документация пакета намеренно короткая. Основная пользовательская документация поддерживается на уровне репозитория, чтобы GitHub показывал единую структуру по языкам.
 
-## Основные Документы
+## Основные документы
 
-- English: `../../../../README.md`
+- Английский: `../../../../README.md`
 - Русский: `../../../../docs/ru/README.md`
 - Установка: `../../../../docs/ru/installation.md`
 - Быстрый старт: `../../../../docs/ru/quick-start.md`
@@ -12,25 +12,25 @@
 - MCP: `../../../../docs/ru/mcp.md`
 - Сравнение: `../../../../docs/ru/comparison.md`
 
-## Что Дает Пакет
+## Что дает пакет
 
-- UI Toolkit runtime performance overlay.
-- FrameTimingManager CPU/GPU timing и ProfilerRecorder counters.
-- Bottleneck classification и target-FPS budget visualization.
-- Session recording с JSON/CSV export.
-- Device, camera, Render Graph, status, metrics, alerts и custom metric snapshots.
-- Rule alerts с callback/log/Editor warning cooldowns.
-- Opt-in overdraw measurement и visual heatmap через URP Render Graph.
-- MCP command metadata для editor/agent automation.
+- Runtime-оверлей производительности на UI Toolkit.
+- Тайминги CPU/GPU через FrameTimingManager и счетчики ProfilerRecorder.
+- Классификация узких мест и визуализация бюджета target FPS.
+- Запись сессий с экспортом JSON/CSV.
+- Снимки device, camera, Render Graph, status, metrics, alerts и custom metrics.
+- Alerts на правилах с callbacks, логами и паузами между Editor warnings.
+- Измерение overdraw по запросу и визуальная heatmap через URP Render Graph.
+- Метаданные команд MCP для автоматизации editor/agent-сценариев.
 
-## Поддерживаемая Цель
+## Поддерживаемая цель
 
 - Unity `6000.4+`.
 - URP `17.4+`.
-- Render Graph path.
+- Render Graph.
 
-Старые Unity versions могут импортироваться только для compile-safety и не являются поддерживаемой runtime целью.
+Старые версии Unity могут импортироваться только для проверки компиляции и не являются поддерживаемой runtime-целью.
 
-## Первый Setup
+## Первичная настройка
 
-Откройте `SGG/Perfmeter/Setup`, запустите recommended setup, сохраните JSON settings для zero-code startup и войдите в Play Mode.
+Откройте `SGG/Perfmeter/Setup`, запустите рекомендованную настройку, сохраните JSON-настройки для запуска без кода и войдите в Play Mode.

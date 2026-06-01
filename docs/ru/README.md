@@ -2,7 +2,7 @@
 
 # SGG PerfMeter
 
-**Runtime-диагностика производительности и API профилирования для Unity 6000+ URP Render Graph проектов.**
+**Диагностика производительности во время выполнения и API профилирования для Unity 6000+ URP Render Graph проектов.**
 
 [English](../../README.md) |
 [Russian](./README.md)
@@ -11,23 +11,23 @@
 
 [Установка](./installation.md) |
 [Быстрый старт](./quick-start.md) |
-[Workflow](./workflows.md) |
+[Сценарии работы](./workflows.md) |
 [Визуальные пресеты](./presets.md) |
 [Реализованные виджеты](./widgets.md) |
 [API](./api.md) |
 [MCP](./mcp.md) |
 [Сравнение](./comparison.md) |
 [Ограничения](./limitations.md) |
-[Troubleshooting](./troubleshooting.md) |
+[Диагностика проблем](./troubleshooting.md) |
 [Скриншоты](./screenshots.md) |
-[Скриншоты Setup Window](./setup-window-screenshots.md) |
-[Проверки contributor changes](./contributor-checks.md) |
-[Changelog](../../CHANGELOG.md)
+[Скриншоты окна настройки](./setup-window-screenshots.md) |
+[Проверки изменений](./contributor-checks.md) |
+[История изменений](../../CHANGELOG.md)
 
 <p>
   <a href="./installation.md"><img src="../assets/readme/cards/unity.svg" alt="Unity" height="48"></a>
   <a href="./installation.md"><img src="../assets/readme/cards/urp.svg" alt="URP" height="48"></a>
-  <a href="./workflows.md#runtime-overlay"><img src="../assets/readme/cards/uitk.svg" alt="UI Toolkit" height="48"></a>
+  <a href="./workflows.md"><img src="../assets/readme/cards/uitk.svg" alt="UI Toolkit" height="48"></a>
   <a href="./api.md"><img src="../assets/readme/cards/csharp.svg" alt="C#" height="48"></a>
   <a href="./limitations.md"><img src="../assets/readme/cards/android.svg" alt="Android" height="48"></a>
   <a href="./limitations.md"><img src="../assets/readme/cards/ios.svg" alt="iOS" height="48"></a>
@@ -40,31 +40,40 @@
 
 </div>
 
-SGG PerfMeter - не просто FPS counter. Это легкий слой runtime-диагностики для Unity URP проектов, который помогает понять, почему кадр стал медленным, что изменилось и как воспроизвести capture.
+SGG PerfMeter - не просто счетчик FPS. Это легкий слой runtime-диагностики для Unity URP проектов, который помогает понять, почему кадр стал медленным, что изменилось и как воспроизвести захват.
 
-Одни и те же performance data доступны через несколько вариантов: runtime overlay, публичные C# API snapshots, JSON/CSV session exports, alerts и MCP command metadata для editor/agent automation.
+В отличие от привычных FPS-оверлеев, SGG PerfMeter не просто показывает текущий FPS. Он помогает понять, упирается ли кадр в CPU, GPU, render thread, present/VSync, overdraw или недоступные платформенные счетчики, и позволяет сохранить это состояние для последующего анализа.
 
-Большинство FPS overlays отвечают: **какой FPS сейчас?**
+## Главное для пользователя
 
-SGG PerfMeter отвечает: **кадр упирается в CPU, GPU, render thread, present/VSync, overdraw или недоступные platform counters, и можно ли это состояние экспортировать или автоматизировать?**
+- Понять, почему кадр стал медленным прямо во время игры, а не просто увидеть текущий FPS.
+- Переключать визуальные пресеты, графики, полосы метрик, компактные layout-режимы и строки пользовательских метрик под разные сценарии отладки.
+- Записывать воспроизводимые сессии профилирования с warm-up, привязкой к сцене, сводками худших кадров, экспортом JSON/CSV, метаданными устройства и камеры.
+- Использовать alerts, структурированные логи, callbacks и паузы между Editor warnings, чтобы ловить регрессии без постоянного наблюдения за оверлеем.
+- Давать инструментам и агентам структурированные данные для сравнений, A/B-тестов и поиска проблемных мест вместо скриншотов или парсинга Console.
 
-## Highlights
+## Как показываем и используем данные
 
-- Фокус на Unity `6000.4+` и URP `17.4+`, с интеграцией через Render Graph renderer feature.
-- FrameTimingManager CPU/GPU timing, main-thread, render-thread и present-wait visibility.
-- ProfilerRecorder render, SRP Batcher, BRG/GRD, upload, memory и GPU-memory counters, когда они доступны.
-- Bottleneck classification для GPU, CPU main thread, CPU render thread, present/VSync, balanced или unknown frames.
-- UI Toolkit runtime overlay с presets, layouts, graphs, metric bars, themes и custom metric rows.
-- Session recording с warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata и camera metadata.
-- Rule alerts со structured logs, callbacks, Editor warning cooldowns и MCP alert commands.
-- Opt-in numerical overdraw measurement и visual overdraw heatmap через URP Render Graph.
-- Device, camera, Render Graph, status, metrics, alerts, session и custom metric snapshots для кода и MCP automation.
+- **Runtime-оверлей**: визуальные пресеты, компактные layout-режимы, графики, полосы метрик и строки пользовательских метрик для просмотра во время игры.
+- **Публичный C# API**: неизменяемые снимки status, metrics, device, camera, Render Graph, alerts, sessions и custom metrics.
+- **Запись сессий**: ограниченные захваты с warm-up, привязкой к сцене, худшими кадрами, метаданными устройства/камеры и экспортом JSON/CSV.
+- **Alerts**: структурированные логи, callbacks, паузы между Editor warnings и снимки последних alerts.
+- **Агентский слой**: метаданные команд MCP позволяют агентам смотреть состояние проекта, сравнивать прогоны, делать A/B-тесты и искать проблемные места через структурированные данные.
 
-## Быстрый Старт
+## Что умеем измерять
 
-1. Установите Unity package из этого репозитория с package path `Assets/Scripts/SGG.PerfMeter`.
+- Состояние во время выполнения Unity `6000.4+` / URP `17.4+` Render Graph.
+- Тайминги CPU/GPU через FrameTimingManager: CPU frame, main thread, render thread, present wait и GPU frame time, когда доступно.
+- Счетчики рендера через ProfilerRecorder: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, upload bytes, memory и GPU memory, когда доступно.
+- Классификацию узких мест для GPU, CPU main thread, CPU render thread, present/VSync, balanced или unknown frames.
+- Числовое измерение overdraw по запросу и визуальную heatmap overdraw через URP Render Graph.
+- Снимки device, camera, Render Graph, status, metrics, alerts, session и custom metrics для кода и автоматизации через MCP.
+
+## Быстрый старт
+
+1. Установите пакет Unity из этого репозитория с путем пакета `Assets/Scripts/SGG.PerfMeter`.
 2. Откройте `SGG/Perfmeter/Setup` в Unity.
-3. Запустите recommended setup, войдите в Play Mode и проверьте, что overlay появился.
+3. Запустите рекомендованную настройку, войдите в Play Mode и проверьте, что оверлей появился.
 
 ```json
 {
@@ -74,46 +83,38 @@ SGG PerfMeter отвечает: **кадр упирается в CPU, GPU, rende
 }
 ```
 
-Полный setup guide: [Установка](./installation.md) и [Быстрый старт](./quick-start.md).
+Полное руководство по настройке: [Установка](./installation.md) и [Быстрый старт](./quick-start.md).
 
-## Для Кого
+## Основные сценарии работы
 
-- Unity URP developers, которые валидируют performance в Play Mode, development builds и device smoke tests.
-- Rendering engineers и technical artists, которым нужны draw calls, SetPass, upload, memory, SRP Batcher, BRG/GRD, overdraw и frame timing visibility.
-- Tooling developers, которым нужны стабильные runtime snapshots, а не только visual HUD.
-- Команды, использующие Unity MCP или editor agents для profiling automation и regression checks.
-- Solo developers, которым нужен более диагностический инструмент, чем обычный FPS overlay.
+- **Оверлей без кода**: создайте `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` из окна настройки и дайте PerfMeter стартовать автоматически.
+- **Runtime API**: вызовите `PerformanceMeter.EnsureRunning()`, затем читайте неизменяемые снимки status, metrics, device, camera и session.
+- **Экспорт сессий**: записывайте ограниченные окна профилирования и экспортируйте JSON/CSV со сценой, устройством, камерой, настройками, счетчиками, предупреждениями и метаданными худших кадров.
+- **Диагностика overdraw**: запускайте ограниченное числовое измерение или включайте визуальную heatmap, когда renderer feature установлен.
+- **Автоматизация агентов**: используйте метаданные команд MCP, чтобы запускать сбор, переключать режимы оверлея, экспортировать сессии, читать alerts и снимки.
 
-## Основные Workflow
-
-- **Zero-code overlay**: создайте `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` из setup window и дайте PerfMeter стартовать автоматически.
-- **Runtime API**: вызовите `PerformanceMeter.EnsureRunning()`, затем читайте immutable status, metrics, device, camera и session snapshots.
-- **Session export**: записывайте bounded profiling windows и экспортируйте JSON/CSV со scene, device, camera, settings, counters, warnings и worst-frame metadata.
-- **Overdraw diagnostics**: запускайте bounded numerical measurement или включайте visual heatmap, когда renderer feature установлен.
-- **Agent automation**: используйте MCP command metadata, чтобы запускать collection, переключать overlay modes, экспортировать sessions, читать alerts и snapshots.
-
-Подробнее: [Workflow](./workflows.md), [API](./api.md) и [MCP](./mcp.md).
+Подробнее: [Сценарии работы](./workflows.md), [API](./api.md) и [MCP](./mcp.md).
 
 ## Скриншоты
 
-Галереи показывают overlay по умолчанию, setup window pages, visual presets и runtime widgets.
+Галереи показывают оверлей по умолчанию, страницы окна настройки, визуальные пресеты и runtime-виджеты.
 
-Начните с [Визуальные пресеты](./presets.md), [Скриншоты Setup Window](./setup-window-screenshots.md), [Реализованные виджеты](./widgets.md) и [Скриншоты](./screenshots.md).
+Начните с [Визуальные пресеты](./presets.md), [Скриншоты окна настройки](./setup-window-screenshots.md), [Реализованные виджеты](./widgets.md) и [Скриншоты](./screenshots.md).
 
-## Сравнение С FPS Counters
+## Сравнение с FPS-счетчиками
 
-Advanced FPS Counter и Graphy - сильные general-purpose drop-in visual overlays. SGG PerfMeter намеренно фокусируется на modern Unity URP diagnostics: structured timing и render counters, bottleneck classification, reproducible sessions, device/camera snapshots, overdraw diagnostics, Render Graph state и agent-readable automation.
+Advanced FPS Counter и Graphy - сильные универсальные визуальные оверлеи, которые легко подключить к проекту. SGG PerfMeter намеренно фокусируется на диагностике современных Unity URP проектов: структурированные тайминги и счетчики рендера, классификация узких мест, воспроизводимые сессии, снимки устройства/камеры, диагностика overdraw, состояние Render Graph и автоматизация, понятная агентам.
 
-Это product/architecture comparison, а не measured runtime benchmark. См. [Сравнение](./comparison.md).
+Это сравнение продукта и архитектуры, а не измеренный runtime-бенчмарк. См. [Сравнение](./comparison.md).
 
 ## Требования
 
-- Unity `6000.4+` для поддерживаемого runtime usage.
-- URP `17.4+` с Render Graph path.
-- Frame Timing Stats включен перед использованием FrameTimingManager в builds.
+- Unity `6000.4+` для поддерживаемого использования во время выполнения.
+- URP `17.4+` с Render Graph.
+- Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
 - Vulkan предпочтителен на Android, если важен GPU timing.
 
-Unity `2022.3` through `6000.3` может быть import-safe для compile checks, но runtime overlay, Render Graph features, overdraw passes и support expectations требуют Unity `6000.4+` с URP `17.4+`.
+Unity от `2022.3` до `6000.3` может импортироваться для проверки компиляции, но runtime-оверлей, фичи Render Graph, overdraw passes и ожидаемая поддержка требуют Unity `6000.4+` с URP `17.4+`.
 
 ## Лицензия
 
@@ -121,4 +122,4 @@ Unity `2022.3` through `6000.3` может быть import-safe для compile c
 
 - Основной текст лицензии: [LICENSE.ru.md](../../LICENSE.ru.md)
 - Английский справочный перевод: [LICENSE.md](../../LICENSE.md)
-- Notices: [NOTICE.md](../../NOTICE.md) и [NOTICE.ru.md](../../NOTICE.ru.md)
+- Уведомления: [NOTICE.md](../../NOTICE.md) и [NOTICE.ru.md](../../NOTICE.ru.md)

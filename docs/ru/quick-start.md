@@ -1,8 +1,8 @@
-# Быстрый Старт
+# Быстрый старт
 
-Этот путь запускает видимый overlay без написания кода.
+Этот путь запускает видимый оверлей без написания кода.
 
-## 1. Откройте Окно Настройки
+## 1. Откройте окно настройки
 
 В Unity откройте:
 
@@ -10,33 +10,33 @@
 SGG/Perfmeter/Setup
 ```
 
-## 2. Запустите Recommended Setup
+## 2. Запустите рекомендованную настройку
 
 Через окно настройки можно:
 
 - включить Frame Timing Stats;
-- установить `PerfMeterRenderGraphFeature` в editable active URP renderers;
-- создать default project-owned JSON settings;
-- настроить видимость overlay, corner, target FPS, visual preset и collection mode.
+- установить `PerfMeterRenderGraphFeature` в доступные для редактирования активные URP Renderers;
+- создать проектные JSON-настройки по умолчанию;
+- настроить видимость оверлея, угол, target FPS, визуальный пресет и режим сбора.
 
-Zero-code settings сохраняются в:
+Настройки запуска без кода сохраняются в:
 
 ```text
 Assets/Resources/SGG.PerfMeter/perfmeter-settings.json
 ```
 
-Если `enabled` и `autoStart` включены, PerfMeter стартует из этого JSON в runtime.
+Если `enabled` и `autoStart` включены, PerfMeter стартует из этого JSON во время выполнения.
 
-## 3. Войдите В Play Mode
+## 3. Войдите в Play Mode
 
-Overlay должен появиться в выбранном углу. Если этого не произошло:
+Оверлей должен появиться в выбранном углу. Если этого не произошло:
 
-- проверьте, что JSON settings file существует на Resources path;
-- проверьте, что overlay включен в setup window;
-- проверьте, что runtime collection mode равен `Overlay`;
-- проверьте, что активный URP renderer содержит `PerfMeterRenderGraphFeature`, если тестируются Render Graph diagnostics или overdraw.
+- проверьте, что JSON-файл настроек находится в Resources;
+- проверьте, что оверлей включен в окне настройки;
+- проверьте, что режим сбора в runtime равен `Overlay`;
+- проверьте, что активный URP Renderer содержит `PerfMeterRenderGraphFeature`, если тестируется диагностика Render Graph или overdraw.
 
-## Опциональный Manual Bootstrap
+## Опциональный ручной запуск
 
 Используйте код, если нужен явный контроль запуска:
 
@@ -58,7 +58,7 @@ public static class PerfMeterBootstrap
 }
 ```
 
-## Первые Полезные API-Вызовы
+## Первые полезные API-вызовы
 
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();

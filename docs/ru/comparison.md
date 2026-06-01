@@ -1,44 +1,44 @@
-# Сравнение С Advanced FPS Counter И Graphy
+# Сравнение с Advanced FPS Counter и Graphy
 
-Это product/architecture comparison, а не измеренный runtime benchmark.
+Это сравнение продукта и архитектуры, а не измеренный runtime-бенчмарк.
 
 ## Коротко
 
-Advanced FPS Counter и Graphy - сильные general-purpose visual overlays. Они хороши, когда нужен быстрый drop-in FPS/memory/device HUD с широкой поддержкой старых Unity и visual customization.
+Advanced FPS Counter и Graphy - сильные универсальные визуальные оверлеи. Они хороши, когда нужен быстрый подключаемый FPS/memory/device HUD с широкой поддержкой старых версий Unity и визуальной настройкой.
 
-SGG PerfMeter намеренно уже и диагностичнее: Unity `6000.4+`, URP `17.4+`, Render Graph, structured snapshots, session export, overdraw diagnostics, reproducible camera/device metadata и MCP/API automation.
+SGG PerfMeter намеренно уже и диагностичнее: Unity `6000.4+`, URP `17.4+`, Render Graph, структурированные снимки, экспорт сессий, диагностика overdraw, воспроизводимые метаданные камеры/устройства и автоматизация через MCP/API.
 
-## Таблица Сравнения
+## Таблица сравнения
 
-| Area | SGG PerfMeter | Advanced FPS Counter | Graphy |
+| Область | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
-| Primary positioning | URP Render Graph diagnostics + agent-readable profiling API | Flexible in-game FPS/memory/device counter | Visual FPS/memory/audio stats monitor + debugger |
-| Unity target | Unity `6000.4+`, URP `17.4+` | Broad older Unity support | Broad older Unity support |
-| UI backend | UI Toolkit overlay | uGUI Canvas/Text labels | uGUI Text/Image modules |
-| Timing source | `FrameTimingManager` + rolling stats | Runtime frame/update sampling | `Time.unscaledDeltaTime` history sampling |
-| CPU/GPU split | CPU frame, main thread, render thread, present wait, GPU when available | No equivalent split | No equivalent split |
-| Bottleneck classification | GPU, CPU main, CPU render, present-limited, balanced, unknown | No equivalent | No equivalent |
-| Render counters | Draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory | No URP/SRP counter set | No URP/SRP counter set |
-| Device/camera reproducibility | Structured device and camera snapshots | Device panel only | Device panel only |
-| Sessions | Bounded recorder, warm-up, scene scope, worst frames, JSON/CSV export | Not a primary feature | Roadmap-like idea |
-| Overdraw | Numerical measurement + visual heatmap through URP Render Graph | No | No |
-| Automation | MCP command surface and public snapshots | No | No |
+| Основное позиционирование | Диагностика URP Render Graph + API профилирования, понятный агентам | Гибкий игровой счетчик FPS/memory/device | Визуальный монитор FPS/memory/audio stats + debugger |
+| Цель Unity | Unity `6000.4+`, URP `17.4+` | Широкая поддержка старых версий Unity | Широкая поддержка старых версий Unity |
+| UI backend | Оверлей UI Toolkit | Метки uGUI Canvas/Text | Модули uGUI Text/Image |
+| Источник таймингов | `FrameTimingManager` + rolling stats | Runtime sampling frame/update | История на `Time.unscaledDeltaTime` |
+| Разделение CPU/GPU | CPU frame, main thread, render thread, present wait, GPU когда доступно | Нет аналогичного разделения | Нет аналогичного разделения |
+| Классификация узких мест | GPU, CPU main, CPU render, present-limited, balanced, unknown | Нет аналога | Нет аналога |
+| Счетчики рендера | Draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory | Нет набора счетчиков URP/SRP | Нет набора счетчиков URP/SRP |
+| Воспроизводимость устройства/камеры | Структурированные снимки устройства и камеры | Только панель устройства | Только панель устройства |
+| Сессии | Ограниченный recorder, warm-up, scope сцены, худшие кадры, экспорт JSON/CSV | Не основная функция | Похоже на идею из roadmap |
+| Overdraw | Числовое измерение + визуальная heatmap через URP Render Graph | Нет | Нет |
+| Автоматизация | Набор команд MCP и публичные снимки | Нет | Нет |
 
-## Что SGG PerfMeter Делает Лучше
+## Что SGG PerfMeter делает лучше
 
-- Объясняет вероятные bottlenecks через CPU frame, main thread, render thread, present wait, GPU timing и frame budget data.
-- Показывает URP-oriented render counters и Render Graph diagnostics.
-- Создает reproducible performance reports со scene, device, camera, settings, session samples, summaries и worst-frame metadata.
-- Дает tools и agents structured data через public API и MCP commands.
-- Включает bounded overdraw measurement и visual heatmap как явные diagnostics.
+- Объясняет вероятные узкие места через CPU frame, main thread, render thread, present wait, GPU timing и данные бюджета кадра.
+- Показывает счетчики рендера, ориентированные на URP, и диагностику Render Graph.
+- Создает воспроизводимые отчеты производительности со сценой, устройством, камерой, настройками, сэмплами сессии, сводками и метаданными худших кадров.
+- Дает инструментам и агентам структурированные данные через публичный API и команды MCP.
+- Включает ограниченное измерение overdraw и визуальную heatmap как явную диагностику.
 
-## Что Конкуренты Все Еще Делают Лучше
+## Что конкуренты все еще делают лучше
 
-- Advanced FPS Counter имеет очень прямой drop-in visual counter UX, зрелую inspector customization, hotkeys/circle gesture toggles, min/max/average UI patterns и VR/world-space examples.
-- Graphy имеет сильные public marketing materials, понятные module states, visual customization, hotkeys/background mode, зрелый debugger packet UX и широкую public awareness.
+- Advanced FPS Counter имеет очень прямой UX подключаемого визуального счетчика, зрелую настройку в Inspector, hotkeys/circle gesture toggles, UI-паттерны min/max/average и примеры VR/world-space.
+- Graphy имеет сильные публичные маркетинговые материалы, понятные состояния модулей, визуальную настройку, hotkeys/background mode, зрелый UX debugger packet и широкую узнаваемость.
 
-## Что Не Утверждать
+## Что не утверждать
 
 - SGG PerfMeter не заменяет Unity Profiler, RenderDoc, Profile Analyzer или Frame Debugger.
-- SGG PerfMeter не zero-overhead; используйте low-overhead и явно документируйте diagnostic costs.
-- SGG PerfMeter не является all-platform/all-pipeline legacy compatibility package.
+- SGG PerfMeter не zero-overhead; используйте low-overhead и явно документируйте стоимость диагностики.
+- SGG PerfMeter не является пакетом legacy-совместимости для всех платформ и всех render pipelines.

@@ -1,8 +1,8 @@
-# Workflow
+# Сценарии работы
 
-## Runtime Overlay
+## Runtime-оверлей
 
-Используйте overlay, когда нужна быстрая видимость прямо в игре.
+Используйте оверлей, когда нужна быстрая видимость прямо в игре.
 
 ```csharp
 PerformanceMeter.EnsureRunning();
@@ -12,24 +12,24 @@ PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout.MetricBars);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 ```
 
-Overlay использует UI Toolkit и не перехватывает gameplay input. Он поддерживает FPS-only, compact text, graph, full diagnostics, metric bars, visual themes, module filters, CPU/GPU graphs, CPU core widgets и ограниченные custom metric rows.
+Оверлей использует UI Toolkit и не перехватывает игровой ввод. Он поддерживает режим только FPS, компактный текст, графики, полную диагностику, полосы метрик, визуальные темы, фильтры модулей, графики CPU/GPU, виджеты ядер CPU и ограниченные строки пользовательских метрик.
 
-## Background Collection
+## Фоновый сбор
 
-Background mode подходит для тестов, device runs и agent workflows без видимого UI.
+Фоновый режим подходит для тестов, прогонов на устройствах и агентских сценариев без видимого UI.
 
 ```csharp
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
-## Session Recording И Export
+## Запись и экспорт сессий
 
-Sessions нужны для повторяемых profiling windows.
+Сессии нужны для повторяемых окон профилирования.
 
 ```csharp
 PerformanceMeter.StartSession(new PerfMeterSessionOptions(30, 0.25f, 600));
 
-// Run the measured scenario.
+// Запустите измеряемый сценарий.
 
 PerformanceMeter.StopSession();
 PerfMeterSessionSummarySnapshot summary = PerformanceMeter.GetSessionSummary();
@@ -37,55 +37,55 @@ PerformanceMeter.ExportSessionJson("Logs/perfmeter-session.json");
 PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
 ```
 
-Session exports включают timing, FPS lows, spikes, bottleneck counts, render counters, memory counters, overdraw state, warning/counter availability, scene summaries, worst frames, device metadata, camera metadata, settings metadata и custom metrics.
+Экспорт сессии включает тайминги, FPS lows, spikes, счетчики узких мест, счетчики рендера, счетчики памяти, состояние overdraw, доступность предупреждений/счетчиков, сводки сцен, худшие кадры, метаданные устройства, камеры и настроек, а также пользовательские метрики.
 
 ## Alerts
 
-Rules могут сообщать budget violations, low FPS, unavailable GPU timing и overdraw thresholds.
+Правила могут сообщать о нарушениях бюджета кадра, низком FPS, недоступном GPU timing и превышении порогов overdraw.
 
 ```csharp
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
-Editor warnings ограничены cooldown и могут быть отключены через JSON settings или runtime controls.
+Editor warnings ограничены паузой между срабатываниями и могут быть отключены через JSON-настройки или runtime-контролы.
 
-## Overdraw Diagnostics
+## Диагностика overdraw
 
-Numerical overdraw является opt-in и bounded.
+Числовой overdraw включается явно и работает в ограниченном окне.
 
 ```csharp
 PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
 PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
-Overdraw measurement требует `PerfMeterRenderGraphFeature`, replacement shader support, fragment UAV/storage-buffer support, compute shader support, supported graphics API и async GPU readback. Unsupported targets возвращают `OverdrawState.Unsupported` вместо запуска pass.
+Измерение overdraw требует `PerfMeterRenderGraphFeature`, поддержки replacement shader, fragment UAV/storage buffer, compute shaders, поддерживаемого graphics API и async GPU readback. Неподдерживаемые цели возвращают `OverdrawState.Unsupported` вместо запуска pass.
 
-## Camera И Device Reproducibility
+## Воспроизводимость камеры и устройства
 
-Snapshots сохраняют окружение, в котором получен performance capture.
+Снимки сохраняют окружение, в котором получен захват производительности.
 
 ```csharp
 PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
 PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 ```
 
-Session exports включают device и camera metadata, чтобы capture можно было понять или воспроизвести позже.
+Экспорт сессии включает метаданные устройства и камеры, чтобы захват можно было понять или воспроизвести позже.
 
-## Custom Metrics
+## Пользовательские метрики
 
-Регистрируйте project-specific providers без форка PerfMeter.
+Регистрируйте провайдеры проекта без форка PerfMeter.
 
 ```csharp
 PerformanceMeter.RegisterCustomMetricProvider(provider);
 PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetrics();
 ```
 
-Custom metrics доступны через API reads, session JSON export, MCP latest metrics и до восьми overlay rows при включенном модуле `CustomMetrics`.
+Пользовательские метрики доступны через API-чтение, экспорт сессии в JSON, latest metrics в MCP и до восьми строк оверлея при включенном модуле `CustomMetrics`.
 
-## Agent Automation
+## Агентская автоматизация
 
-Типичный MCP-driven run:
+Типичный прогон через MCP:
 
 ```text
 perfmeter.runtime.mode.set {"mode":"Background"}

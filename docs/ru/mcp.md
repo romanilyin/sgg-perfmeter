@@ -1,40 +1,40 @@
-# MCP И Agent Automation
+# MCP и автоматизация агентов
 
-SGG PerfMeter содержит command metadata для Unity MCP/editor-agent workflows по package path:
+SGG PerfMeter содержит метаданные команд для сценариев Unity MCP и editor-agent по пути пакета:
 
 ```text
 Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 ```
 
-Цель - structured JSON output для агентов вместо парсинга screenshots, overlay text или Unity Console.
+Цель - структурированный JSON-вывод для агентов вместо парсинга скриншотов, текста оверлея или Unity Console.
 
-## Command Groups
+## Группы команд
 
-| Command | Purpose |
+| Команда | Назначение |
 | --- | --- |
-| `perfmeter.setup.status` | Прочитать setup status. |
-| `perfmeter.setup.run` | Запустить recommended setup actions. |
-| `perfmeter.runtime.status` | Прочитать runtime status. |
+| `perfmeter.setup.status` | Прочитать статус настройки. |
+| `perfmeter.setup.run` | Запустить действия рекомендованной настройки. |
+| `perfmeter.runtime.status` | Прочитать runtime-статус. |
 | `perfmeter.runtime.ensure` | Запустить runtime при необходимости. |
 | `perfmeter.runtime.stop` | Остановить runtime. |
-| `perfmeter.runtime.reset_stats` | Сбросить rolling stats, alert counters и active session counters. |
+| `perfmeter.runtime.reset_stats` | Сбросить rolling stats, счетчики alerts и счетчики активной сессии. |
 | `perfmeter.runtime.mode.set` | Переключить `Stopped`, `Background`, `Overlay` или `OverdrawDiagnostic`. |
-| `perfmeter.metrics.latest` | Прочитать latest metrics, включая custom metrics. |
-| `perfmeter.alerts.latest` | Прочитать active alerts, counters и Editor warning state. |
-| `perfmeter.alerts.clear` | Очистить active alerts, counters и cooldown state. |
-| `perfmeter.device.info` | Прочитать device, graphics, display, monitor, pipeline и Unity environment info. |
-| `perfmeter.camera.snapshot` | Прочитать camera transform/projection/URP settings. |
-| `perfmeter.rendergraph.snapshot` | Прочитать latest observed PerfMeter Render Graph diagnostics. |
-| `perfmeter.overlay.set` | Показать/скрыть overlay и задать preset, modules, corner, mode и target FPS. |
-| `perfmeter.overdraw.start` | Запустить bounded overdraw measurement. |
-| `perfmeter.overdraw.cancel` | Отменить active overdraw measurement. |
-| `perfmeter.overdraw.heatmap.set` | Показать или скрыть visual overdraw heatmap. |
-| `perfmeter.session.start` | Запустить bounded session recording. |
-| `perfmeter.session.stop` | Остановить recording и вернуть summary. |
-| `perfmeter.session.summary` | Прочитать current session summary. |
-| `perfmeter.session.export` | Экспортировать current session в project-local JSON или CSV. |
+| `perfmeter.metrics.latest` | Прочитать latest metrics, включая пользовательские метрики. |
+| `perfmeter.alerts.latest` | Прочитать активные alerts, счетчики и состояние Editor warnings. |
+| `perfmeter.alerts.clear` | Очистить активные alerts, счетчики и состояние cooldown. |
+| `perfmeter.device.info` | Прочитать информацию об устройстве, graphics, display, monitor, pipeline и Unity environment. |
+| `perfmeter.camera.snapshot` | Прочитать transform/projection/URP settings камеры. |
+| `perfmeter.rendergraph.snapshot` | Прочитать последнюю наблюдаемую диагностику PerfMeter Render Graph. |
+| `perfmeter.overlay.set` | Показать/скрыть оверлей и задать preset, modules, corner, mode и target FPS. |
+| `perfmeter.overdraw.start` | Запустить ограниченное измерение overdraw. |
+| `perfmeter.overdraw.cancel` | Отменить активное измерение overdraw. |
+| `perfmeter.overdraw.heatmap.set` | Показать или скрыть визуальную heatmap overdraw. |
+| `perfmeter.session.start` | Запустить ограниченную запись сессии. |
+| `perfmeter.session.stop` | Остановить запись и вернуть summary. |
+| `perfmeter.session.summary` | Прочитать summary текущей сессии. |
+| `perfmeter.session.export` | Экспортировать текущую сессию в project-local JSON или CSV. |
 
-## Типичный Profiling Run
+## Типичный прогон профилирования
 
 ```text
 perfmeter.runtime.mode.set {"mode":"Background"}
@@ -46,4 +46,4 @@ perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
 
-Используйте `OverdrawDiagnostic` только для bounded diagnostic windows, потому что numerical overdraw и heatmap rendering добавляют extra GPU work.
+Используйте `OverdrawDiagnostic` только для ограниченных диагностических окон, потому что числовой overdraw и рендеринг heatmap добавляют дополнительную работу GPU.
