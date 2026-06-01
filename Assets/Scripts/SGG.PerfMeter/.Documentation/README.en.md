@@ -4,7 +4,7 @@ This package-local documentation is intentionally short. The main user documenta
 
 ## Main Docs
 
-- English: `../../../../docs/en/README.md`
+- English: `../../../../README.md`
 - Russian: `../../../../docs/ru/README.md`
 - Installation: `../../../../docs/en/installation.md`
 - Quick Start: `../../../../docs/en/quick-start.md`

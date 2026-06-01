@@ -4,7 +4,7 @@
 
 ## Основные Документы
 
-- English: `../../../../docs/en/README.md`
+- English: `../../../../README.md`
 - Русский: `../../../../docs/ru/README.md`
 - Установка: `../../../../docs/ru/installation.md`
 - Быстрый старт: `../../../../docs/ru/quick-start.md`

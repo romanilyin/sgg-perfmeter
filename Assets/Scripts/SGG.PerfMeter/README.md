@@ -8,7 +8,7 @@ SGG PerfMeter is not just an FPS counter. It combines FrameTimingManager timings
 
 The main user documentation lives in the repository-level GitHub docs:
 
-- English: `../../../docs/en/README.md`
+- English: `../../../README.md`
 - Russian: `../../../docs/ru/README.md`
 - Quick Start: `../../../docs/en/quick-start.md`
 - API: `../../../docs/en/api.md`

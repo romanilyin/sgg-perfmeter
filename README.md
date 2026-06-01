@@ -4,7 +4,7 @@
 
 **Runtime performance diagnostics and agent-readable profiling API for Unity 6000+ URP Render Graph projects.**
 
-[English](./docs/en/README.md) |
+[English](./README.md) |
 [Russian](./docs/ru/README.md)
 
 —
@@ -21,7 +21,7 @@
   <a href="./docs/en/api.md"><img src="./docs/assets/readme/cards/csharp.svg" alt="C#" height="48"></a>
   <a href="./docs/en/limitations.md"><img src="./docs/assets/readme/cards/android.svg" alt="Android" height="48"></a>
   <a href="./docs/en/limitations.md"><img src="./docs/assets/readme/cards/ios.svg" alt="iOS" height="48"></a>
-  <a href="./docs/en/README.md"><img src="./docs/assets/readme/cards/docs.svg" alt="Docs" height="48"></a>
+  <a href="./docs/en/quick-start.md"><img src="./docs/assets/readme/cards/docs.svg" alt="Docs" height="48"></a>
 </p>
 
 <p>
@@ -30,7 +30,9 @@
 
 </div>
 
-SGG PerfMeter is not just an FPS counter. It is a lightweight runtime diagnostics layer for Unity URP projects that need to understand why a frame is slow, what changed, how to reproduce the capture, and how tools or agents can read the same data without scraping screenshots or Console text.
+SGG PerfMeter is not just an FPS counter. It is a lightweight runtime diagnostics layer for Unity URP projects that need to understand why a frame is slow, what changed, and how to reproduce the capture.
+
+The same performance data is available through several surfaces: the runtime overlay, public C# API snapshots, JSON/CSV session exports, alerts, and MCP command metadata for editor/agent automation.
 
 Most FPS overlays answer: **what is the FPS right now?**
 
@@ -105,8 +107,7 @@ Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runti
 
 ## Documentation
 
-- [English documentation](./docs/en/README.md)
-- [Russian documentation](./docs/ru/README.md)
+- [Russian landing page](./docs/ru/README.md)
 - [Installation](./docs/en/installation.md)
 - [Quick Start](./docs/en/quick-start.md)
 - [Workflows](./docs/en/workflows.md)
@@ -117,6 +118,9 @@ Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runti
 - [Comparison](./docs/en/comparison.md)
 - [Limitations](./docs/en/limitations.md)
 - [Troubleshooting](./docs/en/troubleshooting.md)
+- [Screenshots](./docs/en/screenshots.md)
+- [Setup Window Screenshots](./docs/en/setup-window-screenshots.md)
+- [Contributor Checks](./docs/en/contributor-checks.md)
 
 Internal development, historical roadmap, release-readiness, and architecture notes are kept under `_DevelopmentDocs/`.
 
