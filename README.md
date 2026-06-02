@@ -125,3 +125,4 @@ This package is licensed under **Stinger Royalty-Free EULA 1.0**.
 - Authoritative license text: [LICENSE.ru.md](./LICENSE.ru.md)
 - English convenience translation: [LICENSE.md](./LICENSE.md)
 - Notices: [NOTICE.md](./NOTICE.md) and [NOTICE.ru.md](./NOTICE.ru.md)
+- Brand usage policy: [docs/en/brand.md](./docs/en/brand.md) and [docs/ru/brand.md](./docs/ru/brand.md)

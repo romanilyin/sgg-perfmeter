@@ -125,3 +125,4 @@ Unity от `2022.3` до `6000.3` может импортироваться дл
 - Основной текст лицензии: [LICENSE.ru.md](../../LICENSE.ru.md)
 - Английский справочный перевод: [LICENSE.md](../../LICENSE.md)
 - Уведомления: [NOTICE.md](../../NOTICE.md) и [NOTICE.ru.md](../../NOTICE.ru.md)
+- Политика использования бренда: [brand.md](./brand.md), английская версия: [docs/en/brand.md](../en/brand.md)

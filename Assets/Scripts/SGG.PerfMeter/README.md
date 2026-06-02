@@ -78,3 +78,5 @@ Import package samples from Package Manager or copy them from `Samples~` while d
 This package is licensed under `LicenseRef-Stinger-Royalty-Free-EULA-1.0`.
 
 The authoritative Russian license text is `LICENSE.ru.md`; English convenience text is `LICENSE.md`. Keep `NOTICE.md` and `NOTICE.ru.md` with package distributions.
+
+Brand usage policy: `../../../docs/en/brand.md` and `../../../docs/ru/brand.md`.
