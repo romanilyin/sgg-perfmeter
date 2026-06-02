@@ -511,14 +511,22 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void SetupWindowLocalizationFilesCoverSameSources()
 		{
 			string localizationRoot = Path.Combine(GetPackageRoot(), "Editor/UI/Localization");
-			HashSet<string> english = ReadXlfSources(Path.Combine(localizationRoot, "perfmeter-window.en.xlf"));
-			HashSet<string> russian = ReadXlfSources(Path.Combine(localizationRoot, "perfmeter-window.ru.xlf"));
+			string englishPath = Path.Combine(localizationRoot, "perfmeter-window.en.xlf");
+			HashSet<string> english = ReadXlfSources(englishPath);
+			foreach (string path in Directory.GetFiles(localizationRoot, "perfmeter-window.*.xlf", SearchOption.TopDirectoryOnly))
+			{
+				if (string.Equals(path, englishPath, StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
 
-			List<string> missingRussian = MissingSources(english, russian);
-			List<string> missingEnglish = MissingSources(russian, english);
+				HashSet<string> localized = ReadXlfSources(path);
+				List<string> missingLocalized = MissingSources(english, localized);
+				List<string> missingEnglish = MissingSources(localized, english);
 
-			Assert.That(missingRussian, Is.Empty, "Russian localization is missing source entries.");
-			Assert.That(missingEnglish, Is.Empty, "English localization is missing source entries.");
+				Assert.That(missingLocalized, Is.Empty, Path.GetFileName(path) + " is missing source entries.");
+				Assert.That(missingEnglish, Is.Empty, Path.GetFileName(path) + " has source entries missing from English.");
+			}
 		}
 
 		[Test]

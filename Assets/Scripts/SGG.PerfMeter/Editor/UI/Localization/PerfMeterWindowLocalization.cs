@@ -221,6 +221,12 @@ namespace SGG.PerfMeter.Editor.UI.Localization
 			if (element is PopupField<string> popupField && !string.IsNullOrEmpty(popupField.label))
 			{
 				popupField.label = Text(popupField.label);
+				return;
+			}
+
+			if (element is Foldout foldout && !string.IsNullOrEmpty(foldout.text))
+			{
+				foldout.text = Text(foldout.text);
 			}
 		}
 
@@ -302,6 +308,21 @@ namespace SGG.PerfMeter.Editor.UI.Localization
 			if (TryMatch(source, "^(.+) · (.+)$", out match))
 			{
 				return Format("{0} · {1}", Text(match.Groups[1].Value), Text(match.Groups[2].Value));
+			}
+
+			if (TryMatch(source, "^(.+) Preset block: (yes|no)\\.$", out match))
+			{
+				return Format("{0} Preset block: {1}.", Text(match.Groups[1].Value), Text(match.Groups[2].Value));
+			}
+
+			if (TryMatch(source, "^(\\d+) widgets$", out match))
+			{
+				return Format("{0} widgets", match.Groups[1].Value);
+			}
+
+			if (TryMatch(source, "^(.+) \\[([^\\]]+)\\]$", out match))
+			{
+				return Format("{0} [{1}]", Text(match.Groups[1].Value), match.Groups[2].Value);
 			}
 
 			if (TryMatch(source, "^Copy (.+)$", out match))

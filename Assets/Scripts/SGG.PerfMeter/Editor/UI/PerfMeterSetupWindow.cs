@@ -1285,15 +1285,15 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			if (asset == null)
 			{
-				return "Invalid preset";
+				return PerfMeterWindowLocalization.Text("Invalid preset");
 			}
 
 			if (!asset.IsValid || asset.Preset == null)
 			{
-				return "Invalid: " + asset.DisplayName;
+				return PerfMeterWindowLocalization.Format("Invalid: {0}", PerfMeterWindowLocalization.Text(asset.DisplayName));
 			}
 
-			return asset.Preset.displayName + " [" + asset.Preset.id + "]";
+			return PerfMeterWindowLocalization.Format("{0} [{1}]", PerfMeterWindowLocalization.Text(asset.Preset.displayName), asset.Preset.id);
 		}
 
 		private void SelectOverlayPresetByLabel(string label)
