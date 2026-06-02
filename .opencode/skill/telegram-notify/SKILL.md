@@ -20,7 +20,7 @@ description: Отправка уведомлений, скриншотов и ф
 Получатели задаются в `Tools/TelegramNotify/.env`.
 
 ```dotenv
-TELEGRAM_RECIPIENT_STINGER=185073278
+TELEGRAM_RECIPIENT_STINGER=CHANGE_ME
 TELEGRAM_DEFAULT_RECIPIENTS=stinger
 ```
 
@@ -34,7 +34,7 @@ python3 Tools/TelegramNotify/telegram_notify.py --message "Unity compile passed"
 
 ```bash
 python3 Tools/TelegramNotify/telegram_notify.py --to stinger --message "Готово"
-python3 Tools/TelegramNotify/telegram_notify.py --to 185073278 --message "Готово"
+python3 Tools/TelegramNotify/telegram_notify.py --to CHANGE_ME --message "Готово"
 ```
 
 ## Скриншот

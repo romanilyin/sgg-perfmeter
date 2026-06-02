@@ -9,7 +9,7 @@
 
 ## 2026.5.20-1
 
-- Prepared the private release candidate for `com.sungeargames.perfmeter` / `SGG PerfMeter`.
+- Prepared the initial package baseline for `com.sungeargames.perfmeter` / `SGG PerfMeter`.
 - Added `PerformanceMeter` runtime API, immutable status/metrics snapshots, collection modes, overlay controls, target FPS, session recording/export, alerts, custom metrics, device/camera snapshots, Render Graph snapshots, overdraw measurement, and heatmap visibility controls.
 - Added `FrameTimingManager` timings and `ProfilerRecorder` counters for render, memory, SRP Batcher, BRG/GRD, index uploads, and GPU memory.
 - Added UI Toolkit overlay modes, CPU/GPU graphs, presets/modules, JSON-tunable presentation, allocation-conscious text refresh, and bounded custom metric rows.

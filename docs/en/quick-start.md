@@ -36,6 +36,14 @@ The default overlay should appear in the selected corner. If it does not:
 - confirm runtime collection mode is `Overlay`;
 - confirm the active URP renderer has `PerfMeterRenderGraphFeature` when testing Render Graph diagnostics or overdraw.
 
+## Done Criteria
+
+You are done when:
+
+- the overlay appears in the selected corner;
+- FPS and CPU timing update at the configured refresh interval;
+- `PerformanceMeter.GetStatus().CollectionMode` reports `Overlay`.
+
 ## Optional Manual Bootstrap
 
 Use code when you want explicit startup control:

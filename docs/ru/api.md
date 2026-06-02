@@ -57,6 +57,14 @@ PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 
 Снимки устройства содержат информацию о Unity, платформе, OS, CPU, GPU, API, дисплее, окне и поддержке возможностей. Снимки камеры содержат scene, transform, projection, clipping, pixel rect, target display и URP camera settings, когда доступно.
 
+## Загрузка CPU-ядер
+
+```csharp
+PerfMeterCpuCoreLoadSnapshot[] cores = PerformanceMeter.GetCpuCoreLoads();
+```
+
+Каждый снимок содержит `CoreIndex`, `LoadPercent` и `Available`. Массив может быть пустым до запуска runtime, во время прогрева sampler или на неподдерживаемых платформах; воспринимайте это как информацию о возможностях платформы, а не как ошибку API.
+
 ## Оверлей
 
 ```csharp

@@ -9,6 +9,8 @@ SGG PerfMeter is currently distributed as a Unity package named `com.sungeargame
 - UI Toolkit runtime support.
 - Frame Timing Stats enabled before relying on FrameTimingManager in builds.
 
+Package metadata keeps Unity `2022.3` as an import-safety floor for import and compile checks. The current supported runtime target is Unity `6000.4+` with URP `17.4+` Render Graph.
+
 ## Git UPM Install
 
 The package lives inside this repository:

@@ -57,6 +57,14 @@ PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 
 Device snapshots include Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots include scene, transform, projection, clipping, pixel rect, target display, and URP camera settings when available.
 
+## CPU Core Loads
+
+```csharp
+PerfMeterCpuCoreLoadSnapshot[] cores = PerformanceMeter.GetCpuCoreLoads();
+```
+
+Each snapshot exposes `CoreIndex`, `LoadPercent`, and `Available`. The array can be empty before runtime startup, during sampler warm-up, or on unsupported platforms; treat that as platform capability information, not as a failed API call.
+
 ## Overlay
 
 ```csharp

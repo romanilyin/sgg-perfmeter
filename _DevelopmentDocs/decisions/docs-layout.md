@@ -3,6 +3,7 @@
 ## Решение
 
 - `docs/en` и `docs/ru` - документация для конечных пользователей.
+- Асимметрия входных страниц умышленная: корневой `README.md` является английской точкой входа, а `docs/ru/README.md` - русской точкой входа. `docs/en/README.md` не нужен.
 - `Assets/Scripts/SGG.PerfMeter/.Documentation` - package-local пользовательская документация для UPM/package consumers.
 - `_DevelopmentDocs` - только внутренние документы разработки.
 - `_DevelopmentDocs/backlog` - будущие задачи и полезные, но нереализованные идеи.

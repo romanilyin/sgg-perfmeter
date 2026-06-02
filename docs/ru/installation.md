@@ -9,6 +9,8 @@ SGG PerfMeter сейчас распространяется как пакет Un
 - Поддержка UI Toolkit в runtime.
 - Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
 
+Метаданные пакета используют Unity `2022.3` как import-safety floor для проверок импорта и компиляции. Актуальная поддерживаемая runtime-версия начинается с Unity `6000.4+` с URP `17.4+` Render Graph.
+
 ## Установка через Git UPM
 
 Пакет находится внутри репозитория:

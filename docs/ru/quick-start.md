@@ -36,6 +36,14 @@ Assets/Resources/SGG.PerfMeter/perfmeter-settings.json
 - проверьте, что режим сбора в runtime равен `Overlay`;
 - проверьте, что активный URP Renderer содержит `PerfMeterRenderGraphFeature`, если тестируется диагностика Render Graph или overdraw.
 
+## Критерии готовности
+
+Настройка завершена, когда:
+
+- оверлей появился в выбранном углу;
+- FPS и CPU timing обновляются с настроенным интервалом;
+- `PerformanceMeter.GetStatus().CollectionMode` возвращает `Overlay`.
+
 ## Опциональный ручной запуск
 
 Используйте код, если нужен явный контроль запуска:
