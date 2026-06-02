@@ -6,7 +6,7 @@
       <trans-unit id="window.title"><source>SGG PerfMeter Setup</source><target>Настройка SGG PerfMeter</target></trans-unit>
       <trans-unit id="tab.setup"><source>Setup</source><target>Настройка</target></trans-unit>
       <trans-unit id="tab.presets"><source>Presets</source><target>Пресеты</target></trans-unit>
-      <trans-unit id="tab.runtime"><source>Runtime</source><target>Среда выполнения</target></trans-unit>
+      <trans-unit id="tab.runtime"><source>Runtime</source><target>Рантайм</target></trans-unit>
       <trans-unit id="tab.debug"><source>Debug</source><target>Отладка</target></trans-unit>
       <trans-unit id="tab.settings"><source>Settings</source><target>Настройки</target></trans-unit>
 
@@ -14,7 +14,7 @@
       <trans-unit id="section.urp_renderer_features"><source>URP Renderer Features</source><target>Функции рендерера URP</target></trans-unit>
       <trans-unit id="section.initialization_code"><source>Initialization Code</source><target>Код инициализации</target></trans-unit>
       <trans-unit id="section.json_settings"><source>JSON Settings and Zero-Code Setup</source><target>Настройки JSON и настройка без кода</target></trans-unit>
-      <trans-unit id="section.runtime_status"><source>Runtime Status</source><target>Статус среды выполнения</target></trans-unit>
+      <trans-unit id="section.runtime_status"><source>Runtime Status</source><target>Статус рантайма</target></trans-unit>
       <trans-unit id="section.collection"><source>Collection</source><target>Сбор данных</target></trans-unit>
       <trans-unit id="section.overlay_visibility"><source>Overlay Visibility</source><target>Видимость оверлея</target></trans-unit>
       <trans-unit id="section.target_fps"><source>Target FPS</source><target>Целевой FPS</target></trans-unit>
@@ -30,8 +30,8 @@
 
       <trans-unit id="info.initialization"><source>Manual bootstrap code remains available for projects that do not want JSON zero-code setup. Use the Presets tab to save project-owned JSON settings that auto-start PerfMeter without writing code.</source><target>Ручной код начальной загрузки остается доступным для проектов, которым не нужна настройка без кода через JSON. На вкладке «Пресеты» можно сохранить принадлежащие проекту настройки JSON, которые автоматически запускают PerfMeter без написания кода.</target></trans-unit>
       <trans-unit id="info.json_settings"><source>Settings are stored as project-owned JSON under Assets/Resources and loaded at runtime through Resources. ScriptableObject settings are intentionally not used.</source><target>Настройки хранятся как принадлежащий проекту JSON в Assets/Resources и загружаются во время выполнения через Resources. Настройки ScriptableObject намеренно не используются.</target></trans-unit>
-      <trans-unit id="info.runtime_play"><source>Runtime controls affect the currently running Play Mode session.</source><target>Элементы управления средой выполнения влияют на текущий сеанс Play Mode.</target></trans-unit>
-      <trans-unit id="info.runtime_edit"><source>Runtime controls are read-only in Edit Mode. Enter Play Mode to test overlay layouts, appearance, visibility, and short overdraw capture.</source><target>В Edit Mode элементы управления средой выполнения доступны только для чтения. Войдите в Play Mode, чтобы протестировать компоновку, внешний вид, видимость оверлея и короткий захват перерисовки.</target></trans-unit>
+      <trans-unit id="info.runtime_play"><source>Runtime controls affect the currently running Play Mode session.</source><target>Элементы управления рантаймом влияют на текущий сеанс Play Mode.</target></trans-unit>
+      <trans-unit id="info.runtime_edit"><source>Runtime controls are read-only in Edit Mode. Enter Play Mode to test overlay layouts, appearance, visibility, and short overdraw capture.</source><target>В Edit Mode элементы управления рантаймом доступны только для чтения. Войдите в Play Mode, чтобы протестировать компоновку, внешний вид, видимость оверлея и короткий захват перерисовки.</target></trans-unit>
       <trans-unit id="info.widget_debug"><source>Lists overlay widgets available from this package plus project custom metric providers. Source shows whether the widget is implemented inside this package or in the Unity project.</source><target>Показывает виджеты оверлея из этого пакета и проектные поставщики пользовательских метрик. Источник показывает, где реализован виджет: внутри этого пакета или в проекте Unity.</target></trans-unit>
       <trans-unit id="info.localization"><source>Language affects only this setup window. Runtime overlay text, generated C# snippets, JSON keys, paths, and logs stay unchanged.</source><target>Язык влияет только на это окно настройки. Текст оверлея во время выполнения, сгенерированные фрагменты C#, ключи JSON, пути и логи остаются без изменений.</target></trans-unit>
 
@@ -98,7 +98,7 @@
       <trans-unit id="button.load_json"><source>Load JSON</source><target>Загрузить JSON</target></trans-unit>
       <trans-unit id="button.save_json"><source>Save JSON</source><target>Сохранить JSON</target></trans-unit>
       <trans-unit id="button.apply_play"><source>Apply In Play Mode</source><target>Применить в Play Mode</target></trans-unit>
-      <trans-unit id="button.ensure_runtime"><source>Ensure Runtime</source><target>Запустить среду выполнения</target></trans-unit>
+      <trans-unit id="button.ensure_runtime"><source>Ensure Runtime</source><target>Запустить рантайм</target></trans-unit>
       <trans-unit id="button.stop_collection"><source>Stop Collection</source><target>Остановить сбор</target></trans-unit>
       <trans-unit id="button.background_mode"><source>Background Mode</source><target>Фоновый режим</target></trans-unit>
       <trans-unit id="button.overlay_collection"><source>Overlay Collection</source><target>Сбор для оверлея</target></trans-unit>
@@ -212,7 +212,7 @@
       <trans-unit id="choice.glass"><source>Glass</source><target>Стекло</target></trans-unit>
       <trans-unit id="choice.cyber"><source>Cyber</source><target>Кибер</target></trans-unit>
       <trans-unit id="choice.high_contrast"><source>High Contrast</source><target>Высокий контраст</target></trans-unit>
-      <trans-unit id="choice.legacy_runtime"><source>Legacy Runtime</source><target>Устаревшая среда выполнения</target></trans-unit>
+      <trans-unit id="choice.legacy_runtime"><source>Legacy Runtime</source><target>Устаревший рантайм</target></trans-unit>
 
       <trans-unit id="module.fps"><source>FPS</source><target>FPS</target></trans-unit>
       <trans-unit id="module.cpu_gpu"><source>CPU/GPU timings</source><target>Тайминги CPU/GPU</target></trans-unit>
@@ -239,11 +239,11 @@
       <trans-unit id="section.visual_preset"><source>Visual preset</source><target>Визуальный пресет</target></trans-unit>
       <trans-unit id="section.layout_style"><source>Layout &amp; style</source><target>Компоновка и стиль</target></trans-unit>
       <trans-unit id="section.widget_composition"><source>Widget composition</source><target>Состав виджетов</target></trans-unit>
-      <trans-unit id="section.runtime_controls"><source>Runtime controls</source><target>Управление средой выполнения</target></trans-unit>
-      <trans-unit id="section.runtime_technical_overrides"><source>Runtime technical overrides</source><target>Технические переопределения среды выполнения</target></trans-unit>
-      <trans-unit id="section.runtime_visual_preset"><source>Runtime visual preset</source><target>Визуальный пресет среды выполнения</target></trans-unit>
+      <trans-unit id="section.runtime_controls"><source>Runtime controls</source><target>Управление рантаймом</target></trans-unit>
+      <trans-unit id="section.runtime_technical_overrides"><source>Runtime technical overrides</source><target>Технические переопределения рантайма</target></trans-unit>
+      <trans-unit id="section.runtime_visual_preset"><source>Runtime visual preset</source><target>Визуальный пресет рантайма</target></trans-unit>
       <trans-unit id="section.diagnostics_actions"><source>Diagnostics / actions</source><target>Диагностика / действия</target></trans-unit>
-      <trans-unit id="info.setup_checklist"><source>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</source><target>Обязательные проверки подключают PerfMeter к данным среды выполнения Unity/URP. Рекомендуемые и опциональные проверки улучшают диагностику, но нужны не каждому проекту.</target></trans-unit>
+      <trans-unit id="info.setup_checklist"><source>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</source><target>Обязательные проверки подключают PerfMeter к данным рантайма Unity/URP. Рекомендуемые и опциональные проверки улучшают диагностику, но нужны не каждому проекту.</target></trans-unit>
       <trans-unit id="info.project_settings_json"><source>Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.</source><target>Технические и проектные настройки хранятся в Resources JSON. Визуальные пресеты оверлея лежат в проекте как JSON-файлы в Assets/SGG PerfMeter/Presets/Overlay и встраиваются в Resources JSON для билдов.</target></trans-unit>
       <trans-unit id="info.work_mode"><source>Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.</source><target>Режим работы управляет запуском PerfMeter и сбором данных. Визуальные пресеты ниже меняют только внешний вид и состав оверлея.</target></trans-unit>
       <trans-unit id="info.widget_composition"><source>Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.</source><target>Здесь показаны только высокоуровневые блоки пресета. Низкоуровневые строки и полосы метрик остаются видимыми на вкладке «Отладка».</target></trans-unit>
@@ -283,14 +283,14 @@
       <trans-unit id="button.reload_presets"><source>Reload presets</source><target>Перезагрузить пресеты</target></trans-unit>
       <trans-unit id="button.edit_presets"><source>Edit presets...</source><target>Редактировать пресеты...</target></trans-unit>
       <trans-unit id="button.apply_project_defaults"><source>Apply project defaults</source><target>Применить значения проекта по умолчанию</target></trans-unit>
-      <trans-unit id="button.reset_runtime_overrides"><source>Reset runtime overrides</source><target>Сбросить переопределения среды выполнения</target></trans-unit>
+      <trans-unit id="button.reset_runtime_overrides"><source>Reset runtime overrides</source><target>Сбросить переопределения рантайма</target></trans-unit>
       <trans-unit id="button.apply_technical_overrides"><source>Apply technical overrides</source><target>Применить технические переопределения</target></trans-unit>
       <trans-unit id="button.save_technical_project"><source>Save technical settings to project</source><target>Сохранить технические настройки в проект</target></trans-unit>
       <trans-unit id="button.reset_project_technical"><source>Reset to project technical settings</source><target>Сбросить к техническим настройкам проекта</target></trans-unit>
       <trans-unit id="button.clear_graph_history"><source>Clear graph history</source><target>Очистить историю графиков</target></trans-unit>
       <trans-unit id="button.reset_alert_counters"><source>Reset alert counters</source><target>Сбросить счетчики предупреждений</target></trans-unit>
-      <trans-unit id="button.dump_runtime_snapshot"><source>Dump runtime snapshot</source><target>Сохранить снимок среды выполнения</target></trans-unit>
-      <trans-unit id="button.copy_runtime_summary"><source>Copy runtime summary</source><target>Скопировать сводку среды выполнения</target></trans-unit>
+      <trans-unit id="button.dump_runtime_snapshot"><source>Dump runtime snapshot</source><target>Сохранить снимок рантайма</target></trans-unit>
+      <trans-unit id="button.copy_runtime_summary"><source>Copy runtime summary</source><target>Скопировать сводку рантайма</target></trans-unit>
 
       <trans-unit id="status.disabled"><source>Disabled</source><target>Выключено</target></trans-unit>
       <trans-unit id="status.not_found"><source>Not found</source><target>Не найдено</target></trans-unit>
@@ -313,7 +313,7 @@
       <trans-unit id="status.inside_packages"><source>Inside Packages; setup will not modify it</source><target>Внутри Packages; настройка не будет его изменять</target></trans-unit>
       <trans-unit id="status.missing_feature_ref"><source>Missing renderer feature reference present</source><target>Обнаружена отсутствующая ссылка на функцию рендерера</target></trans-unit>
       <trans-unit id="status.setup_requires"><source>Setup requires Unity 6000.4+ with URP 17.4+</source><target>Для настройки требуется Unity 6000.4+ с URP 17.4+</target></trans-unit>
-      <trans-unit id="status.scope_text"><source>Only SGG PerfMeter Setup window UI text; runtime output and generated snippets stay unchanged.</source><target>Только UI-текст окна SGG PerfMeter Setup; вывод среды выполнения и сгенерированные фрагменты остаются без изменений.</target></trans-unit>
+      <trans-unit id="status.scope_text"><source>Only SGG PerfMeter Setup window UI text; runtime output and generated snippets stay unchanged.</source><target>Только UI-текст окна SGG PerfMeter Setup; вывод рантайма и сгенерированные фрагменты остаются без изменений.</target></trans-unit>
 
       <trans-unit id="message.compat"><source>Official target: Unity 6000.4+ with URP 17.4+.</source><target>Официальная цель: Unity 6000.4+ с URP 17.4+.</target></trans-unit>
       <trans-unit id="message.unsupported"><source>SGG PerfMeter officially supports Unity 6000.4+ with URP 17.4+. Older Unity/URP versions are import-safe only; runtime Render Graph features are unsupported and bug reports for older versions are not accepted.</source><target>SGG PerfMeter официально поддерживает Unity 6000.4+ с URP 17.4+. Более старые версии Unity/URP безопасны только для импорта; функции Render Graph во время выполнения не поддерживаются, баг-репорты по старым версиям не принимаются.</target></trans-unit>
@@ -326,14 +326,14 @@
       <trans-unit id="message.settings_loaded"><source>Load JSON: settings loaded from project JSON or defaults.</source><target>Загрузка JSON: настройки загружены из проектного JSON или значений по умолчанию.</target></trans-unit>
       <trans-unit id="message.init_copied"><source>Initialization code copied to clipboard.</source><target>Код инициализации скопирован в буфер обмена.</target></trans-unit>
       <trans-unit id="message.language_changed"><source>Language changed. PerfMeter Setup window UI text has been refreshed.</source><target>Язык изменен. UI-текст окна PerfMeter Setup обновлен.</target></trans-unit>
-      <trans-unit id="message.runtime_edit_only"><source>enter Play Mode to use runtime controls.</source><target>войдите в Play Mode, чтобы использовать элементы управления среды выполнения.</target></trans-unit>
+      <trans-unit id="message.runtime_edit_only"><source>enter Play Mode to use runtime controls.</source><target>войдите в Play Mode, чтобы использовать элементы управления рантаймом.</target></trans-unit>
       <trans-unit id="message.done"><source>done.</source><target>готово.</target></trans-unit>
       <trans-unit id="message.warning"><source>Warning</source><target>Предупреждение</target></trans-unit>
       <trans-unit id="message.create_failed"><source>Create Defaults Failed</source><target>Не удалось создать значения по умолчанию</target></trans-unit>
       <trans-unit id="message.save_failed"><source>Save JSON Failed</source><target>Сохранение JSON не удалось</target></trans-unit>
       <trans-unit id="message.apply_failed"><source>Apply Settings Failed</source><target>Применение настроек не удалось</target></trans-unit>
-      <trans-unit id="message.runtime_failed"><source>Ensure Runtime Failed</source><target>Запуск среды выполнения не удался</target></trans-unit>
-      <trans-unit id="message.enter_play_apply"><source>Enter Play Mode to apply PerfMeter settings to the active runtime session.</source><target>Войдите в Play Mode, чтобы применить настройки PerfMeter к активной сессии среды выполнения.</target></trans-unit>
+      <trans-unit id="message.runtime_failed"><source>Ensure Runtime Failed</source><target>Запуск рантайма не удался</target></trans-unit>
+      <trans-unit id="message.enter_play_apply"><source>Enter Play Mode to apply PerfMeter settings to the active runtime session.</source><target>Войдите в Play Mode, чтобы применить настройки PerfMeter к активной сессии рантайма.</target></trans-unit>
       <trans-unit id="message.applied_runtime"><source>PerfMeter JSON settings applied to the active Play Mode session.</source><target>Настройки JSON PerfMeter применены к активному сеансу Play Mode.</target></trans-unit>
       <trans-unit id="message.frame_already"><source>Frame Timing Stats is already enabled.</source><target>Статистика времени кадров уже включена.</target></trans-unit>
       <trans-unit id="message.frame_enabled_action"><source>Frame Timing Stats enabled in Player Settings.</source><target>Статистика времени кадров включена в Player Settings.</target></trans-unit>
