@@ -10,7 +10,8 @@ docs/assets/screenshots/
 
 | Area | Files | Related Doc |
 | --- | --- | --- |
-| Landing and default overlay | `presets/preset-default.png` | [Visual Presets](./presets.md#default) |
+| Landing hero | `presets/preset-default-landing.png` | [README](../../README.md) |
+| Default overlay | `presets/preset-default.png` | [Visual Presets](./presets.md#default) |
 | Visual presets | `presets/preset-*.png` | [Visual Presets](./presets.md) |
 | Setup window, English UI | `setup-window/setup-window-en-*.png` | [Setup Window Screenshots](./setup-window-screenshots.md) |
 | Setup window, Russian UI | `setup-window/setup-window-ru-*.png` | [Russian setup screenshots](../ru/setup-window-screenshots.md) |

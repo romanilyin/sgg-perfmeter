@@ -10,7 +10,8 @@ docs/assets/screenshots/
 
 | Раздел | Файлы | Документ |
 | --- | --- | --- |
-| Лэндинг и оверлей по умолчанию | `presets/preset-default.png` | [Визуальные пресеты](./presets.md#default) |
+| Hero-скриншот лендинга | `presets/preset-default-landing.png` | [README](./README.md) |
+| Оверлей по умолчанию | `presets/preset-default.png` | [Визуальные пресеты](./presets.md#default) |
 | Визуальные пресеты | `presets/preset-*.png` | [Визуальные пресеты](./presets.md) |
 | Окно настройки, английский UI | `setup-window/setup-window-en-*.png` | [Английские скриншоты окна настройки](../en/setup-window-screenshots.md) |
 | Окно настройки, русский UI | `setup-window/setup-window-ru-*.png` | [Скриншоты окна настройки](./setup-window-screenshots.md) |

@@ -35,7 +35,7 @@
 </p>
 
 <p>
-  <a href="./presets.md#default"><img src="../assets/screenshots/presets/preset-default.png" alt="SGG PerfMeter default overlay preset" width="960"></a>
+  <a href="./presets.md#default"><img src="../assets/screenshots/presets/preset-default-landing.png" alt="SGG PerfMeter landing screenshot" width="960"></a>
 </p>
 
 </div>
