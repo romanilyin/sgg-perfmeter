@@ -5,7 +5,15 @@
 **Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.**
 
 [English](./README.md) |
-[Russian](./docs/ru/README.md)
+[Русский](./docs/ru/README.md) |
+[Deutsch](./docs/de/README.md) |
+[Español](./docs/es/README.md) |
+[Français](./docs/fr/README.md) |
+[Italiano](./docs/it/README.md) |
+[日本語](./docs/ja/README.md) |
+[한국어](./docs/ko/README.md) |
+[Português (Brasil)](./docs/pt-br/README.md) |
+[简体中文](./docs/zh-cn/README.md)
 
 —
 
@@ -125,4 +133,4 @@ This package is licensed under **Stinger Royalty-Free EULA 1.0**.
 - Authoritative license text: [LICENSE.ru.md](./LICENSE.ru.md)
 - English convenience translation: [LICENSE.md](./LICENSE.md)
 - Notices: [NOTICE.md](./NOTICE.md) and [NOTICE.ru.md](./NOTICE.ru.md)
-- Brand usage policy: [docs/en/brand.md](./docs/en/brand.md) and [docs/ru/brand.md](./docs/ru/brand.md)
+- Brand usage policy: [English](./docs/en/brand.md), [Russian](./docs/ru/brand.md), [German](./docs/de/brand.md), [Spanish](./docs/es/brand.md), [French](./docs/fr/brand.md), [Italian](./docs/it/brand.md), [Japanese](./docs/ja/brand.md), [Korean](./docs/ko/brand.md), [Brazilian Portuguese](./docs/pt-br/brand.md), and [Simplified Chinese](./docs/zh-cn/brand.md)

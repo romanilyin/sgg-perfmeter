@@ -2,7 +2,7 @@
 
 Visual presets are project JSON files that define overlay layout, style, enabled widgets, and widget order. They are authored in the `Presets` tab of `SGG/Perfmeter/Setup` and baked into Resources JSON for builds, so runtime does not depend on `AssetDatabase`.
 
-The screenshots below are fullscreen captures from the capture-lab scene after 1000 warmup frames. Runtime overlay text is not localized, so English and Russian docs use the same preset images.
+The screenshots below are fullscreen captures from the capture-lab scene after 1000 warmup frames. Runtime overlay text is not localized, so localized docs use the same preset images.
 
 ## Default
 

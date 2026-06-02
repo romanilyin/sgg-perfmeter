@@ -8,7 +8,7 @@ Use the lightest check that matches the change. Unity compile and Test Runner ch
 git diff --check
 ```
 
-Also verify affected links and keep English/Russian docs in sync when both languages are affected.
+Also verify affected links and keep affected localized docs in sync when multiple languages are affected.
 
 ## Runtime Or Editor Code Changes
 

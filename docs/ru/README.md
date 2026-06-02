@@ -5,7 +5,15 @@
 **Легкая runtime-диагностика производительности для Unity 6 URP.**
 
 [English](../../README.md) |
-[Russian](./README.md)
+[Русский](./README.md) |
+[Deutsch](../de/README.md) |
+[Español](../es/README.md) |
+[Français](../fr/README.md) |
+[Italiano](../it/README.md) |
+[日本語](../ja/README.md) |
+[한국어](../ko/README.md) |
+[Português (Brasil)](../pt-br/README.md) |
+[简体中文](../zh-cn/README.md)
 
 —
 
@@ -125,4 +133,4 @@ Unity от `2022.3` до `6000.3` может импортироваться дл
 - Основной текст лицензии: [LICENSE.ru.md](../../LICENSE.ru.md)
 - Английский справочный перевод: [LICENSE.md](../../LICENSE.md)
 - Уведомления: [NOTICE.md](../../NOTICE.md) и [NOTICE.ru.md](../../NOTICE.ru.md)
-- Политика использования бренда: [brand.md](./brand.md), английская версия: [docs/en/brand.md](../en/brand.md)
+- Политика использования бренда: [русская](./brand.md), [английская](../en/brand.md), [немецкая](../de/brand.md), [испанская](../es/brand.md), [французская](../fr/brand.md), [итальянская](../it/brand.md), [японская](../ja/brand.md), [корейская](../ko/brand.md), [бразильская португальская](../pt-br/brand.md), [китайская упрощенная](../zh-cn/brand.md)

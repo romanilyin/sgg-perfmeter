@@ -6,7 +6,7 @@ SGG PerfMeter currently ships 16 high-level runtime overlay widgets. These are t
 
 Most metric groups have both textual and graphical forms. Textual forms are cards or `MetricBars` rows with numeric values, while graphical forms are budget bars or history graphs. The selected preset decides which form is shown; the same metric source can appear in different layouts.
 
-Runtime overlay text is not localized, so English and Russian documentation use the same widget screenshots.
+Runtime overlay text is not localized, so localized docs use the same widget screenshots.
 
 | Widget ID | Screenshot | Kind | Module | Shows |
 | --- | --- | --- | --- | --- |

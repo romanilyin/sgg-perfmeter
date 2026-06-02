@@ -10,6 +10,14 @@ The main user documentation lives in the repository-level GitHub docs:
 
 - English: `../../../README.md`
 - Russian: `../../../docs/ru/README.md`
+- German: `../../../docs/de/README.md`
+- Spanish: `../../../docs/es/README.md`
+- French: `../../../docs/fr/README.md`
+- Italian: `../../../docs/it/README.md`
+- Japanese: `../../../docs/ja/README.md`
+- Korean: `../../../docs/ko/README.md`
+- Brazilian Portuguese: `../../../docs/pt-br/README.md`
+- Simplified Chinese: `../../../docs/zh-cn/README.md`
 - Quick Start: `../../../docs/en/quick-start.md`
 - API: `../../../docs/en/api.md`
 - Comparison: `../../../docs/en/comparison.md`
@@ -79,4 +87,4 @@ This package is licensed under `LicenseRef-Stinger-Royalty-Free-EULA-1.0`.
 
 The authoritative Russian license text is `LICENSE.ru.md`; English convenience text is `LICENSE.md`. Keep `NOTICE.md` and `NOTICE.ru.md` with package distributions.
 
-Brand usage policy: `../../../docs/en/brand.md` and `../../../docs/ru/brand.md`.
+Brand usage policy translations live under `../../../docs/<lang>/brand.md`.
