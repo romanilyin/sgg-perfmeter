@@ -1,10 +1,10 @@
 # SGG PerfMeter
 
-**Runtime performance diagnostics and agent-readable profiling API for Unity 6000+ URP Render Graph projects.**
+**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.**
 
 Package name: `com.sungeargames.perfmeter`
 
-SGG PerfMeter is not just an FPS counter. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, Render Graph diagnostics, and MCP command metadata.
+SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, Render Graph diagnostics, and MCP command metadata.
 
 The main user documentation lives in the repository-level GitHub docs:
 

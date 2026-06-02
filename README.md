@@ -2,7 +2,7 @@
 
 # SGG PerfMeter
 
-**Runtime performance diagnostics and agent-readable profiling API for Unity 6000+ URP Render Graph projects.**
+**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.**
 
 [English](./README.md) |
 [Russian](./docs/ru/README.md)
@@ -40,13 +40,15 @@
 
 </div>
 
-SGG PerfMeter is not just an FPS counter. It is a lightweight runtime diagnostics layer for Unity URP projects that need to understand why a frame is slow, what changed, and how to reproduce the capture.
+SGG PerfMeter - lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.
 
-Unlike familiar FPS overlays, SGG PerfMeter does more than show the current FPS. It helps explain whether a frame is limited by CPU, GPU, render thread, present/VSync, overdraw, or unavailable platform counters, and lets you save that state for later analysis.
+Detect frame bottlenecks, compare performance changes, capture reproducible sessions, and expose structured profiling data to tools and AI agents.
+
+SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, present/VSync, overdraw, or unavailable platform counters, and lets you save that state for later analysis.
 
 ## Why It Helps
 
-- See why a frame is slow while the game is running, not just the current FPS.
+- See frame bottleneck context while the game is running.
 - Switch between visual presets, graphs, metric bars, compact layouts, and custom metric rows for different debugging situations.
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
@@ -105,7 +107,7 @@ Start with [Visual Presets](./docs/en/presets.md), [Setup Window Screenshots](./
 
 Advanced FPS Counter and Graphy are strong general-purpose drop-in visual overlays. SGG PerfMeter intentionally focuses on modern Unity URP diagnostics: structured timing and render counters, bottleneck classification, reproducible sessions, device/camera snapshots, overdraw diagnostics, Render Graph state, and agent-readable automation.
 
-This is a product and architecture comparison, not a measured runtime benchmark. See [Comparison](./docs/en/comparison.md).
+Use [Comparison](./docs/en/comparison.md) as product and architecture context rather than measured runtime benchmark data.
 
 ## Requirements
 

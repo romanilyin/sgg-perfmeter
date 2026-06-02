@@ -14,7 +14,7 @@ Candidate pitch:
 
 ## Что поменять в отдельном README pass
 
-1. Оставить `not just an FPS counter` positioning.
+1. Использовать прямое user-first positioning без `not just` / `Это не ... Это ...` конструкций.
 2. Перенести `agent-readable` и `MCP` из первой строки в отдельный блок `Automation-ready`.
 3. В первом абзаце объяснить user problem: slow frames, bottleneck reason, reproducible capture, export.
 4. Оставить Unity `6000.4+`, URP `17.4+` и Render Graph заметными above the fold.
