@@ -14,18 +14,18 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | --- | --- |
 | `perfmeter.setup.status` | Прочитать статус настройки. |
 | `perfmeter.setup.run` | Запустить действия рекомендованной настройки. |
-| `perfmeter.runtime.status` | Прочитать runtime-статус. |
-| `perfmeter.runtime.ensure` | Запустить runtime при необходимости. |
-| `perfmeter.runtime.stop` | Остановить runtime. |
-| `perfmeter.runtime.reset_stats` | Сбросить rolling stats, счетчики alerts и счетчики активной сессии. |
+| `perfmeter.runtime.status` | Прочитать статус во время выполнения. |
+| `perfmeter.runtime.ensure` | Запустить PerfMeter во время выполнения при необходимости. |
+| `perfmeter.runtime.stop` | Остановить PerfMeter. |
+| `perfmeter.runtime.reset_stats` | Сбросить rolling stats, счетчики alerts/оповещений и счетчики активной сессии. |
 | `perfmeter.runtime.mode.set` | Переключить `Stopped`, `Background`, `Overlay` или `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Прочитать latest metrics, включая пользовательские метрики. |
-| `perfmeter.alerts.latest` | Прочитать активные alerts, счетчики и состояние Editor warnings. |
-| `perfmeter.alerts.clear` | Очистить активные alerts, счетчики и состояние cooldown. |
+| `perfmeter.alerts.latest` | Прочитать активные alerts/оповещения, счетчики и состояние Editor warnings. |
+| `perfmeter.alerts.clear` | Очистить активные alerts/оповещения, счетчики и состояние cooldown. |
 | `perfmeter.device.info` | Прочитать информацию об устройстве, graphics, display, monitor, pipeline и Unity environment. |
 | `perfmeter.camera.snapshot` | Прочитать transform/projection/URP settings камеры. |
 | `perfmeter.rendergraph.snapshot` | Прочитать последнюю наблюдаемую диагностику PerfMeter Render Graph. |
-| `perfmeter.overlay.set` | Показать/скрыть оверлей и задать preset, modules, corner, mode и target FPS. |
+| `perfmeter.overlay.set` | Показать/скрыть оверлей и задать preset, modules, corner, mode и целевой FPS. |
 | `perfmeter.overdraw.start` | Запустить ограниченное измерение overdraw. |
 | `perfmeter.overdraw.cancel` | Отменить активное измерение overdraw. |
 | `perfmeter.overdraw.heatmap.set` | Показать или скрыть визуальную heatmap overdraw. |

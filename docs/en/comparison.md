@@ -12,7 +12,7 @@ SGG PerfMeter is intentionally narrower and more diagnostic: Unity `6000.4+`, UR
 
 | Area | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
-| Primary positioning | 🔵 URP Render Graph diagnostics + agent-readable profiling API | ⚠️ Flexible in-game FPS/memory/device counter | ⚠️ Visual FPS/memory/audio stats monitor + debugger |
+| Primary positioning | 🔵 URP Render Graph diagnostics + automation-ready profiling API | ⚠️ Flexible in-game FPS/memory/device counter | ⚠️ Visual FPS/memory/audio stats monitor + debugger |
 | Unity target | ⚠️ Unity `6000.4+`, URP `17.4+` | 🔵 Broad older Unity support | 🔵 Broad older Unity support |
 | UI backend | 🔵 UI Toolkit overlay | ⚠️ uGUI Canvas/Text labels | ⚠️ uGUI Text/Image modules |
 | Timing source | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Runtime frame/update sampling | ⚠️ `Time.unscaledDeltaTime` history sampling |
@@ -29,7 +29,7 @@ SGG PerfMeter is intentionally narrower and more diagnostic: Unity `6000.4+`, UR
 - Explains likely frame bottlenecks with CPU frame, main thread, render thread, present wait, GPU timing, and frame budget data.
 - Exposes URP-oriented render counters and Render Graph diagnostics.
 - Produces reproducible performance reports with scene, device, camera, settings, session samples, summaries, and worst-frame metadata.
-- Gives tools and agents structured data through public API and MCP commands.
+- Gives tools and automation structured data through public API and MCP commands.
 - Integrates bounded overdraw measurement and a visual heatmap as explicit diagnostics.
 
 ## What Competitors Still Do Better

@@ -1,6 +1,6 @@
 # Сравнение с Advanced FPS Counter и Graphy
 
-Это сравнение продукта и архитектуры, а не измеренный runtime-бенчмарк.
+Это сравнение продукта и архитектуры, а не измеренный бенчмарк во время выполнения.
 
 ## Коротко
 
@@ -12,10 +12,10 @@ SGG PerfMeter намеренно уже и диагностичнее: Unity `60
 
 | Область | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
-| Основное позиционирование | 🔵 Диагностика URP Render Graph + API профилирования, понятный агентам | ⚠️ Гибкий игровой счетчик FPS/memory/device | ⚠️ Визуальный монитор FPS/memory/audio stats + debugger |
+| Основное позиционирование | 🔵 Диагностика URP Render Graph + API профилирования для автоматизации | ⚠️ Гибкий игровой счетчик FPS/memory/device | ⚠️ Визуальный монитор FPS/memory/audio stats + debugger |
 | Цель Unity | ⚠️ Unity `6000.4+`, URP `17.4+` | 🔵 Широкая поддержка старых версий Unity | 🔵 Широкая поддержка старых версий Unity |
 | UI backend | 🔵 Оверлей UI Toolkit | ⚠️ Метки uGUI Canvas/Text | ⚠️ Модули uGUI Text/Image |
-| Источник таймингов | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Runtime sampling frame/update | ⚠️ История на `Time.unscaledDeltaTime` |
+| Источник таймингов | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Sampling frame/update во время выполнения | ⚠️ История на `Time.unscaledDeltaTime` |
 | Разделение CPU/GPU | 🔵 CPU frame, main thread, render thread, present wait, GPU когда доступно | 🛑 Нет аналогичного разделения | 🛑 Нет аналогичного разделения |
 | Классификация узких мест | 🔵 GPU, CPU main, CPU render, present-limited, balanced, unknown | 🛑 Нет аналога | 🛑 Нет аналога |
 | Счетчики рендера | 🔵 Draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory | 🛑 Нет набора счетчиков URP/SRP | 🛑 Нет набора счетчиков URP/SRP |
@@ -29,7 +29,7 @@ SGG PerfMeter намеренно уже и диагностичнее: Unity `60
 - Объясняет вероятные узкие места через CPU frame, main thread, render thread, present wait, GPU timing и данные бюджета кадра.
 - Показывает счетчики рендера, ориентированные на URP, и диагностику Render Graph.
 - Создает воспроизводимые отчеты производительности со сценой, устройством, камерой, настройками, сэмплами сессии, сводками и метаданными худших кадров.
-- Дает инструментам и агентам структурированные данные через публичный API и команды MCP.
+- Дает инструментам и автоматизации структурированные данные через публичный API и команды MCP.
 - Включает ограниченное измерение overdraw и визуальную heatmap как явную диагностику.
 
 ## Что конкуренты все еще делают лучше

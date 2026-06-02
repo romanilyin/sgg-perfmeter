@@ -14,7 +14,7 @@ docs/assets/screenshots/
 | Визуальные пресеты | `presets/preset-*.png` | [Визуальные пресеты](./presets.md) |
 | Окно настройки, английский UI | `setup-window/setup-window-en-*.png` | [Английские скриншоты окна настройки](../en/setup-window-screenshots.md) |
 | Окно настройки, русский UI | `setup-window/setup-window-ru-*.png` | [Скриншоты окна настройки](./setup-window-screenshots.md) |
-| Runtime-виджеты | `widgets/*.png` | [Реализованные виджеты](./widgets.md) |
+| Виджеты оверлея | `widgets/*.png` | [Реализованные виджеты](./widgets.md) |
 
 ## Галереи
 

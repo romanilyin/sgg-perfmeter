@@ -39,7 +39,7 @@ PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
 
 Экспорт сессии включает тайминги, FPS lows, spikes, счетчики узких мест, счетчики рендера, счетчики памяти, состояние overdraw, доступность предупреждений/счетчиков, сводки сцен, худшие кадры, метаданные устройства, камеры и настроек, а также пользовательские метрики.
 
-## Alerts
+## Alerts/оповещения
 
 Правила могут сообщать о нарушениях бюджета кадра, низком FPS, недоступном GPU timing и превышении порогов overdraw.
 
@@ -48,7 +48,7 @@ PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
-Editor warnings ограничены паузой между срабатываниями и могут быть отключены через JSON-настройки или runtime-контролы.
+Editor warnings ограничены паузой между срабатываниями и могут быть отключены через JSON-настройки или контролы во время выполнения.
 
 ## Диагностика overdraw
 

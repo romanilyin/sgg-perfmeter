@@ -8,7 +8,7 @@
 - Проверьте, что режим сбора равен `Overlay`, а не `Background` или `Stopped`.
 - Если используется настройка без кода, проверьте файл `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`.
 - Если используется ручной запуск, проверьте вызов `PerformanceMeter.EnsureRunning()` после загрузки сцены.
-- Войдите в Play Mode; Edit Mode API-вызовы безопасны, но не создают runtime-оверлей.
+- Войдите в Play Mode; Edit Mode API-вызовы безопасны, но не создают оверлей во время выполнения.
 
 ## Нет Frame Timing или GPU Timing
 
@@ -32,11 +32,11 @@
 - Держите `MaxSamples` ограниченным для долгих прогонов.
 - Используйте кадры/секунды warm-up, чтобы startup spikes не попадали в summary.
 
-## Alerts слишком шумные
+## Alerts/оповещения слишком шумные
 
 - Настройте thresholds и окна последовательных кадров в JSON-настройках.
 - Увеличьте паузы между Editor warnings.
-- Отключите логи Editor warnings, если достаточно callbacks или структурированных логов.
+- Отключите логи Editor warnings, если callback-и или структурированные логи достаточны.
 
 ## Данные Отличаются Между Устройствами
 

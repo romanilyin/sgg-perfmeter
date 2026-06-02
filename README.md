@@ -93,7 +93,7 @@ For the full setup guide, see [Installation](./docs/en/installation.md) and [Qui
 - **Runtime API**: call `PerformanceMeter.EnsureRunning()`, then read immutable status, metrics, device, camera, and session snapshots.
 - **Session export**: record bounded profiling windows and export JSON/CSV with scene, device, camera, settings, counters, warnings, and worst-frame metadata.
 - **Overdraw diagnostics**: request a bounded numerical measurement or enable the visual heatmap when the URP renderer feature is installed.
-- **Agent automation**: use MCP command metadata to start collection, switch overlay modes, export sessions, inspect alerts, and read snapshots.
+- **MCP automation**: use MCP command metadata to start collection, switch overlay modes, export sessions, inspect alerts, and read snapshots.
 
 See [Workflows](./docs/en/workflows.md), [API](./docs/en/api.md), and [MCP](./docs/en/mcp.md).
 
@@ -105,7 +105,7 @@ Start with [Visual Presets](./docs/en/presets.md), [Setup Window Screenshots](./
 
 ## Compared With FPS Counters
 
-Advanced FPS Counter and Graphy are strong general-purpose drop-in visual overlays. SGG PerfMeter intentionally focuses on modern Unity URP diagnostics: structured timing and render counters, bottleneck classification, reproducible sessions, device/camera snapshots, overdraw diagnostics, Render Graph state, and agent-readable automation.
+Advanced FPS Counter and Graphy are strong general-purpose drop-in visual overlays. SGG PerfMeter intentionally focuses on modern Unity URP diagnostics: structured timing and render counters, bottleneck classification, reproducible sessions, device/camera snapshots, overdraw diagnostics, Render Graph state, and MCP/API automation.
 
 Use [Comparison](./docs/en/comparison.md) as product and architecture context rather than measured runtime benchmark data.
 
@@ -116,7 +116,7 @@ Use [Comparison](./docs/en/comparison.md) as product and architecture context ra
 - Frame Timing Stats enabled before relying on FrameTimingManager in builds.
 - Vulkan is preferred on Android when GPU timing matters.
 
-Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`.
+Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`. Some features may not work in versions before `6000.4`.
 
 ## License
 

@@ -6,7 +6,7 @@
 using SGG.PerfMeter;
 ```
 
-Все API чтения безопасны до запуска runtime. Чтение возвращает снимки остановленного состояния или значения по умолчанию, а не исключение из-за неактивного runtime.
+Все API чтения безопасны до запуска PerfMeter во время выполнения. Чтение возвращает снимки остановленного состояния или значения по умолчанию, а не исключение из-за неактивного состояния во время выполнения.
 
 ## Жизненный цикл
 
@@ -63,7 +63,7 @@ PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 PerfMeterCpuCoreLoadSnapshot[] cores = PerformanceMeter.GetCpuCoreLoads();
 ```
 
-Каждый снимок содержит `CoreIndex`, `LoadPercent` и `Available`. Массив может быть пустым до запуска runtime, во время прогрева sampler или на неподдерживаемых платформах; воспринимайте это как информацию о возможностях платформы, а не как ошибку API.
+Каждый снимок содержит `CoreIndex`, `LoadPercent` и `Available`. Массив может быть пустым до запуска PerfMeter во время выполнения, во время прогрева sampler или на неподдерживаемых платформах; воспринимайте это как информацию о возможностях платформы, а не как ошибку API.
 
 ## Оверлей
 
@@ -96,7 +96,7 @@ PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
 
 Опции сессии включают кадры/секунды warm-up, интервал сэмплов, максимальное количество сэмплов, reset-on-scene-load и окна игнорирования после загрузки сцены.
 
-## Alerts
+## Alerts/оповещения
 
 ```csharp
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
