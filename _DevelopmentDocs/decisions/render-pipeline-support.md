@@ -4,7 +4,7 @@
 
 - Current release target: Unity `6000.4+` with URP `17.4+` Render Graph.
 - Built-in Render Pipeline не поддерживаем и не планируем.
-- HDRP в планах, но не реализован в текущем private release candidate.
+- HDRP в планах, но не реализован в текущем release candidate.
 - Core package не должен жестко тянуть URP или HDRP dependency.
 - Pipeline-specific integration должна жить в optional adapter assemblies.
 

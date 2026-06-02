@@ -12,7 +12,7 @@
 
 ## PerfMeter Checklist
 
-- [ ] Runtime profiler changes follow `_DevelopmentDocs/perfmeter_theory.md`.
+- [ ] Runtime profiler changes follow `AGENTS.md` and relevant `_DevelopmentDocs/decisions/` notes.
 - [ ] User-facing package docs are updated in English and Russian when behavior changes.
 - [ ] Unity-generated noise is not included unless intentionally changed.
 - [ ] New files under `Assets/` include matching `.meta` files.

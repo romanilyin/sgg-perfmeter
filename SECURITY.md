@@ -6,7 +6,7 @@ SGG PerfMeter is a local Unity profiling package. It is not a network service an
 
 Report suspected vulnerabilities privately. Do not open a public issue or discussion with exploit details, private project paths, device logs, tokens, package credentials, or customer/project information.
 
-Use GitHub private vulnerability reporting or a private GitHub security advisory for `romanilyin/sgg-perfmeter` when available. If that route is unavailable while the repository is private, contact the repository owner `@romanilyin` privately and include enough detail to reproduce the issue.
+Use GitHub private vulnerability reporting or a private GitHub security advisory for `romanilyin/sgg-perfmeter` when available. If that route is unavailable, contact the repository owner `@romanilyin` privately and include enough detail to reproduce the issue.
 
 Please include:
 

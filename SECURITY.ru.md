@@ -6,7 +6,7 @@ SGG PerfMeter - локальный Unity profiling package. Он не являе
 
 Сообщайте о предполагаемых уязвимостях приватно. Не открывайте публичные issues или discussions с exploit details, private project paths, device logs, tokens, package credentials или customer/project information.
 
-Используйте GitHub private vulnerability reporting или private GitHub security advisory для `romanilyin/sgg-perfmeter`, когда это доступно. Если этот способ недоступен, пока репозиторий приватный, свяжитесь с владельцем `@romanilyin` приватно и приложите достаточно деталей для воспроизведения.
+Используйте GitHub private vulnerability reporting или private GitHub security advisory для `romanilyin/sgg-perfmeter`, когда это доступно. Если этот способ недоступен, свяжитесь с владельцем `@romanilyin` приватно и приложите достаточно деталей для воспроизведения.
 
 Укажите:
 

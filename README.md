@@ -78,7 +78,7 @@ Unlike familiar FPS overlays, SGG PerfMeter does more than show the current FPS.
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
   }
 }
 ```

@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## 2026.6.5-1
 
+- Prepared the first public release for GitHub/Git UPM distribution.
 - Replaced Unity 6000.4+ camera snapshot runtime IDs with `CameraEntityId` / MCP `camera_entity_id` based on `Object.GetEntityId()` while keeping `CameraInstanceId` fallback for older Unity versions.
 - Updated the UI Toolkit overlay scale path to `VisualElement.style.scale` to avoid Unity 6000.4 obsolete API warnings.
+- Cleaned internal development documentation and moved public-facing documentation to repository docs.
+- Updated package-local documentation to minimal GitHub documentation links.
 
 ## 2026.5.20-1
 
@@ -23,4 +26,4 @@
 - Added custom metric providers for project-specific counters with session JSON export, MCP latest-metrics output, and bounded overlay rows behind the `CustomMetrics` module.
 - Added Package Manager samples for bootstrap/zero-code settings, runtime workflows, editor automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
 - Added EditMode API/classifier/session/export/MCP/overlay/package-samples tests, PlayMode runtime smoke tests, Android S23 Vulkan smoke validation, and Android OpenGLES3 degraded-mode validation.
-- Added release-readiness documentation, package metadata URLs, package-local README/CHANGELOG, security policy, contributing policy, CODEOWNERS, PR template, issue routing, manual-only release workflow, and marketing/positioning docs.
+- Added package metadata URLs, package-local README/CHANGELOG, security policy, contributing policy, CODEOWNERS, PR template, issue routing, and repository release metadata.

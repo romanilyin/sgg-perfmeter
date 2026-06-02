@@ -36,12 +36,12 @@ Example `Packages/manifest.json` entry:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
   }
 }
 ```
 
-NPM distribution is not documented as a current install path yet.
+An npm install path is not available for the `2026.6.5-1` release.
 
 ## Quick Start
 

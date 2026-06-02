@@ -1,52 +1,66 @@
 # AGENTS.md
 
-## Project Snapshot
-- Unity project, not a standalone .NET/npm repo; project version is Unity `6000.4.7f1` with URP `17.4.0`.
-- Current Android validation uses Unity `6000.4.7f1` with Android Build Support.
-- Main build scene is `Assets/Scenes/SampleScene.unity`.
-- Read `_DevelopmentDocs/perfmeter_theory.md` before implementing profiler features; it is the current product/architecture spec.
-- Chat with the user in Russian.
+## Repository Snapshot
 
-## Package Layout
-- Profiler package is `Assets/Scripts/SGG.PerfMeter/` with populated `Runtime/`, `Editor/`, `Tests/`, and bilingual `.Documentation/` directories.
-- `Assets/TutorialInfo/` and `Assets/Readme.asset` are Unity template/readme assets, not profiler code.
-- `Assets/Scripts/SGG.PerfMeter/package.json` is `com.sungeargames.perfmeter` / `SGG PerfMeter`.
+- This is a Unity project that contains the Git UPM package `com.sungeargames.perfmeter`.
+- It is not a standalone .NET or npm repository; there are no repo-local build/test scripts.
+- Unity project version: `6000.4.7f1`.
+- Package path: `Assets/Scripts/SGG.PerfMeter/`.
+- Main validation scene: `Assets/Scenes/SampleScene.unity`.
+- First public release version: `2026.6.5-1`; the tag is created only during release.
+- npm publishing is deferred and is not part of `2026.6.5-1`.
 
-## Documentation
-- User-facing documentation lives in `Assets/Scripts/SGG.PerfMeter/.Documentation/` and must be maintained in both Russian and English.
-- Development/spec documentation lives in `_DevelopmentDocs/`; read it before changing profiler architecture.
+## Supported Scope
 
-## Unity/URP Settings
-- Active pipeline is `Assets/Settings/PC_RPAsset.asset`; Quality maps Standalone to `PC` and Android/iOS to `Mobile`.
-- `PC_RPAsset` uses `PC_Renderer`, Forward+ (`m_RenderingMode: 2`), SSAO enabled, and requires depth plus opaque textures.
-- `Mobile_RPAsset` uses `Mobile_Renderer`, Forward (`m_RenderingMode: 0`), no renderer features, render scale `0.8`, and no depth/opaque texture.
-- Both URP assets have SRP Batcher on, Dynamic Batching off, GPU Resident Drawer off, and Native Render Pass on.
-- `ProjectSettings/ProjectSettings.asset` has `enableFrameTimingStats: 1`; keep Frame Timing Stats enabled before relying on `FrameTimingManager` in builds.
-- Android graphics APIs are explicit (`m_Automatic: 0`) with Vulkan before OpenGLES3; GPU timing can differ or be unavailable on GLES.
-
-## Commands
-- There are no repo-local build/test/lint scripts; validation normally requires the Unity editor/batchmode for this project. The previous manual release-readiness workflow is disabled while docs/release gates are being reorganized.
-- Release-readiness docs are under `_DevelopmentDocs/release-readiness/`; the current private release candidate is `2026.5.20-1`, and public release remains deferred.
-- Reliable local compile check: `<Unity> -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter-local -logFile C:\Work\Unity\sgg-perfmeter-local\Logs\opencode-compile.log`.
-- Reliable local Test Runner checks: `<Unity> -batchmode -projectPath C:\Work\Unity\sgg-perfmeter -runTests -testPlatform EditMode -testResults C:\Work\Unity\sgg-perfmeter\Logs\editmode-results.xml -logFile C:\Work\Unity\sgg-perfmeter\Logs\editmode.log` and the same command with `-testPlatform PlayMode`.
-- Do not combine Unity `-runTests` with `-quit`; Unity exits by itself after tests and writes XML only without `-quit` in this setup.
-- Android smoke build check: `Unity.exe -batchmode -quit -projectPath C:\Work\Unity\sgg-perfmeter -executeMethod PerfMeterAndroidBuild.BuildDevelopmentApk -logFile C:\Work\Unity\sgg-perfmeter\Logs\opencode-android-s23-build.log`.
-- Android GLES fallback build check: add `-perfMeterAndroidGraphics gles3 -perfMeterAndroidApk Builds/Android/SGGPerfMeter-S23-gles-dev.apk` to the Android smoke build command.
-- Android validation SDK is `C:/Work/SDK/AndroidSDK`; Unity `6000.4.7f1` requires NDK `27.2.12479018`.
-- Do not edit generated `*.csproj`, `*.sln`, or `*.slnx` as source; `.gitignore` excludes them.
-
-## Style And Assets
-- `.editorconfig` sets C# tabs width 4, CRLF, no final newline, block-scoped namespaces, explicit types preferred over `var`, and private/internal fields as `_camelCase`.
-- Unity serialization is Force Text; keep `.meta` files with asset and folder changes.
-- Avoid touching generated/ignored Unity state: `Library/`, `Logs/`, `UserSettings/`, `Build*/`, `Temp/`, and `Obj/`.
-
-## Profiler Constraints
+- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph.
+- Built-in Render Pipeline is unsupported and not planned.
+- HDRP support is planned but not implemented in the current release.
 - Prefer `FrameTimingManager` and zero-allocation `ProfilerRecorder` collection; do not base profiler timing on `Time.deltaTime`.
-- Runtime snapshots expose render, SRP Batcher, BRG/GRD, index upload, memory, timing, and overdraw counters; use `AvailableCounters` / `UnavailableCounters` when a platform lacks a recorder.
-- Avoid uGUI/IMGUI runtime overlays for this profiler; the theory doc calls for low-overhead UI Toolkit plus Render Graph integration.
-- For URP 17.4 renderer features, implement Render Graph paths (`RecordRenderGraph`/`AddRasterRenderPass`) instead of assuming legacy-only render passes.
-- Overdraw measurement is opt-in and uses `PerfMeterRenderGraphFeature`, hidden replacement shader `Hidden/SGG/PerfMeter/OverdrawCounter`, fragment atomic counter, and `AsyncGPUReadback`; visual heatmap uses `Hidden/SGG/PerfMeter/OverdrawHeatmap` as a separate additive Render Graph pass.
+- Runtime overlay work should stay on UI Toolkit, not uGUI or IMGUI.
+- URP render integration should use Render Graph paths such as `RecordRenderGraph` / `AddRasterRenderPass`.
 
-## User Notifications
-- Use `python3 Tools/TelegramNotify/telegram_notify.py --message "Perf: ..."` after each committed iteration or when user attention is required.
-- Do not commit `Tools/TelegramNotify/.env`.
+## Documentation Map
+
+- User documentation: `docs/en/` and `docs/ru/`.
+- Package-local `.Documentation/` files are intentionally minimal link entry points to GitHub docs.
+- Development docs: `_DevelopmentDocs/README.md`, `_DevelopmentDocs/decisions/`, `_DevelopmentDocs/backlog/`, `_DevelopmentDocs/release/`.
+- Release checklist: `_DevelopmentDocs/release/2026.6.5-1-public-release-checklist.md`.
+- Internal local workflow notes: `_DevelopmentDocs/agents/internal-agent-notes.md`.
+
+## Package Work
+
+- Source code lives under `Assets/Scripts/SGG.PerfMeter/Runtime/`, `Editor/`, and `Tests/`.
+- Package samples live under `Assets/Scripts/SGG.PerfMeter/Samples~/`.
+- Do not edit generated `*.csproj`, `*.sln`, or `*.slnx` files as source.
+- Keep `.meta` files with any Unity asset or folder changes.
+- Avoid committing generated or local state: `Library/`, `Logs/`, `UserSettings/`, `Build*/`, `Temp/`, and `Obj/`.
+- Do not commit secrets, `.env` files, device dumps, local APKs, or private logs.
+
+## Validation
+
+Use an installed Unity editor for compile and tests. Replace `<Unity>` with the local Unity executable path.
+
+Compile check:
+
+```bash
+<Unity> -batchmode -quit -projectPath "<repo>" -logFile "<repo>/Logs/compile.log"
+```
+
+EditMode and PlayMode tests must run without `-quit`:
+
+```bash
+<Unity> -batchmode -projectPath "<repo>" -runTests -testPlatform EditMode -testResults "<repo>/Logs/editmode-results.xml" -logFile "<repo>/Logs/editmode.log"
+<Unity> -batchmode -projectPath "<repo>" -runTests -testPlatform PlayMode -testResults "<repo>/Logs/playmode-results.xml" -logFile "<repo>/Logs/playmode.log"
+```
+
+For docs-only changes, run at minimum:
+
+```bash
+git diff --check
+```
+
+## Pull Requests
+
+- Changes to `main` should go through a pull request after branch protection is enabled.
+- Keep PRs focused and update tests plus user docs when runtime behavior changes.
+- User-facing docs must not include internal `_DevelopmentDocs` workflow details.

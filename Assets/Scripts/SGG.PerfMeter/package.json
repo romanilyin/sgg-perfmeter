@@ -1,6 +1,6 @@
 {
   "name": "com.sungeargames.perfmeter",
-  "version": "2026.5.20-1",
+  "version": "2026.6.5-1",
   "displayName": "SGG PerfMeter",
   "description": "Runtime performance diagnostics layer and agent-readable profiling API for Unity 6000.4+ URP 17.4 Render Graph projects. Older Unity versions are import-safe only and are not officially supported.",
   "unity": "2022.3",

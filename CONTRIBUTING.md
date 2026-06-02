@@ -2,7 +2,7 @@
 
 Russian localization: `CONTRIBUTING.ru.md`.
 
-Read `AGENTS.md` and `_DevelopmentDocs/perfmeter_theory.md` before changing profiler behavior or architecture.
+Read `AGENTS.md` before making repository changes. For profiler behavior or architecture changes, also check `_DevelopmentDocs/decisions/` and the relevant `_DevelopmentDocs/backlog/` notes.
 
 ## Pull Requests
 
@@ -37,7 +37,7 @@ feature/render-graph-analytics
 fix/overdraw-readback-session
 docs/readme-screenshots
 l10n/russian-docs
-release/2026-5-20-1
+release/2026-6-5-1
 ```
 
 Rules:

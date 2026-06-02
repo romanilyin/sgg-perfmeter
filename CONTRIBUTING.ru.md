@@ -2,7 +2,7 @@
 
 Английская версия: `CONTRIBUTING.md`.
 
-Перед изменением поведения или архитектуры профайлера прочитайте `AGENTS.md` и `_DevelopmentDocs/perfmeter_theory.md`.
+Перед изменениями в репозитории прочитайте `AGENTS.md`. Для изменений поведения или архитектуры профайлера также проверьте `_DevelopmentDocs/decisions/` и релевантные заметки в `_DevelopmentDocs/backlog/`.
 
 ## Pull Requests
 
@@ -39,7 +39,7 @@ feature/render-graph-analytics
 fix/overdraw-readback-session
 docs/readme-screenshots
 l10n/russian-docs
-release/2026-5-20-1
+release/2026-6-5-1
 ```
 
 Правила:

@@ -7,7 +7,7 @@ Assets/Scripts/SGG.PerfMeter/Tests/** @romanilyin
 Assets/Scripts/SGG.PerfMeter/package.json @romanilyin
 Assets/Scripts/SGG.PerfMeter/CHANGELOG.md @romanilyin
 docs/** @romanilyin
-_Docs/** @romanilyin
+_DevelopmentDocs/** @romanilyin
 LICENSE* @romanilyin
 NOTICE* @romanilyin
 SECURITY* @romanilyin

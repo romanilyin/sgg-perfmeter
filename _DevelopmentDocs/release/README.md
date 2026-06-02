@@ -1,15 +1,21 @@
 # Release Notes For Developers
 
-Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация, registry release и GitHub Release не выполняются без отдельного подтверждения владельца.
+Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация и GitHub Release выполняются только в запланированный release pass.
 
 ## Current Candidate
 
-- Version: `2026.5.20-1`
+- Private candidate: `2026.5.20-1`
+- Planned first public release: `2026.6.5-1`
+- GitHub Release type: normal release
+- npm publish: deferred, not part of `2026.6.5-1`
 - Package: `com.sungeargames.perfmeter`
 - Unity validation target: `6000.4.7f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+`
-- Public release: deferred
+- Public release work date: 2026-06-04
+- Public announcement date: 2026-06-05
 - GitHub Actions release workflow: disabled
+
+Planned public release checklist: `_DevelopmentDocs/release/2026.6.5-1-public-release-checklist.md`.
 
 ## Local Gates
 

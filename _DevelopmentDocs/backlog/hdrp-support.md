@@ -2,7 +2,7 @@
 
 Статус: planned, не реализовано.
 
-Текущий private release candidate поддерживает Unity `6000.4+` с URP `17.4+` Render Graph integration. HDRP-поддержка в коде отсутствует: нет `UnityEngine.Rendering.HighDefinition`, `HDAdditionalCameraData`, HDRP `CustomPass`, HDRP shaders или HDRP asmdef.
+Текущий release candidate поддерживает Unity `6000.4+` с URP `17.4+` Render Graph integration. HDRP-поддержка в коде отсутствует: нет `UnityEngine.Rendering.HighDefinition`, `HDAdditionalCameraData`, HDRP `CustomPass`, HDRP shaders или HDRP asmdef.
 
 ## Текущее состояние
 

@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 2026.6.5-1
 
+- Prepared the first public release for GitHub/Git UPM distribution.
 - Replaced Unity 6000.4+ camera snapshot runtime IDs with `CameraEntityId` / MCP `camera_entity_id` based on `Object.GetEntityId()` while keeping `CameraInstanceId` fallback for older Unity versions.
 - Updated the UI Toolkit overlay scale path to `VisualElement.style.scale` to avoid Unity 6000.4 obsolete API warnings.
+- Updated package-local documentation to minimal GitHub documentation links.
 
 ## 2026.5.20-1
 
@@ -16,4 +18,4 @@
 - Added device/environment snapshots, camera snapshots, session recorder JSON/CSV export, rule alerts, custom metric providers, and MCP commands for agent-driven workflows.
 - Added Package Manager samples for bootstrap/zero-code settings, runtime workflows, editor automation, MCP command examples, session export, alerts, overdraw/heatmap, and camera snapshot replay.
 - Added EditMode and PlayMode tests plus Android Vulkan/GLES smoke-validation helpers.
-- Added package documentation, package metadata URLs, license/notice files, release-readiness docs, and marketing/positioning docs.
+- Added package documentation, package metadata URLs, license/notice files, and repository release metadata.
