@@ -58,4 +58,4 @@ For docs/metadata-only changes, at minimum run:
 git diff --check
 ```
 
-Keep user-facing documentation synchronized in English and Russian under `docs/en` and `docs/ru` when a change affects both audiences.
+Keep affected localized user-facing documentation synchronized when a change affects multiple audiences.

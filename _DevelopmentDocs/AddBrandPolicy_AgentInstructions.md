@@ -11,8 +11,7 @@ Do not describe these names as registered trademarks unless a registered tradema
 Public-facing documentation:
 
 ```text
-docs/en/brand.md
-docs/ru/brand.md
+docs/<lang>/brand.md
 ```
 
 Internal templates and maintenance notes:
@@ -30,13 +29,13 @@ The reminder files are internal templates for comments, issues, or messages to p
 Keep brand policy links out of the top README navigation. Link them near the license sections instead:
 
 ```md
-- Brand usage policy: [docs/en/brand.md](./docs/en/brand.md) and [docs/ru/brand.md](./docs/ru/brand.md)
+- Brand usage policy: [English](./docs/en/brand.md), [Russian](./docs/ru/brand.md), and other localized `docs/<lang>/brand.md` files
 ```
 
 For Russian docs:
 
 ```md
-- Политика использования бренда: [docs/ru/brand.md](./brand.md), английская версия: [docs/en/brand.md](../en/brand.md)
+- Политика использования бренда: [русская](./brand.md), [английская](../en/brand.md) и другие локализованные `docs/<lang>/brand.md`
 ```
 
 ## License Check
@@ -54,5 +53,5 @@ Do not replace the license with a different license. Only add a missing brand-ri
 - Do not forbid truthful attribution such as "Based on software by SunGear Games".
 - Do not claim exclusive rights to the generic name `PerfMeter` by itself.
 - Do not over-expand the policy into a broad derivative-products policy. The point is brand confusion, not banning normal use under the repository license.
-- Keep public policy files in `docs/en` and `docs/ru`.
+- Keep public policy files in localized `docs/<lang>` folders.
 - Keep friendly reminder templates in `_DevelopmentDocs`, not in public docs navigation.

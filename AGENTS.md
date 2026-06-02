@@ -21,7 +21,7 @@
 
 ## Documentation Map
 
-- User documentation: `docs/en/` and `docs/ru/`.
+- User documentation: root `README.md` plus localized docs under `docs/en/`, `docs/ru/`, `docs/de/`, `docs/es/`, `docs/fr/`, `docs/it/`, `docs/ja/`, `docs/ko/`, `docs/pt-br/`, and `docs/zh-cn/`.
 - Package-local `.Documentation/` files are intentionally minimal link entry points to GitHub docs.
 - Development docs: `_DevelopmentDocs/README.md`, `_DevelopmentDocs/decisions/`, `_DevelopmentDocs/backlog/`, `_DevelopmentDocs/release/`.
 - Release checklist: `_DevelopmentDocs/release/2026.6.5-1-public-release-checklist.md`.

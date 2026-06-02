@@ -5,7 +5,8 @@ SGG PerfMeter is designed as a low-overhead runtime diagnostics layer, not a dee
 ## Platform And Pipeline Scope
 
 - Supported runtime target: Unity `6000.4+` with URP `17.4+` and Render Graph path.
-- Built-in Render Pipeline and HDRP are not first-class targets.
+- Built-in Render Pipeline is unsupported and not planned.
+- HDRP support is planned for future work, but it is not implemented in `2026.6.5-1`.
 - Unity `2022.3` through `6000.3` may import for compile-safety, but runtime behavior and support target Unity `6000.4+`.
 
 ## Timing Availability

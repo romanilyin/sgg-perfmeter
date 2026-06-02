@@ -18,7 +18,7 @@ These notes keep the detailed local workflow that used to live in the root `AGEN
 
 ## Documentation
 
-- User-facing documentation lives in `docs/en/` and `docs/ru/`.
+- User-facing documentation lives in root `README.md` and localized `docs/<lang>/` folders.
 - Package-local `.Documentation/` is intentionally minimal and should link to GitHub docs instead of duplicating them.
 - Development documentation lives in `_DevelopmentDocs/`; keep it internal to backlog, decisions, release planning, and local agent notes.
 - Release planning lives in `_DevelopmentDocs/release/`; first public release checklist is `_DevelopmentDocs/release/2026.6.5-1-public-release-checklist.md`.

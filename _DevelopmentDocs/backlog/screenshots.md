@@ -11,4 +11,4 @@
 
 ## User Docs Boundary
 
-User-facing `docs/en/screenshots.md` and `docs/ru/screenshots.md` should stay gallery/navigation pages. Maintainer capture workflow notes belong here or in a future screenshot decision doc.
+User-facing `docs/<lang>/screenshots.md` pages should stay gallery/navigation pages. Maintainer capture workflow notes belong here or in a future screenshot decision doc.
