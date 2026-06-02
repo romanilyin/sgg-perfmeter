@@ -1,6 +1,6 @@
 # Ограничения
 
-SGG PerfMeter сделан как слой runtime-диагностики с низкими накладными расходами, а не замена инструментам глубокого захвата: Unity Profiler, RenderDoc, Profile Analyzer или Frame Debugger.
+SGG PerfMeter - слой runtime-диагностики с низкими накладными расходами. Для глубокого захвата используйте Unity Profiler, RenderDoc, Profile Analyzer или Frame Debugger.
 
 ## Область платформ и рендер-пайплайнов
 
@@ -25,11 +25,11 @@ Profiler counters зависят от платформы, версии Unity, н
 
 Числовой overdraw требует:
 
-- `PerfMeterRenderGraphFeature` в активном URP renderer;
-- поддержка UAV/storage buffer на fragment stage;
-- поддержка compute shaders;
-- поддерживаемый graphics API;
-- поддержка async GPU readback.
+- наличия `PerfMeterRenderGraphFeature` в активном URP renderer;
+- поддержки UAV/storage buffer на fragment stage;
+- поддержки compute shaders;
+- поддерживаемого graphics API;
+- поддержки async GPU readback.
 
 Неподдерживаемые цели возвращают `OverdrawState.Unsupported` с warnings.
 
@@ -39,4 +39,4 @@ Profiler counters зависят от платформы, версии Unity, н
 
 ## Статус валидации
 
-Текущая валидация включает автоматизированное покрытие EditMode и PlayMode плюс smoke-валидацию на Android S23 Vulkan/GLES. Более широкое покрытие player-билдов и устройств все еще полезно перед использованием данных как подтверждения готовности к релизу.
+Текущая валидация включает автоматизированное покрытие EditMode и PlayMode плюс smoke-валидацию на Android S23 Vulkan/GLES. Более широкое покрытие player-билдов и устройств все еще полезно перед тем, как использовать данные как подтверждение готовности к релизу.

@@ -1,6 +1,6 @@
 # MCP и автоматизация агентов
 
-SGG PerfMeter содержит метаданные команд для сценариев Unity MCP и editor-agent по пути пакета:
+SGG PerfMeter содержит метаданные команд для сценариев Unity MCP и editor-agent в файле пакета:
 
 ```text
 Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json

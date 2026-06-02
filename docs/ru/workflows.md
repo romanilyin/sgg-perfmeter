@@ -37,7 +37,7 @@ PerformanceMeter.ExportSessionJson("Logs/perfmeter-session.json");
 PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
 ```
 
-Экспорт сессии включает тайминги, FPS lows, spikes, счетчики узких мест, счетчики рендера, счетчики памяти, состояние overdraw, доступность предупреждений/счетчиков, сводки сцен, худшие кадры, метаданные устройства, камеры и настроек, а также пользовательские метрики.
+Экспорт сессии включает тайминги, FPS lows, spikes, счетчики узких мест, счетчики рендера, счетчики памяти, состояние overdraw, доступность предупреждений и счетчиков, сводки сцен, худшие кадры, метаданные устройства, камеры и настроек, а также пользовательские метрики.
 
 ## Alerts/оповещения
 
@@ -59,7 +59,7 @@ PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
 PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
-Измерение overdraw требует `PerfMeterRenderGraphFeature`, поддержки replacement shader, fragment UAV/storage buffer, compute shaders, поддерживаемого graphics API и async GPU readback. Неподдерживаемые цели возвращают `OverdrawState.Unsupported` вместо запуска pass.
+Измерение overdraw требует `PerfMeterRenderGraphFeature`, поддержки replacement shader, fragment UAV/storage buffer, compute shaders и async GPU readback, а также поддерживаемого graphics API. Неподдерживаемые цели возвращают `OverdrawState.Unsupported` вместо запуска pass.
 
 ## Воспроизводимость камеры и устройства
 
@@ -83,7 +83,7 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Пользовательские метрики доступны через API-чтение, экспорт сессии в JSON, latest metrics в MCP и до восьми строк оверлея при включенном модуле `CustomMetrics`.
 
-## Агентская автоматизация
+## MCP-автоматизация
 
 Типичный прогон через MCP:
 

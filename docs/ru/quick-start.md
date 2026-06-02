@@ -15,7 +15,7 @@ SGG/Perfmeter/Setup
 Через окно настройки можно:
 
 - включить Frame Timing Stats;
-- установить `PerfMeterRenderGraphFeature` в доступные для редактирования активные URP Renderers;
+- установить `PerfMeterRenderGraphFeature` в активные URP Renderers, доступные для редактирования;
 - создать проектные JSON-настройки по умолчанию;
 - настроить видимость оверлея, угол, целевой FPS, визуальный пресет и режим сбора.
 
