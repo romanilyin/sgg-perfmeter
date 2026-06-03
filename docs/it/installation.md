@@ -1,6 +1,6 @@
 # Installazione
 
-SGG PerfMeter e attualmente distribuito come pacchetto Unity denominato `com.sungeargames.perfmeter`. Un percorso di installazione npm non e disponibile per la release `2026.6.5-1`.
+SGG PerfMeter e distribuito come pacchetto Unity denominato `com.sungeargames.perfmeter`. Il pacchetto del npm registry pubblico parte da `2026.6.5-2`; Git UPM e la copia locale restano disponibili.
 
 ## Requisiti
 
@@ -10,6 +10,29 @@ SGG PerfMeter e attualmente distribuito come pacchetto Unity denominato `com.sun
 - Frame Timing Stats abilitato prima di fare affidamento su FrameTimingManager nelle build.
 
 I metadati del pacchetto mantengono Unity `2022.3` come soglia di sicurezza per importazione e controlli di compilazione. Il target runtime attualmente supportato e Unity `6000.4+` con URP `17.4+` Render Graph.
+
+## Installazione Con npm Scoped Registry
+
+Aggiungi il npm registry come Unity Package Manager scoped registry nel `Packages/manifest.json` del tuo progetto Unity:
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.sungeargames.perfmeter": "2026.6.5-2"
+  }
+}
+```
+
+Se il manifest contiene gia `scopedRegistries`, aggiungi la voce `npmjs` all'array esistente.
 
 ## Installazione Git UPM
 
@@ -44,7 +67,7 @@ Fissa un tag o un commit per installazioni ripetibili:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
   }
 }
 ```

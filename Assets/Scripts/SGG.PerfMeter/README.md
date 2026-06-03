@@ -33,7 +33,26 @@ Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runti
 
 ## Install
 
-Install this folder as a Git UPM package with the path:
+Install from the public npm registry with a Unity Package Manager scoped registry:
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.sungeargames.perfmeter": "2026.6.5-2"
+  }
+}
+```
+
+You can also install this folder as a Git UPM package with the path:
 
 ```text
 Assets/Scripts/SGG.PerfMeter
@@ -44,12 +63,12 @@ Example `Packages/manifest.json` entry:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
   }
 }
 ```
 
-An npm install path is not available for the `2026.6.5-1` release.
+The npm registry package starts at `2026.6.5-2`.
 
 ## Quick Start
 

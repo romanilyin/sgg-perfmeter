@@ -1,6 +1,6 @@
 # 安装
 
-SGG PerfMeter 目前作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。`2026.6.5-1` release 不提供 npm install 路径。
+SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。public npm registry package 从 `2026.6.5-2` 开始，Git UPM 和 local copy install 也可用。
 
 ## 要求
 
@@ -10,6 +10,29 @@ SGG PerfMeter 目前作为名为 `com.sungeargames.perfmeter` 的 Unity package 
 - 在 build 中依赖 FrameTimingManager 之前启用 Frame Timing Stats。
 
 Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导入和编译检查。当前受支持的运行时目标是 Unity `6000.4+` 搭配 URP `17.4+` Render Graph。
+
+## npm Scoped Registry Install
+
+在 Unity project 的 `Packages/manifest.json` 中将 npm registry 添加为 Unity Package Manager scoped registry：
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.sungeargames.perfmeter": "2026.6.5-2"
+  }
+}
+```
+
+如果 manifest 已有 `scopedRegistries`，请将 `npmjs` entry 合并到现有 array 中。
 
 ## Git UPM 安装
 
@@ -44,7 +67,7 @@ Assets/Scripts/SGG.PerfMeter
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
   }
 }
 ```

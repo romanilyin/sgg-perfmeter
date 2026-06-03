@@ -81,19 +81,28 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 ## Quick Start
 
-1. Install the Unity package from this repository with the package path `Assets/Scripts/SGG.PerfMeter`.
+1. Install the Unity package from npm registry or Git UPM.
 2. Open `SGG/Perfmeter/Setup` in Unity.
 3. Run the recommended setup, enter Play Mode, and confirm that the overlay appears.
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```
 
-For the full setup guide, see [Installation](./docs/en/installation.md) and [Quick Start](./docs/en/quick-start.md).
+For Git UPM and local-copy options, see [Installation](./docs/en/installation.md) and [Quick Start](./docs/en/quick-start.md).
 
 ## Common Workflows
 

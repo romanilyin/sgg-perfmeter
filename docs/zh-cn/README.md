@@ -29,14 +29,23 @@ SGG PerfMeter 可识别帧瓶颈、对比性能变化、记录可复现的会话
 
 ## 快速开始
 
-1. 从此仓库安装 Unity package，package path 为 `Assets/Scripts/SGG.PerfMeter`。
+1. 通过 npm registry 或 Git UPM 安装 Unity package。
 2. 在 Unity 中打开 `SGG/Perfmeter/Setup`。
 3. 运行 recommended setup，进入 Play Mode，并确认 overlay 出现。
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.6.5-2
+
+- Published `com.sungeargames.perfmeter` to the public npm registry for Unity Package Manager scoped-registry installs.
+- Added npm registry installation instructions to package and GitHub user documentation.
+- Kept Git UPM install examples available with the `2026.6.5-2` tag.
+
 ## 2026.6.5-1
 
 - Prepared the first public release for GitHub/Git UPM distribution.

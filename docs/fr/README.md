@@ -29,14 +29,23 @@ SGG PerfMeter detecte les goulets d'etranglement des frames, compare les changem
 
 ## Demarrage Rapide
 
-1. Installez le package Unity depuis ce depot avec le chemin de package `Assets/Scripts/SGG.PerfMeter`.
+1. Installez le package Unity depuis npm registry ou Git UPM.
 2. Ouvrez `SGG/Perfmeter/Setup` dans Unity.
 3. Executez la configuration recommandee, lancez Play Mode et verifiez que l'overlay apparait.
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```

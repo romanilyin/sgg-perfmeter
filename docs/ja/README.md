@@ -39,14 +39,23 @@ SGG PerfMeter は、フレームが CPU、GPU、レンダースレッド、prese
 
 ## クイックスタート
 
-1. package path `Assets/Scripts/SGG.PerfMeter` を指定して、このリポジトリから Unity package をインストールします。
+1. npm registry または Git UPM から Unity package をインストールします。
 2. Unity で `SGG/Perfmeter/Setup` を開きます。
 3. recommended setup を実行し、Play Mode に入り、overlay が表示されることを確認します。
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```

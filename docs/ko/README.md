@@ -29,14 +29,23 @@ SGG PerfMeter는 프레임 병목을 식별하고, 성능 변화를 비교하고
 
 ## 빠른 시작
 
-1. package path `Assets/Scripts/SGG.PerfMeter`를 사용해 이 저장소의 Unity package를 설치합니다.
+1. npm registry 또는 Git UPM으로 Unity package를 설치합니다.
 2. Unity에서 `SGG/Perfmeter/Setup`을 엽니다.
 3. 권장 setup을 실행하고 Play Mode를 시작한 뒤 overlay가 표시되는지 확인합니다.
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```

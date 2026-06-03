@@ -29,14 +29,23 @@ SGG PerfMeter identifica gargalos de frame, compara alteracoes de performance, g
 
 ## Inicio Rapido
 
-1. Instale o pacote Unity deste repositorio usando o caminho do pacote `Assets/Scripts/SGG.PerfMeter`.
+1. Instale o pacote Unity pelo npm registry ou por Git UPM.
 2. Abra `SGG/Perfmeter/Setup` no Unity.
 3. Execute a configuracao recomendada, entre em Play Mode e confirme que o overlay aparece.
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```

@@ -81,19 +81,28 @@ SGG PerfMeter помогает понять, упирается ли кадр в
 
 ## Быстрый старт
 
-1. Установите пакет Unity из этого репозитория, указав путь пакета `Assets/Scripts/SGG.PerfMeter`.
+1. Установите пакет Unity через npm registry или Git UPM.
 2. Откройте `SGG/Perfmeter/Setup` в Unity.
 3. Запустите рекомендованную настройку, войдите в Play Mode и проверьте, что оверлей появился.
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "git+ssh://git@github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```
 
-Полное руководство по настройке: [Установка](./installation.md) и [Быстрый старт](./quick-start.md).
+Варианты Git UPM и локальной установки описаны в [Установка](./installation.md) и [Быстрый старт](./quick-start.md).
 
 ## Основные сценарии работы
 

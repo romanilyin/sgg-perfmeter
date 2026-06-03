@@ -29,14 +29,23 @@ SGG PerfMeter identifica i colli di bottiglia dei frame, confronta le variazioni
 
 ## Avvio Rapido
 
-1. Installa il pacchetto Unity da questo repository con il percorso pacchetto `Assets/Scripts/SGG.PerfMeter`.
+1. Installa il pacchetto Unity da npm registry o Git UPM.
 2. Apri `SGG/Perfmeter/Setup` in Unity.
 3. Esegui il setup consigliato, avvia Play Mode e verifica che l'overlay appaia.
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "npmjs",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.sungeargames"
+      ]
+    }
+  ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-1"
+    "com.sungeargames.perfmeter": "2026.6.5-2"
   }
 }
 ```

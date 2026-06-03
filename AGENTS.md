@@ -7,8 +7,8 @@
 - Unity project version: `6000.4.7f1`.
 - Package path: `Assets/Scripts/SGG.PerfMeter/`.
 - Main validation scene: `Assets/Scenes/SampleScene.unity`.
-- First public release version: `2026.6.5-1`; the tag is created only during release.
-- npm publishing is deferred and is not part of `2026.6.5-1`.
+- First public release version: `2026.6.5-1`; the first npm release is `2026.6.5-2`.
+- Public distribution uses GitHub Releases, Git UPM tags, and npm scoped-registry installs.
 
 ## Supported Scope
 
