@@ -509,6 +509,36 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void DeviceInfoIncludesRenderPipelineClassification()
+		{
+			PerfMeterDeviceSnapshot device = default;
+			Assert.DoesNotThrow(() => device = PerformanceMeter.GetDeviceInfo());
+
+			Assert.That(device.RenderPipeline, Is.Not.EqualTo((PerfMeterRenderPipelineKind)(-1)));
+			Assert.That(device.RenderPipelineAssetName, Is.Not.Null);
+			Assert.That(device.RenderPipelineAssetType, Is.Not.Null);
+			Assert.That(device.RenderPipelineRuntimeType, Is.Not.Null);
+
+			string json = PerfMeterMcpCommands.DeviceInfo();
+			Assert.That(json, Does.Contain("\"render_pipeline\""));
+			Assert.That(json, Does.Contain("\"render_pipeline_asset_name\""));
+			Assert.That(json, Does.Contain("\"render_pipeline_runtime_type\""));
+		}
+
+		[Test]
+		public void McpCameraSnapshotIncludesSrpCameraFields()
+		{
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
+
+			Assert.That(metadata, Does.Contain("URP/HDRP camera settings"));
+
+			string json = PerfMeterMcpCommands.CameraSnapshot("{}");
+			Assert.That(json, Does.Contain("\"has_urp_additional_camera_data\""));
+			Assert.That(json, Does.Contain("\"has_hdrp_additional_camera_data\""));
+			Assert.That(json, Does.Contain("\"hdrp_antialiasing\""));
+		}
+
+		[Test]
 		public void RenderGraphSnapshotBeforeFeatureRunsIsSafeDefault()
 		{
 			PerfMeterRenderGraphAnalytics.ResetForTests();
@@ -520,10 +550,31 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
 			Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderGraphState.NotObserved));
 			Assert.That(snapshot.LastFrame, Is.EqualTo(-1));
+			Assert.That(snapshot.RenderPipeline, Is.EqualTo(PerfMeterRenderPipelineKind.Unknown));
+			Assert.That(snapshot.IntegrationName, Is.Empty);
+			Assert.That(snapshot.ObservedInjectionPoint, Is.Empty);
 			Assert.That(snapshot.RegisteredPassCount, Is.EqualTo(PerfMeterRenderGraphSnapshot.UnavailableCount));
 			Assert.That(snapshot.Warning, Does.Contain("not recorded"));
 			Assert.That(PerformanceMeter.TryGetRenderGraphSnapshot(out PerfMeterRenderGraphSnapshot trySnapshot), Is.False);
 			Assert.That(trySnapshot.State, Is.EqualTo(PerfMeterRenderGraphState.NotObserved));
+		}
+
+		[Test]
+		public void HdrpCustomPassSnapshotRecordsIntegrationMetadata()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+
+			PerfMeterRenderGraphAnalytics.RecordHdrpCustomPassSnapshot("Main Camera", CameraType.Game.ToString(), "BeforePostProcess");
+
+			PerfMeterRenderGraphSnapshot snapshot = PerformanceMeter.GetRenderGraphSnapshot();
+			Assert.That(snapshot.IsAvailable, Is.True);
+			Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
+			Assert.That(snapshot.RenderPipeline, Is.EqualTo(PerfMeterRenderPipelineKind.HighDefinition));
+			Assert.That(snapshot.IntegrationName, Is.EqualTo("HDRP Custom Pass"));
+			Assert.That(snapshot.ObservedInjectionPoint, Is.EqualTo("BeforePostProcess"));
+			Assert.That(snapshot.RegisteredPassCount, Is.EqualTo(PerfMeterRenderGraphSnapshot.UnavailableCount));
+			Assert.That(PerformanceMeter.TryGetRenderGraphSnapshot(out PerfMeterRenderGraphSnapshot trySnapshot), Is.True);
+			Assert.That(trySnapshot.RenderPipeline, Is.EqualTo(PerfMeterRenderPipelineKind.HighDefinition));
 		}
 
 		[Test]
@@ -534,11 +585,15 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(metadata, Does.Contain("perfmeter.rendergraph.snapshot"));
 			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderGraphSnapshot"));
+			Assert.That(metadata, Does.Contain("HDRP Custom Pass"));
 
 			string json = PerfMeterMcpCommands.RenderGraphSnapshot();
 			Assert.That(json, Does.Contain("\"schema_version\":1"));
 			Assert.That(json, Does.Contain("\"is_available\":false"));
 			Assert.That(json, Does.Contain("\"state\":\"NotObserved\""));
+			Assert.That(json, Does.Contain("\"render_pipeline\":\"Unknown\""));
+			Assert.That(json, Does.Contain("\"integration_name\":\"\""));
+			Assert.That(json, Does.Contain("\"observed_injection_point\":\"\""));
 			Assert.That(json, Does.Contain("\"registered_pass_count\":-1"));
 			Assert.That(json, Does.Contain("\"is_playing\""));
 		}

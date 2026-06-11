@@ -552,7 +552,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"main_window_position_y\":").Append(device.MainWindowPositionY);
 			builder.Append(",\"display_layout_available\":").Append(JsonBool(device.DisplayLayoutAvailable));
 			builder.Append(",\"display_layout_warning\":").Append(JsonString(device.DisplayLayoutWarning));
-			AppendRenderPipelineInfo(builder);
+			AppendRenderPipelineInfo(builder, device);
 			builder.Append(",\"frame_timing_stats_enabled\":").Append(JsonBool(PlayerSettings.enableFrameTimingStats));
 			builder.Append(",\"active_build_target\":").Append(JsonString(EditorUserBuildSettings.activeBuildTarget.ToString()));
 			builder.Append(",\"active_build_target_group\":").Append(JsonString(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget).ToString()));
@@ -594,10 +594,14 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(']');
 		}
 
-		private static void AppendRenderPipelineInfo(StringBuilder builder)
+		private static void AppendRenderPipelineInfo(StringBuilder builder, PerfMeterDeviceSnapshot device)
 		{
 			UnityEngine.Rendering.RenderPipelineAsset graphicsAsset = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
 			UnityEngine.Rendering.RenderPipelineAsset qualityAsset = QualitySettings.renderPipeline;
+			builder.Append(",\"render_pipeline\":").Append(JsonString(device.RenderPipeline.ToString()));
+			builder.Append(",\"render_pipeline_asset_name\":").Append(JsonString(device.RenderPipelineAssetName));
+			builder.Append(",\"render_pipeline_asset_type\":").Append(JsonString(device.RenderPipelineAssetType));
+			builder.Append(",\"render_pipeline_runtime_type\":").Append(JsonString(device.RenderPipelineRuntimeType));
 			builder.Append(",\"render_pipeline_asset\":").Append(JsonString(graphicsAsset != null ? graphicsAsset.name : string.Empty));
 			builder.Append(",\"render_pipeline_type\":").Append(JsonString(graphicsAsset != null ? graphicsAsset.GetType().FullName : string.Empty));
 			builder.Append(",\"quality_level\":").Append(QualitySettings.GetQualityLevel());
@@ -660,6 +664,17 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"urp_requires_color_option\":").Append(JsonString(camera.UrpRequiresColorOption));
 			builder.Append(",\"urp_requires_depth_texture\":").Append(JsonBool(camera.UrpRequiresDepthTexture));
 			builder.Append(",\"urp_requires_color_texture\":").Append(JsonBool(camera.UrpRequiresColorTexture));
+			builder.Append(",\"has_hdrp_additional_camera_data\":").Append(JsonBool(camera.HasHighDefinitionAdditionalCameraData));
+			builder.Append(",\"hdrp_clear_color_mode\":").Append(JsonString(camera.HdrpClearColorMode));
+			builder.Append(",\"hdrp_clear_depth\":").Append(JsonBool(camera.HdrpClearDepth));
+			builder.Append(",\"hdrp_antialiasing\":").Append(JsonString(camera.HdrpAntialiasing));
+			builder.Append(",\"hdrp_smaa_quality\":").Append(JsonString(camera.HdrpSmaaQuality));
+			builder.Append(",\"hdrp_stop_nan\":").Append(JsonBool(camera.HdrpStopNaN));
+			builder.Append(",\"hdrp_dithering\":").Append(JsonBool(camera.HdrpDithering));
+			builder.Append(",\"hdrp_allow_dynamic_resolution\":").Append(JsonBool(camera.HdrpAllowDynamicResolution));
+			builder.Append(",\"hdrp_custom_rendering_settings\":").Append(JsonBool(camera.HdrpCustomRenderingSettings));
+			builder.Append(",\"hdrp_volume_layer_mask\":").Append(camera.HdrpVolumeLayerMask);
+			builder.Append(",\"hdrp_has_volume_anchor_override\":").Append(JsonBool(camera.HdrpHasVolumeAnchorOverride));
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -675,6 +690,9 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"last_frame\":").Append(snapshot.LastFrame);
 			builder.Append(",\"observed_camera_name\":").Append(JsonString(snapshot.ObservedCameraName));
 			builder.Append(",\"observed_camera_type\":").Append(JsonString(snapshot.ObservedCameraType));
+			builder.Append(",\"render_pipeline\":").Append(JsonString(snapshot.RenderPipeline.ToString()));
+			builder.Append(",\"integration_name\":").Append(JsonString(snapshot.IntegrationName));
+			builder.Append(",\"observed_injection_point\":").Append(JsonString(snapshot.ObservedInjectionPoint));
 			builder.Append(",\"perfmeter_pass_count\":").Append(snapshot.PerfMeterPassCount);
 			builder.Append(",\"registered_pass_count\":").Append(snapshot.RegisteredPassCount);
 			builder.Append(",\"merged_pass_count\":").Append(snapshot.MergedPassCount);

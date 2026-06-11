@@ -1,0 +1,27 @@
+{
+    "name": "SGG.PerfMeter.HDRP",
+    "rootNamespace": "SGG.PerfMeter",
+    "references": [
+        "SGG.PerfMeter",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_6000_4_OR_NEWER",
+        "SGG_PERFMETER_HDRP_17_4_OR_NEWER"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.render-pipelines.high-definition",
+            "expression": "17.4.0",
+            "define": "SGG_PERFMETER_HDRP_17_4_OR_NEWER"
+        }
+    ],
+    "noEngineReferences": false
+}

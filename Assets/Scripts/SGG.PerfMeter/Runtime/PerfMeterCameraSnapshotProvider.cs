@@ -8,10 +8,14 @@ namespace SGG.PerfMeter
 	{
 		private const string UniversalAdditionalCameraDataFullName = "UnityEngine.Rendering.Universal.UniversalAdditionalCameraData";
 		private const string UniversalRuntimeAssemblyName = "Unity.RenderPipelines.Universal.Runtime";
+		private const string HighDefinitionAdditionalCameraDataFullName = "UnityEngine.Rendering.HighDefinition.HDAdditionalCameraData";
+		private const string HighDefinitionRuntimeAssemblyName = "Unity.RenderPipelines.HighDefinition.Runtime";
 		private const BindingFlags InstanceFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 		private static Camera[] _cameraBuffer = new Camera[8];
 		private static Type _universalAdditionalCameraDataType;
 		private static bool _universalAdditionalCameraDataTypeResolved;
+		private static Type _highDefinitionAdditionalCameraDataType;
+		private static bool _highDefinitionAdditionalCameraDataTypeResolved;
 
 		internal static PerfMeterCameraSnapshot CreateSnapshot(PerfMeterCameraSource source, string cameraNameFilter)
 		{
@@ -23,6 +27,8 @@ namespace SGG.PerfMeter
 
 			Component urpData = GetUniversalAdditionalCameraData(camera);
 			bool hasUrpData = urpData != null;
+			Component hdrpData = GetHighDefinitionAdditionalCameraData(camera);
+			bool hasHdrpData = hdrpData != null;
 			return new PerfMeterCameraSnapshot(
 				true,
 				string.Empty,
@@ -69,12 +75,29 @@ namespace SGG.PerfMeter
 				hasUrpData ? GetMemberString(urpData, "requiresDepthOption") : string.Empty,
 				hasUrpData ? GetMemberString(urpData, "requiresColorOption") : string.Empty,
 				hasUrpData && GetMemberBool(urpData, "requiresDepthTexture"),
-				hasUrpData && GetMemberBool(urpData, "requiresColorTexture"));
+				hasUrpData && GetMemberBool(urpData, "requiresColorTexture"),
+				hasHdrpData,
+				hasHdrpData ? GetMemberString(hdrpData, "clearColorMode") : string.Empty,
+				hasHdrpData && GetMemberBool(hdrpData, "clearDepth"),
+				hasHdrpData ? GetMemberString(hdrpData, "antialiasing") : string.Empty,
+				hasHdrpData ? GetMemberString(hdrpData, "SMAAQuality") : string.Empty,
+				hasHdrpData && GetMemberBool(hdrpData, "stopNaNs"),
+				hasHdrpData && GetMemberBool(hdrpData, "dithering"),
+				hasHdrpData && GetMemberBool(hdrpData, "allowDynamicResolution"),
+				hasHdrpData && GetMemberBool(hdrpData, "customRenderingSettings"),
+				hasHdrpData ? GetMemberInt(hdrpData, "volumeLayerMask") : 0,
+				hasHdrpData && GetMemberValue(hdrpData, "volumeAnchorOverride") != null);
 		}
 
 		private static Component GetUniversalAdditionalCameraData(Camera camera)
 		{
 			Type type = GetUniversalAdditionalCameraDataType();
+			return type != null ? camera.GetComponent(type) : null;
+		}
+
+		private static Component GetHighDefinitionAdditionalCameraData(Camera camera)
+		{
+			Type type = GetHighDefinitionAdditionalCameraDataType();
 			return type != null ? camera.GetComponent(type) : null;
 		}
 
@@ -90,6 +113,18 @@ namespace SGG.PerfMeter
 			return _universalAdditionalCameraDataType;
 		}
 
+		private static Type GetHighDefinitionAdditionalCameraDataType()
+		{
+			if (_highDefinitionAdditionalCameraDataTypeResolved)
+			{
+				return _highDefinitionAdditionalCameraDataType;
+			}
+
+			_highDefinitionAdditionalCameraDataTypeResolved = true;
+			_highDefinitionAdditionalCameraDataType = Type.GetType(HighDefinitionAdditionalCameraDataFullName + ", " + HighDefinitionRuntimeAssemblyName);
+			return _highDefinitionAdditionalCameraDataType;
+		}
+
 		private static string GetMemberString(object instance, string memberName)
 		{
 			object value = GetMemberValue(instance, memberName);
@@ -100,6 +135,24 @@ namespace SGG.PerfMeter
 		{
 			object value = GetMemberValue(instance, memberName);
 			return value is bool boolValue && boolValue;
+		}
+
+		private static int GetMemberInt(object instance, string memberName)
+		{
+			object value = GetMemberValue(instance, memberName);
+			if (value is int intValue)
+			{
+				return intValue;
+			}
+
+			if (value is LayerMask layerMask)
+			{
+				return layerMask.value;
+			}
+
+			PropertyInfo property = value?.GetType().GetProperty("value", InstanceFlags);
+			object propertyValue = property != null && property.GetIndexParameters().Length == 0 ? property.GetValue(value) : null;
+			return propertyValue is int reflectedInt ? reflectedInt : 0;
 		}
 
 		private static object GetMemberValue(object instance, string memberName)

@@ -10,13 +10,15 @@ namespace SGG.PerfMeter.Editor.Setup
 {
 	internal static class PerfMeterSetupUtility
 	{
-		internal const string UnsupportedCompatibilityMessage = "SGG PerfMeter officially supports Unity 6000.4+ with URP 17.4+. Older Unity/URP versions are import-safe only; runtime Render Graph features are unsupported and bug reports for older versions are not accepted.";
+		internal const string UnsupportedCompatibilityMessage = "SGG PerfMeter officially supports Unity 6000.4+ with URP 17.4+ or HDRP 17.4+. Older Unity/SRP versions are import-safe only; runtime render integrations are unsupported and bug reports for older versions are not accepted.";
 
 		private const string DefaultPackageAssetPath = "Assets/Scripts/SGG.PerfMeter";
 		private const string UniversalRenderPipelineAssetFullName = "UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset";
 		private const string ScriptableRendererDataFullName = "UnityEngine.Rendering.Universal.ScriptableRendererData";
 		private const string PerfMeterRenderGraphFeatureFullName = "SGG.PerfMeter.PerfMeterRenderGraphFeature";
 		private const string PerfMeterRenderGraphFeatureAssemblyName = "SGG.PerfMeter.URP";
+		private const string PerfMeterHdrpCustomPassFullName = "SGG.PerfMeter.PerfMeterHdrpCustomPass";
+		private const string PerfMeterHdrpCustomPassAssemblyName = "SGG.PerfMeter.HDRP";
 
 		internal static string InitializationSnippet => BuildInitializationSnippet(true, PerfMeterOverlayCorner.TopRight, PerfMeterTargetFps.Fps60, PerfMeterOverlayTheme.ClassicDark, PerfMeterOverlayLayout.MetricBars, PerfMeterOverlayFontFamily.Manrope);
 
@@ -35,6 +37,8 @@ namespace SGG.PerfMeter.Editor.Setup
 		internal static bool IsRenderGraphFeatureAvailable => GetRenderGraphFeatureType() != null;
 
 		internal static bool IsRendererFeatureSetupSupported => IsOfficialUnityVersionSupported && IsRenderGraphFeatureAvailable;
+
+		internal static bool IsHdrpCustomPassAvailable => GetHdrpCustomPassType() != null;
 
 		internal static string BuildInitializationSnippet(bool overlayVisible, PerfMeterOverlayCorner overlayCorner, PerfMeterTargetFps targetFps, PerfMeterOverlayTheme overlayTheme, PerfMeterOverlayLayout overlayLayout, PerfMeterOverlayFontFamily overlayFontFamily)
 		{
@@ -74,16 +78,26 @@ public static class PerfMeterBootstrap
 
 		internal static PerfMeterSetupStatus GetStatus()
 		{
+			PerfMeterRenderPipelineSnapshot renderPipeline = PerfMeterRenderPipelineDetector.CreateSnapshot();
 			PerfMeterSetupStatus status = new PerfMeterSetupStatus
 			{
 				FrameTimingStatsEnabled = PlayerSettings.enableFrameTimingStats,
 				OfficialUnityVersionSupported = IsOfficialUnityVersionSupported,
 				RenderGraphFeatureAvailable = IsRenderGraphFeatureAvailable,
+				HdrpCustomPassAvailable = IsHdrpCustomPassAvailable,
+				ActiveRenderPipeline = renderPipeline.Kind,
+				RenderPipelineAssetName = renderPipeline.AssetName,
+				RenderPipelineAssetType = renderPipeline.AssetTypeName,
+				RenderPipelineRuntimeType = renderPipeline.RuntimeTypeName,
 				PackageAssetPath = PackageAssetPath,
 				Settings = GetSettingsStatus()
 			};
 
-			status.Renderers.AddRange(FindRendererStatuses());
+			if (renderPipeline.Kind == PerfMeterRenderPipelineKind.Universal || renderPipeline.Kind == PerfMeterRenderPipelineKind.Unknown)
+			{
+				status.Renderers.AddRange(FindRendererStatuses());
+			}
+
 			return status;
 		}
 
@@ -150,6 +164,11 @@ public static class PerfMeterBootstrap
 
 		internal static InstallResult InstallRendererFeatures()
 		{
+			if (TrySkipRendererFeatureInstallForActivePipeline(out InstallResult skipResult))
+			{
+				return skipResult;
+			}
+
 			if (!CanInstallRenderGraphFeature(out string unsupportedMessage))
 			{
 				return InstallResult.Fail(unsupportedMessage);
@@ -189,6 +208,11 @@ public static class PerfMeterBootstrap
 
 		internal static InstallResult InstallRendererFeatures(IEnumerable<string> rendererAssetPaths)
 		{
+			if (TrySkipRendererFeatureInstallForActivePipeline(out InstallResult skipResult))
+			{
+				return skipResult;
+			}
+
 			if (rendererAssetPaths == null)
 			{
 				return InstallResult.Fail("No renderer assets selected.");
@@ -522,6 +546,25 @@ public static class PerfMeterBootstrap
 			return true;
 		}
 
+		private static bool TrySkipRendererFeatureInstallForActivePipeline(out InstallResult result)
+		{
+			PerfMeterRenderPipelineKind activePipeline = PerfMeterRenderPipelineDetector.GetActiveKind();
+			if (activePipeline == PerfMeterRenderPipelineKind.HighDefinition)
+			{
+				result = InstallResult.Ok("HDRP detected. URP Renderer Feature installation is skipped; PerfMeter HDRP Custom Pass is runtime-registered when the optional HDRP assembly is available. HDRP overdraw and heatmap are unsupported.");
+				return true;
+			}
+
+			if (activePipeline == PerfMeterRenderPipelineKind.BuiltIn)
+			{
+				result = InstallResult.Fail("Built-in Render Pipeline detected. PerfMeter render integration requires URP 17.4+ or HDRP 17.4+ in Unity 6000.4+.");
+				return true;
+			}
+
+			result = null;
+			return false;
+		}
+
 		private static string GetRenderGraphFeatureUnavailableMessage()
 		{
 			return "PerfMeter Render Graph feature assembly is unavailable. Install/use URP 17.4+ in Unity 6000.4+; older Unity/URP versions are import-safe only and unsupported.";
@@ -530,6 +573,11 @@ public static class PerfMeterBootstrap
 		private static Type GetRenderGraphFeatureType()
 		{
 			return Type.GetType(PerfMeterRenderGraphFeatureFullName + ", " + PerfMeterRenderGraphFeatureAssemblyName);
+		}
+
+		private static Type GetHdrpCustomPassType()
+		{
+			return Type.GetType(PerfMeterHdrpCustomPassFullName + ", " + PerfMeterHdrpCustomPassAssemblyName);
 		}
 
 		private static bool IsUniversalRenderPipelineAsset(UnityEngine.Object asset)
@@ -573,11 +621,18 @@ public static class PerfMeterBootstrap
 			internal bool FrameTimingStatsEnabled;
 			internal bool OfficialUnityVersionSupported;
 			internal bool RenderGraphFeatureAvailable;
+			internal bool HdrpCustomPassAvailable;
+			internal PerfMeterRenderPipelineKind ActiveRenderPipeline = PerfMeterRenderPipelineKind.Unknown;
+			internal string RenderPipelineAssetName = string.Empty;
+			internal string RenderPipelineAssetType = string.Empty;
+			internal string RenderPipelineRuntimeType = string.Empty;
 			internal string PackageAssetPath = string.Empty;
 			internal PerfMeterSettingsSetupStatus Settings = new PerfMeterSettingsSetupStatus();
 			internal readonly List<RendererSetupStatus> Renderers = new List<RendererSetupStatus>();
 
-			internal bool RendererFeatureSetupSupported => OfficialUnityVersionSupported && RenderGraphFeatureAvailable;
+			internal bool RendererFeatureSetupSupported => ActiveRenderPipeline == PerfMeterRenderPipelineKind.HighDefinition
+				? OfficialUnityVersionSupported && HdrpCustomPassAvailable
+				: OfficialUnityVersionSupported && RenderGraphFeatureAvailable;
 
 			internal int InstalledRendererCount
 			{
@@ -596,7 +651,9 @@ public static class PerfMeterBootstrap
 				}
 			}
 
-			internal bool AllRenderersConfigured => RendererFeatureSetupSupported && Renderers.Count > 0 && InstalledRendererCount == Renderers.Count;
+			internal bool AllRenderersConfigured => ActiveRenderPipeline == PerfMeterRenderPipelineKind.HighDefinition
+				? RendererFeatureSetupSupported
+				: RendererFeatureSetupSupported && Renderers.Count > 0 && InstalledRendererCount == Renderers.Count;
 
 			internal bool HasRendererWarnings
 			{
@@ -605,6 +662,11 @@ public static class PerfMeterBootstrap
 					if (!RendererFeatureSetupSupported)
 					{
 						return true;
+					}
+
+					if (ActiveRenderPipeline == PerfMeterRenderPipelineKind.HighDefinition)
+					{
+						return false;
 					}
 
 					for (int i = 0; i < Renderers.Count; i++)
@@ -620,7 +682,7 @@ public static class PerfMeterBootstrap
 			}
 
 			internal string CompatibilityMessage => OfficialUnityVersionSupported
-				? "Official target: Unity 6000.4+ with URP 17.4+."
+				? "Official target: Unity 6000.4+ with URP 17.4+ or HDRP 17.4+."
 				: UnsupportedCompatibilityMessage;
 
 			internal string ProjectSettingsMessage
@@ -642,6 +704,18 @@ public static class PerfMeterBootstrap
 					if (!OfficialUnityVersionSupported)
 					{
 						return UnsupportedCompatibilityMessage;
+					}
+
+					if (ActiveRenderPipeline == PerfMeterRenderPipelineKind.HighDefinition)
+					{
+						return HdrpCustomPassAvailable
+							? "HDRP detected. PerfMeter HDRP Custom Pass assembly is available and runtime-registered globally when the runtime starts. HDRP overdraw and heatmap are unsupported."
+							: "HDRP detected, but PerfMeter HDRP Custom Pass assembly is unavailable. Reimport the package with HDRP 17.4+ installed.";
+					}
+
+					if (ActiveRenderPipeline == PerfMeterRenderPipelineKind.BuiltIn)
+					{
+						return "Built-in Render Pipeline detected. Runtime render integration and overdraw are unsupported; core FPS/CPU/GPU/memory diagnostics remain available.";
 					}
 
 					if (!RenderGraphFeatureAvailable)

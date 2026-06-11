@@ -186,7 +186,7 @@
     {
       "id": "perfmeter.camera.snapshot",
       "title": "PerfMeter camera snapshot",
-      "description": "Read camera transform, projection, and URP camera settings for reproducible performance captures.",
+      "description": "Read camera transform, projection, and URP/HDRP camera settings for reproducible performance captures.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CameraSnapshot",
       "risk": "read",
       "idempotency": "safe",
@@ -208,7 +208,7 @@
     {
       "id": "perfmeter.rendergraph.snapshot",
       "title": "PerfMeter Render Graph snapshot",
-      "description": "Read the latest observed SGG PerfMeter URP Render Graph feature diagnostics without starting the runtime.",
+      "description": "Read the latest observed SGG PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass without starting the runtime.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderGraphSnapshot",
       "risk": "read",
       "idempotency": "safe",

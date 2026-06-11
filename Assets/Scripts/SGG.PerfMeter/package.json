@@ -1,8 +1,8 @@
 {
   "name": "com.sungeargames.perfmeter",
-  "version": "2026.6.5-2",
+  "version": "2026.6.11-1",
   "displayName": "SGG PerfMeter",
-  "description": "Runtime performance diagnostics layer and automation-ready profiling API for Unity 6000.4+ URP 17.4 Render Graph projects. Older Unity versions are import-safe only and are not officially supported.",
+  "description": "Runtime performance diagnostics layer and automation-ready profiling API for Unity 6000.4+ URP 17.4 Render Graph and HDRP 17.4 projects. Older Unity versions are import-safe only and are not officially supported.",
   "unity": "2022.3",
   "license": "LicenseRef-Stinger-Royalty-Free-EULA-1.0",
   "licensesUrl": "https://github.com/romanilyin/sgg-perfmeter/blob/main/LICENSE.md",
@@ -15,6 +15,7 @@
     "diagnostics",
     "metrics",
     "urp",
+    "hdrp",
     "rendergraph",
     "overdraw",
     "mcp"

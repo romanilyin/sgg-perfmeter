@@ -78,6 +78,21 @@ namespace SGG.PerfMeter.Editor.Setup
 			builder.Append("Frame Timing Stats: ");
 			builder.Append(status.FrameTimingStatsEnabled ? "Enabled" : "Disabled");
 			builder.Append('\n');
+			builder.Append("Active Render Pipeline: ");
+			builder.Append(status.ActiveRenderPipeline);
+			if (!string.IsNullOrEmpty(status.RenderPipelineAssetName))
+			{
+				builder.Append(" (");
+				builder.Append(status.RenderPipelineAssetName);
+				builder.Append(')');
+			}
+			builder.Append('\n');
+			if (status.ActiveRenderPipeline == PerfMeterRenderPipelineKind.HighDefinition)
+			{
+				builder.Append("HDRP Custom Pass: ");
+				builder.Append(status.HdrpCustomPassAvailable ? "Available" : "Unavailable");
+				builder.Append('\n');
+			}
 			builder.Append("Package Path: ");
 			builder.Append(string.IsNullOrEmpty(status.PackageAssetPath) ? "Not found" : status.PackageAssetPath);
 			builder.Append('\n');

@@ -17,6 +17,7 @@ namespace SGG.PerfMeter
 			bool mainWindowPositionAvailable = TryGetMainWindowPosition(out mainWindowPosition);
 			bool hasMainWindowDisplay = TryGetMainWindowDisplay(out DisplayInfo mainWindowDisplay);
 			PerfMeterDisplaySnapshot[] displays = BuildDisplays(hasMainWindowDisplay, mainWindowDisplay, currentResolution, out bool displayLayoutAvailable, out string displayLayoutWarning);
+			PerfMeterRenderPipelineSnapshot renderPipeline = PerfMeterRenderPipelineDetector.CreateSnapshot();
 
 			return new PerfMeterDeviceSnapshot(
 				Application.unityVersion,
@@ -56,7 +57,11 @@ namespace SGG.PerfMeter
 				mainWindowPosition.y,
 				displayLayoutAvailable,
 				displayLayoutWarning,
-				displays);
+				displays,
+				renderPipeline.Kind,
+				renderPipeline.AssetName,
+				renderPipeline.AssetTypeName,
+				renderPipeline.RuntimeTypeName);
 		}
 
 		private static PerfMeterDisplaySnapshot[] BuildDisplays(bool hasMainWindowDisplay, DisplayInfo mainWindowDisplay, Resolution currentResolution, out bool displayLayoutAvailable, out string warning)

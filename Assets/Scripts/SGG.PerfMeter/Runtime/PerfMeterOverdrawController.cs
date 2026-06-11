@@ -213,8 +213,13 @@ namespace SGG.PerfMeter
 			_state = PerfMeterOverdrawMeasurementState.Unsupported;
 		}
 
-		private static string GetUnsupportedReason()
+		internal static string GetUnsupportedReason()
 		{
+			if (PerfMeterRenderPipelineDetector.GetActiveKind() == PerfMeterRenderPipelineKind.HighDefinition)
+			{
+				return "Overdraw measurement is unsupported in HDRP: HDRP uses a separate Custom Pass integration; FPS, CPU, GPU, memory, sessions, alerts, camera, and device diagnostics remain available.";
+			}
+
 			if (!PerfMeterRenderGraphAnalytics.IsRenderGraphFeatureAvailable())
 			{
 				return "Overdraw measurement is unsupported: PerfMeter Render Graph overdraw requires Unity 6000.4+ and URP 17.4+; older Unity/URP versions are import-safe only.";

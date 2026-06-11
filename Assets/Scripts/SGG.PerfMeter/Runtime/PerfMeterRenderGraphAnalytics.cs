@@ -8,6 +8,8 @@ namespace SGG.PerfMeter
 	{
 		private const string RenderGraphFeatureFullName = "SGG.PerfMeter.PerfMeterRenderGraphFeature";
 		private const string RenderGraphFeatureAssemblyName = "SGG.PerfMeter.URP";
+		private const string HdrpCustomPassFullName = "SGG.PerfMeter.PerfMeterHdrpCustomPass";
+		private const string HdrpCustomPassAssemblyName = "SGG.PerfMeter.HDRP";
 		private const BindingFlags InstanceFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 		private static PerfMeterRenderGraphSnapshot _latestSnapshot = PerfMeterRenderGraphSnapshot.NotObserved;
 
@@ -24,6 +26,11 @@ namespace SGG.PerfMeter
 		internal static bool IsRenderGraphFeatureAvailable()
 		{
 			return GetRenderGraphFeatureType() != null;
+		}
+
+		internal static bool IsHdrpCustomPassAvailable()
+		{
+			return GetHdrpCustomPassType() != null;
 		}
 
 		internal static void RecordFeatureSnapshot(object renderGraph, string observedCameraName, string observedCameraType, bool recordsOverlayMarkerPass, bool recordsOverdrawCounterPass, bool recordsOverdrawHeatmapPass)
@@ -51,7 +58,10 @@ namespace SGG.PerfMeter
 					transientResourceCount,
 					importedResourceCount,
 					aliasedResourceCount,
-					warning);
+					warning,
+					PerfMeterRenderPipelineKind.Universal,
+					"URP Render Graph Feature",
+					string.Empty);
 			}
 			catch (Exception exception)
 			{
@@ -71,9 +81,34 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal static void RecordHdrpCustomPassSnapshot(string observedCameraName, string observedCameraType, string observedInjectionPoint)
+		{
+			_latestSnapshot = new PerfMeterRenderGraphSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderGraphState.Observed,
+				Time.frameCount,
+				observedCameraName,
+				observedCameraType,
+				1,
+				PerfMeterRenderGraphSnapshot.UnavailableCount,
+				PerfMeterRenderGraphSnapshot.UnavailableCount,
+				PerfMeterRenderGraphSnapshot.UnavailableCount,
+				PerfMeterRenderGraphSnapshot.UnavailableCount,
+				PerfMeterRenderGraphSnapshot.UnavailableCount,
+				"HDRP Custom Pass observed; HDRP internal Render Graph counters are not exposed.",
+				PerfMeterRenderPipelineKind.HighDefinition,
+				"HDRP Custom Pass",
+				observedInjectionPoint);
+		}
+
 		private static Type GetRenderGraphFeatureType()
 		{
 			return Type.GetType(RenderGraphFeatureFullName + ", " + RenderGraphFeatureAssemblyName);
+		}
+
+		private static Type GetHdrpCustomPassType()
+		{
+			return Type.GetType(HdrpCustomPassFullName + ", " + HdrpCustomPassAssemblyName);
 		}
 
 		private static int GetPerfMeterPassCount(bool recordsOverlayMarkerPass, bool recordsOverdrawCounterPass, bool recordsOverdrawHeatmapPass)

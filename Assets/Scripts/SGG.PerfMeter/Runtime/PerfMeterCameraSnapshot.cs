@@ -65,7 +65,18 @@ namespace SGG.PerfMeter
 			string urpRequiresDepthOption,
 			string urpRequiresColorOption,
 			bool urpRequiresDepthTexture,
-			bool urpRequiresColorTexture)
+			bool urpRequiresColorTexture,
+			bool hasHighDefinitionAdditionalCameraData = false,
+			string hdrpClearColorMode = "",
+			bool hdrpClearDepth = false,
+			string hdrpAntialiasing = "",
+			string hdrpSmaaQuality = "",
+			bool hdrpStopNaN = false,
+			bool hdrpDithering = false,
+			bool hdrpAllowDynamicResolution = false,
+			bool hdrpCustomRenderingSettings = false,
+			int hdrpVolumeLayerMask = 0,
+			bool hdrpHasVolumeAnchorOverride = false)
 		{
 			IsAvailable = isAvailable;
 			Warning = warning ?? string.Empty;
@@ -113,6 +124,17 @@ namespace SGG.PerfMeter
 			UrpRequiresColorOption = urpRequiresColorOption ?? string.Empty;
 			UrpRequiresDepthTexture = urpRequiresDepthTexture;
 			UrpRequiresColorTexture = urpRequiresColorTexture;
+			HasHighDefinitionAdditionalCameraData = hasHighDefinitionAdditionalCameraData;
+			HdrpClearColorMode = hdrpClearColorMode ?? string.Empty;
+			HdrpClearDepth = hdrpClearDepth;
+			HdrpAntialiasing = hdrpAntialiasing ?? string.Empty;
+			HdrpSmaaQuality = hdrpSmaaQuality ?? string.Empty;
+			HdrpStopNaN = hdrpStopNaN;
+			HdrpDithering = hdrpDithering;
+			HdrpAllowDynamicResolution = hdrpAllowDynamicResolution;
+			HdrpCustomRenderingSettings = hdrpCustomRenderingSettings;
+			HdrpVolumeLayerMask = hdrpVolumeLayerMask;
+			HdrpHasVolumeAnchorOverride = hdrpHasVolumeAnchorOverride;
 		}
 
 		public bool IsAvailable { get; }
@@ -161,5 +183,16 @@ namespace SGG.PerfMeter
 		public string UrpRequiresColorOption { get; }
 		public bool UrpRequiresDepthTexture { get; }
 		public bool UrpRequiresColorTexture { get; }
+		public bool HasHighDefinitionAdditionalCameraData { get; }
+		public string HdrpClearColorMode { get; }
+		public bool HdrpClearDepth { get; }
+		public string HdrpAntialiasing { get; }
+		public string HdrpSmaaQuality { get; }
+		public bool HdrpStopNaN { get; }
+		public bool HdrpDithering { get; }
+		public bool HdrpAllowDynamicResolution { get; }
+		public bool HdrpCustomRenderingSettings { get; }
+		public int HdrpVolumeLayerMask { get; }
+		public bool HdrpHasVolumeAnchorOverride { get; }
 	}
 }

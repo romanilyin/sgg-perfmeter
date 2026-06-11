@@ -41,6 +41,34 @@ namespace SGG.PerfMeter
 		Unsupported = 2
 	}
 
+	public enum PerfMeterRenderPipelineKind
+	{
+		Unknown = 0,
+		Universal = 1,
+		HighDefinition = 2,
+		BuiltIn = 3
+	}
+
+	public readonly struct PerfMeterRenderPipelineSnapshot
+	{
+		public PerfMeterRenderPipelineSnapshot(
+			PerfMeterRenderPipelineKind kind,
+			string assetName,
+			string assetTypeName,
+			string runtimeTypeName)
+		{
+			Kind = kind;
+			AssetName = assetName ?? string.Empty;
+			AssetTypeName = assetTypeName ?? string.Empty;
+			RuntimeTypeName = runtimeTypeName ?? string.Empty;
+		}
+
+		public PerfMeterRenderPipelineKind Kind { get; }
+		public string AssetName { get; }
+		public string AssetTypeName { get; }
+		public string RuntimeTypeName { get; }
+	}
+
 	public enum PerfMeterBottleneck
 	{
 		Unknown = 0,
@@ -77,13 +105,19 @@ namespace SGG.PerfMeter
 			int transientResourceCount,
 			int importedResourceCount,
 			int aliasedResourceCount,
-			string warning)
+			string warning,
+			PerfMeterRenderPipelineKind renderPipeline = PerfMeterRenderPipelineKind.Unknown,
+			string integrationName = "",
+			string observedInjectionPoint = "")
 		{
 			Availability = availability;
 			State = state;
 			LastFrame = lastFrame;
 			ObservedCameraName = observedCameraName ?? string.Empty;
 			ObservedCameraType = observedCameraType ?? string.Empty;
+			RenderPipeline = renderPipeline;
+			IntegrationName = integrationName ?? string.Empty;
+			ObservedInjectionPoint = observedInjectionPoint ?? string.Empty;
 			PerfMeterPassCount = Mathf.Max(0, perfMeterPassCount);
 			RegisteredPassCount = registeredPassCount;
 			MergedPassCount = mergedPassCount;
@@ -113,6 +147,9 @@ namespace SGG.PerfMeter
 		public int LastFrame { get; }
 		public string ObservedCameraName { get; }
 		public string ObservedCameraType { get; }
+		public PerfMeterRenderPipelineKind RenderPipeline { get; }
+		public string IntegrationName { get; }
+		public string ObservedInjectionPoint { get; }
 		public int PerfMeterPassCount { get; }
 		public int RegisteredPassCount { get; }
 		public int MergedPassCount { get; }
@@ -1016,7 +1053,11 @@ namespace SGG.PerfMeter
 			int mainWindowPositionY,
 			bool displayLayoutAvailable,
 			string displayLayoutWarning,
-			PerfMeterDisplaySnapshot[] displays)
+			PerfMeterDisplaySnapshot[] displays,
+			PerfMeterRenderPipelineKind renderPipeline = PerfMeterRenderPipelineKind.Unknown,
+			string renderPipelineAssetName = "",
+			string renderPipelineAssetType = "",
+			string renderPipelineRuntimeType = "")
 		{
 			UnityVersion = unityVersion ?? string.Empty;
 			ApplicationPlatform = applicationPlatform;
@@ -1056,6 +1097,10 @@ namespace SGG.PerfMeter
 			DisplayLayoutAvailable = displayLayoutAvailable;
 			DisplayLayoutWarning = displayLayoutWarning ?? string.Empty;
 			Displays = displays ?? System.Array.Empty<PerfMeterDisplaySnapshot>();
+			RenderPipeline = renderPipeline;
+			RenderPipelineAssetName = renderPipelineAssetName ?? string.Empty;
+			RenderPipelineAssetType = renderPipelineAssetType ?? string.Empty;
+			RenderPipelineRuntimeType = renderPipelineRuntimeType ?? string.Empty;
 		}
 
 		public string UnityVersion { get; }
@@ -1096,5 +1141,9 @@ namespace SGG.PerfMeter
 		public bool DisplayLayoutAvailable { get; }
 		public string DisplayLayoutWarning { get; }
 		public PerfMeterDisplaySnapshot[] Displays { get; }
+		public PerfMeterRenderPipelineKind RenderPipeline { get; }
+		public string RenderPipelineAssetName { get; }
+		public string RenderPipelineAssetType { get; }
+		public string RenderPipelineRuntimeType { get; }
 	}
 }

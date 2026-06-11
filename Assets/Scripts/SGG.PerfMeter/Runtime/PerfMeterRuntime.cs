@@ -334,6 +334,15 @@ namespace SGG.PerfMeter
 
 		internal void SetOverdrawHeatmapVisible(bool visible)
 		{
+			if (visible && PerfMeterRenderPipelineDetector.GetActiveKind() == PerfMeterRenderPipelineKind.HighDefinition)
+			{
+				_overdrawHeatmapVisible = false;
+				_overdrawController.MarkUnsupported(PerfMeterOverdrawController.GetUnsupportedReason());
+				_latestMetrics = WithOverdrawState(_latestMetrics);
+				RefreshStatusOverlayState();
+				return;
+			}
+
 			_overdrawHeatmapVisible = visible;
 			RefreshStatusOverlayState();
 		}
