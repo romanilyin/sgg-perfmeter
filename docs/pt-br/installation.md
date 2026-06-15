@@ -1,11 +1,11 @@
 # Instalacao
 
-SGG PerfMeter e distribuido como um pacote Unity chamado `com.sungeargames.perfmeter`. O pacote do npm registry publico comeca em `2026.6.5-2`; Git UPM e copia local continuam disponiveis.
+SGG PerfMeter e distribuido como um pacote Unity chamado `com.sungeargames.perfmeter`. A versao publica atual no npm e `2026.6.11-1`; Git UPM e copia local continuam disponiveis.
 
 ## Requisitos
 
 - Unity `6000.4+` para uso runtime suportado.
-- URP `17.4+` com caminho Render Graph.
+- URP `17.4+` with Render Graph path or HDRP `17.4+` with Custom Pass integration.
 - Suporte runtime a UI Toolkit.
 - Frame Timing Stats ativado antes de depender de FrameTimingManager em builds.
 
@@ -27,7 +27,7 @@ Adicione o npm registry como Unity Package Manager scoped registry no `Packages/
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Fixe uma tag ou commit para instalacoes reproduziveis:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
   }
 }
 ```

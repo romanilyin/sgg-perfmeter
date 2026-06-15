@@ -1,11 +1,11 @@
 # 安装
 
-SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。public npm registry package 从 `2026.6.5-2` 开始，Git UPM 和 local copy install 也可用。
+SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。当前 public npm version 是 `2026.6.11-1`，Git UPM 和 local copy install 也可用。
 
 ## 要求
 
 - Unity `6000.4+`，用于受支持的运行时使用。
-- URP `17.4+`，使用 Render Graph path。
+- URP `17.4+` with Render Graph path or HDRP `17.4+` with Custom Pass integration.
 - UI Toolkit runtime support。
 - 在 build 中依赖 FrameTimingManager 之前启用 Frame Timing Stats。
 
@@ -27,7 +27,7 @@ Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Assets/Scripts/SGG.PerfMeter
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
   }
 }
 ```

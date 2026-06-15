@@ -23,4 +23,4 @@ This package-local page is intentionally short. The full user documentation is m
 
 ## Supported Target
 
-Unity `6000.4+` with URP `17.4+` Render Graph is the supported runtime target. Built-in Render Pipeline is unsupported; HDRP support is planned but not implemented in this release.
+Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration is the supported runtime target. Built-in Render Pipeline is unsupported. HDRP overdraw and heatmap are unsupported; FPS, CPU, GPU, memory, sessions, alerts, camera, device, and MCP diagnostics remain available.

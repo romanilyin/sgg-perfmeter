@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | active alerts、counters、Editor warning state を読み取ります。 |
 | `perfmeter.alerts.clear` | active alerts、counters、cooldown state をクリアします。 |
 | `perfmeter.device.info` | device、graphics、display、monitor、pipeline、Unity environment info を読み取ります。 |
-| `perfmeter.camera.snapshot` | camera transform/projection/URP settings を読み取ります。 |
-| `perfmeter.rendergraph.snapshot` | latest observed PerfMeter Render Graph diagnostics を読み取ります。 |
+| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
 | `perfmeter.overlay.set` | overlay の show/hide と preset、modules、corner、mode、target FPS を設定します。 |
 | `perfmeter.overdraw.start` | bounded overdraw measurement を開始します。 |
 | `perfmeter.overdraw.cancel` | active overdraw measurement をキャンセルします。 |

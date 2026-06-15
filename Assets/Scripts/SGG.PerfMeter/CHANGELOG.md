@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.6.11-1
+
+- Added SRP detection without a hard dependency on HDRP.
+- Added HDRP camera snapshots through reflection over `HDAdditionalCameraData`.
+- Added optional HDRP assembly and runtime-registered HDRP Custom Pass integration for HDRP `17.4+`.
+- Extended `perfmeter.rendergraph.snapshot` with render pipeline, integration name, and observed injection point metadata for URP Render Graph and HDRP Custom Pass diagnostics.
+- Updated setup/status flows to understand HDRP, skip URP Renderer Feature installation in HDRP projects, and report HDRP Custom Pass availability.
+- Marked HDRP overdraw and heatmap as explicitly unsupported while keeping FPS, CPU, GPU, memory, sessions, alerts, camera, device, and MCP diagnostics available.
+
 ## 2026.6.5-2
 
 - Published `com.sungeargames.perfmeter` to the public npm registry for Unity Package Manager scoped-registry installs.

@@ -23,8 +23,8 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | `perfmeter.alerts.latest` | Lire les alertes actives, les compteurs et l'etat des avertissements Editor. |
 | `perfmeter.alerts.clear` | Effacer les alertes actives, les compteurs et l'etat de cooldown. |
 | `perfmeter.device.info` | Lire les informations de device, graphics, display, monitor, pipeline et environnement Unity. |
-| `perfmeter.camera.snapshot` | Lire transform/projection/reglages URP de camera. |
-| `perfmeter.rendergraph.snapshot` | Lire les derniers diagnostics PerfMeter Render Graph observes. |
+| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
 | `perfmeter.overlay.set` | Afficher/masquer l'overlay et definir preset, modules, coin, mode et FPS cible. |
 | `perfmeter.overdraw.start` | Demarrer une mesure d'overdraw bornee. |
 | `perfmeter.overdraw.cancel` | Annuler la mesure d'overdraw active. |

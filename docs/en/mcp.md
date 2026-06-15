@@ -23,8 +23,8 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.alerts.latest` | Read active alerts, counters, and Editor warning state. |
 | `perfmeter.alerts.clear` | Clear active alerts, counters, and cooldown state. |
 | `perfmeter.device.info` | Read device, graphics, display, monitor, pipeline, and Unity environment info. |
-| `perfmeter.camera.snapshot` | Read camera transform/projection/URP settings. |
-| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter Render Graph diagnostics. |
+| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
 | `perfmeter.overlay.set` | Show/hide overlay and set preset, modules, corner, mode, and target FPS. |
 | `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
 | `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
@@ -46,4 +46,4 @@ perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
 
-Use `OverdrawDiagnostic` only for bounded diagnostic windows because numerical overdraw and heatmap rendering add extra GPU work.
+Use `OverdrawDiagnostic` only for bounded URP diagnostic windows because numerical overdraw and heatmap rendering add extra GPU work. HDRP reports overdraw and heatmap as unsupported while the rest of the diagnostics stay available.

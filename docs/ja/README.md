@@ -55,7 +55,7 @@ SGG PerfMeter は、フレームが CPU、GPU、レンダースレッド、prese
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```

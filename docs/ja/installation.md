@@ -1,6 +1,6 @@
 # インストール
 
-SGG PerfMeter は `com.sungeargames.perfmeter` という Unity package として配布されています。public npm registry package は `2026.6.5-2` から始まり、Git UPM と local copy install も利用できます。
+SGG PerfMeter は `com.sungeargames.perfmeter` という Unity package として配布されています。現在の public npm version は `2026.6.11-1` で、Git UPM と local copy install も利用できます。
 
 ## 要件
 
@@ -9,7 +9,7 @@ SGG PerfMeter は `com.sungeargames.perfmeter` という Unity package として
 - UI Toolkit runtime support。
 - build で FrameTimingManager に依存する前に Frame Timing Stats を有効化。
 
-Package metadata は、import と compile checks の import-safety floor として Unity `2022.3` を保持しています。現在の supported runtime target は Unity `6000.4+` と URP `17.4+` Render Graph です。
+Package metadata は、import と compile checks の import-safety floor として Unity `2022.3` を保持しています。現在の supported runtime target is Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
 
 ## npm Scoped Registry Install
 
@@ -27,7 +27,7 @@ Unity project の `Packages/manifest.json` に npm registry を Unity Package Ma
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Git dependencies に SSH を使う環境では次を使用します。
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
   }
 }
 ```

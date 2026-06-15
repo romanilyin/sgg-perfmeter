@@ -7,17 +7,17 @@
 - Unity project version: `6000.4.7f1`.
 - Package path: `Assets/Scripts/SGG.PerfMeter/`.
 - Main validation scene: `Assets/Scenes/SampleScene.unity`.
-- First public release version: `2026.6.5-1`; the first npm release is `2026.6.5-2`.
+- First public release version: `2026.6.5-1`; the first npm release is `2026.6.5-2`; current HDRP release candidate is `2026.6.11-1`.
 - Public distribution uses GitHub Releases, Git UPM tags, and npm scoped-registry installs.
 
 ## Supported Scope
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph.
+- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline is unsupported and not planned.
-- HDRP support is planned but not implemented in the current release.
+- HDRP overdraw and heatmap are unsupported; core FPS/CPU/GPU/memory/session/alert/camera/device/MCP diagnostics remain available in HDRP.
 - Prefer `FrameTimingManager` and zero-allocation `ProfilerRecorder` collection; do not base profiler timing on `Time.deltaTime`.
 - Runtime overlay work should stay on UI Toolkit, not uGUI or IMGUI.
-- URP render integration should use Render Graph paths such as `RecordRenderGraph` / `AddRasterRenderPass`.
+- URP render integration should use Render Graph paths such as `RecordRenderGraph` / `AddRasterRenderPass`; HDRP render integration should stay in the optional HDRP assembly and use `CustomPass`.
 
 ## Documentation Map
 

@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | Прочитать активные alerts/оповещения, счетчики и состояние Editor warnings. |
 | `perfmeter.alerts.clear` | Очистить активные alerts/оповещения, счетчики и состояние cooldown. |
 | `perfmeter.device.info` | Прочитать информацию об устройстве, graphics, display, monitor, pipeline и Unity environment. |
-| `perfmeter.camera.snapshot` | Прочитать transform/projection/URP settings камеры. |
-| `perfmeter.rendergraph.snapshot` | Прочитать последнюю наблюдаемую диагностику PerfMeter Render Graph. |
+| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
 | `perfmeter.overlay.set` | Показать/скрыть оверлей и задать preset, modules, corner, mode и целевой FPS. |
 | `perfmeter.overdraw.start` | Запустить ограниченное измерение overdraw. |
 | `perfmeter.overdraw.cancel` | Отменить активное измерение overdraw. |

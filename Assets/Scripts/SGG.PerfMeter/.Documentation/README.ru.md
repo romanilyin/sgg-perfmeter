@@ -23,4 +23,4 @@
 
 ## Поддерживаемая цель
 
-Поддерживаемая runtime-цель: Unity `6000.4+` с URP `17.4+` Render Graph. Built-in Render Pipeline не поддерживается; HDRP запланирован, но не реализован в этом релизе.
+Поддерживаемая runtime-цель: Unity `6000.4+` с URP `17.4+` Render Graph или HDRP `17.4+` Custom Pass integration. Built-in Render Pipeline не поддерживается. HDRP overdraw и heatmap не поддерживаются; FPS, CPU, GPU, memory, sessions, alerts, camera, device и MCP diagnostics остаются доступны.

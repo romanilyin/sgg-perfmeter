@@ -4,18 +4,17 @@
 
 ## Current Candidate
 
-- Private candidate: `2026.5.20-1`
-- Planned first public release: `2026.6.5-1`
+- Current release candidate: `2026.6.11-1`
+- First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- npm publish: deferred, not part of `2026.6.5-1`
+- npm publish: included for `2026.6.11-1`
 - Package: `com.sungeargames.perfmeter`
-- Unity validation target: `6000.4.7f1`
-- Runtime target: Unity `6000.4+`, URP `17.4+`
-- Public release work date: 2026-06-04
-- Public announcement date: 2026-06-05
+- Unity validation target: `6000.4.10f1`
+- Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
+- Release work date: 2026-06-15
 - GitHub Actions release workflow: disabled
 
-Planned public release checklist: `_DevelopmentDocs/release/2026.6.5-1-public-release-checklist.md`.
+Current release notes/checklist: `_DevelopmentDocs/release/2026.6.11-1-hdrp-release.md`.
 
 ## Local Gates
 

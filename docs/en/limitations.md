@@ -4,9 +4,9 @@ SGG PerfMeter is designed as a low-overhead runtime diagnostics layer, not a dee
 
 ## Platform And Pipeline Scope
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` and Render Graph path.
+- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline is unsupported and not planned.
-- HDRP support is planned for future work, but it is not implemented in `2026.6.5-2`.
+- HDRP overdraw and heatmap are unsupported. HDRP projects still get FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup, and MCP diagnostics.
 - Unity `2022.3` through `6000.3` may import for compile-safety, but runtime behavior and support target Unity `6000.4+`.
 
 ## Timing Availability
@@ -24,7 +24,7 @@ Profiler counters vary by platform, Unity version, render pipeline settings, and
 
 Numerical overdraw and visual heatmap are diagnostic modes. They add rendering work and should be used in bounded windows, not left on as steady-state gameplay UI.
 
-Numerical overdraw requires:
+Numerical overdraw requires URP and:
 
 - `PerfMeterRenderGraphFeature` installed into the active URP renderer;
 - fragment-stage UAV/storage-buffer support;
@@ -32,7 +32,7 @@ Numerical overdraw requires:
 - supported graphics API;
 - async GPU readback support.
 
-Unsupported targets report `OverdrawState.Unsupported` with warnings.
+Unsupported targets, including HDRP, report `OverdrawState.Unsupported` with warnings.
 
 ## Overlay Cost
 
@@ -40,4 +40,4 @@ The overlay is allocation-conscious and throttled, but changed numeric values an
 
 ## Validation Status
 
-Current validation includes automated EditMode and PlayMode coverage plus Android S23 Vulkan/GLES smoke validation. Broader player-build and device coverage is still useful before treating data as release-signoff evidence.
+Current validation includes automated EditMode coverage, HDRP smoke validation in Unity `6000.4.10f1`, and previous Android S23 Vulkan/GLES smoke validation. Broader player-build and device coverage is still useful before treating data as release-signoff evidence.

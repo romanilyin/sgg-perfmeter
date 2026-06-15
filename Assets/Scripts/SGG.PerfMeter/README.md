@@ -1,6 +1,6 @@
 # SGG PerfMeter
 
-**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.**
+**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP and HDRP.**
 
 Package name: `com.sungeargames.perfmeter`
 
@@ -25,11 +25,11 @@ The main user documentation lives in the repository-level GitHub docs:
 ## Requirements
 
 - Unity `6000.4+` for supported runtime usage.
-- URP `17.4+` with Render Graph path.
+- URP `17.4+` with Render Graph path or HDRP `17.4+` with the package HDRP Custom Pass integration.
 - Frame Timing Stats enabled for reliable frame timing in builds.
 - Vulkan preferred on Android when GPU frame timing matters.
 
-Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`.
+Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. HDRP overdraw and heatmap are unsupported; core runtime diagnostics remain available.
 
 ## Install
 
@@ -47,7 +47,7 @@ Install from the public npm registry with a Unity Package Manager scoped registr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```
@@ -63,18 +63,18 @@ Example `Packages/manifest.json` entry:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
   }
 }
 ```
 
-The npm registry package starts at `2026.6.5-2`.
+The current npm registry package version is `2026.6.11-1`.
 
 ## Quick Start
 
 1. Open `SGG/Perfmeter/Setup`.
 2. Enable Frame Timing Stats.
-3. Install `PerfMeterRenderGraphFeature` into editable active URP renderer assets.
+3. Install `PerfMeterRenderGraphFeature` into editable active URP renderer assets, or use HDRP where the package Custom Pass is registered at runtime.
 4. Save JSON settings from the `Presets` tab for zero-code setup, or copy the generated initialization snippet.
 5. Enter Play Mode and verify the overlay.
 

@@ -45,7 +45,7 @@ SGG PerfMeter 可识别帧瓶颈、对比性能变化、记录可复现的会话
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```

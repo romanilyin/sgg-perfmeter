@@ -45,7 +45,7 @@ SGG PerfMeter detecta cuellos de botella de frames, compara cambios de rendimien
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```

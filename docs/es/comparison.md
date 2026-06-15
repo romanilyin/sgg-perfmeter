@@ -12,7 +12,7 @@ SGG PerfMeter tiene un alcance intencionadamente más estrecho y más diagnósti
 
 | Área | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
-| Posicionamiento principal | 🔵 Diagnósticos URP Render Graph + API de profiling lista para automatización | ⚠️ Contador FPS/memory/device flexible dentro del juego | ⚠️ Monitor visual de estadísticas FPS/memory/audio + debugger |
+| Posicionamiento principal | 🔵 Diagnósticos URP Render Graph / HDRP Custom Pass + API de profiling lista para automatización | ⚠️ Contador FPS/memory/device flexible dentro del juego | ⚠️ Monitor visual de estadísticas FPS/memory/audio + debugger |
 | Target Unity | ⚠️ Unity `6000.4+`, URP `17.4+` | 🔵 Amplio soporte de Unity antiguo | 🔵 Amplio soporte de Unity antiguo |
 | Backend UI | 🔵 Overlay UI Toolkit | ⚠️ uGUI Canvas/Text labels | ⚠️ Módulos uGUI Text/Image |
 | Fuente de timing | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Sampling runtime de frame/update | ⚠️ Sampling de historial de `Time.unscaledDeltaTime` |

@@ -1,11 +1,11 @@
 # Установка
 
-SGG PerfMeter распространяется как пакет Unity с именем `com.sungeargames.perfmeter`. Публичный npm registry package начинается с `2026.6.5-2`; установка через Git UPM и локальную копию остается доступной.
+SGG PerfMeter распространяется как пакет Unity с именем `com.sungeargames.perfmeter`. Текущая публичная npm-версия: `2026.6.11-1`; установка через Git UPM и локальную копию остается доступной.
 
 ## Требования
 
 - Unity `6000.4+` для поддерживаемого использования во время выполнения.
-- URP `17.4+` с Render Graph.
+- URP `17.4+` with Render Graph path or HDRP `17.4+` with Custom Pass integration.
 - Поддержка UI Toolkit во время выполнения.
 - Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
 
@@ -27,7 +27,7 @@ SGG PerfMeter распространяется как пакет Unity с име
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Assets/Scripts/SGG.PerfMeter
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.5-2"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
   }
 }
 ```

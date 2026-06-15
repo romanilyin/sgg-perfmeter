@@ -2,7 +2,7 @@
 
 # SGG PerfMeter
 
-**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.**
+**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP and HDRP.**
 
 [English](./README.md) |
 [Русский](./docs/ru/README.md) |
@@ -48,7 +48,7 @@
 
 </div>
 
-SGG PerfMeter - lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP.
+SGG PerfMeter - lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP and HDRP.
 
 Detect frame bottlenecks, compare performance changes, capture reproducible sessions, and expose structured profiling data to tools and AI agents.
 
@@ -72,12 +72,12 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 ## What It Measures
 
-- Unity `6000.4+` / URP `17.4+` Render Graph runtime state.
+- Unity `6000.4+` / URP `17.4+` Render Graph and HDRP `17.4+` Custom Pass runtime state.
 - FrameTimingManager CPU/GPU timing: CPU frame, main thread, render thread, present wait, and GPU frame time when available.
 - ProfilerRecorder render counters: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, upload bytes, memory, and GPU memory when available.
 - Bottleneck classification for GPU, CPU main thread, CPU render thread, present/VSync, balanced, or unknown frames.
-- Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph.
-- Device, camera, Render Graph, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
+- Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
+- Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 
 ## Quick Start
 
@@ -97,7 +97,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```
@@ -109,7 +109,7 @@ For Git UPM and local-copy options, see [Installation](./docs/en/installation.md
 - **Zero-code overlay**: create `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` from the setup window and let PerfMeter auto-start.
 - **Runtime API**: call `PerformanceMeter.EnsureRunning()`, then read immutable status, metrics, device, camera, and session snapshots.
 - **Session export**: record bounded profiling windows and export JSON/CSV with scene, device, camera, settings, counters, warnings, and worst-frame metadata.
-- **Overdraw diagnostics**: request a bounded numerical measurement or enable the visual heatmap when the URP renderer feature is installed.
+- **Overdraw diagnostics**: request a bounded numerical measurement or enable the visual heatmap when the URP renderer feature is installed; HDRP explicitly reports overdraw/heatmap as unsupported.
 - **MCP automation**: use MCP command metadata to start collection, switch overlay modes, export sessions, inspect alerts, and read snapshots.
 
 See [Workflows](./docs/en/workflows.md), [API](./docs/en/api.md), and [MCP](./docs/en/mcp.md).
@@ -122,18 +122,18 @@ Start with [Visual Presets](./docs/en/presets.md), [Setup Window Screenshots](./
 
 ## Compared With FPS Counters
 
-Advanced FPS Counter and Graphy are strong general-purpose drop-in visual overlays. SGG PerfMeter intentionally focuses on modern Unity URP diagnostics: structured timing and render counters, bottleneck classification, reproducible sessions, device/camera snapshots, overdraw diagnostics, Render Graph state, and MCP/API automation.
+Advanced FPS Counter and Graphy are strong general-purpose drop-in visual overlays. SGG PerfMeter intentionally focuses on modern Unity SRP diagnostics: structured timing and render counters, bottleneck classification, reproducible sessions, device/camera snapshots, URP overdraw diagnostics, URP Render Graph state, HDRP Custom Pass state, and MCP/API automation.
 
 Use [Comparison](./docs/en/comparison.md) as product and architecture context rather than measured runtime benchmark data.
 
 ## Requirements
 
 - Unity `6000.4+` for supported runtime usage.
-- URP `17.4+` with Render Graph path.
+- URP `17.4+` with Render Graph path or HDRP `17.4+` with the package HDRP Custom Pass integration.
 - Frame Timing Stats enabled before relying on FrameTimingManager in builds.
 - Vulkan is preferred on Android when GPU timing matters.
 
-Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, Render Graph features, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+`. Some features may not work in versions before `6000.4`.
+Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. Some features may not work in versions before `6000.4`.
 
 ## License
 

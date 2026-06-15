@@ -4,9 +4,9 @@ SGG PerfMeter est concu comme une couche de diagnostics runtime a faible overhea
 
 ## Portee Plateforme Et Pipeline
 
-- Cible runtime prise en charge: Unity `6000.4+` avec URP `17.4+` et chemin Render Graph.
+- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline n'est pas pris en charge et n'est pas planifie.
-- Le support HDRP est prevu, mais il n'est pas implemente dans `2026.6.5-2`.
+- HDRP overdraw et heatmap ne sont pas pris en charge. Les projets HDRP gardent les diagnostics FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup et MCP.
 - Unity `2022.3` a `6000.3` peut importer le package pour la securite de compilation, mais le comportement runtime et la cible de support sont Unity `6000.4+`.
 
 ## Disponibilite Du Timing

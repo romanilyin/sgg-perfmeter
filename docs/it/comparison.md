@@ -12,7 +12,7 @@ SGG PerfMeter e intenzionalmente piu mirato e diagnostico: Unity `6000.4+`, URP 
 
 | Area | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
-| Posizionamento primario | 🔵 Diagnostica URP Render Graph + API di profiling pronta per automazione | ⚠️ Counter FPS/memoria/device in-game flessibile | ⚠️ Monitor e debugger visivo per statistiche FPS/memoria/audio |
+| Posizionamento primario | 🔵 Diagnostica URP Render Graph / HDRP Custom Pass + API di profiling pronta per automazione | ⚠️ Counter FPS/memoria/device in-game flessibile | ⚠️ Monitor e debugger visivo per statistiche FPS/memoria/audio |
 | Target Unity | ⚠️ Unity `6000.4+`, URP `17.4+` | 🔵 Ampio supporto per Unity meno recenti | 🔵 Ampio supporto per Unity meno recenti |
 | Backend UI | 🔵 Overlay UI Toolkit | ⚠️ Label uGUI Canvas/Text | ⚠️ Moduli uGUI Text/Image |
 | Sorgente timing | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Campionamento runtime frame/update | ⚠️ Campionamento storico `Time.unscaledDeltaTime` |

@@ -45,7 +45,7 @@ SGG PerfMeter identifica i colli di bottiglia dei frame, confronta le variazioni
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.5-2"
+    "com.sungeargames.perfmeter": "2026.6.11-1"
   }
 }
 ```

@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | 读取 active alerts、counters 和 Editor warning state。 |
 | `perfmeter.alerts.clear` | 清除 active alerts、counters 和 cooldown state。 |
 | `perfmeter.device.info` | 读取 device、graphics、display、monitor、pipeline 和 Unity environment info。 |
-| `perfmeter.camera.snapshot` | 读取 camera transform/projection/URP settings。 |
-| `perfmeter.rendergraph.snapshot` | 读取 latest observed PerfMeter Render Graph diagnostics。 |
+| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
 | `perfmeter.overlay.set` | 显示/隐藏 overlay，并设置 preset、modules、corner、mode 和 target FPS。 |
 | `perfmeter.overdraw.start` | 启动有边界的 overdraw measurement。 |
 | `perfmeter.overdraw.cancel` | 取消 active overdraw measurement。 |

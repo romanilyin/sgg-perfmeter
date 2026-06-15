@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | active alerts, counters, Editor warning state를 읽습니다. |
 | `perfmeter.alerts.clear` | active alerts, counters, cooldown state를 지웁니다. |
 | `perfmeter.device.info` | device, graphics, display, monitor, pipeline, Unity environment info를 읽습니다. |
-| `perfmeter.camera.snapshot` | camera transform/projection/URP settings를 읽습니다. |
-| `perfmeter.rendergraph.snapshot` | 최근 관측된 PerfMeter Render Graph diagnostics를 읽습니다. |
+| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
 | `perfmeter.overlay.set` | overlay 표시/숨김 및 preset, modules, corner, mode, target FPS를 설정합니다. |
 | `perfmeter.overdraw.start` | bounded overdraw measurement를 시작합니다. |
 | `perfmeter.overdraw.cancel` | active overdraw measurement를 취소합니다. |
