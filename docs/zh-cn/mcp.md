@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | 读取 active alerts、counters 和 Editor warning state。 |
 | `perfmeter.alerts.clear` | 清除 active alerts、counters 和 cooldown state。 |
 | `perfmeter.device.info` | 读取 device、graphics、display、monitor、pipeline 和 Unity environment info。 |
-| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
-| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
+| `perfmeter.camera.snapshot` | 读取 camera transform/projection 和 URP/HDRP camera settings。 |
+| `perfmeter.rendergraph.snapshot` | 读取 URP Render Graph 或 HDRP Custom Pass 的最新 observed render integration diagnostics。 |
 | `perfmeter.overlay.set` | 显示/隐藏 overlay，并设置 preset、modules、corner、mode 和 target FPS。 |
 | `perfmeter.overdraw.start` | 启动有边界的 overdraw measurement。 |
 | `perfmeter.overdraw.cancel` | 取消 active overdraw measurement。 |
@@ -46,4 +46,4 @@ perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
 
-仅在有边界的 diagnostic windows 中使用 `OverdrawDiagnostic`，因为 numerical overdraw 和 heatmap rendering 会增加额外 GPU work。
+仅在有边界的 URP diagnostic windows 中使用 `OverdrawDiagnostic`，因为 numerical overdraw 和 heatmap rendering 会增加额外 GPU work。HDRP 会将 overdraw/heatmap 报告为 unsupported，但其他 diagnostics 仍可用。

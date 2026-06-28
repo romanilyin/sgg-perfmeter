@@ -15,7 +15,7 @@ SGG/Perfmeter/Setup
 Utilisez la fenetre de configuration pour:
 
 - activer Frame Timing Stats;
-- installer `PerfMeterRenderGraphFeature` dans les renderers URP actifs et modifiables;
+- installer `PerfMeterRenderGraphFeature` dans les renderers URP actifs et modifiables, ou laisser les projets HDRP inchanges car le package Custom Pass est enregistre au runtime;
 - creer les reglages JSON par defaut appartenant au projet;
 - configurer la visibilite de l'overlay, le coin, le FPS cible, le preset visuel et le mode de collecte.
 
@@ -34,7 +34,8 @@ L'overlay par defaut doit apparaitre dans le coin selectionne. Si ce n'est pas l
 - confirmez que le fichier de reglages JSON existe dans le chemin Resources;
 - confirmez que l'overlay est visible dans la fenetre de configuration;
 - confirmez que le mode de collecte runtime est `Overlay`;
-- confirmez que le renderer URP actif contient `PerfMeterRenderGraphFeature` lors des tests de diagnostics Render Graph ou d'overdraw.
+- confirmez que le renderer URP actif contient `PerfMeterRenderGraphFeature` lors des tests de diagnostics URP Render Graph ou d'overdraw;
+- en HDRP, confirmez que setup signale HDRP Custom Pass availability. HDRP overdraw et heatmap ne sont pas pris en charge by design.
 
 ## Criteres De Fin
 

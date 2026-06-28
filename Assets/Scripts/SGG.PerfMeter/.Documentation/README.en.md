@@ -4,7 +4,7 @@ This package-local page is intentionally short. The full user documentation is m
 
 ## Main Documentation
 
-- README: https://github.com/romanilyin/sgg-perfmeter
+- README: https://github.com/romanilyin/sgg-perfmeter/blob/main/README.md
 - Russian: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/ru/README.md
 - German: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/de/README.md
 - Spanish: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/es/README.md

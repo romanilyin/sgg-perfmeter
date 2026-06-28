@@ -15,7 +15,7 @@ SGG/Perfmeter/Setup
 Через окно настройки можно:
 
 - включить Frame Timing Stats;
-- установить `PerfMeterRenderGraphFeature` в активные URP Renderers, доступные для редактирования;
+- установить `PerfMeterRenderGraphFeature` в активные URP Renderers, доступные для редактирования, или оставить HDRP-проекты без изменений, потому что package Custom Pass регистрируется во время runtime;
 - создать проектные JSON-настройки по умолчанию;
 - настроить видимость оверлея, угол, целевой FPS, визуальный пресет и режим сбора.
 
@@ -34,7 +34,8 @@ Assets/Resources/SGG.PerfMeter/perfmeter-settings.json
 - проверьте, что JSON-файл настроек находится в Resources;
 - проверьте, что оверлей включен в окне настройки;
 - проверьте, что режим сбора во время выполнения равен `Overlay`;
-- проверьте, что активный URP Renderer содержит `PerfMeterRenderGraphFeature`, если тестируется диагностика Render Graph или overdraw.
+- проверьте, что активный URP Renderer содержит `PerfMeterRenderGraphFeature`, если тестируется URP Render Graph diagnostics или overdraw;
+- в HDRP проверьте, что setup сообщает доступность HDRP Custom Pass. HDRP overdraw и heatmap не поддерживаются by design.
 
 ## Критерии готовности
 

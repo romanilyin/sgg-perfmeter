@@ -15,7 +15,7 @@ SGG/Perfmeter/Setup
 setup window에서 다음을 수행합니다.
 
 - Frame Timing Stats 활성화;
-- editable active URP renderer에 `PerfMeterRenderGraphFeature` 설치;
+- editable active URP renderer에 `PerfMeterRenderGraphFeature` 설치, 또는 package Custom Pass가 runtime에 등록되므로 HDRP projects는 그대로 둡니다;
 - project-owned 기본 JSON settings 생성;
 - overlay visibility, corner, target FPS, visual preset, collection mode 설정.
 
@@ -34,7 +34,8 @@ Assets/Resources/SGG.PerfMeter/perfmeter-settings.json
 - JSON settings file이 Resources path에 있는지 확인합니다.
 - setup window에서 overlay가 visible인지 확인합니다.
 - runtime collection mode가 `Overlay`인지 확인합니다.
-- Render Graph diagnostics 또는 overdraw를 테스트할 때 active URP renderer에 `PerfMeterRenderGraphFeature`가 있는지 확인합니다.
+- URP Render Graph diagnostics 또는 overdraw를 테스트할 때 active URP renderer에 `PerfMeterRenderGraphFeature`가 있는지 확인합니다;
+- HDRP에서는 setup이 HDRP Custom Pass availability를 보고하는지 확인합니다. HDRP overdraw와 heatmap은 by design unsupported입니다.
 
 ## 완료 기준
 

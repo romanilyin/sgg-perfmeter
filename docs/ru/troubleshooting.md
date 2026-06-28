@@ -19,7 +19,8 @@
 
 ## Измерение overdraw не движется
 
-- Установите `PerfMeterRenderGraphFeature` в активный URP Renderer.
+- В URP установите `PerfMeterRenderGraphFeature` в активный URP Renderer.
+- В HDRP overdraw и heatmap не поддерживаются by design; используйте core diagnostics.
 - Проверьте, что активная камера использует Renderer с этой feature.
 - Проверьте поддержку fragment UAV/storage buffers, compute shaders и async GPU readback на целевом backend.
 - Запускайте ограниченное измерение через `PerformanceMeter.RequestOverdrawMeasurement(frameCount)`.

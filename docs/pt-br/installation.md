@@ -1,15 +1,15 @@
 # Instalacao
 
-SGG PerfMeter e distribuido como um pacote Unity chamado `com.sungeargames.perfmeter`. A versao publica atual no npm e `2026.6.11-1`; Git UPM e copia local continuam disponiveis.
+SGG PerfMeter e distribuido como um pacote Unity chamado `com.sungeargames.perfmeter`. A versao publica atual no npm e `2026.6.28-1`; Git UPM e copia local continuam disponiveis.
 
 ## Requisitos
 
 - Unity `6000.4+` para uso runtime suportado.
-- URP `17.4+` with Render Graph path or HDRP `17.4+` with Custom Pass integration.
+- URP `17.4+` com Render Graph path ou HDRP `17.4+` com Custom Pass integration.
 - Suporte runtime a UI Toolkit.
 - Frame Timing Stats ativado antes de depender de FrameTimingManager em builds.
 
-Os metadados do pacote mantem Unity `2022.3` como piso de seguranca para importacao e verificacoes de compilacao. O alvo runtime suportado atual e Unity `6000.4+` com URP `17.4+` Render Graph.
+Os metadados do pacote mantem Unity `2022.3` como piso de seguranca para importacao e verificacoes de compilacao. O alvo runtime suportado atual e Unity `6000.4+` com URP `17.4+` Render Graph ou HDRP `17.4+` Custom Pass integration.
 
 ## Instalacao Com npm Scoped Registry
 
@@ -27,7 +27,7 @@ Adicione o npm registry como Unity Package Manager scoped registry no `Packages/
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Fixe uma tag ou commit para instalacoes reproduziveis:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
   }
 }
 ```
@@ -93,7 +93,7 @@ SGG/Perfmeter/Setup
 Depois execute o setup recomendado:
 
 1. Ative Frame Timing Stats.
-2. Instale `PerfMeterRenderGraphFeature` nos URP renderer assets ativos editaveis.
+2. Instale `PerfMeterRenderGraphFeature` nos URP renderer assets ativos editaveis. Projetos HDRP pulam mudancas no URP renderer; o package HDRP Custom Pass e registrado em runtime quando HDRP `17.4+` esta instalado.
 3. Salve as configuracoes JSON em `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` para setup sem codigo, ou copie o snippet de inicializacao.
 4. Entre em Play Mode e verifique o overlay.
 

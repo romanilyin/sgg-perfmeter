@@ -1,15 +1,15 @@
 # 설치
 
-SGG PerfMeter는 `com.sungeargames.perfmeter`라는 Unity package로 배포됩니다. 현재 public npm version은 `2026.6.11-1`이며 Git UPM과 local copy install도 사용할 수 있습니다.
+SGG PerfMeter는 `com.sungeargames.perfmeter`라는 Unity package로 배포됩니다. 현재 public npm version은 `2026.6.28-1`이며 Git UPM과 local copy install도 사용할 수 있습니다.
 
 ## 요구 사항
 
 - 지원되는 런타임 사용을 위한 Unity `6000.4+`.
-- Render Graph path를 사용하는 URP `17.4+`.
+- Render Graph path를 사용하는 URP `17.4+` 또는 HDRP `17.4+` Custom Pass integration.
 - UI Toolkit runtime support.
 - build에서 FrameTimingManager에 의존하기 전에 Frame Timing Stats 활성화.
 
-Package metadata는 import 및 compile check를 위한 import-safety floor로 Unity `2022.3`을 유지합니다. 현재 지원되는 런타임 target은 Unity `6000.4+` 및 URP `17.4+` Render Graph입니다.
+Package metadata는 import 및 compile check를 위한 import-safety floor로 Unity `2022.3`을 유지합니다. 현재 지원되는 런타임 target은 Unity `6000.4+` 및 URP `17.4+` Render Graph 또는 HDRP `17.4+` Custom Pass integration입니다.
 
 ## npm Scoped Registry Install
 
@@ -27,7 +27,7 @@ Unity project의 `Packages/manifest.json`에 npm registry를 Unity Package Manag
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Unity project의 `Packages/manifest.json`에 추가합니다.
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
   }
 }
 ```
@@ -93,7 +93,7 @@ SGG/Perfmeter/Setup
 그다음 권장 setup을 실행합니다.
 
 1. Frame Timing Stats를 활성화합니다.
-2. editable active URP renderer asset에 `PerfMeterRenderGraphFeature`를 설치합니다.
+2. editable active URP renderer asset에 `PerfMeterRenderGraphFeature`를 설치합니다. HDRP projects는 URP renderer changes를 건너뛰며, package HDRP Custom Pass는 HDRP `17.4+`가 설치된 경우 runtime에 등록됩니다.
 3. zero-code setup을 위해 JSON settings를 `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`에 저장하거나 initialization snippet을 복사합니다.
 4. Play Mode에 진입하고 overlay를 확인합니다.
 

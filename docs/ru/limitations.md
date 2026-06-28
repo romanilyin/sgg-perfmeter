@@ -4,7 +4,7 @@ SGG PerfMeter - слой runtime-диагностики с низкими нак
 
 ## Область платформ и рендер-пайплайнов
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+- Поддерживаемая runtime-цель: Unity `6000.4+` с URP `17.4+` Render Graph или HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline не поддерживается и не планируется.
 - HDRP overdraw и heatmap не поддерживаются. В HDRP остаются доступны FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup и MCP diagnostics.
 - Unity от `2022.3` до `6000.3` может импортироваться для проверки компиляции, но поведение во время выполнения и поддержка требуют Unity `6000.4+`.
@@ -24,7 +24,7 @@ Profiler counters зависят от платформы, версии Unity, н
 
 Числовой overdraw и визуальная heatmap - диагностические режимы. Они добавляют работу рендера и должны использоваться в ограниченных окнах, а не как постоянный игровой UI.
 
-Числовой overdraw требует:
+Числовой overdraw в URP требует:
 
 - наличия `PerfMeterRenderGraphFeature` в активном URP renderer;
 - поддержки UAV/storage buffer на fragment stage;
@@ -32,7 +32,7 @@ Profiler counters зависят от платформы, версии Unity, н
 - поддерживаемого graphics API;
 - поддержки async GPU readback.
 
-Неподдерживаемые цели возвращают `OverdrawState.Unsupported` с warnings.
+Неподдерживаемые цели, включая HDRP, возвращают `OverdrawState.Unsupported` с warnings.
 
 ## Стоимость оверлея
 
@@ -40,4 +40,4 @@ Profiler counters зависят от платформы, версии Unity, н
 
 ## Статус валидации
 
-Текущая валидация включает автоматизированное покрытие EditMode и PlayMode плюс smoke-валидацию на Android S23 Vulkan/GLES. Более широкое покрытие player-билдов и устройств все еще полезно перед тем, как использовать данные как подтверждение готовности к релизу.
+Текущая валидация включает автоматизированное покрытие EditMode, HDRP smoke validation в Unity `6000.4.10f1` и предыдущую smoke-валидацию Android S23 Vulkan/GLES. Более широкое покрытие player-билдов и устройств все еще полезно перед тем, как использовать данные как подтверждение готовности к релизу.

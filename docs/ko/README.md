@@ -1,6 +1,6 @@
 # SGG PerfMeter
 
-**Unity 6 URP를 위한 경량 런타임 진단 및 에이전트가 읽을 수 있는 프로파일링.**
+**Unity 6 URP+HDRP (FPS meter)를 위한 경량 런타임 진단 및 에이전트가 읽을 수 있는 프로파일링.**
 
 [English](../../README.md) | [Русский](../ru/README.md) | [Deutsch](../de/README.md) | [Español](../es/README.md) | [Français](../fr/README.md) | [Italiano](../it/README.md) | [日本語](../ja/README.md) | [한국어](./README.md) | [Português (Brasil)](../pt-br/README.md) | [简体中文](../zh-cn/README.md)
 
@@ -20,12 +20,12 @@ SGG PerfMeter는 프레임 병목을 식별하고, 성능 변화를 비교하고
 
 ## 측정 항목
 
-- Unity `6000.4+` / URP `17.4+` Render Graph 런타임 상태.
+- Unity `6000.4+` / URP `17.4+` Render Graph 및 HDRP `17.4+` Custom Pass 런타임 상태.
 - 사용 가능한 경우 FrameTimingManager CPU/GPU timing: CPU frame, main thread, render thread, present wait, GPU frame time.
 - 사용 가능한 경우 ProfilerRecorder render counter: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory, GPU memory.
 - GPU, CPU main, CPU render, present/VSync, balanced, unknown 병목 분류.
-- URP Render Graph를 통한 opt-in overdraw measurement 및 visual overdraw heatmap.
-- code 및 MCP automation용 device, camera, Render Graph, status, metrics, alerts, sessions, custom metrics snapshot.
+- URP Render Graph를 통한 opt-in overdraw measurement 및 visual overdraw heatmap. HDRP overdraw/heatmap은 unsupported이며 core diagnostics는 계속 사용할 수 있습니다.
+- code 및 MCP automation용 device, URP/HDRP camera, render integration, status, metrics, alerts, sessions, custom metrics snapshot.
 
 ## 빠른 시작
 
@@ -45,7 +45,7 @@ SGG PerfMeter는 프레임 병목을 식별하고, 성능 변화를 비교하고
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```

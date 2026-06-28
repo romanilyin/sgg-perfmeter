@@ -49,6 +49,8 @@ PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
 PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
+Numerical overdraw und heatmap nutzen den URP Render Graph diagnostic path. Overdraw measurement erfordert `PerfMeterRenderGraphFeature`, replacement shader support, fragment UAV/storage-buffer support, compute shader support, eine unterstuetzte graphics API und async GPU readback. HDRP meldet overdraw/heatmap als unsupported, waehrend core overlay, session, API und MCP diagnostics verfuegbar bleiben.
+
 ## Kamera- Und Geraete-Reproduzierbarkeit
 
 Snapshots bewahren die Umgebung, in der ein Performance-Capture entstanden ist.

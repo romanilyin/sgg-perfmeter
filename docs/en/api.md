@@ -55,7 +55,7 @@ PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapsh
 PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 ```
 
-Device snapshots include Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots include scene, transform, projection, clipping, pixel rect, target display, and URP camera settings when available.
+Device snapshots include Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots include scene, transform, projection, clipping, pixel rect, target display, and URP/HDRP camera settings when available.
 
 ## CPU Core Loads
 
@@ -124,4 +124,4 @@ PerformanceMeter.CancelOverdrawMeasurement();
 PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
-Overdraw diagnostics are explicit diagnostic modes and can add GPU work.
+Overdraw diagnostics are explicit diagnostic modes and can add GPU work. In HDRP these APIs safely report unsupported state for overdraw and heatmap instead of promising HDRP heatmap output.

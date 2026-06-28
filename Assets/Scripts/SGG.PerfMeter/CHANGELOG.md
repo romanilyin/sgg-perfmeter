@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.6.28-1
+
+- Updated package and GitHub user documentation in all languages to describe Unity 6 URP+HDRP support consistently.
+- Clarified URP Render Graph overdraw/heatmap support and HDRP overdraw/heatmap unsupported state while keeping HDRP core diagnostics available.
+- Replaced package-local README links with direct GitHub URLs.
+- Updated package metadata and install examples to version `2026.6.28-1`.
+
 ## 2026.6.11-1
 
 - Added SRP detection without a hard dependency on HDRP.

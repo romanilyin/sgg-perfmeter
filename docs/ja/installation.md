@@ -1,15 +1,15 @@
 # インストール
 
-SGG PerfMeter は `com.sungeargames.perfmeter` という Unity package として配布されています。現在の public npm version は `2026.6.11-1` で、Git UPM と local copy install も利用できます。
+SGG PerfMeter は `com.sungeargames.perfmeter` という Unity package として配布されています。現在の public npm version は `2026.6.28-1` で、Git UPM と local copy install も利用できます。
 
 ## 要件
 
 - supported runtime usage には Unity `6000.4+`。
-- Render Graph path を使う URP `17.4+`。
+- Render Graph path を使う URP `17.4+`、または HDRP `17.4+` Custom Pass integration。
 - UI Toolkit runtime support。
 - build で FrameTimingManager に依存する前に Frame Timing Stats を有効化。
 
-Package metadata は、import と compile checks の import-safety floor として Unity `2022.3` を保持しています。現在の supported runtime target is Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+Package metadata は、import と compile checks の import-safety floor として Unity `2022.3` を保持しています。現在の supported runtime target は Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration です。
 
 ## npm Scoped Registry Install
 
@@ -27,7 +27,7 @@ Unity project の `Packages/manifest.json` に npm registry を Unity Package Ma
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Git dependencies に SSH を使う環境では次を使用します。
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
   }
 }
 ```
@@ -93,7 +93,7 @@ SGG/Perfmeter/Setup
 その後、recommended setup を実行します。
 
 1. Frame Timing Stats を有効化します。
-2. editable active URP renderer assets に `PerfMeterRenderGraphFeature` をインストールします。
+2. editable active URP renderer assets に `PerfMeterRenderGraphFeature` をインストールします。HDRP projects は URP renderer changes をスキップします。package HDRP Custom Pass は HDRP `17.4+` がある場合 runtime で登録されます。
 3. zero-code setup 用に JSON settings を `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` に保存するか、initialization snippet をコピーします。
 4. Play Mode に入り、overlay を確認します。
 

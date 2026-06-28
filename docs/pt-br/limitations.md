@@ -4,7 +4,7 @@ SGG PerfMeter e projetado como uma camada runtime de diagnosticos de baixo overh
 
 ## Escopo De Plataforma E Pipeline
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+- Alvo runtime suportado: Unity `6000.4+` com URP `17.4+` Render Graph ou HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline nao tem suporte e nao esta planejado.
 - HDRP overdraw e heatmap nao sao suportados. Projetos HDRP continuam com diagnostics de FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup e MCP.
 - Unity `2022.3` ate `6000.3` pode importar para seguranca de compilacao, mas o comportamento runtime e o alvo de suporte sao Unity `6000.4+`.
@@ -24,7 +24,7 @@ Profiler counters variam por plataforma, versao do Unity, configuracoes do rende
 
 Overdraw numerico e heatmap visual sao modos diagnosticos. Eles adicionam trabalho de renderizacao e devem ser usados em janelas limitadas, sem permanecerem ativos como UI continua de gameplay.
 
-Overdraw numerico requer:
+Overdraw numerico em URP requer:
 
 - `PerfMeterRenderGraphFeature` instalado no URP renderer ativo;
 - suporte a UAV/storage-buffer no estagio de fragment;
@@ -32,7 +32,7 @@ Overdraw numerico requer:
 - graphics API suportada;
 - suporte a async GPU readback.
 
-Alvos nao suportados reportam `OverdrawState.Unsupported` com avisos.
+Alvos nao suportados, incluindo HDRP, reportam `OverdrawState.Unsupported` com avisos.
 
 ## Custo Do Overlay
 
@@ -40,4 +40,4 @@ O overlay e consciente de alocacoes e usa throttling, mas valores numericos alte
 
 ## Status De Validacao
 
-A validacao atual inclui cobertura automatizada EditMode e PlayMode, alem de validacao smoke Android S23 Vulkan/GLES. Cobertura mais ampla de player-build e dispositivos ainda e util antes de tratar os dados como evidencia de sign-off de release.
+A validacao atual inclui cobertura automatizada EditMode, HDRP smoke validation no Unity `6000.4.10f1` e validacao smoke anterior no Android S23 Vulkan/GLES. Cobertura mais ampla de player-build e dispositivos ainda e util antes de tratar os dados como evidencia de sign-off de release.

@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | active alerts、counters、Editor warning state を読み取ります。 |
 | `perfmeter.alerts.clear` | active alerts、counters、cooldown state をクリアします。 |
 | `perfmeter.device.info` | device、graphics、display、monitor、pipeline、Unity environment info を読み取ります。 |
-| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
-| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
+| `perfmeter.camera.snapshot` | camera transform/projection と URP/HDRP camera settings を読み取ります。 |
+| `perfmeter.rendergraph.snapshot` | URP Render Graph または HDRP Custom Pass の最新 observed render integration diagnostics を読み取ります。 |
 | `perfmeter.overlay.set` | overlay の show/hide と preset、modules、corner、mode、target FPS を設定します。 |
 | `perfmeter.overdraw.start` | bounded overdraw measurement を開始します。 |
 | `perfmeter.overdraw.cancel` | active overdraw measurement をキャンセルします。 |
@@ -46,4 +46,4 @@ perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
 
-numerical overdraw と heatmap rendering は追加の GPU work を発生させるため、`OverdrawDiagnostic` は bounded diagnostic windows でのみ使用してください。
+numerical overdraw と heatmap rendering は追加の GPU work を発生させるため、`OverdrawDiagnostic` は bounded URP diagnostic windows でのみ使用してください。HDRP は overdraw/heatmap を unsupported として報告しますが、その他の diagnostics は利用できます。

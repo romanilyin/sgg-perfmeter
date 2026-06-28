@@ -19,7 +19,8 @@
 
 ## Overdraw Measurement 不推进
 
-- 将 `PerfMeterRenderGraphFeature` 安装到 active URP renderer。
+- 在 URP 中，将 `PerfMeterRenderGraphFeature` 安装到 active URP renderer。
+- 在 HDRP 中，overdraw 和 heatmap by design unsupported；请使用 core diagnostics。
 - 确认 active camera 使用包含该 feature 的 renderer。
 - 确认 target backend 支持 fragment UAV/storage buffers、compute shaders 和 async GPU readback。
 - 使用 `PerformanceMeter.RequestOverdrawMeasurement(frameCount)` 创建有边界的 measurement window。

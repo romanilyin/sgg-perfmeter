@@ -4,7 +4,7 @@ SGG PerfMeter ist eine Low-Overhead-Runtime-Diagnoseschicht. Fuer tiefe Captures
 
 ## Plattform- Und Pipeline-Scope
 
-- Unterstuetztes Runtime-Ziel: Unity `6000.4+` mit URP `17.4+` und Render Graph.
+- Unterstuetztes Runtime-Ziel: Unity `6000.4+` mit URP `17.4+` Render Graph oder HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline wird nicht unterstuetzt und ist nicht geplant.
 - HDRP overdraw und heatmap werden nicht unterstuetzt. HDRP-Projekte behalten FPS-, CPU-, GPU-, memory-, sessions-, alerts-, camera-, device-, setup- und MCP diagnostics.
 - Unity `2022.3` bis `6000.3` kann fuer Compile-Safety importieren, aber Runtime-Verhalten und Support zielen auf Unity `6000.4+`.
@@ -24,7 +24,7 @@ Profiler counters variieren nach Plattform, Unity-Version, Render-Pipeline-Einst
 
 Numerical overdraw und visual heatmap sind Diagnosemodi. Sie fuegen Render-Arbeit hinzu und sollten in begrenzten Fenstern genutzt werden, nicht dauerhaft als Gameplay-UI.
 
-Numerical overdraw erfordert:
+Numerical overdraw in URP erfordert:
 
 - `PerfMeterRenderGraphFeature` im aktiven URP Renderer;
 - fragment-stage UAV/storage-buffer support;
@@ -32,7 +32,7 @@ Numerical overdraw erfordert:
 - unterstuetzte graphics API;
 - async GPU readback support.
 
-Nicht unterstuetzte Ziele melden `OverdrawState.Unsupported` mit warnings.
+Nicht unterstuetzte Ziele, einschliesslich HDRP, melden `OverdrawState.Unsupported` mit warnings.
 
 ## Overlay-Kosten
 
@@ -40,4 +40,4 @@ Der Overlay ist allokationsbewusst und gedrosselt, aber geaenderte Zahlenwerte u
 
 ## Validierungsstatus
 
-Die aktuelle Validierung umfasst automatisierte EditMode- und PlayMode-Abdeckung plus Android S23 Vulkan/GLES smoke validation. Breitere Player-Build- und Geraeteabdeckung ist weiterhin sinnvoll, bevor Daten als Release-Signoff verwendet werden.
+Die aktuelle Validierung umfasst automatisierte EditMode-Abdeckung, HDRP smoke validation in Unity `6000.4.10f1` und fruehere Android S23 Vulkan/GLES smoke validation. Breitere Player-Build- und Geraeteabdeckung ist weiterhin sinnvoll, bevor Daten als Release-Signoff verwendet werden.

@@ -15,7 +15,7 @@ SGG/Perfmeter/Setup
 使用 setup window：
 
 - 启用 Frame Timing Stats；
-- 将 `PerfMeterRenderGraphFeature` 安装到可编辑的 active URP renderers；
+- 将 `PerfMeterRenderGraphFeature` 安装到可编辑的 active URP renderers，或保持 HDRP projects 不变，因为 package Custom Pass 会在 runtime 注册；
 - 创建项目持有的默认 JSON settings；
 - 配置 overlay visibility、corner、target FPS、visual preset 和 collection mode。
 
@@ -34,7 +34,8 @@ Assets/Resources/SGG.PerfMeter/perfmeter-settings.json
 - 确认 JSON settings 文件存在于 Resources path；
 - 确认 setup window 中 overlay 可见；
 - 确认 runtime collection mode 为 `Overlay`；
-- 测试 Render Graph diagnostics 或 overdraw 时，确认 active URP renderer 具有 `PerfMeterRenderGraphFeature`。
+- 测试 URP Render Graph diagnostics 或 overdraw 时，确认 active URP renderer 具有 `PerfMeterRenderGraphFeature`；
+- 在 HDRP 中，确认 setup 报告 HDRP Custom Pass availability。HDRP overdraw 和 heatmap by design unsupported。
 
 ## 完成标准
 

@@ -1,6 +1,6 @@
 # SGG PerfMeter
 
-**Leichtgewichtige Runtime-Diagnose und agentenlesbares Profiling fuer Unity 6 URP.**
+**Leichtgewichtige Runtime-Diagnose und agentenlesbares Profiling fuer Unity 6 URP+HDRP (FPS meter).**
 
 [English](../../README.md) | [Русский](../ru/README.md) | [Deutsch](./README.md) | [Español](../es/README.md) | [Français](../fr/README.md) | [Italiano](../it/README.md) | [日本語](../ja/README.md) | [한국어](../ko/README.md) | [Português (Brasil)](../pt-br/README.md) | [简体中文](../zh-cn/README.md)
 
@@ -20,12 +20,12 @@ SGG PerfMeter erkennt Frame-Bottlenecks, vergleicht Performance-Aenderungen, zei
 
 ## Was Gemessen Wird
 
-- Unity `6000.4+` / URP `17.4+` Render-Graph-Status zur Laufzeit.
+- Unity `6000.4+` / URP `17.4+` Render Graph und HDRP `17.4+` Custom Pass runtime state.
 - FrameTimingManager CPU/GPU-Timing: CPU frame, main thread, render thread, present wait und GPU frame time, wenn verfuegbar.
 - ProfilerRecorder-Render-Counter: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory und GPU memory, wenn verfuegbar.
 - Bottleneck-Klassifizierung fuer GPU, CPU main, CPU render, present/VSync, balanced oder unknown.
-- Opt-in overdraw measurement und visuelle overdraw heatmap ueber URP Render Graph.
-- Snapshots fuer device, camera, Render Graph, status, metrics, alerts, sessions und custom metrics fuer Code und MCP-Automation.
+- Opt-in overdraw measurement und visuelle overdraw heatmap ueber URP Render Graph; HDRP overdraw/heatmap sind unsupported, waehrend core diagnostics verfuegbar bleiben.
+- Snapshots fuer device, URP/HDRP camera, render integration, status, metrics, alerts, sessions und custom metrics fuer Code und MCP-Automation.
 
 ## Schnellstart
 
@@ -45,7 +45,7 @@ SGG PerfMeter erkennt Frame-Bottlenecks, vergleicht Performance-Aenderungen, zei
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```

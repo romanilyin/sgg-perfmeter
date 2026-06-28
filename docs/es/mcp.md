@@ -23,8 +23,8 @@ El objetivo es salida JSON estructurada para agentes en lugar de parsing de scre
 | `perfmeter.alerts.latest` | Leer alertas activas, contadores y estado de advertencias del Editor. |
 | `perfmeter.alerts.clear` | Limpiar alertas activas, contadores y estado de cooldown. |
 | `perfmeter.device.info` | Leer información de device, graphics, display, monitor, pipeline y entorno Unity. |
-| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
-| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
+| `perfmeter.camera.snapshot` | Leer transform/projection de camera y URP/HDRP camera settings. |
+| `perfmeter.rendergraph.snapshot` | Leer los últimos diagnostics de render integration observados para URP Render Graph o HDRP Custom Pass. |
 | `perfmeter.overlay.set` | Mostrar/ocultar overlay y definir preset, modules, corner, mode y target FPS. |
 | `perfmeter.overdraw.start` | Iniciar medición de overdraw acotada. |
 | `perfmeter.overdraw.cancel` | Cancelar medición de overdraw activa. |
@@ -46,4 +46,4 @@ perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
 
-Usa `OverdrawDiagnostic` solo para ventanas de diagnóstico acotadas porque el overdraw numérico y el render del heatmap añaden trabajo extra de GPU.
+Usa `OverdrawDiagnostic` solo para ventanas de diagnóstico URP acotadas porque el overdraw numérico y el render del heatmap añaden trabajo extra de GPU. HDRP informa overdraw/heatmap como unsupported, mientras el resto de diagnostics sigue disponible.

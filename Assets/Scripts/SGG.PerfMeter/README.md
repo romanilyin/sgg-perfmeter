@@ -1,26 +1,26 @@
 # SGG PerfMeter
 
-**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP and HDRP.**
+**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP+HDRP (FPS meter).**
 
 Package name: `com.sungeargames.perfmeter`
 
-SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, Render Graph diagnostics, and MCP command metadata.
+SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, URP overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, URP Render Graph diagnostics, HDRP Custom Pass diagnostics, and MCP command metadata.
 
 The main user documentation lives in the repository-level GitHub docs:
 
-- English: `../../../README.md`
-- Russian: `../../../docs/ru/README.md`
-- German: `../../../docs/de/README.md`
-- Spanish: `../../../docs/es/README.md`
-- French: `../../../docs/fr/README.md`
-- Italian: `../../../docs/it/README.md`
-- Japanese: `../../../docs/ja/README.md`
-- Korean: `../../../docs/ko/README.md`
-- Brazilian Portuguese: `../../../docs/pt-br/README.md`
-- Simplified Chinese: `../../../docs/zh-cn/README.md`
-- Quick Start: `../../../docs/en/quick-start.md`
-- API: `../../../docs/en/api.md`
-- Comparison: `../../../docs/en/comparison.md`
+- English: https://github.com/romanilyin/sgg-perfmeter/blob/main/README.md
+- Russian: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/ru/README.md
+- German: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/de/README.md
+- Spanish: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/es/README.md
+- French: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/fr/README.md
+- Italian: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/it/README.md
+- Japanese: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/ja/README.md
+- Korean: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/ko/README.md
+- Brazilian Portuguese: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/pt-br/README.md
+- Simplified Chinese: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/zh-cn/README.md
+- Quick Start: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/quick-start.md
+- API: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/api.md
+- Comparison: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/comparison.md
 
 ## Requirements
 
@@ -47,7 +47,7 @@ Install from the public npm registry with a Unity Package Manager scoped registr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```
@@ -63,12 +63,12 @@ Example `Packages/manifest.json` entry:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
   }
 }
 ```
 
-The current npm registry package version is `2026.6.11-1`.
+The current npm registry package version is `2026.6.28-1`.
 
 ## Quick Start
 
@@ -106,4 +106,4 @@ This package is licensed under `LicenseRef-Stinger-Royalty-Free-EULA-1.0`.
 
 The authoritative Russian license text is `LICENSE.ru.md`; English convenience text is `LICENSE.md`. Keep `NOTICE.md` and `NOTICE.ru.md` with package distributions.
 
-Brand usage policy translations live under `../../../docs/<lang>/brand.md`.
+Brand usage policy translations live on GitHub under `https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/<lang>/brand.md`.

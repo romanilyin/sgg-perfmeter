@@ -1,6 +1,6 @@
 # SGG PerfMeter
 
-**面向 Unity 6 URP 的轻量级运行时诊断与 agent 可读性能分析。**
+**面向 Unity 6 URP+HDRP (FPS meter) 的轻量级运行时诊断与 agent 可读性能分析。**
 
 [English](../../README.md) | [Русский](../ru/README.md) | [Deutsch](../de/README.md) | [Español](../es/README.md) | [Français](../fr/README.md) | [Italiano](../it/README.md) | [日本語](../ja/README.md) | [한국어](../ko/README.md) | [Português (Brasil)](../pt-br/README.md) | [简体中文](./README.md)
 
@@ -20,12 +20,12 @@ SGG PerfMeter 可识别帧瓶颈、对比性能变化、记录可复现的会话
 
 ## 测量内容
 
-- Unity `6000.4+` / URP `17.4+` Render Graph 运行时状态。
+- Unity `6000.4+` / URP `17.4+` Render Graph 和 HDRP `17.4+` Custom Pass 运行时状态。
 - FrameTimingManager CPU/GPU timing：CPU frame、main thread、render thread、present wait，以及可用时的 GPU frame time。
 - ProfilerRecorder render counters：draw calls、SetPass、batches、vertices、SRP Batcher、BRG/GRD、uploads、memory，以及可用时的 GPU memory。
 - GPU、CPU main、CPU render、present/VSync、balanced 或 unknown 的瓶颈分类。
-- 通过 URP Render Graph 显式启用的 overdraw measurement 和 visual overdraw heatmap。
-- 面向代码和 MCP automation 的 device、camera、Render Graph、status、metrics、alerts、sessions 和 custom metrics snapshots。
+- 通过 URP Render Graph 显式启用的 overdraw measurement 和 visual overdraw heatmap；HDRP overdraw/heatmap unsupported，但 core diagnostics 仍可用。
+- 面向代码和 MCP automation 的 device、URP/HDRP camera、render integration、status、metrics、alerts、sessions 和 custom metrics snapshots。
 
 ## 快速开始
 
@@ -45,7 +45,7 @@ SGG PerfMeter 可识别帧瓶颈、对比性能变化、记录可复现的会话
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```

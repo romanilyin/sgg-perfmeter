@@ -4,7 +4,7 @@ SGG PerfMeter는 low-overhead runtime diagnostics layer로 설계되었습니다
 
 ## Platform 및 Pipeline 범위
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph 또는 HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline은 unsupported이며 planned 상태가 아닙니다.
 - HDRP overdraw 및 heatmap은 unsupported입니다. HDRP projects에서도 FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup, MCP diagnostics는 사용할 수 있습니다.
 - Unity `2022.3`부터 `6000.3`까지는 compile-safety를 위해 import될 수 있지만, runtime behavior 및 support target은 Unity `6000.4+`입니다.
@@ -24,7 +24,7 @@ Profiler counter는 platform, Unity version, render pipeline settings, graphics 
 
 Numerical overdraw와 visual heatmap은 diagnostic mode입니다. rendering work를 추가하므로 steady-state gameplay UI로 계속 켜 두지 말고 bounded window에서 사용해야 합니다.
 
-Numerical overdraw에는 다음이 필요합니다.
+URP numerical overdraw에는 다음이 필요합니다.
 
 - active URP renderer에 설치된 `PerfMeterRenderGraphFeature`;
 - fragment-stage UAV/storage-buffer support;
@@ -32,7 +32,7 @@ Numerical overdraw에는 다음이 필요합니다.
 - supported graphics API;
 - async GPU readback support.
 
-지원되지 않는 target은 warnings와 함께 `OverdrawState.Unsupported`를 보고합니다.
+HDRP를 포함한 지원되지 않는 target은 warnings와 함께 `OverdrawState.Unsupported`를 보고합니다.
 
 ## Overlay 비용
 
@@ -40,4 +40,4 @@ overlay는 allocation-conscious이며 throttled되지만, 변경된 numeric valu
 
 ## Validation Status
 
-현재 validation에는 automated EditMode 및 PlayMode coverage와 Android S23 Vulkan/GLES smoke validation이 포함됩니다. 데이터를 release-signoff evidence로 다루기 전에는 더 넓은 player-build 및 device coverage가 여전히 유용합니다.
+현재 validation에는 automated EditMode coverage, Unity `6000.4.10f1`의 HDRP smoke validation, 이전 Android S23 Vulkan/GLES smoke validation이 포함됩니다. 데이터를 release-signoff evidence로 다루기 전에는 더 넓은 player-build 및 device coverage가 여전히 유용합니다.

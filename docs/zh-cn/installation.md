@@ -1,15 +1,15 @@
 # 安装
 
-SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。当前 public npm version 是 `2026.6.11-1`，Git UPM 和 local copy install 也可用。
+SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。当前 public npm version 是 `2026.6.28-1`，Git UPM 和 local copy install 也可用。
 
 ## 要求
 
 - Unity `6000.4+`，用于受支持的运行时使用。
-- URP `17.4+` with Render Graph path or HDRP `17.4+` with Custom Pass integration.
+- URP `17.4+` with Render Graph path 或 HDRP `17.4+` with Custom Pass integration.
 - UI Toolkit runtime support。
 - 在 build 中依赖 FrameTimingManager 之前启用 Frame Timing Stats。
 
-Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导入和编译检查。当前受支持的运行时目标是 Unity `6000.4+` 搭配 URP `17.4+` Render Graph。
+Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导入和编译检查。当前受支持的运行时目标是 Unity `6000.4+` 搭配 URP `17.4+` Render Graph 或 HDRP `17.4+` Custom Pass integration。
 
 ## npm Scoped Registry Install
 
@@ -27,7 +27,7 @@ Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Assets/Scripts/SGG.PerfMeter
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.11-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
   }
 }
 ```
@@ -93,7 +93,7 @@ SGG/Perfmeter/Setup
 然后运行 recommended setup：
 
 1. 启用 Frame Timing Stats。
-2. 将 `PerfMeterRenderGraphFeature` 安装到可编辑的 active URP renderer assets。
+2. 将 `PerfMeterRenderGraphFeature` 安装到可编辑的 active URP renderer assets。HDRP projects 会跳过 URP renderer changes；package HDRP Custom Pass 会在安装 HDRP `17.4+` 时于 runtime 注册。
 3. 将 JSON settings 保存到 `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` 以使用 zero-code setup，或复制 initialization snippet。
 4. 进入 Play Mode 并验证 overlay。
 

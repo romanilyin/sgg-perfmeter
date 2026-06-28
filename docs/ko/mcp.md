@@ -23,8 +23,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.alerts.latest` | active alerts, counters, Editor warning state를 읽습니다. |
 | `perfmeter.alerts.clear` | active alerts, counters, cooldown state를 지웁니다. |
 | `perfmeter.device.info` | device, graphics, display, monitor, pipeline, Unity environment info를 읽습니다. |
-| `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
-| `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
+| `perfmeter.camera.snapshot` | camera transform/projection 및 URP/HDRP camera settings를 읽습니다. |
+| `perfmeter.rendergraph.snapshot` | URP Render Graph 또는 HDRP Custom Pass의 최신 observed render integration diagnostics를 읽습니다. |
 | `perfmeter.overlay.set` | overlay 표시/숨김 및 preset, modules, corner, mode, target FPS를 설정합니다. |
 | `perfmeter.overdraw.start` | bounded overdraw measurement를 시작합니다. |
 | `perfmeter.overdraw.cancel` | active overdraw measurement를 취소합니다. |
@@ -46,4 +46,4 @@ perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
 
-Numerical overdraw와 heatmap rendering은 추가 GPU work를 만들기 때문에 `OverdrawDiagnostic`은 bounded diagnostic window에만 사용합니다.
+Numerical overdraw와 heatmap rendering은 추가 GPU work를 만들기 때문에 `OverdrawDiagnostic`은 bounded URP diagnostic window에만 사용합니다. HDRP는 overdraw/heatmap을 unsupported로 보고하지만 나머지 diagnostics는 계속 사용할 수 있습니다.

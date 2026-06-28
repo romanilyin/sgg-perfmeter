@@ -5,7 +5,7 @@
 ## Основная документация
 
 - README: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/ru/README.md
-- English: https://github.com/romanilyin/sgg-perfmeter
+- English: https://github.com/romanilyin/sgg-perfmeter/blob/main/README.md
 - Deutsch: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/de/README.md
 - Español: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/es/README.md
 - Français: https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/fr/README.md

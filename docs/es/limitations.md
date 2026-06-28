@@ -4,7 +4,7 @@ SGG PerfMeter está diseñado como una capa de diagnóstico runtime de bajo over
 
 ## Alcance De Plataforma Y Pipeline
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+- Target runtime soportado: Unity `6000.4+` con URP `17.4+` Render Graph o HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline no está soportado ni planificado.
 - HDRP overdraw y heatmap no tienen soporte. Los proyectos HDRP mantienen diagnostics de FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup y MCP.
 - Unity `2022.3` hasta `6000.3` puede importar por seguridad de compilación, pero el comportamiento runtime y el target con soporte son Unity `6000.4+`.
@@ -24,7 +24,7 @@ Los profiler counters varían por plataforma, versión de Unity, configuración 
 
 El overdraw numérico y el heatmap visual son modos de diagnóstico. Añaden trabajo de render y deben usarse en ventanas acotadas, no como UI de gameplay en estado estable.
 
-El overdraw numérico requiere:
+El overdraw numérico en URP requiere:
 
 - `PerfMeterRenderGraphFeature` instalado en el URP renderer activo;
 - soporte de UAV/storage-buffer en fragment-stage;
@@ -32,7 +32,7 @@ El overdraw numérico requiere:
 - graphics API compatible;
 - soporte de async GPU readback.
 
-Los targets no compatibles informan `OverdrawState.Unsupported` con warnings.
+Los targets no compatibles, incluido HDRP, informan `OverdrawState.Unsupported` con warnings.
 
 ## Coste Del Overlay
 
@@ -40,4 +40,4 @@ El overlay está diseñado para cuidar las asignaciones y usa throttling, pero l
 
 ## Estado De Validación
 
-La validación actual incluye cobertura automatizada EditMode y PlayMode más validación smoke en Android S23 Vulkan/GLES. Sigue siendo útil ampliar cobertura de player builds y dispositivos antes de tratar los datos como evidencia de aprobación para release.
+La validación actual incluye cobertura automatizada EditMode, HDRP smoke validation en Unity `6000.4.10f1` y validación smoke previa en Android S23 Vulkan/GLES. Sigue siendo útil ampliar cobertura de player builds y dispositivos antes de tratar los datos como evidencia de aprobación para release.

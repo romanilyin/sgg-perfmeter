@@ -19,7 +19,8 @@ Nutze diese Checkliste, wenn PerfMeter nicht die erwarteten Daten zeigt.
 
 ## Overdraw-Messung Laeuft Nicht Weiter
 
-- Installiere `PerfMeterRenderGraphFeature` im aktiven URP Renderer.
+- In URP, installiere `PerfMeterRenderGraphFeature` im aktiven URP Renderer.
+- In HDRP sind overdraw und heatmap by design unsupported; nutze stattdessen core diagnostics.
 - Pruefe, dass die aktive Kamera diesen Renderer nutzt.
 - Pruefe fragment UAV/storage buffers, compute shaders und async GPU readback auf dem Ziel-Backend.
 - Starte eine begrenzte Messung mit `PerformanceMeter.RequestOverdrawMeasurement(frameCount)`.

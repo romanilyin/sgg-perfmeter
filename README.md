@@ -2,7 +2,7 @@
 
 # SGG PerfMeter
 
-**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP and HDRP.**
+**Lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP+HDRP (FPS meter).**
 
 [English](./README.md) |
 [Русский](./docs/ru/README.md) |
@@ -48,7 +48,7 @@
 
 </div>
 
-SGG PerfMeter - lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP and HDRP.
+SGG PerfMeter - lightweight runtime performance diagnostics and agent-readable profiling for Unity 6 URP+HDRP (FPS meter).
 
 Detect frame bottlenecks, compare performance changes, capture reproducible sessions, and expose structured profiling data to tools and AI agents.
 
@@ -97,7 +97,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```

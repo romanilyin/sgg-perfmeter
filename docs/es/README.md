@@ -1,6 +1,6 @@
 # SGG PerfMeter
 
-**Diagnóstico ligero en runtime y profiling legible por agentes para Unity 6 URP.**
+**Diagnóstico ligero en runtime y profiling legible por agentes para Unity 6 URP+HDRP (FPS meter).**
 
 [English](../../README.md) | [Русский](../ru/README.md) | [Deutsch](../de/README.md) | [Español](./README.md) | [Français](../fr/README.md) | [Italiano](../it/README.md) | [日本語](../ja/README.md) | [한국어](../ko/README.md) | [Português (Brasil)](../pt-br/README.md) | [简体中文](../zh-cn/README.md)
 
@@ -20,12 +20,12 @@ SGG PerfMeter detecta cuellos de botella de frames, compara cambios de rendimien
 
 ## Qué Se Mide
 
-- Estado en runtime de Unity `6000.4+` / URP `17.4+` Render Graph.
+- Estado en runtime de Unity `6000.4+` / URP `17.4+` Render Graph y HDRP `17.4+` Custom Pass.
 - Timing CPU/GPU de FrameTimingManager: CPU frame, main thread, render thread, present wait y GPU frame time cuando está disponible.
 - Contadores de render de ProfilerRecorder: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory y GPU memory cuando están disponibles.
 - Clasificación de cuellos de botella para GPU, CPU main, CPU render, present/VSync, balanced o unknown.
-- Opt-in overdraw measurement y overdraw heatmap visual mediante URP Render Graph.
-- Snapshots de device, camera, Render Graph, status, metrics, alerts, sessions y custom metrics para código y automatización MCP.
+- Opt-in overdraw measurement y overdraw heatmap visual mediante URP Render Graph; en HDRP overdraw/heatmap no tienen soporte, pero los core diagnostics siguen disponibles.
+- Snapshots de device, URP/HDRP camera, render integration, status, metrics, alerts, sessions y custom metrics para código y automatización MCP.
 
 ## Inicio Rápido
 
@@ -45,7 +45,7 @@ SGG PerfMeter detecta cuellos de botella de frames, compara cambios de rendimien
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```

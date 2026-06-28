@@ -2,7 +2,7 @@
 
 # SGG PerfMeter
 
-**Легкая runtime-диагностика производительности для Unity 6 URP.**
+**Легкая runtime-диагностика производительности и agent-readable profiling для Unity 6 URP+HDRP (FPS meter).**
 
 [English](../../README.md) |
 [Русский](./README.md) |
@@ -48,7 +48,7 @@
 
 </div>
 
-SGG PerfMeter - легкая runtime-диагностика производительности для Unity 6 URP.
+SGG PerfMeter - легкая runtime-диагностика производительности и agent-readable profiling для Unity 6 URP+HDRP (FPS meter).
 
 Находите узкие места кадра, сравнивайте изменения производительности, записывайте воспроизводимые сессии и отдавайте структурированные данные профилирования инструментам и автоматизации.
 
@@ -72,12 +72,12 @@ SGG PerfMeter помогает понять, упирается ли кадр в
 
 ## Что умеем измерять
 
-- Состояние Unity `6000.4+` / URP `17.4+` Render Graph во время выполнения.
+- Состояние Unity `6000.4+` / URP `17.4+` Render Graph и HDRP `17.4+` Custom Pass во время выполнения.
 - Тайминги CPU/GPU через FrameTimingManager: CPU frame, main thread, render thread, present wait и GPU frame time, когда доступно.
 - Счетчики рендера через ProfilerRecorder: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, upload bytes, memory и GPU memory, когда доступно.
 - Классификацию узких мест для GPU, CPU main thread, CPU render thread, present/VSync, balanced или unknown frames.
-- Числовое измерение overdraw по запросу и визуальную heatmap overdraw через URP Render Graph.
-- Снимки для device, camera, Render Graph, status, metrics, alerts/оповещений, session и custom metrics для кода и автоматизации через MCP.
+- Числовое измерение overdraw по запросу и визуальную heatmap overdraw через URP Render Graph; в HDRP overdraw/heatmap возвращают unsupported, при этом core diagnostics остаются доступны.
+- Снимки для device, URP/HDRP camera, render integration, status, metrics, alerts/оповещений, session и custom metrics для кода и автоматизации через MCP.
 
 ## Быстрый старт
 
@@ -97,7 +97,7 @@ SGG PerfMeter помогает понять, упирается ли кадр в
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.11-1"
+    "com.sungeargames.perfmeter": "2026.6.28-1"
   }
 }
 ```
@@ -109,7 +109,7 @@ SGG PerfMeter помогает понять, упирается ли кадр в
 - **Оверлей без кода**: создайте `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` из окна настройки и дайте PerfMeter стартовать автоматически.
 - **Runtime API**: вызовите `PerformanceMeter.EnsureRunning()`, затем читайте неизменяемые снимки status, metrics, device, camera и session.
 - **Экспорт сессий**: записывайте ограниченные окна профилирования и экспортируйте JSON/CSV со сценой, устройством, камерой, настройками, счетчиками, предупреждениями и метаданными худших кадров.
-- **Диагностика overdraw**: запускайте ограниченное числовое измерение или включайте визуальную heatmap, когда renderer feature установлен.
+- **Диагностика overdraw**: запускайте ограниченное числовое измерение или включайте визуальную heatmap, когда URP renderer feature установлен; HDRP явно возвращает unsupported для overdraw/heatmap.
 - **MCP-автоматизация**: используйте метаданные команд MCP, чтобы запускать сбор, переключать режимы оверлея, экспортировать сессии, читать alerts/оповещения и снимки.
 
 Подробнее: [Сценарии работы](./workflows.md), [API](./api.md) и [MCP](./mcp.md).
@@ -122,18 +122,18 @@ SGG PerfMeter помогает понять, упирается ли кадр в
 
 ## Сравнение с FPS-счетчиками
 
-Advanced FPS Counter и Graphy - сильные универсальные визуальные оверлеи, которые легко подключить к проекту. SGG PerfMeter намеренно фокусируется на диагностике современных проектов Unity URP: структурированные тайминги и счетчики рендера, классификация узких мест, воспроизводимые сессии, снимки устройства/камеры, диагностика overdraw, состояние Render Graph и автоматизация через MCP/API.
+Advanced FPS Counter и Graphy - сильные универсальные визуальные оверлеи, которые легко подключить к проекту. SGG PerfMeter намеренно фокусируется на диагностике современных проектов Unity URP/HDRP: структурированные тайминги и счетчики рендера, классификация узких мест, воспроизводимые сессии, снимки устройства/камеры, диагностика overdraw в URP, состояние URP Render Graph, состояние HDRP Custom Pass и автоматизация через MCP/API.
 
 Используйте [Сравнение](./comparison.md) как контекст по продукту и архитектуре, а не как измеренный бенчмарк во время выполнения.
 
 ## Требования
 
 - Unity `6000.4+` для поддерживаемого использования во время выполнения.
-- URP `17.4+` с Render Graph.
+- URP `17.4+` с Render Graph или HDRP `17.4+` с Custom Pass integration.
 - Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
 - Vulkan предпочтителен на Android, если важен GPU timing.
 
-Unity от `2022.3` до `6000.3` может импортироваться для проверки компиляции, но оверлей во время выполнения, функции Render Graph, overdraw passes и ожидаемая поддержка требуют Unity `6000.4+` с URP `17.4+`.
+Unity от `2022.3` до `6000.3` может импортироваться для проверки компиляции, но оверлей во время выполнения, render integration, overdraw passes и ожидаемая поддержка требуют Unity `6000.4+` с URP `17.4+` или HDRP `17.4+`. HDRP overdraw/heatmap не поддерживаются, но core diagnostics остаются доступны.
 
 ## Лицензия
 

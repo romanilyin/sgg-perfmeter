@@ -59,7 +59,7 @@ PerformanceMeter.RequestOverdrawMeasurement(frameCount: 60);
 PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
-La misurazione overdraw richiede `PerfMeterRenderGraphFeature`, supporto replacement shader, supporto fragment UAV/storage-buffer, supporto compute shader, una graphics API supportata e async GPU readback. I target non supportati restituiscono `OverdrawState.Unsupported` invece di eseguire il pass.
+Numerical overdraw e heatmap usano il diagnostic path URP Render Graph. La misurazione overdraw richiede `PerfMeterRenderGraphFeature`, supporto replacement shader, supporto fragment UAV/storage-buffer, supporto compute shader, una graphics API supportata e async GPU readback. HDRP riporta overdraw/heatmap come unsupported, mentre core overlay, session, API e MCP diagnostics restano disponibili. I target non supportati restituiscono `OverdrawState.Unsupported` invece di eseguire il pass.
 
 ## Riproducibilita Di Camera E Device
 

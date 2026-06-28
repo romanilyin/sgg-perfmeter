@@ -6,14 +6,14 @@ Esta es una comparación de producto y arquitectura, no un benchmark runtime med
 
 Advanced FPS Counter y Graphy son overlays visuales generalistas sólidos. Son útiles cuando la necesidad principal es un HUD rápido de FPS/memory/device con amplio soporte para versiones antiguas de Unity y personalización visual.
 
-SGG PerfMeter tiene un alcance intencionadamente más estrecho y más diagnóstico: Unity `6000.4+`, URP `17.4+`, Render Graph, snapshots estructurados, exportación de sesiones, diagnósticos de overdraw, metadatos reproducibles de camera/device y automatización MCP/API.
+SGG PerfMeter tiene un alcance intencionadamente más estrecho y más diagnóstico: Unity `6000.4+`, URP `17.4+` Render Graph, HDRP `17.4+` Custom Pass diagnostics, snapshots estructurados, exportación de sesiones, URP overdraw diagnostics, metadatos reproducibles de camera/device y automatización MCP/API.
 
 ## Tabla Comparativa
 
 | Área | SGG PerfMeter | Advanced FPS Counter | Graphy |
 | --- | --- | --- | --- |
 | Posicionamiento principal | 🔵 Diagnósticos URP Render Graph / HDRP Custom Pass + API de profiling lista para automatización | ⚠️ Contador FPS/memory/device flexible dentro del juego | ⚠️ Monitor visual de estadísticas FPS/memory/audio + debugger |
-| Target Unity | ⚠️ Unity `6000.4+`, URP `17.4+` | 🔵 Amplio soporte de Unity antiguo | 🔵 Amplio soporte de Unity antiguo |
+| Target Unity | ⚠️ Unity `6000.4+`, URP `17.4+` / HDRP `17.4+` | 🔵 Amplio soporte de Unity antiguo | 🔵 Amplio soporte de Unity antiguo |
 | Backend UI | 🔵 Overlay UI Toolkit | ⚠️ uGUI Canvas/Text labels | ⚠️ Módulos uGUI Text/Image |
 | Fuente de timing | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Sampling runtime de frame/update | ⚠️ Sampling de historial de `Time.unscaledDeltaTime` |
 | Separación CPU/GPU | 🔵 CPU frame, main thread, render thread, present wait, GPU cuando está disponible | 🛑 Sin separación equivalente | 🛑 Sin separación equivalente |
@@ -21,13 +21,13 @@ SGG PerfMeter tiene un alcance intencionadamente más estrecho y más diagnósti
 | Contadores de render | 🔵 Draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory | 🛑 Sin conjunto de contadores URP/SRP | 🛑 Sin conjunto de contadores URP/SRP |
 | Reproducibilidad device/camera | 🔵 Snapshots estructurados de device y camera | ⚠️ Solo panel de device | ⚠️ Solo panel de device |
 | Sesiones | 🔵 Recorder acotado, warm-up, alcance por escena, peores frames, exportación JSON/CSV | 🛑 No es una función principal | ⚠️ Idea similar a roadmap |
-| Overdraw | 🔵 Medición numérica + heatmap visual mediante URP Render Graph | 🛑 No | 🛑 No |
+| Overdraw | 🔵 Medición numérica + heatmap visual mediante URP Render Graph; explicit unsupported state en HDRP | 🛑 No | 🛑 No |
 | Automatización | 🔵 Superficie de comandos MCP y snapshots públicos | 🛑 No | 🛑 No |
 
 ## Qué Hace Mejor SGG PerfMeter
 
 - Explica cuellos de botella probables de frames con CPU frame, main thread, render thread, present wait, GPU timing y datos de frame budget.
-- Expone contadores de render orientados a URP y diagnósticos Render Graph.
+- Expone contadores de render orientados a URP, diagnósticos URP Render Graph y observación HDRP Custom Pass.
 - Produce informes de rendimiento reproducibles con scene, device, camera, settings, session samples, summaries y metadatos de peores frames.
 - Proporciona datos estructurados a herramientas y automatización mediante API pública y comandos MCP.
 - Integra medición de overdraw acotada y un heatmap visual como diagnósticos explícitos.

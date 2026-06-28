@@ -4,7 +4,7 @@ SGG PerfMeter est concu comme une couche de diagnostics runtime a faible overhea
 
 ## Portee Plateforme Et Pipeline
 
-- Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+- Cible runtime prise en charge: Unity `6000.4+` avec URP `17.4+` Render Graph ou HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline n'est pas pris en charge et n'est pas planifie.
 - HDRP overdraw et heatmap ne sont pas pris en charge. Les projets HDRP gardent les diagnostics FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup et MCP.
 - Unity `2022.3` a `6000.3` peut importer le package pour la securite de compilation, mais le comportement runtime et la cible de support sont Unity `6000.4+`.
@@ -24,7 +24,7 @@ Les compteurs Profiler varient selon la plateforme, la version Unity, les reglag
 
 L'overdraw numerique et la heatmap visuelle sont des modes de diagnostic. Ils ajoutent du travail de rendu et doivent etre utilises dans des fenetres bornees, sans rester actifs comme UI de gameplay en continu.
 
-L'overdraw numerique necessite:
+L'overdraw numerique en URP necessite:
 
 - `PerfMeterRenderGraphFeature` installe dans le renderer URP actif;
 - prise en charge fragment-stage UAV/storage-buffer;
@@ -32,7 +32,7 @@ L'overdraw numerique necessite:
 - API graphique prise en charge;
 - prise en charge async GPU readback.
 
-Les cibles non prises en charge signalent `OverdrawState.Unsupported` avec des avertissements.
+Les cibles non prises en charge, y compris HDRP, signalent `OverdrawState.Unsupported` avec des avertissements.
 
 ## Cout De L'overlay
 
@@ -40,4 +40,4 @@ L'overlay limite les allocations et est cadence, mais les valeurs numeriques et 
 
 ## Etat De Validation
 
-La validation actuelle inclut une couverture automatisee EditMode et PlayMode, plus une validation smoke Android S23 Vulkan/GLES. Une couverture plus large de player builds et d'appareils reste utile avant de traiter les donnees comme preuve de validation de release.
+La validation actuelle inclut une couverture automatisee EditMode, HDRP smoke validation dans Unity `6000.4.10f1` et une precedente validation smoke Android S23 Vulkan/GLES. Une couverture plus large de player builds et d'appareils reste utile avant de traiter les donnees comme preuve de validation de release.

@@ -19,7 +19,8 @@ PerfMeter が期待したデータを表示しない場合は、この checklist
 
 ## Overdraw Measurement が進まない
 
-- active URP renderer に `PerfMeterRenderGraphFeature` をインストールします。
+- URP では、active URP renderer に `PerfMeterRenderGraphFeature` をインストールします。
+- HDRP では overdraw と heatmap は by design unsupported です。core diagnostics を使用してください。
 - active camera が feature を含む renderer を使用していることを確認します。
 - target backend が fragment UAV/storage buffers、compute shaders、async GPU readback をサポートしていることを確認します。
 - bounded measurement window には `PerformanceMeter.RequestOverdrawMeasurement(frameCount)` を使用します。
