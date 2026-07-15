@@ -726,6 +726,44 @@ namespace SGG.PerfMeter
 			int focusLossCount = 0,
 			int pauseCount = 0,
 			double focusPausedDurationSeconds = 0d)
+			: this(state, options, sampleCount, droppedSampleCount, firstFrame, lastFrame, startTimeSeconds, stopTimeSeconds, durationSeconds, averageFrameTimeMs, minFrameTimeMs, maxFrameTimeMs, averageFps, minFps, maxFps, gpuBoundSampleCount, cpuMainThreadBoundSampleCount, cpuRenderThreadBoundSampleCount, presentLimitedSampleCount, frameSpikeCount, severeFrameSpikeCount, warning, device, camera, settings, settings, startSceneName, lastSceneName, wholeRun, currentScene, focusLossCount, pauseCount, focusPausedDurationSeconds)
+		{
+		}
+
+		public PerfMeterSessionSummarySnapshot(
+			PerfMeterSessionState state,
+			PerfMeterSessionOptions options,
+			int sampleCount,
+			int droppedSampleCount,
+			int firstFrame,
+			int lastFrame,
+			double startTimeSeconds,
+			double stopTimeSeconds,
+			double durationSeconds,
+			double averageFrameTimeMs,
+			double minFrameTimeMs,
+			double maxFrameTimeMs,
+			double averageFps,
+			double minFps,
+			double maxFps,
+			int gpuBoundSampleCount,
+			int cpuMainThreadBoundSampleCount,
+			int cpuRenderThreadBoundSampleCount,
+			int presentLimitedSampleCount,
+			int frameSpikeCount,
+			int severeFrameSpikeCount,
+			string warning,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterSettingsSnapshot configuredSettings,
+			PerfMeterSettingsSnapshot effectiveSettings,
+			string startSceneName,
+			string lastSceneName,
+			PerfMeterSessionScopeSummarySnapshot wholeRun,
+			PerfMeterSessionScopeSummarySnapshot currentScene,
+			int focusLossCount = 0,
+			int pauseCount = 0,
+			double focusPausedDurationSeconds = 0d)
 		{
 			State = state;
 			Options = options;
@@ -751,7 +789,8 @@ namespace SGG.PerfMeter
 			Warning = warning ?? string.Empty;
 			Device = device;
 			Camera = camera;
-			Settings = settings;
+			ConfiguredSettings = configuredSettings;
+			EffectiveSettings = effectiveSettings;
 			StartSceneName = startSceneName ?? string.Empty;
 			LastSceneName = lastSceneName ?? string.Empty;
 			WholeRun = wholeRun;
@@ -787,6 +826,7 @@ namespace SGG.PerfMeter
 			default,
 			default,
 			PerfMeterSettingsStore.Defaults,
+			PerfMeterSettingsStore.Defaults,
 			string.Empty,
 			string.Empty,
 			PerfMeterSessionScopeSummarySnapshot.Empty,
@@ -816,7 +856,9 @@ namespace SGG.PerfMeter
 		public string Warning { get; }
 		public PerfMeterDeviceSnapshot Device { get; }
 		public PerfMeterCameraSnapshot Camera { get; }
-		public PerfMeterSettingsSnapshot Settings { get; }
+		public PerfMeterSettingsSnapshot ConfiguredSettings { get; }
+		public PerfMeterSettingsSnapshot EffectiveSettings { get; }
+		public PerfMeterSettingsSnapshot Settings => ConfiguredSettings;
 		public string StartSceneName { get; }
 		public string LastSceneName { get; }
 		public PerfMeterSessionScopeSummarySnapshot WholeRun { get; }

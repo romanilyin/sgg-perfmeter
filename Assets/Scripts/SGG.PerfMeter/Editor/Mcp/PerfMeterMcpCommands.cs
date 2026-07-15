@@ -6,6 +6,7 @@ using System.Text;
 using SGG.PerfMeter.Editor.Setup;
 using UnityEditor;
 using UnityEngine;
+using PackageManagerInfo = UnityEditor.PackageManager.PackageInfo;
 using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
 
 namespace SGG.PerfMeter.Editor.Mcp
@@ -192,26 +193,29 @@ namespace SGG.PerfMeter.Editor.Mcp
 			string path = RequireString(argsJson, "path");
 			string format = RequireString(argsJson, "format");
 			string safePath = ResolveProjectLocalPath(path);
-			if (File.Exists(safePath))
-			{
-				return SessionCommandJson(false, safePath, "file_exists", "not_exported", RuntimePerformanceMeter.GetSessionSummary());
-			}
-
 			string normalizedFormat = NormalizeEnumToken(format);
+			PerfMeterSessionSummarySnapshot summary = RuntimePerformanceMeter.GetSessionSummary();
+			PerfMeterSessionSampleSnapshot[] samples = RuntimePerformanceMeter.GetSessionSamples();
+			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
+			PerfMeterSessionExportResult result;
 			if (string.Equals(normalizedFormat, "json", StringComparison.OrdinalIgnoreCase))
 			{
-				RuntimePerformanceMeter.ExportSessionJson(safePath);
+				PackageManagerInfo packageInfo = PackageManagerInfo.FindForAssembly(typeof(RuntimePerformanceMeter).Assembly);
+				PerfMeterPackageIdentity packageIdentity = packageInfo != null
+					? new PerfMeterPackageIdentity(packageInfo.name, packageInfo.version, "unity_package_manager")
+					: PerfMeterSessionExporter.RuntimePackageIdentity;
+				result = PerfMeterSessionExporter.ExportJson(safePath, summary, samples, status, false, packageIdentity);
 			}
 			else if (string.Equals(normalizedFormat, "csv", StringComparison.OrdinalIgnoreCase))
 			{
-				RuntimePerformanceMeter.ExportSessionCsv(safePath);
+				result = PerfMeterSessionExporter.ExportCsv(safePath, summary, samples, status, false);
 			}
 			else
 			{
 				throw new InvalidOperationException("schema_validation_failed\nArgument format must be json or csv");
 			}
 
-			return SessionCommandJson(true, safePath, string.Empty, "exported", RuntimePerformanceMeter.GetSessionSummary());
+			return SessionCommandJson(result.Success, result.Path, result.Error, result.Status, summary);
 		}
 
 		private static string StatusJson(PerfMeterStatusSnapshot status)

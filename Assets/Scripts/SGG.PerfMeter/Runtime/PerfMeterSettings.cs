@@ -364,6 +364,67 @@ namespace SGG.PerfMeter
 				activeOverlayPreset: snapshot.ActiveOverlayPreset);
 		}
 
+		internal static PerfMeterSettingsSnapshot WithRuntimeState(
+			PerfMeterSettingsSnapshot configured,
+			PerfMeterCollectionMode collectionMode,
+			bool overlayVisible,
+			PerfMeterOverlayCorner overlayCorner,
+			PerfMeterOverlayMode overlayMode,
+			PerfMeterOverlayTheme overlayTheme,
+			PerfMeterOverlayLayout overlayLayout,
+			PerfMeterOverlayFontFamily overlayFontFamily,
+			PerfMeterTargetFps targetFps,
+			PerfMeterOverlayPreset overlayPreset,
+			PerfMeterOverlayModule overlayModules,
+			float overlayScale,
+			float overlayOpacity,
+			float overlayFontSize,
+			float overlayRefreshIntervalSeconds,
+			int overlayGraphHistoryLength,
+			string activeOverlayPresetId)
+		{
+			return new PerfMeterSettingsSnapshot(
+				configured.Enabled,
+				configured.AutoStart,
+				collectionMode,
+				overlayVisible,
+				overlayCorner,
+				overlayMode,
+				targetFps,
+				overlayPreset.ToString(),
+				overlayModules,
+				configured.SessionWarmupFrames,
+				configured.SessionWarmupSeconds,
+				configured.SessionSampleIntervalSeconds,
+				configured.SessionMaxSamples,
+				configured.SessionResetOnSceneLoad,
+				configured.SessionSceneLoadIgnoreFrames,
+				configured.SessionSceneLoadIgnoreSeconds,
+				configured.EditorWarningCooldownSeconds,
+				configured.StructuredLogCooldownSeconds,
+				configured.CallbackCooldownSeconds,
+				configured.LoadState,
+				configured.Warning,
+				overlayScale: overlayScale,
+				overlayOpacity: overlayOpacity,
+				overlayFontSize: overlayFontSize,
+				overlayRefreshIntervalSeconds: overlayRefreshIntervalSeconds,
+				overlayGraphHistoryLength: overlayGraphHistoryLength,
+				overdrawDefaultFrameCount: configured.OverdrawDefaultFrameCount,
+				overdrawMaxFrameCount: configured.OverdrawMaxFrameCount,
+				alertOverdrawRatioThreshold: configured.AlertOverdrawRatioThreshold,
+				alertTimingConsecutiveFrames: configured.AlertTimingConsecutiveFrames,
+				alertFpsConsecutiveFrames: configured.AlertFpsConsecutiveFrames,
+				alertGpuTimingUnavailableConsecutiveFrames: configured.AlertGpuTimingUnavailableConsecutiveFrames,
+				alertOverdrawConsecutiveFrames: configured.AlertOverdrawConsecutiveFrames,
+				overlayTheme: overlayTheme,
+				overlayLayout: overlayLayout,
+				overlayFontFamily: overlayFontFamily,
+				editorWarningsEnabled: configured.EditorWarningsEnabled,
+				activeOverlayPresetId: activeOverlayPresetId,
+				activeOverlayPreset: null);
+		}
+
 		internal static string ToJson(PerfMeterSettingsJson settings)
 		{
 			Normalize(settings, out string _);

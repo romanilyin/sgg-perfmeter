@@ -10,7 +10,8 @@ namespace SGG.PerfMeter
 		private PerfMeterSessionState _state = PerfMeterSessionState.Idle;
 		private PerfMeterDeviceSnapshot _device;
 		private PerfMeterCameraSnapshot _camera;
-		private PerfMeterSettingsSnapshot _settings;
+		private PerfMeterSettingsSnapshot _configuredSettings;
+		private PerfMeterSettingsSnapshot _effectiveSettings;
 		private PerfMeterSessionSummarySnapshot _summary = PerfMeterSessionSummarySnapshot.Empty;
 		private SessionStats _wholeRunStats;
 		private SessionStats _currentSceneStats;
@@ -37,14 +38,15 @@ namespace SGG.PerfMeter
 		internal int SampleCount => _sampleCount;
 		internal int DroppedSampleCount => _droppedSampleCount;
 
-		internal void Start(PerfMeterSessionOptions options, PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterSettingsSnapshot settings, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics, bool applicationFocused = true, bool applicationPaused = false)
+		internal void Start(PerfMeterSessionOptions options, PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterSettingsSnapshot configuredSettings, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics, bool applicationFocused = true, bool applicationPaused = false, PerfMeterSettingsSnapshot? effectiveSettings = null)
 		{
-			_options = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(settings);
+			_options = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(configuredSettings);
 			_samples = new PerfMeterSessionSampleSnapshot[_options.MaxSamples];
 			_state = PerfMeterSessionState.Recording;
 			_device = device;
 			_camera = camera;
-			_settings = settings;
+			_configuredSettings = configuredSettings;
+			_effectiveSettings = effectiveSettings ?? configuredSettings;
 			_applicationFocused = applicationFocused;
 			_applicationPaused = applicationPaused;
 			ResetRecordingWindow(GetActiveSceneName(), frame, timeSeconds, latestMetrics);
@@ -310,7 +312,8 @@ namespace SGG.PerfMeter
 				summaryWarning,
 				_device,
 				_camera,
-				_settings,
+				_configuredSettings,
+				_effectiveSettings,
 				_startSceneName,
 				_lastSceneName,
 				wholeRun,

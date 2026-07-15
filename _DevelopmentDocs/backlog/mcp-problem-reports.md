@@ -13,7 +13,13 @@ Raw JSON остается в Gateway audit-каталоге. Этот докум
 
 ## PerfMeter-Owned Reports
 
-### P1/P2: existing export path silently retains stale data
+| ID | Priority | Status | Scope |
+| --- | --- | --- | --- |
+| `PM-MCP-001` | P1/P2 | resolved, Unity 6000.5.3 | Atomic export and existing-path conflict semantics |
+| `PM-MCP-002` | P2 | resolved, Unity 6000.5.3 | Owning package version and provenance |
+| `PM-MCP-003` | P1/P2 | resolved, Unity 6000.5.3 | Configured and effective session settings snapshots |
+
+### PM-MCP-001 P1/P2: existing export path silently retains stale data
 
 Report: `problem_20260711T062920_08ae07433ae7`
 
@@ -32,7 +38,9 @@ Required:
 - при отказе возвращать typed non-success conflict;
 - покрыть existing file, stale file, atomic replacement failure и повторный export.
 
-### P2: exported package_version is stale
+Resolution: MCP export атомарно отказывается с `file_exists` и сохраняет существующие bytes; runtime API делает атомарный overwrite. Оба пути возвращают success только после commit.
+
+### PM-MCP-002 P2: exported package_version is stale
 
 Report: `problem_20260715T092056_fa9fde1beac9`
 
@@ -51,7 +59,9 @@ Required:
 - добавить provenance поля для источника версии, если есть несколько допустимых источников;
 - не переписывать исторические capture artifacts молча.
 
-### P1/P2: exported settings contradict effective runtime state
+Resolution: export schema v2 берет identity из runtime assembly metadata, проверяемой против owning `package.json`, и пишет `package_version_source`.
+
+### PM-MCP-003 P1/P2: exported settings contradict effective runtime state
 
 Report: `problem_20260715T092636_805123c3a53f`
 
@@ -69,6 +79,8 @@ Required:
 - export должен явно указывать, какой state действовал для записанной session;
 - snapshot effective state должен быть привязан к session/capture time, а не читаться неоднозначно после завершения;
 - добавить tests для Background/Overlay, visible/hidden overlay и runtime override относительно persisted defaults.
+
+Resolution: session хранит отдельные configured/effective snapshots на момент старта; последующие runtime changes не меняют capture metadata.
 
 ## Related Gateway-Owned Reports
 

@@ -1,35 +1,55 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace SGG.PerfMeter
 {
 	internal static class PerfMeterSessionExporter
 	{
-		private const string PackageName = "com.sungeargames.perfmeter";
-		private const string PackageVersion = "2026.5.18-1";
-		private const int SchemaVersion = 1;
+		private const int SchemaVersion = 2;
+		private static readonly PerfMeterPackageIdentity PackageIdentity = ResolvePackageIdentity();
+		internal static PerfMeterPackageIdentity RuntimePackageIdentity => PackageIdentity;
 
 		internal static bool ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
-			File.WriteAllText(PreparePath(path), BuildJson(summary, samples, status), Encoding.UTF8);
-			return true;
+			return ExportJson(path, summary, samples, status, true).Success;
 		}
 
 		internal static bool ExportCsv(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
-			File.WriteAllText(PreparePath(path), BuildCsv(summary, samples, status), Encoding.UTF8);
-			return true;
+			return ExportCsv(path, summary, samples, status, true).Success;
+		}
+
+		internal static PerfMeterSessionExportResult ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting)
+		{
+			return Export(path, BuildJson(summary, samples, status), overwriteExisting);
+		}
+
+		internal static PerfMeterSessionExportResult ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting, PerfMeterPackageIdentity packageIdentity)
+		{
+			return Export(path, BuildJson(summary, samples, status, packageIdentity), overwriteExisting);
+		}
+
+		internal static PerfMeterSessionExportResult ExportCsv(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting)
+		{
+			return Export(path, BuildCsv(summary, samples, status), overwriteExisting);
 		}
 
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
+			return BuildJson(summary, samples, status, PackageIdentity);
+		}
+
+		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, PerfMeterPackageIdentity packageIdentity)
+		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(2048 + safeSamples.Length * 768);
 			builder.Append("{\"schema_version\":").Append(SchemaVersion);
-			builder.Append(",\"package\":").Append(JsonString(PackageName));
-			builder.Append(",\"package_version\":").Append(JsonString(PackageVersion));
+			builder.Append(",\"package\":").Append(JsonString(packageIdentity.Name));
+			builder.Append(",\"package_version\":").Append(JsonString(packageIdentity.Version));
+			builder.Append(",\"package_version_source\":").Append(JsonString(packageIdentity.Source));
 			builder.Append(",\"summary\":");
 			AppendSummary(builder, summary);
 			builder.Append(",\"options\":");
@@ -40,8 +60,10 @@ namespace SGG.PerfMeter
 			builder.Append(",\"camera\":");
 			AppendCamera(builder, summary.Camera);
 			builder.Append(",\"custom_metric_sample_count\":").Append(CountCustomMetricSamples(safeSamples));
-			builder.Append(",\"settings\":");
-			AppendSettings(builder, summary.Settings);
+			builder.Append(",\"configured_settings\":");
+			AppendSettings(builder, summary.ConfiguredSettings);
+			builder.Append(",\"effective_settings\":");
+			AppendSettings(builder, summary.EffectiveSettings);
 			builder.Append('}');
 			builder.Append(",\"status\":{");
 			builder.Append("\"warning\":").Append(JsonString(status.Warning));
@@ -80,7 +102,7 @@ namespace SGG.PerfMeter
 			return builder.ToString();
 		}
 
-		private static string PreparePath(string path)
+		private static PerfMeterSessionExportResult Export(string path, string content, bool overwriteExisting)
 		{
 			if (string.IsNullOrWhiteSpace(path))
 			{
@@ -94,7 +116,90 @@ namespace SGG.PerfMeter
 				Directory.CreateDirectory(directory);
 			}
 
-			return fullPath;
+			string temporaryPath = fullPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+			try
+			{
+				byte[] bytes = Encoding.UTF8.GetBytes(content);
+				using (FileStream stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+				{
+					stream.Write(bytes, 0, bytes.Length);
+					stream.Flush(true);
+				}
+
+				if (!overwriteExisting)
+				{
+					try
+					{
+						File.Move(temporaryPath, fullPath);
+						return PerfMeterSessionExportResult.Exported(fullPath);
+					}
+					catch (IOException) when (File.Exists(fullPath))
+					{
+						return PerfMeterSessionExportResult.Conflict(fullPath);
+					}
+				}
+
+				if (File.Exists(fullPath))
+				{
+					File.Replace(temporaryPath, fullPath, null);
+				}
+				else
+				{
+					try
+					{
+						File.Move(temporaryPath, fullPath);
+					}
+					catch (IOException) when (File.Exists(fullPath))
+					{
+						File.Replace(temporaryPath, fullPath, null);
+					}
+				}
+
+				return PerfMeterSessionExportResult.Exported(fullPath);
+			}
+			catch (Exception exception)
+			{
+				return PerfMeterSessionExportResult.Failed(fullPath, exception.Message);
+			}
+			finally
+			{
+				try
+				{
+					if (File.Exists(temporaryPath))
+					{
+						File.Delete(temporaryPath);
+					}
+				}
+				catch (IOException)
+				{
+					// The export result describes the commit; best-effort cleanup must not replace it.
+				}
+				catch (UnauthorizedAccessException)
+				{
+					// The export result describes the commit; best-effort cleanup must not replace it.
+				}
+			}
+		}
+
+		private static PerfMeterPackageIdentity ResolvePackageIdentity()
+		{
+			string packageName = string.Empty;
+			string packageVersion = string.Empty;
+			object[] attributes = typeof(PerfMeterSessionExporter).Assembly.GetCustomAttributes(typeof(AssemblyMetadataAttribute), false);
+			for (int i = 0; i < attributes.Length; i++)
+			{
+				AssemblyMetadataAttribute metadata = (AssemblyMetadataAttribute)attributes[i];
+				if (string.Equals(metadata.Key, "SGG.PerfMeter.PackageName", StringComparison.Ordinal))
+				{
+					packageName = metadata.Value;
+				}
+				else if (string.Equals(metadata.Key, "SGG.PerfMeter.PackageVersion", StringComparison.Ordinal))
+				{
+					packageVersion = metadata.Value;
+				}
+			}
+
+			return new PerfMeterPackageIdentity(packageName, packageVersion, "assembly_metadata");
 		}
 
 		private static void AppendSummary(StringBuilder builder, PerfMeterSessionSummarySnapshot summary)
@@ -503,5 +608,39 @@ namespace SGG.PerfMeter
 			builder.Append('"');
 			return builder.ToString();
 		}
+	}
+
+	internal readonly struct PerfMeterSessionExportResult
+	{
+		private PerfMeterSessionExportResult(bool success, string path, string error, string status)
+		{
+			Success = success;
+			Path = path ?? string.Empty;
+			Error = error ?? string.Empty;
+			Status = status ?? string.Empty;
+		}
+
+		internal bool Success { get; }
+		internal string Path { get; }
+		internal string Error { get; }
+		internal string Status { get; }
+
+		internal static PerfMeterSessionExportResult Exported(string path) => new PerfMeterSessionExportResult(true, path, string.Empty, "exported");
+		internal static PerfMeterSessionExportResult Conflict(string path) => new PerfMeterSessionExportResult(false, path, "file_exists", "not_exported");
+		internal static PerfMeterSessionExportResult Failed(string path, string error) => new PerfMeterSessionExportResult(false, path, "io_error: " + error, "not_exported");
+	}
+
+	internal readonly struct PerfMeterPackageIdentity
+	{
+		internal PerfMeterPackageIdentity(string name, string version, string source)
+		{
+			Name = name ?? string.Empty;
+			Version = version ?? string.Empty;
+			Source = source ?? string.Empty;
+		}
+
+		internal string Name { get; }
+		internal string Version { get; }
+		internal string Source { get; }
 	}
 }
