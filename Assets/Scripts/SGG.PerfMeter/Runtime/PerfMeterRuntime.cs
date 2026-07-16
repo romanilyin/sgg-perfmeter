@@ -102,6 +102,7 @@ namespace SGG.PerfMeter
 			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
 			runtime._alertEngine.Clear();
 			runtime._overdrawHeatmapVisible = false;
+			runtime.DestroyOverlay();
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			runtime._latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
@@ -1056,6 +1057,13 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			if (!_overlayRequestedVisible)
+			{
+				DestroyOverlay();
+				RefreshStatusOverlayState();
+				return;
+			}
+
 			if (_overlay == null)
 			{
 				GameObject overlayObject = new GameObject("SGG PerfMeter Overlay");
@@ -1084,6 +1092,8 @@ namespace SGG.PerfMeter
 			}
 
 			GameObject overlayObject = _overlay.gameObject;
+			_overlay.SetVisible(false);
+			overlayObject.SetActive(false);
 			_overlay = null;
 			if (Application.isPlaying)
 			{

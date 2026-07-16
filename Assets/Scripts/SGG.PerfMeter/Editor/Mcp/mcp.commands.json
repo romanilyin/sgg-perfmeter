@@ -102,7 +102,7 @@
     {
       "id": "perfmeter.runtime.mode.set",
       "title": "Set PerfMeter collection mode",
-      "description": "Set SGG PerfMeter collection mode to Stopped, Background, Overlay, or OverdrawDiagnostic.",
+      "description": "Set SGG PerfMeter collection mode to Stopped, Background, Overlay, or OverdrawDiagnostic. Overlay visibility requests persist across Play Mode transitions for the current Editor session; status distinguishes requested, active-component, deferred, and unobserved rendered state.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeModeSet",
       "risk": "write",
       "idempotency": "idempotent",
@@ -224,7 +224,7 @@
     {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
-      "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, theme, display layout, font family, and target FPS.",
+      "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, theme, display layout, font family, and target FPS. Visibility persists across Play Mode transitions for the current Editor session; rendered_visibility remains unknown until an external capture observes a repainted frame.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.OverlaySet",
       "risk": "write",
       "idempotency": "idempotent",

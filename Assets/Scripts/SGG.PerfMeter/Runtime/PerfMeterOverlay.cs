@@ -1312,6 +1312,12 @@ namespace SGG.PerfMeter
 			if (_container != null)
 			{
 				_container.style.display = _isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+				_container.MarkDirtyRepaint();
+			}
+
+			if (_document != null && _document.rootVisualElement != null)
+			{
+				_document.rootVisualElement.MarkDirtyRepaint();
 			}
 		}
 

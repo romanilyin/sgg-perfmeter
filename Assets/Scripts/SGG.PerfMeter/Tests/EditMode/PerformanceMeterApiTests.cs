@@ -1,3 +1,4 @@
+using System.Collections;
 using System.IO;
 using System.Text;
 using NUnit.Framework;
@@ -10,9 +11,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 {
 	public sealed class PerformanceMeterApiTests
 	{
+		private const string HasMcpOverlayVisibilityKey = "SGG.PerfMeter.Mcp.OverlayVisibility.HasValue";
+		private const string McpOverlayVisibilityKey = "SGG.PerfMeter.Mcp.OverlayVisibility.Value";
+		private bool _hadMcpOverlayVisibility;
+		private bool _mcpOverlayVisibility;
+
 		[SetUp]
 		public void SetUp()
 		{
+			_hadMcpOverlayVisibility = UnityEditor.SessionState.GetBool(HasMcpOverlayVisibilityKey, false);
+			_mcpOverlayVisibility = UnityEditor.SessionState.GetBool(McpOverlayVisibilityKey, false);
 			PerformanceMeter.ClearCustomMetricProviders();
 			PerformanceMeter.Stop();
 		}
@@ -22,6 +30,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			PerformanceMeter.Stop();
 			PerformanceMeter.ClearCustomMetricProviders();
+			if (_hadMcpOverlayVisibility)
+			{
+				UnityEditor.SessionState.SetBool(HasMcpOverlayVisibilityKey, true);
+				UnityEditor.SessionState.SetBool(McpOverlayVisibilityKey, _mcpOverlayVisibility);
+			}
+			else
+			{
+				UnityEditor.SessionState.EraseBool(HasMcpOverlayVisibilityKey);
+				UnityEditor.SessionState.EraseBool(McpOverlayVisibilityKey);
+			}
 		}
 
 		[Test]
@@ -927,6 +945,48 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			string stopJson = PerfMeterMcpCommands.SessionStop();
 			Assert.That(stopJson, Does.Contain("\"status\":\"stopped\""));
+		}
+
+		[Test]
+		public void McpOverlayCommandsReportDeferredRequestedStateInEditMode()
+		{
+			string hiddenJson = PerfMeterMcpCommands.OverlaySet("{\"visible\":false}");
+			Assert.That(hiddenJson, Does.Contain("\"collection_mode\":\"Background\""));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_visible\":false"));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_requested_visible\":false"));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_request_persisted\":true"));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_apply_state\":\"edit_mode_deferred\""));
+			Assert.That(hiddenJson, Does.Contain("\"repaint_requested\":true"));
+			Assert.That(hiddenJson, Does.Contain("\"rendered_visibility\":\"unknown\""));
+
+			string visibleJson = PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");
+			Assert.That(visibleJson, Does.Contain("\"collection_mode\":\"Overlay\""));
+			Assert.That(visibleJson, Does.Contain("\"overlay_visible\":false"));
+			Assert.That(visibleJson, Does.Contain("\"overlay_requested_visible\":true"));
+			Assert.That(visibleJson, Does.Contain("\"overlay_apply_state\":\"edit_mode_deferred\""));
+
+			string backgroundJson = PerfMeterMcpCommands.RuntimeModeSet("{\"mode\":\"Background\"}");
+			Assert.That(backgroundJson, Does.Contain("\"overlay_requested_visible\":false"));
+			Assert.That(PerfMeterMcpCommands.RuntimeStatus(), Does.Contain("\"repaint_requested\":false"));
+		}
+
+		[UnityTest]
+		public IEnumerator McpHiddenVisibilitySurvivesPlayModeTransition()
+		{
+			PerfMeterMcpCommands.OverlaySet("{\"visible\":false}");
+
+			yield return new EnterPlayMode();
+			yield return null;
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+			PerfMeterMcpCommands.RuntimeEnsure();
+			yield return null;
+
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
+			Assert.That(GameObject.Find("SGG PerfMeter Overlay"), Is.Null);
+
+			yield return new ExitPlayMode();
+			PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");
 		}
 
 		[Test]
