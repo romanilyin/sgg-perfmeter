@@ -6,6 +6,7 @@ using System.Text;
 using SGG.PerfMeter.Editor.Setup;
 using UnityEditor;
 using UnityEngine;
+using PackageManagerInfo = UnityEditor.PackageManager.PackageInfo;
 using RuntimePerformanceMeter = SGG.PerfMeter.PerformanceMeter;
 
 namespace SGG.PerfMeter.Editor.Mcp
@@ -34,13 +35,14 @@ namespace SGG.PerfMeter.Editor.Mcp
 		public static string RuntimeEnsure()
 		{
 			RuntimePerformanceMeter.EnsureRunning();
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			bool repaintRequested = PerfMeterMcpOverlaySession.ApplyStoredVisibilityIfPlaying();
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), repaintRequested);
 		}
 
 		public static string RuntimeStop()
 		{
 			RuntimePerformanceMeter.Stop();
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint());
 		}
 
 		public static string RuntimeResetStats()
@@ -52,6 +54,15 @@ namespace SGG.PerfMeter.Editor.Mcp
 		public static string RuntimeModeSet(string argsJson)
 		{
 			PerfMeterCollectionMode mode = ParseCollectionMode(RequireString(argsJson, "mode"));
+			if (mode == PerfMeterCollectionMode.Background)
+			{
+				PerfMeterMcpOverlaySession.StoreRequestedVisibility(false);
+			}
+			else if (mode == PerfMeterCollectionMode.Overlay || mode == PerfMeterCollectionMode.OverdrawDiagnostic)
+			{
+				PerfMeterMcpOverlaySession.StoreRequestedVisibility(true);
+			}
+
 			RuntimePerformanceMeter.SetCollectionMode(mode);
 			if (mode == PerfMeterCollectionMode.OverdrawDiagnostic && TryExtractInt(argsJson, "frame_count", out int frameCount))
 			{
@@ -59,7 +70,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 				RuntimePerformanceMeter.RequestOverdrawMeasurement(Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount));
 			}
 
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint());
 		}
 
 		public static string MetricsLatest()
@@ -138,8 +149,9 @@ namespace SGG.PerfMeter.Editor.Mcp
 				RuntimePerformanceMeter.SetOverlayModules(ParseOverlayModules(modules));
 			}
 
+			PerfMeterMcpOverlaySession.StoreRequestedVisibility(visible);
 			RuntimePerformanceMeter.SetOverlayVisible(visible);
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint());
 		}
 
 		public static string OverdrawStart(string argsJson)
@@ -192,30 +204,34 @@ namespace SGG.PerfMeter.Editor.Mcp
 			string path = RequireString(argsJson, "path");
 			string format = RequireString(argsJson, "format");
 			string safePath = ResolveProjectLocalPath(path);
-			if (File.Exists(safePath))
-			{
-				return SessionCommandJson(false, safePath, "file_exists", "not_exported", RuntimePerformanceMeter.GetSessionSummary());
-			}
-
 			string normalizedFormat = NormalizeEnumToken(format);
+			PerfMeterSessionSummarySnapshot summary = RuntimePerformanceMeter.GetSessionSummary();
+			PerfMeterSessionSampleSnapshot[] samples = RuntimePerformanceMeter.GetSessionSamples();
+			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
+			PerfMeterSessionExportResult result;
 			if (string.Equals(normalizedFormat, "json", StringComparison.OrdinalIgnoreCase))
 			{
-				RuntimePerformanceMeter.ExportSessionJson(safePath);
+				PackageManagerInfo packageInfo = PackageManagerInfo.FindForAssembly(typeof(RuntimePerformanceMeter).Assembly);
+				PerfMeterPackageIdentity packageIdentity = packageInfo != null
+					? new PerfMeterPackageIdentity(packageInfo.name, packageInfo.version, "unity_package_manager")
+					: PerfMeterSessionExporter.RuntimePackageIdentity;
+				result = PerfMeterSessionExporter.ExportJson(safePath, summary, samples, status, false, packageIdentity);
 			}
 			else if (string.Equals(normalizedFormat, "csv", StringComparison.OrdinalIgnoreCase))
 			{
-				RuntimePerformanceMeter.ExportSessionCsv(safePath);
+				result = PerfMeterSessionExporter.ExportCsv(safePath, summary, samples, status, false);
 			}
 			else
 			{
 				throw new InvalidOperationException("schema_validation_failed\nArgument format must be json or csv");
 			}
 
-			return SessionCommandJson(true, safePath, string.Empty, "exported", RuntimePerformanceMeter.GetSessionSummary());
+			return SessionCommandJson(result.Success, result.Path, result.Error, result.Status, summary);
 		}
 
-		private static string StatusJson(PerfMeterStatusSnapshot status)
+		private static string StatusJson(PerfMeterStatusSnapshot status, bool repaintRequested = false)
 		{
+			bool requestedVisible = PerfMeterMcpOverlaySession.GetRequestedVisibility(status);
 			StringBuilder builder = new StringBuilder(768);
 			builder.Append("{\"state\":").Append(JsonString(status.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(status.Availability.ToString()));
@@ -232,6 +248,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"available_counters\":").Append(JsonString(status.AvailableCounters.ToString()));
 			builder.Append(",\"unavailable_counters\":").Append(JsonString(status.UnavailableCounters.ToString()));
 			builder.Append(",\"overlay_visible\":").Append(JsonBool(status.OverlayVisible));
+			builder.Append(",\"overlay_requested_visible\":").Append(JsonBool(requestedVisible));
+			builder.Append(",\"overlay_request_persisted\":").Append(JsonBool(PerfMeterMcpOverlaySession.HasStoredVisibility));
+			builder.Append(",\"overlay_apply_state\":").Append(JsonString(PerfMeterMcpOverlaySession.GetApplyState(status, requestedVisible)));
+			builder.Append(",\"repaint_requested\":").Append(JsonBool(repaintRequested));
+			builder.Append(",\"rendered_visibility\":\"unknown\"");
 			builder.Append(",\"overlay_corner\":").Append(JsonString(status.OverlayCorner.ToString()));
 			builder.Append(",\"overlay_mode\":").Append(JsonString(status.OverlayMode.ToString()));
 			builder.Append(",\"overlay_theme\":").Append(JsonString(status.OverlayTheme.ToString()));
@@ -1256,6 +1277,124 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 			builder.Append('"');
 			return builder.ToString();
+		}
+	}
+
+	[InitializeOnLoad]
+	internal static class PerfMeterMcpOverlaySession
+	{
+		private const string HasVisibilityKey = "SGG.PerfMeter.Mcp.OverlayVisibility.HasValue";
+		private const string VisibilityKey = "SGG.PerfMeter.Mcp.OverlayVisibility.Value";
+		private static int _updatesUntilApply;
+
+		static PerfMeterMcpOverlaySession()
+		{
+			EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+			if (EditorApplication.isPlayingOrWillChangePlaymode)
+			{
+				ScheduleApply();
+			}
+		}
+
+		internal static bool HasStoredVisibility => SessionState.GetBool(HasVisibilityKey, false);
+
+		internal static void StoreRequestedVisibility(bool visible)
+		{
+			SessionState.SetBool(HasVisibilityKey, true);
+			SessionState.SetBool(VisibilityKey, visible);
+		}
+
+		internal static bool GetRequestedVisibility(PerfMeterStatusSnapshot status)
+		{
+			if (HasStoredVisibility)
+			{
+				return SessionState.GetBool(VisibilityKey, false);
+			}
+
+			return status.CollectionMode == PerfMeterCollectionMode.Overlay || status.CollectionMode == PerfMeterCollectionMode.OverdrawDiagnostic;
+		}
+
+		internal static string GetApplyState(PerfMeterStatusSnapshot status, bool requestedVisible)
+		{
+			if (status.State == PerfMeterRuntimeState.Stopped)
+			{
+				return "stopped";
+			}
+
+			if (!Application.isPlaying)
+			{
+				return "edit_mode_deferred";
+			}
+
+			if (requestedVisible == status.OverlayVisible)
+			{
+				return requestedVisible ? "active_component" : "detached";
+			}
+
+			return "pending";
+		}
+
+		internal static bool ApplyStoredVisibilityIfPlaying()
+		{
+			if (!Application.isPlaying || !HasStoredVisibility || RuntimePerformanceMeter.GetStatus().State == PerfMeterRuntimeState.Stopped)
+			{
+				return false;
+			}
+
+			RuntimePerformanceMeter.SetOverlayVisible(SessionState.GetBool(VisibilityKey, false));
+			return RequestRepaint();
+		}
+
+		internal static bool RequestRepaint()
+		{
+			EditorApplication.QueuePlayerLoopUpdate();
+			EditorWindow[] windows = Resources.FindObjectsOfTypeAll<EditorWindow>();
+			for (int i = 0; i < windows.Length; i++)
+			{
+				windows[i].Repaint();
+			}
+
+			return true;
+		}
+
+		private static void OnPlayModeStateChanged(PlayModeStateChange state)
+		{
+			if (state == PlayModeStateChange.EnteredPlayMode)
+			{
+				ScheduleApply();
+			}
+			else if (state == PlayModeStateChange.ExitingPlayMode)
+			{
+				EditorApplication.update -= ApplyAfterPlayModeLoad;
+			}
+		}
+
+		private static void ScheduleApply()
+		{
+			_updatesUntilApply = 2;
+			EditorApplication.update -= ApplyAfterPlayModeLoad;
+			EditorApplication.update += ApplyAfterPlayModeLoad;
+		}
+
+		private static void ApplyAfterPlayModeLoad()
+		{
+			if (!EditorApplication.isPlaying)
+			{
+				if (!EditorApplication.isPlayingOrWillChangePlaymode)
+				{
+					EditorApplication.update -= ApplyAfterPlayModeLoad;
+				}
+
+				return;
+			}
+
+			if (EditorApplication.isCompiling || --_updatesUntilApply > 0)
+			{
+				return;
+			}
+
+			EditorApplication.update -= ApplyAfterPlayModeLoad;
+			ApplyStoredVisibilityIfPlaying();
 		}
 	}
 }

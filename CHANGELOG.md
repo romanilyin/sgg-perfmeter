@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.7.16-1
+
+- Made MCP session exports atomic, added deterministic existing-file conflict semantics, and validated artifact bytes on repeated exports.
+- Resolved owning package version provenance and separated configured settings from effective session-start runtime settings in export schema v2.
+- Made MCP overlay responses distinguish requested, active-component, deferred, and externally unobserved rendered visibility.
+- Preserved MCP overlay visibility across Play Mode transitions for the current Editor session and detached hidden UI before repaint requests.
+- Avoided the obsolete `TextSettings.defaultFontAsset` API on Unity 6000.5 and newer while retaining the compatibility path on older editors.
+- Updated package metadata and install examples to version `2026.7.16-1`.
+
 ## 2026.6.28-1
 
 - Updated user-facing documentation in all languages to describe Unity 6 URP+HDRP support consistently.

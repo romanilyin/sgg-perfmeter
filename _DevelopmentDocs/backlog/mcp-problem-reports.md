@@ -13,7 +13,15 @@ Raw JSON остается в Gateway audit-каталоге. Этот докум
 
 ## PerfMeter-Owned Reports
 
-### P1/P2: existing export path silently retains stale data
+| ID | Priority | Status | Scope |
+| --- | --- | --- | --- |
+| `PM-MCP-001` | P1/P2 | resolved, Unity 6000.5.3 | Atomic export and existing-path conflict semantics |
+| `PM-MCP-002` | P2 | resolved, Unity 6000.5.3 | Owning package version and provenance |
+| `PM-MCP-003` | P1/P2 | resolved, Unity 6000.5.3 | Configured and effective session settings snapshots |
+| `PM-MCP-004` | P1/P2 | resolved, Unity 6000.5.3 | Requested, attached and rendered overlay state semantics |
+| `PM-MCP-005` | P1/P2 | resolved, Unity 6000.5.3 | MCP overlay visibility across Play Mode transitions |
+
+### PM-MCP-001 P1/P2: existing export path silently retains stale data
 
 Report: `problem_20260711T062920_08ae07433ae7`
 
@@ -32,7 +40,9 @@ Required:
 - при отказе возвращать typed non-success conflict;
 - покрыть existing file, stale file, atomic replacement failure и повторный export.
 
-### P2: exported package_version is stale
+Resolution: MCP export атомарно отказывается с `file_exists` и сохраняет существующие bytes; runtime API делает атомарный overwrite. Оба пути возвращают success только после commit.
+
+### PM-MCP-002 P2: exported package_version is stale
 
 Report: `problem_20260715T092056_fa9fde1beac9`
 
@@ -51,7 +61,9 @@ Required:
 - добавить provenance поля для источника версии, если есть несколько допустимых источников;
 - не переписывать исторические capture artifacts молча.
 
-### P1/P2: exported settings contradict effective runtime state
+Resolution: export schema v2 берет identity из runtime assembly metadata, проверяемой против owning `package.json`, и пишет `package_version_source`.
+
+### PM-MCP-003 P1/P2: exported settings contradict effective runtime state
 
 Report: `problem_20260715T092636_805123c3a53f`
 
@@ -69,6 +81,28 @@ Required:
 - export должен явно указывать, какой state действовал для записанной session;
 - snapshot effective state должен быть привязан к session/capture time, а не читаться неоднозначно после завершения;
 - добавить tests для Background/Overlay, visible/hidden overlay и runtime override относительно persisted defaults.
+
+Resolution: session хранит отдельные configured/effective snapshots на момент старта; последующие runtime changes не меняют capture metadata.
+
+### PM-MCP-004 P1/P2: overlay command result did not describe rendered state
+
+Reports: `problem_20260715T161353_ab2548fe3110`, `problem_20260715T162251_7c4fc831953a`, `problem_20260715T180234_2f4e68d022ad`, `problem_20260715T180718_cb6e84ef09e3`, `problem_20260715T180741_f5056a4a7488`, `problem_20260715T180800_674821d7d83d`.
+
+Observed:
+
+- EditMode мог вернуть `collection_mode: Overlay` вместе с `overlay_visible: false` без объяснения deferred состояния;
+- `overlay_visible` описывал active component state, но воспринимался как подтверждение пикселей следующего GameView capture;
+- hide оставлял подключенный UI Toolkit document с `display: none` и не запрашивал Editor repaint.
+
+Resolution: MCP status отдельно возвращает requested visibility, persisted request и apply state. `active_component` подтверждает только активный overlay component, а `rendered_visibility` остается `unknown`, пока внешний capture не подтвердит кадр. Hide деактивирует и отсоединяет overlay object, UI Toolkit помечается dirty, Editor windows получают repaint request.
+
+### PM-MCP-005 P1/P2: EditMode visibility override was lost on Play Mode transition
+
+Observed: MCP hide в EditMode сохранялся только в transient runtime instance; Play Mode bootstrap повторно применял configured default и показывал overlay.
+
+Resolution: MCP visibility хранится в editor `SessionState` и повторно применяется к уже запущенному/autostarted runtime после Play Mode/domain reload. Override не запускает отключенный runtime и применяется при явном `runtime.ensure`. Добавлен transition test `hide -> EnterPlayMode -> runtime ensure -> detached overlay`.
+
+Remaining boundary: screenshot pixels принадлежат GameView/capture lifecycle и не подтверждаются синхронным PerfMeter command result. Alert toast report требует отдельного определения владельца visual notification; PerfMeter overlay не содержит alert-toast component.
 
 ## Related Gateway-Owned Reports
 

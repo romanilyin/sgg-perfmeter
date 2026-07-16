@@ -1,6 +1,6 @@
 # 설치
 
-SGG PerfMeter는 `com.sungeargames.perfmeter`라는 Unity package로 배포됩니다. 현재 public npm version은 `2026.6.28-1`이며 Git UPM과 local copy install도 사용할 수 있습니다.
+SGG PerfMeter는 `com.sungeargames.perfmeter`라는 Unity package로 배포됩니다. 현재 public npm version은 `2026.7.16-1`이며 Git UPM과 local copy install도 사용할 수 있습니다.
 
 ## 요구 사항
 
@@ -27,7 +27,7 @@ Unity project의 `Packages/manifest.json`에 npm registry를 Unity Package Manag
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.28-1"
+    "com.sungeargames.perfmeter": "2026.7.16-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Unity project의 `Packages/manifest.json`에 추가합니다.
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.7.16-1"
   }
 }
 ```

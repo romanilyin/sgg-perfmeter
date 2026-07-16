@@ -90,6 +90,17 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
 			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
+			Assert.That(GameObject.Find(OverlayObjectName), Is.Null);
+
+			PerformanceMeter.SetOverlayVisible(true);
+			yield return null;
+		#if UNITY_6000_4_OR_NEWER
+			Assert.That(GameObject.Find(OverlayObjectName), Is.Not.Null);
+			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.True);
+		#endif
+
+			PerformanceMeter.SetOverlayVisible(false);
+			Assert.That(GameObject.Find(OverlayObjectName), Is.Null);
 
 			PerformanceMeter.Stop();
 			yield return null;

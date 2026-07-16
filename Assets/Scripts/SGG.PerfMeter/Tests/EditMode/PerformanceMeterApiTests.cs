@@ -1,6 +1,9 @@
+using System.Collections;
+using System.IO;
 using System.Text;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -8,9 +11,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 {
 	public sealed class PerformanceMeterApiTests
 	{
+		private const string HasMcpOverlayVisibilityKey = "SGG.PerfMeter.Mcp.OverlayVisibility.HasValue";
+		private const string McpOverlayVisibilityKey = "SGG.PerfMeter.Mcp.OverlayVisibility.Value";
+		private bool _hadMcpOverlayVisibility;
+		private bool _mcpOverlayVisibility;
+
 		[SetUp]
 		public void SetUp()
 		{
+			_hadMcpOverlayVisibility = UnityEditor.SessionState.GetBool(HasMcpOverlayVisibilityKey, false);
+			_mcpOverlayVisibility = UnityEditor.SessionState.GetBool(McpOverlayVisibilityKey, false);
 			PerformanceMeter.ClearCustomMetricProviders();
 			PerformanceMeter.Stop();
 		}
@@ -20,6 +30,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			PerformanceMeter.Stop();
 			PerformanceMeter.ClearCustomMetricProviders();
+			if (_hadMcpOverlayVisibility)
+			{
+				UnityEditor.SessionState.SetBool(HasMcpOverlayVisibilityKey, true);
+				UnityEditor.SessionState.SetBool(McpOverlayVisibilityKey, _mcpOverlayVisibility);
+			}
+			else
+			{
+				UnityEditor.SessionState.EraseBool(HasMcpOverlayVisibilityKey);
+				UnityEditor.SessionState.EraseBool(McpOverlayVisibilityKey);
+			}
 		}
 
 		[Test]
@@ -305,6 +325,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SessionCapturesConfiguredAndEffectiveRuntimeSettingsSeparately()
+		{
+			PerformanceMeter.EnsureRunning();
+			PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 2));
+
+			PerfMeterSessionSummarySnapshot summary = PerformanceMeter.GetSessionSummary();
+			Assert.That(summary.ConfiguredSettings.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
+			Assert.That(summary.ConfiguredSettings.OverlayVisible, Is.True);
+			Assert.That(summary.EffectiveSettings.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+			Assert.That(summary.EffectiveSettings.OverlayVisible, Is.False);
+			string json = PerfMeterSessionExporter.BuildJson(summary, System.Array.Empty<PerfMeterSessionSampleSnapshot>(), PerformanceMeter.GetStatus());
+			Assert.That(json, Does.Contain("\"configured_settings\":{\"enabled\":true,\"auto_start\":true,\"collection_mode\":\"Overlay\",\"overlay_visible\":true"));
+			Assert.That(json, Does.Contain("\"effective_settings\":{\"enabled\":true,\"auto_start\":true,\"collection_mode\":\"Background\",\"overlay_visible\":false"));
+
+			PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
+			summary = PerformanceMeter.GetSessionSummary();
+			Assert.That(summary.EffectiveSettings.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+			Assert.That(summary.EffectiveSettings.OverlayVisible, Is.False);
+		}
+
+		[Test]
 		public void SessionRecorderUsesBoundedSampleStorage()
 		{
 			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
@@ -432,9 +474,19 @@ namespace SGG.PerfMeter.Tests.EditMode
 			string json = PerfMeterSessionExporter.BuildJson(recorder.GetSummary(), recorder.GetSamplesCopy(), status);
 			string csv = PerfMeterSessionExporter.BuildCsv(recorder.GetSummary(), recorder.GetSamplesCopy(), status);
 
+			PackageInfo packageInfo = PackageInfo.FindForAssembly(typeof(PerformanceMeter).Assembly);
+			string packageRoot = packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath)
+				? packageInfo.resolvedPath
+				: Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter");
+			PackageManifest packageManifest = JsonUtility.FromJson<PackageManifest>(File.ReadAllText(Path.Combine(packageRoot, "package.json")));
+			Assert.That(json, Does.Contain("\"schema_version\":2"));
 			Assert.That(json, Does.Contain("\"package\":\"com.sungeargames.perfmeter\""));
+			Assert.That(json, Does.Contain("\"package_version\":\"" + packageManifest.version + "\""));
+			Assert.That(json, Does.Contain("\"package_version_source\":\"assembly_metadata\""));
 			Assert.That(json, Does.Contain("\"summary\""));
 			Assert.That(json, Does.Contain("\"metadata\""));
+			Assert.That(json, Does.Contain("\"configured_settings\""));
+			Assert.That(json, Does.Contain("\"effective_settings\""));
 			Assert.That(json, Does.Contain("\"samples\""));
 			Assert.That(json, Does.Contain("\"overlay_scale\""));
 			Assert.That(json, Does.Contain("\"overdraw_default_frame_count\""));
@@ -453,6 +505,86 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(csv, Does.Contain("GpuBound"));
 			Assert.That(csv, Does.Contain("overdraw_ratio"));
 			Assert.That(csv, Does.Contain("session_focus_loss_count"));
+		}
+
+		[Test]
+		public void McpSessionExportRefusesExistingPathWithoutChangingArtifact()
+		{
+			string relativePath = "Temp/perfmeter-export-" + System.Guid.NewGuid().ToString("N") + ".json";
+			string fullPath = Path.GetFullPath(relativePath);
+			Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+
+			try
+			{
+				PerformanceMeter.EnsureRunning();
+				PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 2));
+				string firstResult = PerfMeterMcpCommands.SessionExport("{\"path\":\"" + relativePath.Replace("\\", "/") + "\",\"format\":\"json\"}");
+				byte[] firstArtifact = File.ReadAllBytes(fullPath);
+
+				Assert.That(firstResult, Does.Contain("\"success\":true"));
+				Assert.That(firstResult, Does.Contain("\"status\":\"exported\""));
+				Assert.That(Encoding.UTF8.GetString(firstArtifact), Does.Contain("\"schema_version\":2"));
+
+				string repeatedResult = PerfMeterMcpCommands.SessionExport("{\"path\":\"" + relativePath.Replace("\\", "/") + "\",\"format\":\"json\"}");
+				Assert.That(repeatedResult, Does.Contain("\"success\":false"));
+				Assert.That(repeatedResult, Does.Contain("\"error\":\"file_exists\""));
+				Assert.That(repeatedResult, Does.Contain("\"status\":\"not_exported\""));
+				Assert.That(File.ReadAllBytes(fullPath), Is.EqualTo(firstArtifact));
+			}
+			finally
+			{
+				if (File.Exists(fullPath))
+				{
+					File.Delete(fullPath);
+				}
+			}
+		}
+
+		[Test]
+		public void RuntimeSessionExportAtomicallyReplacesExistingArtifact()
+		{
+			string path = Path.Combine(Application.temporaryCachePath, "perfmeter-export-" + System.Guid.NewGuid().ToString("N") + ".json");
+			File.WriteAllText(path, "stale");
+
+			try
+			{
+				Assert.That(PerformanceMeter.ExportSessionJson(path), Is.True);
+				string artifact = File.ReadAllText(path);
+				Assert.That(artifact, Does.StartWith("{\"schema_version\":2"));
+				Assert.That(artifact, Does.Not.Contain("stale"));
+			}
+			finally
+			{
+				if (File.Exists(path))
+				{
+					File.Delete(path);
+				}
+			}
+		}
+
+		[Test]
+		[Platform(Include = "Win")]
+		public void RuntimeSessionExportLeavesExistingArtifactWhenAtomicReplacementFails()
+		{
+			string path = Path.Combine(Application.temporaryCachePath, "perfmeter-export-" + System.Guid.NewGuid().ToString("N") + ".json");
+			File.WriteAllText(path, "stale");
+
+			try
+			{
+				using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+				{
+					Assert.That(PerformanceMeter.ExportSessionJson(path), Is.False);
+				}
+
+				Assert.That(File.ReadAllText(path), Is.EqualTo("stale"));
+			}
+			finally
+			{
+				if (File.Exists(path))
+				{
+					File.Delete(path);
+				}
+			}
 		}
 
 		[Test]
@@ -816,6 +948,48 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void McpOverlayCommandsReportDeferredRequestedStateInEditMode()
+		{
+			string hiddenJson = PerfMeterMcpCommands.OverlaySet("{\"visible\":false}");
+			Assert.That(hiddenJson, Does.Contain("\"collection_mode\":\"Background\""));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_visible\":false"));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_requested_visible\":false"));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_request_persisted\":true"));
+			Assert.That(hiddenJson, Does.Contain("\"overlay_apply_state\":\"edit_mode_deferred\""));
+			Assert.That(hiddenJson, Does.Contain("\"repaint_requested\":true"));
+			Assert.That(hiddenJson, Does.Contain("\"rendered_visibility\":\"unknown\""));
+
+			string visibleJson = PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");
+			Assert.That(visibleJson, Does.Contain("\"collection_mode\":\"Overlay\""));
+			Assert.That(visibleJson, Does.Contain("\"overlay_visible\":false"));
+			Assert.That(visibleJson, Does.Contain("\"overlay_requested_visible\":true"));
+			Assert.That(visibleJson, Does.Contain("\"overlay_apply_state\":\"edit_mode_deferred\""));
+
+			string backgroundJson = PerfMeterMcpCommands.RuntimeModeSet("{\"mode\":\"Background\"}");
+			Assert.That(backgroundJson, Does.Contain("\"overlay_requested_visible\":false"));
+			Assert.That(PerfMeterMcpCommands.RuntimeStatus(), Does.Contain("\"repaint_requested\":false"));
+		}
+
+		[UnityTest]
+		public IEnumerator McpHiddenVisibilitySurvivesPlayModeTransition()
+		{
+			PerfMeterMcpCommands.OverlaySet("{\"visible\":false}");
+
+			yield return new EnterPlayMode();
+			yield return null;
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+			PerfMeterMcpCommands.RuntimeEnsure();
+			yield return null;
+
+			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
+			Assert.That(GameObject.Find("SGG PerfMeter Overlay"), Is.Null);
+
+			yield return new ExitPlayMode();
+			PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");
+		}
+
+		[Test]
 		public void McpAlertCommandsExposeMetadataAndBasicOutput()
 		{
 			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
@@ -857,6 +1031,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 				0L,
 				0L,
 				0d);
+		}
+
+		[System.Serializable]
+		private sealed class PackageManifest
+		{
+			public string version;
 		}
 
 		private static PerfMeterRule FindRule(PerfMeterRule[] rules, string id)

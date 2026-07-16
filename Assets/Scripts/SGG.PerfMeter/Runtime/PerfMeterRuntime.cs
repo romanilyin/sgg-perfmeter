@@ -102,6 +102,7 @@ namespace SGG.PerfMeter
 			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
 			runtime._alertEngine.Clear();
 			runtime._overdrawHeatmapVisible = false;
+			runtime.DestroyOverlay();
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			runtime._latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
@@ -256,18 +257,37 @@ namespace SGG.PerfMeter
 
 		internal void StartSession(PerfMeterSessionOptions options)
 		{
-			PerfMeterSettingsSnapshot settings = _settings;
-			PerfMeterSessionOptions normalizedOptions = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(settings);
+			PerfMeterSettingsSnapshot configuredSettings = _settings;
+			PerfMeterSettingsSnapshot effectiveSettings = PerfMeterSettingsStore.WithRuntimeState(
+				configuredSettings,
+				GetCollectionMode(),
+				IsOverlayVisible,
+				_overlayCorner,
+				_overlayMode,
+				_overlayTheme,
+				_overlayLayout,
+				_overlayFontFamily,
+				_targetFps,
+				_overlayPreset,
+				_overlayModules,
+				_overlayScale,
+				_overlayOpacity,
+				_overlayFontSize,
+				_overlayRefreshIntervalSeconds,
+				_overlayGraphHistoryLength,
+				_visualOverlayPresetId);
+			PerfMeterSessionOptions normalizedOptions = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(configuredSettings);
 			_sessionRecorder.Start(
 				normalizedOptions,
 				PerfMeterDeviceInfoProvider.CreateSnapshot(),
 				PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null),
-				settings,
+				configuredSettings,
 				Time.frameCount,
 				Time.realtimeSinceStartupAsDouble,
 				_latestMetrics,
 				_applicationFocused,
-				_applicationPaused);
+				_applicationPaused,
+				effectiveSettings);
 			RefreshStatusOverlayState();
 		}
 
@@ -1037,6 +1057,13 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			if (!_overlayRequestedVisible)
+			{
+				DestroyOverlay();
+				RefreshStatusOverlayState();
+				return;
+			}
+
 			if (_overlay == null)
 			{
 				GameObject overlayObject = new GameObject("SGG PerfMeter Overlay");
@@ -1065,6 +1092,8 @@ namespace SGG.PerfMeter
 			}
 
 			GameObject overlayObject = _overlay.gameObject;
+			_overlay.SetVisible(false);
+			overlayObject.SetActive(false);
 			_overlay = null;
 			if (Application.isPlaying)
 			{

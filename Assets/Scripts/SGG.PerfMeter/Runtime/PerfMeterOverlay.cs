@@ -1312,6 +1312,12 @@ namespace SGG.PerfMeter
 			if (_container != null)
 			{
 				_container.style.display = _isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+				_container.MarkDirtyRepaint();
+			}
+
+			if (_document != null && _document.rootVisualElement != null)
+			{
+				_document.rootVisualElement.MarkDirtyRepaint();
 			}
 		}
 
@@ -2217,7 +2223,9 @@ namespace SGG.PerfMeter
 			_panelTextSettings.name = "SGG PerfMeter Text Settings";
 			_panelTextSettings.hideFlags = HideFlags.DontSave;
 			_panelTextSettings.displayWarnings = false;
+		#if !UNITY_6000_5_OR_NEWER
 			_panelTextSettings.defaultFontAsset = CreateRuntimeFontAsset();
+		#endif
 			return _panelTextSettings;
 		}
 
