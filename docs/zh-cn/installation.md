@@ -1,6 +1,6 @@
 # 安装
 
-SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。当前 public npm version 是 `2026.6.28-1`，Git UPM 和 local copy install 也可用。
+SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发。当前 public npm version 是 `2026.7.16-1`，Git UPM 和 local copy install 也可用。
 
 ## 要求
 
@@ -27,7 +27,7 @@ Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.6.28-1"
+    "com.sungeargames.perfmeter": "2026.7.16-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Assets/Scripts/SGG.PerfMeter
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.6.28-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.7.16-1"
   }
 }
 ```

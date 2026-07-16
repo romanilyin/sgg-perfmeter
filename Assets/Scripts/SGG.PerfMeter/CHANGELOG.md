@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.7.16-1
+
+- Made MCP session exports atomic with deterministic existing-file conflict results.
+- Added package-version provenance and separate configured/effective session settings in export schema v2.
+- Added truthful requested/active/deferred overlay status and Editor-session visibility persistence across Play Mode transitions.
+- Detached hidden overlay UI before repaint requests and removed the obsolete panel font fallback on Unity 6000.5+.
+
 ## 2026.6.28-1
 
 - Updated package and GitHub user documentation in all languages to describe Unity 6 URP+HDRP support consistently.
