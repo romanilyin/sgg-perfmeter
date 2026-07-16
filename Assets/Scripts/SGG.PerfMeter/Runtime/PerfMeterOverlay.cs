@@ -2223,7 +2223,9 @@ namespace SGG.PerfMeter
 			_panelTextSettings.name = "SGG PerfMeter Text Settings";
 			_panelTextSettings.hideFlags = HideFlags.DontSave;
 			_panelTextSettings.displayWarnings = false;
+		#if !UNITY_6000_5_OR_NEWER
 			_panelTextSettings.defaultFontAsset = CreateRuntimeFontAsset();
+		#endif
 			return _panelTextSettings;
 		}
 
