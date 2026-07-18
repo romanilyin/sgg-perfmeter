@@ -1,7 +1,7 @@
 # PerfMeter MCP Problem Reports
 
-Статус: active internal backlog.
-Дата актуализации: 2026-07-15.
+Статус: closed internal ledger.
+Дата актуализации: 2026-07-18.
 
 Источник raw reports:
 
@@ -103,6 +103,8 @@ Observed: MCP hide в EditMode сохранялся только в transient ru
 Resolution: MCP visibility хранится в editor `SessionState` и повторно применяется к уже запущенному/autostarted runtime после Play Mode/domain reload. Override не запускает отключенный runtime и применяется при явном `runtime.ensure`. Добавлен transition test `hide -> EnterPlayMode -> runtime ensure -> detached overlay`.
 
 Remaining boundary: screenshot pixels принадлежат GameView/capture lifecycle и не подтверждаются синхронным PerfMeter command result. Alert toast report требует отдельного определения владельца visual notification; PerfMeter overlay не содержит alert-toast component.
+
+Live closure, 2026-07-18: PerfMeter `2026.7.16-1` from commit `8304221` was validated in linked-package project `sgg-sky` through Gateway `2026.7.16-9`. `visible:false` returned requested/effective false with `overlay_apply_state:"detached"`, and the next authoritative `1902x915` `screen_capture` frame contained no PerfMeter overlay. `visible:true` returned requested/effective true with `overlay_apply_state:"active_component"`, and the next authoritative frame contained the restored overlay. `alerts.clear` returned zero active/fired counts and empty latest fields; both the next zero-settle authoritative frame and a later two-settle frame contained no alert toast. A later nonzero alert count was a new `cpu.main.over_budget` firing under sustained capture-time CPU spikes, not retained cleared state. All five captures used final-Game-View composition, no fallback, async GPU readback and verified artifact integrity. Evidence: `CaptureArtifacts/mcp-pr-101-overlay-visible.png`, `CaptureArtifacts/mcp-pr-101-overlay-hidden.png`, `CaptureArtifacts/mcp-pr-101-overlay-restored.png`, `CaptureArtifacts/mcp-pr-101-alerts-cleared.png`, and `CaptureArtifacts/mcp-pr-101-alerts-cleared-immediate.png`.
 
 ## Related Gateway-Owned Reports
 
