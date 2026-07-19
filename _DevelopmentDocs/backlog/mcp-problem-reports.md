@@ -152,7 +152,7 @@ Acceptance: the overlay renders in a Unity 6000.5 Development Player with zero I
 
 Resolution: the package now ships a serialized `PanelSettings` resource with Unity-assigned ICU data plus serialized `PanelTextSettings` and theme subassets. Runtime overlay setup loads the package resource and no longer creates or discovers panel/text/theme assets at runtime.
 
-Validation, 2026-07-19: Unity `6000.5.4f1` compile passed, EditMode `86/86`, PlayMode `5/5`. A Windows x64 Development Player ran the enabled overlay for 15 seconds with zero ICU-data, main-thread text fallback, ATG text-job, or UI Toolkit layout exceptions.
+Validation, 2026-07-19: Unity `6000.5.4f1` compile passed, EditMode `87/87`, PlayMode `5/5`. Unity `6000.4.10f1` imported the serialized panel resource and compiled cleanly. A Windows x64 Development Player ran the enabled overlay for 15 seconds with zero ICU-data, main-thread text fallback, ATG text-job, or UI Toolkit layout exceptions.
 
 ## Related Gateway-Owned Reports
 
