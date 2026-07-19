@@ -22,6 +22,8 @@ L'obiettivo e un output JSON strutturato per agent, invece di parsing di screens
 | `perfmeter.metrics.latest` | Legge le metriche piu recenti, incluse le custom metrics. |
 | `perfmeter.alerts.latest` | Legge alert attivi, contatori e stato degli avvisi Editor. |
 | `perfmeter.alerts.clear` | Cancella alert attivi, contatori e stato cooldown. |
+| `perfmeter.alerts.capture.begin` | Avvia la classificazione limitata di una cattura esterna. |
+| `perfmeter.alerts.capture.end` | Termina la classificazione della cattura esterna corrispondente. |
 | `perfmeter.device.info` | Legge informazioni su device, graphics, display, monitor, pipeline e ambiente Unity. |
 | `perfmeter.camera.snapshot` | Legge transform/projection camera e URP/HDRP camera settings. |
 | `perfmeter.rendergraph.snapshot` | Legge gli ultimi diagnostics di render integration osservati per URP Render Graph o HDRP Custom Pass. |

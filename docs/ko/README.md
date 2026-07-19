@@ -45,7 +45,7 @@ SGG PerfMeter는 프레임 병목을 식별하고, 성능 변화를 비교하고
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.7.16-1"
+    "com.sungeargames.perfmeter": "2026.7.19-1"
   }
 }
 ```

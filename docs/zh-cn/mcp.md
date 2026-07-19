@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.metrics.latest` | 读取 latest metrics，包括 custom metrics。 |
 | `perfmeter.alerts.latest` | 读取 active alerts、counters 和 Editor warning state。 |
 | `perfmeter.alerts.clear` | 清除 active alerts、counters 和 cooldown state。 |
+| `perfmeter.alerts.capture.begin` | 开始外部 capture 的 bounded classification。 |
+| `perfmeter.alerts.capture.end` | 结束对应的外部 capture classification。 |
 | `perfmeter.device.info` | 读取 device、graphics、display、monitor、pipeline 和 Unity environment info。 |
 | `perfmeter.camera.snapshot` | 读取 camera transform/projection 和 URP/HDRP camera settings。 |
 | `perfmeter.rendergraph.snapshot` | 读取 URP Render Graph 或 HDRP Custom Pass 的最新 observed render integration diagnostics。 |

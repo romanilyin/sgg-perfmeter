@@ -65,6 +65,7 @@ namespace SGG.PerfMeter
 		private const float CpuCoreBarColumnWidth = 34f;
 		private const float CpuCoreBarTrackHeight = 76f;
 		private const float CpuCoreBarsSidePanelWidth = 318f;
+		private const string PanelSettingsResourcePath = "PerfMeterOverlayPanelSettings";
 
 		private static PerfMeterOverlayThemeTokens _activeTheme = PerfMeterOverlayThemeTokens.ClassicDark;
 		private static Color BackgroundColor => _activeTheme.Background;
@@ -108,9 +109,6 @@ namespace SGG.PerfMeter
 		private readonly PerfMeterOverlayHistory _history = new PerfMeterOverlayHistory();
 		private UIDocument _document;
 		private PanelSettings _panelSettings;
-		private PanelTextSettings _panelTextSettings;
-		private ThemeStyleSheet _themeStyleSheet;
-		private UnityEngine.TextCore.Text.FontAsset _fontAsset;
 		private VisualElement _container;
 		private VisualElement _contentRow;
 		private VisualElement _widgetBlock;
@@ -174,12 +172,18 @@ namespace SGG.PerfMeter
 
 		private void Awake()
 		{
-			EnsureDocument();
+			if (!EnsureDocument())
+			{
+				enabled = false;
+			}
 		}
 
 		private void OnEnable()
 		{
-			EnsureDocument();
+			if (!EnsureDocument())
+			{
+				return;
+			}
 			BuildVisualTree();
 			ApplyVisibility();
 			RefreshText(force: true);
@@ -193,29 +197,6 @@ namespace SGG.PerfMeter
 			}
 
 			RefreshText(force: false);
-		}
-
-		private void OnDestroy()
-		{
-			if (_themeStyleSheet != null)
-			{
-				Destroy(_themeStyleSheet);
-			}
-
-			if (_fontAsset != null)
-			{
-				Destroy(_fontAsset);
-			}
-
-			if (_panelTextSettings != null)
-			{
-				Destroy(_panelTextSettings);
-			}
-
-			if (_panelSettings != null)
-			{
-				Destroy(_panelSettings);
-			}
 		}
 
 		internal void SetVisible(bool visible)
@@ -340,7 +321,7 @@ namespace SGG.PerfMeter
 			_cpuCoreGraphs?.SetHistoryCapacity(_graphHistoryLength);
 		}
 
-		private void EnsureDocument()
+		private bool EnsureDocument()
 		{
 			if (_document == null)
 			{
@@ -353,24 +334,17 @@ namespace SGG.PerfMeter
 
 			if (_panelSettings == null)
 			{
-				_panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
-				_panelSettings.name = "SGG PerfMeter Panel Settings";
-				_panelSettings.scaleMode = PanelScaleMode.ConstantPixelSize;
-				_panelSettings.sortingOrder = short.MaxValue;
-				_panelSettings.hideFlags = HideFlags.DontSave;
+				_panelSettings = Resources.Load<PanelSettings>(PanelSettingsResourcePath);
 			}
 
-			if (_panelSettings.textSettings == null)
+			if (_panelSettings == null)
 			{
-				_panelSettings.textSettings = CreatePanelTextSettings();
-			}
-
-			if (_panelSettings.themeStyleSheet == null)
-			{
-				_panelSettings.themeStyleSheet = ResolveRuntimeThemeStyleSheet() ?? CreateGeneratedThemeStyleSheet();
+				Debug.LogError("SGG PerfMeter panel settings resource is missing. Reinstall the package.");
+				return false;
 			}
 
 			_document.panelSettings = _panelSettings;
+			return true;
 		}
 
 		private void BuildVisualTree()
@@ -2212,43 +2186,6 @@ namespace SGG.PerfMeter
 			return Time.unscaledTime <= _warningVisibleUntil ? _heldWarning : string.Empty;
 		}
 
-		private PanelTextSettings CreatePanelTextSettings()
-		{
-			if (_panelTextSettings != null)
-			{
-				return _panelTextSettings;
-			}
-
-			_panelTextSettings = ScriptableObject.CreateInstance<PanelTextSettings>();
-			_panelTextSettings.name = "SGG PerfMeter Text Settings";
-			_panelTextSettings.hideFlags = HideFlags.DontSave;
-			_panelTextSettings.displayWarnings = false;
-		#if !UNITY_6000_5_OR_NEWER
-			_panelTextSettings.defaultFontAsset = CreateRuntimeFontAsset();
-		#endif
-			return _panelTextSettings;
-		}
-
-		private UnityEngine.TextCore.Text.FontAsset CreateRuntimeFontAsset()
-		{
-			if (_fontAsset != null)
-			{
-				return _fontAsset;
-			}
-
-			Font font = GetRuntimeFont(PerfMeterOverlayFontRole.Regular);
-			if (font == null)
-			{
-				return null;
-			}
-
-			_fontAsset = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset(font);
-			_fontAsset.name = "SGG PerfMeter Font Asset";
-			_fontAsset.hideFlags = HideFlags.DontSave;
-			return _fontAsset;
-		}
-
-
 		private static Font GetRuntimeFont(PerfMeterOverlayFontRole role)
 		{
 			PerfMeterOverlayFontResources resources = LoadFontResources();
@@ -2309,39 +2246,6 @@ namespace SGG.PerfMeter
 		private static void SetActiveTheme(PerfMeterOverlayTheme theme)
 		{
 			_activeTheme = PerfMeterOverlayThemeTokens.Resolve(PerfMeterSettingsStore.NormalizeOverlayTheme(theme));
-		}
-
-		private ThemeStyleSheet CreateGeneratedThemeStyleSheet()
-		{
-			if (_themeStyleSheet != null)
-			{
-				return _themeStyleSheet;
-			}
-
-			_themeStyleSheet = ScriptableObject.CreateInstance<ThemeStyleSheet>();
-			_themeStyleSheet.name = "SGG PerfMeter Runtime Theme";
-			_themeStyleSheet.hideFlags = HideFlags.DontSave;
-			return _themeStyleSheet;
-		}
-
-		private static ThemeStyleSheet ResolveRuntimeThemeStyleSheet()
-		{
-			ThemeStyleSheet theme = Resources.Load<ThemeStyleSheet>("UnityDefaultRuntimeTheme");
-			if (theme != null)
-			{
-				return theme;
-			}
-
-			ThemeStyleSheet[] themes = Resources.FindObjectsOfTypeAll<ThemeStyleSheet>();
-			for (int i = 0; i < themes.Length; i++)
-			{
-				if (themes[i] != null && themes[i].name.IndexOf("Runtime", StringComparison.OrdinalIgnoreCase) >= 0)
-				{
-					return themes[i];
-				}
-			}
-
-			return themes.Length > 0 ? themes[0] : null;
 		}
 
 		private void AppendFpsLine(PerfMeterMetricsSnapshot metrics)

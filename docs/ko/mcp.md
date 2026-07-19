@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.metrics.latest` | custom metrics를 포함한 latest metrics를 읽습니다. |
 | `perfmeter.alerts.latest` | active alerts, counters, Editor warning state를 읽습니다. |
 | `perfmeter.alerts.clear` | active alerts, counters, cooldown state를 지웁니다. |
+| `perfmeter.alerts.capture.begin` | 외부 capture의 bounded classification을 시작합니다. |
+| `perfmeter.alerts.capture.end` | 일치하는 외부 capture classification을 종료합니다. |
 | `perfmeter.device.info` | device, graphics, display, monitor, pipeline, Unity environment info를 읽습니다. |
 | `perfmeter.camera.snapshot` | camera transform/projection 및 URP/HDRP camera settings를 읽습니다. |
 | `perfmeter.rendergraph.snapshot` | URP Render Graph 또는 HDRP Custom Pass의 최신 observed render integration diagnostics를 읽습니다. |

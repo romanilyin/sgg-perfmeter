@@ -97,7 +97,7 @@ SGG PerfMeter помогает понять, упирается ли кадр в
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.7.16-1"
+    "com.sungeargames.perfmeter": "2026.7.19-1"
   }
 }
 ```

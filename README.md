@@ -97,7 +97,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.7.16-1"
+    "com.sungeargames.perfmeter": "2026.7.19-1"
   }
 }
 ```

@@ -47,7 +47,7 @@ Install from the public npm registry with a Unity Package Manager scoped registr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.7.16-1"
+    "com.sungeargames.perfmeter": "2026.7.19-1"
   }
 }
 ```
@@ -63,12 +63,12 @@ Example `Packages/manifest.json` entry:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.7.16-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.7.19-1"
   }
 }
 ```
 
-The current npm registry package version is `2026.7.16-1`.
+The current npm registry package version is `2026.7.19-1`.
 
 ## Quick Start
 

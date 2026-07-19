@@ -6,6 +6,7 @@ using SGG.PerfMeter.Editor.Mcp;
 using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
@@ -731,6 +732,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void OverlayPanelSettingsAreSerializedWithTextAndThemeResources()
+		{
+			PanelSettings panelSettings = Resources.Load<PanelSettings>("PerfMeterOverlayPanelSettings");
+
+			Assert.That(panelSettings, Is.Not.Null);
+			Assert.That(panelSettings.scaleMode, Is.EqualTo(PanelScaleMode.ConstantPixelSize));
+			Assert.That(panelSettings.sortingOrder, Is.EqualTo(short.MaxValue));
+			Assert.That(panelSettings.textSettings, Is.Not.Null);
+			Assert.That(panelSettings.themeStyleSheet, Is.Not.Null);
+		#if UNITY_6000_5_OR_NEWER
+			UnityEditor.SerializedObject serializedPanel = new UnityEditor.SerializedObject(panelSettings);
+			UnityEditor.SerializedProperty icuData = serializedPanel.FindProperty("m_ICUDataAsset");
+			Assert.That(icuData, Is.Not.Null);
+			Assert.That(icuData.objectReferenceValue, Is.Not.Null);
+		#endif
+		}
+
+		[Test]
 		public void AlertEngineCompareCoversSupportedOperators()
 		{
 			Assert.That(PerfMeterAlertEngine.Compare(2d, PerfMeterComparison.GreaterThan, 1d), Is.True);
@@ -913,6 +932,45 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void AlertEngineClassifiesFiringsAndRecordsHistoryBoundary()
+		{
+			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]
+			{
+				new PerfMeterRule("classification.test", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 10d, 1, 0f, PerfMeterAlertAction.Callback)
+			});
+			System.Action<PerfMeterAlertSnapshot> handler = alert => { };
+			PerformanceMeter.AlertFired += handler;
+
+			try
+			{
+				engine.Evaluate(CreateMetrics(1, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0d, PerfMeterAlertClassification.Lifecycle, string.Empty);
+				engine.Evaluate(CreateMetrics(2, 20d, PerfMeterBottleneck.CpuMainThreadBound), 1d, PerfMeterAlertClassification.Capture, "capture-1");
+				engine.Evaluate(CreateMetrics(3, 20d, PerfMeterBottleneck.CpuMainThreadBound), 2d, PerfMeterAlertClassification.SteadyState, string.Empty);
+
+				PerfMeterAlertHistorySnapshot history = engine.History;
+				Assert.That(history.FiredCount, Is.EqualTo(3));
+				Assert.That(history.LifecycleFiredCount, Is.EqualTo(1));
+				Assert.That(history.CaptureFiredCount, Is.EqualTo(1));
+				Assert.That(history.SteadyStateFiredCount, Is.EqualTo(1));
+				Assert.That(history.LatestFiredAlert.Classification, Is.EqualTo(PerfMeterAlertClassification.SteadyState));
+
+				string previousIntervalId = history.IntervalId;
+				engine.ResetHistory(4, 3d, PerfMeterAlertHistoryResetReason.ExplicitClear);
+				history = engine.History;
+				Assert.That(history.IntervalId, Is.Not.EqualTo(previousIntervalId));
+				Assert.That(history.StartCollectionFrame, Is.EqualTo(4));
+				Assert.That(history.StartTimeSeconds, Is.EqualTo(3d));
+				Assert.That(history.ResetReason, Is.EqualTo(PerfMeterAlertHistoryResetReason.ExplicitClear));
+				Assert.That(history.FiredCount, Is.Zero);
+				Assert.That(string.IsNullOrEmpty(history.LatestFiredAlert.RuleId), Is.True);
+			}
+			finally
+			{
+				PerformanceMeter.AlertFired -= handler;
+			}
+		}
+
+		[Test]
 		public void McpSessionCommandsExposeMetadataAndBasicOutput()
 		{
 			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
@@ -995,15 +1053,41 @@ namespace SGG.PerfMeter.Tests.EditMode
 			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
 			Assert.That(metadata, Does.Contain("perfmeter.alerts.latest"));
 			Assert.That(metadata, Does.Contain("perfmeter.alerts.clear"));
+			Assert.That(metadata, Does.Contain("perfmeter.alerts.capture.begin"));
+			Assert.That(metadata, Does.Contain("perfmeter.alerts.capture.end"));
 
 			string latestJson = PerfMeterMcpCommands.AlertsLatest();
 			Assert.That(latestJson, Does.Contain("\"alerts\""));
 			Assert.That(latestJson, Does.Contain("\"active_alert_count\":0"));
+			Assert.That(latestJson, Does.Contain("\"history\""));
+			Assert.That(latestJson, Does.Contain("\"reset_reason\""));
+			Assert.That(latestJson, Does.Contain("\"latest_fired_alert\":null"));
 			Assert.That(latestJson, Does.Contain("\"is_playing\""));
+
+			Assert.That(PerfMeterMcpCommands.AlertsCaptureBegin("{\"capture_id\":\"capture-test\"}"), Does.Contain("\"started\":true"));
+			Assert.That(PerfMeterMcpCommands.AlertsCaptureBegin("{\"capture_id\":\"other-capture\"}"), Does.Contain("\"capture_id\":\"capture-test\""));
+			Assert.That(PerfMeterMcpCommands.AlertsCaptureBegin("{\"capture_id\":\"other-capture\"}"), Does.Contain("\"started\":false"));
+			Assert.That(PerfMeterMcpCommands.AlertsCaptureEnd("{\"capture_id\":\"other-capture\"}"), Does.Contain("\"capture_scope_active\":true"));
+			Assert.That(PerfMeterMcpCommands.AlertsCaptureEnd("{\"capture_id\":\"capture-test\"}"), Does.Contain("\"ended\":true"));
+			Assert.That(PerfMeterMcpCommands.AlertsCaptureEnd("{\"capture_id\":\"capture-test\"}"), Does.Contain("\"capture_scope_active\":false"));
 
 			string clearJson = PerfMeterMcpCommands.AlertsClear();
 			Assert.That(clearJson, Does.Contain("\"cleared\":true"));
 			Assert.That(clearJson, Does.Contain("\"fired_alert_count\":0"));
+			Assert.That(clearJson, Does.Contain("\"reset_reason\":\"ExplicitClear\""));
+		}
+
+		[Test]
+		public void AlertCaptureScopesRejectEmptyIdsAndVisualChangesPreserveHistory()
+		{
+			Assert.Throws<System.ArgumentException>(() => PerformanceMeter.BeginAlertCapture(string.Empty));
+			Assert.Throws<System.ArgumentException>(() => PerformanceMeter.EndAlertCapture(string.Empty));
+
+			PerformanceMeter.EnsureRunning();
+			string intervalId = PerformanceMeter.GetAlertHistory().IntervalId;
+			PerformanceMeter.SetEditorWarningLogsEnabled(false);
+
+			Assert.That(PerformanceMeter.GetAlertHistory().IntervalId, Is.EqualTo(intervalId));
 		}
 
 		private static PerfMeterMetricsSnapshot CreateMetrics(int frame, double frameTimeMs, PerfMeterBottleneck bottleneck)

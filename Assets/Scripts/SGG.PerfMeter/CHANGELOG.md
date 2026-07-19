@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.7.19-1
+
+- Added lifecycle, steady-state, and explicit capture provenance to alert snapshots and history.
+- Added alert-history boundaries and bounded MCP capture-scope commands.
+- Replaced runtime-created UI Toolkit panel settings with a serialized ICU-enabled package resource.
+- Validated the overlay in a Unity 6000.5 Windows Development Player without ICU or text-layout exceptions.
+
 ## 2026.7.16-1
 
 - Made MCP session exports atomic with deterministic existing-file conflict results.

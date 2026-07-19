@@ -4,17 +4,17 @@
 
 ## Current Candidate
 
-- Current release candidate: `2026.7.16-1`
+- Current release candidate: `2026.7.19-1`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- npm publish: included for `2026.7.16-1`
+- npm publish: included for `2026.7.19-1`
 - Package: `com.sungeargames.perfmeter`
-- Unity validation target: `6000.5.3f1`
+- Unity validation target: `6000.5.4f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-07-16
+- Release work date: 2026-07-19
 - GitHub Actions release workflow: disabled
 
-Current release notes/checklist: `_DevelopmentDocs/release/2026.7.16-1-mcp-fixes-release.md`.
+Current release notes/checklist: `_DevelopmentDocs/release/2026.7.19-1-alerts-panel-release.md`.
 
 ## Local Gates
 

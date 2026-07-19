@@ -60,6 +60,44 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetLatestAlerts() : System.Array.Empty<PerfMeterAlertSnapshot>();
 		}
 
+		public static PerfMeterAlertHistorySnapshot GetAlertHistory()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetAlertHistory() : default;
+		}
+
+		public static string ActiveAlertCaptureId
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.ActiveAlertCaptureId : string.Empty;
+			}
+		}
+
+		public static bool BeginAlertCapture(string captureId)
+		{
+			if (string.IsNullOrEmpty(captureId))
+			{
+				throw new System.ArgumentException("Capture id must not be empty.", nameof(captureId));
+			}
+
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.BeginAlertCapture(captureId);
+		}
+
+		public static bool EndAlertCapture(string captureId)
+		{
+			if (string.IsNullOrEmpty(captureId))
+			{
+				throw new System.ArgumentException("Capture id must not be empty.", nameof(captureId));
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.EndAlertCapture(captureId);
+		}
+
 		public static void ClearAlerts()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
