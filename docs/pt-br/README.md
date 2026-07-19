@@ -45,7 +45,7 @@ SGG PerfMeter identifica gargalos de frame, compara alteracoes de performance, g
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.7.16-1"
+    "com.sungeargames.perfmeter": "2026.7.19-1"
   }
 }
 ```

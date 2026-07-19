@@ -338,7 +338,7 @@ namespace SGG.PerfMeter
 
 	public readonly struct PerfMeterAlertSnapshot
 	{
-		public PerfMeterAlertSnapshot(string ruleId, PerfMeterMetric metric, PerfMeterComparison comparison, double threshold, double value, int collectionFrame, double timeSeconds, int consecutiveFrames, bool active, string message)
+		public PerfMeterAlertSnapshot(string ruleId, PerfMeterMetric metric, PerfMeterComparison comparison, double threshold, double value, int collectionFrame, double timeSeconds, int consecutiveFrames, bool active, string message, PerfMeterAlertClassification classification = PerfMeterAlertClassification.SteadyState, string captureId = "")
 		{
 			RuleId = ruleId ?? string.Empty;
 			Metric = metric;
@@ -350,6 +350,8 @@ namespace SGG.PerfMeter
 			ConsecutiveFrames = Mathf.Max(0, consecutiveFrames);
 			Active = active;
 			Message = message ?? string.Empty;
+			Classification = classification;
+			CaptureId = captureId ?? string.Empty;
 		}
 
 		public string RuleId { get; }
@@ -362,6 +364,61 @@ namespace SGG.PerfMeter
 		public int ConsecutiveFrames { get; }
 		public bool Active { get; }
 		public string Message { get; }
+		public PerfMeterAlertClassification Classification { get; }
+		public string CaptureId { get; }
+	}
+
+	public enum PerfMeterAlertClassification
+	{
+		SteadyState = 0,
+		Lifecycle = 1,
+		Capture = 2
+	}
+
+	public enum PerfMeterAlertHistoryResetReason
+	{
+		RuntimeStarted = 0,
+		ExplicitClear = 1,
+		StatsReset = 2,
+		RulesChanged = 3
+	}
+
+	public readonly struct PerfMeterAlertHistorySnapshot
+	{
+		public PerfMeterAlertHistorySnapshot(
+			string intervalId,
+			int startCollectionFrame,
+			double startTimeSeconds,
+			string startedUtc,
+			PerfMeterAlertHistoryResetReason resetReason,
+			int firedCount,
+			int steadyStateFiredCount,
+			int lifecycleFiredCount,
+			int captureFiredCount,
+			PerfMeterAlertSnapshot latestFiredAlert)
+		{
+			IntervalId = intervalId ?? string.Empty;
+			StartCollectionFrame = startCollectionFrame;
+			StartTimeSeconds = startTimeSeconds;
+			StartedUtc = startedUtc ?? string.Empty;
+			ResetReason = resetReason;
+			FiredCount = Mathf.Max(0, firedCount);
+			SteadyStateFiredCount = Mathf.Max(0, steadyStateFiredCount);
+			LifecycleFiredCount = Mathf.Max(0, lifecycleFiredCount);
+			CaptureFiredCount = Mathf.Max(0, captureFiredCount);
+			LatestFiredAlert = latestFiredAlert;
+		}
+
+		public string IntervalId { get; }
+		public int StartCollectionFrame { get; }
+		public double StartTimeSeconds { get; }
+		public string StartedUtc { get; }
+		public PerfMeterAlertHistoryResetReason ResetReason { get; }
+		public int FiredCount { get; }
+		public int SteadyStateFiredCount { get; }
+		public int LifecycleFiredCount { get; }
+		public int CaptureFiredCount { get; }
+		public PerfMeterAlertSnapshot LatestFiredAlert { get; }
 	}
 
 	public enum PerfMeterSessionState

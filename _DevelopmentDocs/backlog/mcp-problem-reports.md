@@ -1,7 +1,7 @@
 # PerfMeter MCP Problem Reports
 
-Статус: active internal backlog.
-Дата актуализации: 2026-07-15.
+Статус: active internal ledger.
+Дата актуализации: 2026-07-19.
 
 Источник raw reports:
 
@@ -20,6 +20,8 @@ Raw JSON остается в Gateway audit-каталоге. Этот докум
 | `PM-MCP-003` | P1/P2 | resolved, Unity 6000.5.3 | Configured and effective session settings snapshots |
 | `PM-MCP-004` | P1/P2 | resolved, Unity 6000.5.3 | Requested, attached and rendered overlay state semantics |
 | `PM-MCP-005` | P1/P2 | resolved, Unity 6000.5.3 | MCP overlay visibility across Play Mode transitions |
+| `PM-MCP-006` | P2 | resolved, Unity 6000.5.4 | Lifecycle/capture alert classification and fired-history provenance |
+| `PM-MCP-007` | P1 | resolved, Unity 6000.5.4 | Serialized UI Toolkit panel settings for Development Player |
 
 ### PM-MCP-001 P1/P2: existing export path silently retains stale data
 
@@ -103,6 +105,54 @@ Observed: MCP hide в EditMode сохранялся только в transient ru
 Resolution: MCP visibility хранится в editor `SessionState` и повторно применяется к уже запущенному/autostarted runtime после Play Mode/domain reload. Override не запускает отключенный runtime и применяется при явном `runtime.ensure`. Добавлен transition test `hide -> EnterPlayMode -> runtime ensure -> detached overlay`.
 
 Remaining boundary: screenshot pixels принадлежат GameView/capture lifecycle и не подтверждаются синхронным PerfMeter command result. Alert toast report требует отдельного определения владельца visual notification; PerfMeter overlay не содержит alert-toast component.
+
+Live closure, 2026-07-18: PerfMeter `2026.7.16-1` from commit `8304221` was validated in linked-package project `sgg-sky` through Gateway `2026.7.16-9`. `visible:false` returned requested/effective false with `overlay_apply_state:"detached"`, and the next authoritative `1902x915` `screen_capture` frame contained no PerfMeter overlay. `visible:true` returned requested/effective true with `overlay_apply_state:"active_component"`, and the next authoritative frame contained the restored overlay. `alerts.clear` returned zero active/fired counts and empty latest fields; both the next zero-settle authoritative frame and a later two-settle frame contained no alert toast. A later nonzero alert count was a new `cpu.main.over_budget` firing under sustained capture-time CPU spikes, not retained cleared state. All five captures used final-Game-View composition, no fallback, async GPU readback and verified artifact integrity. Evidence: `CaptureArtifacts/mcp-pr-101-overlay-visible.png`, `CaptureArtifacts/mcp-pr-101-overlay-hidden.png`, `CaptureArtifacts/mcp-pr-101-overlay-restored.png`, `CaptureArtifacts/mcp-pr-101-alerts-cleared.png`, and `CaptureArtifacts/mcp-pr-101-alerts-cleared-immediate.png`.
+
+### PM-MCP-006 P2: lifecycle and capture alerts are indistinguishable from steady-state violations
+
+Reports: Q1 authored-weather-map smoke on 2026-07-16, Q0.5 cloud screenshot lifecycle on 2026-07-18 and Q4 fast-orbit capture on 2026-07-18 in `mcp-problem-reports2.md`.
+
+Observed:
+
+- Play Mode entry, domain reload and authoritative screenshot capture produced CPU/FPS alert firings after the measured workload had recovered;
+- `active_alert_count` correctly returned to zero, while `fired_alert_count` and latest event retained the transient lifecycle/capture firing;
+- the response does not identify the fired-history start/reset point or whether an event belongs to startup, capture or steady-state collection;
+- current consecutive-frame thresholds and cooldowns do not provide lifecycle/capture provenance.
+
+Required:
+
+- define whether lifecycle and synchronous capture samples are suppressed, warmed up or retained with explicit classification;
+- expose enough provenance to distinguish transient lifecycle/capture events from steady-state budget failures;
+- make the fired-history interval or last reset point explicit without discarding useful historical evidence;
+- add tests for Play Mode startup/reload, capture-time spikes, steady recovery and explicit alert clear.
+
+Acceptance: MCP and runtime alert snapshots let a caller classify a retained firing without inferring from a later metrics window; sustained steady-state violations remain observable.
+
+Resolution: alert history now has an interval id, start frame/time, UTC timestamp, reset reason, classified counters and the latest fired snapshot. Runtime startup samples are classified as `Lifecycle`, normal samples as `SteadyState`, and bounded external capture scopes as `Capture` through public API and MCP `perfmeter.alerts.capture.begin/end` commands. Capture classification is explicit rather than inferred from frame duration.
+
+### PM-MCP-007 P1: runtime-created PanelSettings lacks ICU data in Development Player
+
+Report: Windows Development Player smoke on 2026-07-19 in `mcp-problem-reports2.md`.
+
+Observed:
+
+- the Player logged 247 `ICU Data not available` errors, 24 main-thread `FindObjectsOfTypeAll` exceptions and a UI Toolkit text-layout `NullReferenceException`;
+- `PerfMeterOverlay.EnsureDocument()` still creates `PanelSettings` and `PanelTextSettings` with `ScriptableObject.CreateInstance` at runtime;
+- Unity 6000.5 cannot attach the required build-time ICU data to that runtime-created panel configuration;
+- the package has no serialized `PanelSettings` asset or Development Player regression coverage for the overlay.
+
+Required:
+
+- ship and reference a serialized `PanelSettings` asset with Unity-assigned ICU data and the required text/theme settings;
+- remove the failing runtime-created panel/text-settings path from supported Player builds;
+- preserve runtime overlay behavior for supported URP and HDRP projects;
+- add a Windows Development Player smoke that enables the overlay and checks Player logs.
+
+Acceptance: the overlay renders in a Unity 6000.5 Development Player with zero ICU, main-thread text fallback and UI Toolkit layout exceptions.
+
+Resolution: the package now ships a serialized `PanelSettings` resource with Unity-assigned ICU data plus serialized `PanelTextSettings` and theme subassets. Runtime overlay setup loads the package resource and no longer creates or discovers panel/text/theme assets at runtime.
+
+Validation, 2026-07-19: Unity `6000.5.4f1` compile passed, EditMode `87/87`, PlayMode `5/5`. Unity `6000.4.10f1` imported the serialized panel resource and compiled cleanly. A Windows x64 Development Player ran the enabled overlay for 15 seconds with zero ICU-data, main-thread text fallback, ATG text-job, or UI Toolkit layout exceptions.
 
 ## Related Gateway-Owned Reports
 

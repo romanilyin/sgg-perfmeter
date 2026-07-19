@@ -15,6 +15,14 @@ namespace SGG.PerfMeter
 		private float _callbackCooldownSeconds = 0.5f;
 		private bool _editorWarningsEnabled = true;
 		private int _firedAlertCount;
+		private int _steadyStateFiredCount;
+		private int _lifecycleFiredCount;
+		private int _captureFiredCount;
+		private string _historyIntervalId;
+		private int _historyStartCollectionFrame;
+		private double _historyStartTimeSeconds;
+		private string _historyStartedUtc;
+		private PerfMeterAlertHistoryResetReason _historyResetReason;
 
 		internal PerfMeterAlertEngine()
 			: this(CreateDefaultRules(PerfMeterTargetFps.Fps60, PerfMeterSettingsStore.Defaults))
@@ -25,11 +33,23 @@ namespace SGG.PerfMeter
 		{
 			_rules = rules ?? Array.Empty<PerfMeterRule>();
 			_states = new RuleState[_rules.Length];
+			ResetHistory(-1, 0d, PerfMeterAlertHistoryResetReason.RuntimeStarted);
 		}
 
 		internal int ActiveAlertCount => _latestAlerts.Count;
 		internal int FiredAlertCount => _firedAlertCount;
 		internal PerfMeterAlertSnapshot LatestAlert => _latestAlert;
+		internal PerfMeterAlertHistorySnapshot History => new PerfMeterAlertHistorySnapshot(
+			_historyIntervalId,
+			_historyStartCollectionFrame,
+			_historyStartTimeSeconds,
+			_historyStartedUtc,
+			_historyResetReason,
+			_firedAlertCount,
+			_steadyStateFiredCount,
+			_lifecycleFiredCount,
+			_captureFiredCount,
+			_latestAlert);
 
 		internal void ApplySettings(PerfMeterSettingsSnapshot settings, PerfMeterTargetFps targetFps)
 		{
@@ -40,6 +60,11 @@ namespace SGG.PerfMeter
 		}
 
 		internal void Evaluate(PerfMeterMetricsSnapshot metrics, double timeSeconds)
+		{
+			Evaluate(metrics, timeSeconds, PerfMeterAlertClassification.SteadyState, string.Empty);
+		}
+
+		internal void Evaluate(PerfMeterMetricsSnapshot metrics, double timeSeconds, PerfMeterAlertClassification classification, string captureId)
 		{
 			_latestAlerts.Clear();
 			for (int index = 0; index < _rules.Length; index++)
@@ -52,7 +77,7 @@ namespace SGG.PerfMeter
 
 				if (matched && state.ConsecutiveFrames >= rule.ConsecutiveFrames)
 				{
-					PerfMeterAlertSnapshot alert = CreateAlert(rule, value, metrics.CollectionFrame, timeSeconds, state.ConsecutiveFrames, true);
+					PerfMeterAlertSnapshot alert = CreateAlert(rule, value, metrics.CollectionFrame, timeSeconds, state.ConsecutiveFrames, true, classification, captureId);
 					_latestAlerts.Add(alert);
 					FireActions(rule, alert, timeSeconds, ref state);
 				}
@@ -68,9 +93,22 @@ namespace SGG.PerfMeter
 
 		internal void Clear()
 		{
+			ResetHistory(-1, 0d, PerfMeterAlertHistoryResetReason.ExplicitClear);
+		}
+
+		internal void ResetHistory(int collectionFrame, double timeSeconds, PerfMeterAlertHistoryResetReason resetReason)
+		{
 			_latestAlerts.Clear();
 			_latestAlert = default;
 			_firedAlertCount = 0;
+			_steadyStateFiredCount = 0;
+			_lifecycleFiredCount = 0;
+			_captureFiredCount = 0;
+			_historyIntervalId = Guid.NewGuid().ToString("N");
+			_historyStartCollectionFrame = collectionFrame;
+			_historyStartTimeSeconds = timeSeconds;
+			_historyStartedUtc = DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+			_historyResetReason = resetReason;
 			for (int index = 0; index < _states.Length; index++)
 			{
 				_states[index] = default;
@@ -145,6 +183,18 @@ namespace SGG.PerfMeter
 			if (actionFired)
 			{
 				_firedAlertCount++;
+				switch (alert.Classification)
+				{
+					case PerfMeterAlertClassification.Capture:
+						_captureFiredCount++;
+						break;
+					case PerfMeterAlertClassification.Lifecycle:
+						_lifecycleFiredCount++;
+						break;
+					default:
+						_steadyStateFiredCount++;
+						break;
+				}
 				_latestAlert = alert;
 			}
 		}
@@ -154,10 +204,10 @@ namespace SGG.PerfMeter
 			return !hasFired || timeSeconds - lastTimeSeconds >= cooldownSeconds;
 		}
 
-		private static PerfMeterAlertSnapshot CreateAlert(PerfMeterRule rule, double value, int frame, double timeSeconds, int consecutiveFrames, bool active)
+		private static PerfMeterAlertSnapshot CreateAlert(PerfMeterRule rule, double value, int frame, double timeSeconds, int consecutiveFrames, bool active, PerfMeterAlertClassification classification, string captureId)
 		{
 			string message = rule.Id + ": " + rule.Metric + " " + rule.Comparison + " " + rule.Threshold.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ", value " + value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-			return new PerfMeterAlertSnapshot(rule.Id, rule.Metric, rule.Comparison, rule.Threshold, value, frame, timeSeconds, consecutiveFrames, active, message);
+			return new PerfMeterAlertSnapshot(rule.Id, rule.Metric, rule.Comparison, rule.Threshold, value, frame, timeSeconds, consecutiveFrames, active, message, classification, captureId);
 		}
 
 		private static double GetMetricValue(PerfMeterMetric metric, PerfMeterMetricsSnapshot metrics)

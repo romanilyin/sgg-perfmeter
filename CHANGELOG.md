@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.7.19-1
+
+- Classified alert firings as lifecycle, steady-state, or explicit external capture events.
+- Added fired-history interval, start/reset provenance, classified counters, and latest-fired details to runtime and MCP alert reads.
+- Added bounded `perfmeter.alerts.capture.begin/end` commands for authoritative capture attribution.
+- Replaced runtime-created UI Toolkit panel/text/theme objects with a serialized package resource containing Unity-assigned ICU data.
+- Removed runtime theme discovery and validated the overlay in a Unity 6000.5 Windows Development Player without ICU or text-layout exceptions.
+- Updated package metadata and install examples to version `2026.7.19-1`.
+
 ## 2026.7.16-1
 
 - Made MCP session exports atomic, added deterministic existing-file conflict semantics, and validated artifact bytes on repeated exports.

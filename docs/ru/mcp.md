@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.metrics.latest` | Прочитать latest metrics, включая пользовательские метрики. |
 | `perfmeter.alerts.latest` | Прочитать активные alerts/оповещения, счетчики и состояние Editor warnings. |
 | `perfmeter.alerts.clear` | Очистить активные alerts/оповещения, счетчики и состояние cooldown. |
+| `perfmeter.alerts.capture.begin` | Начать ограниченную классификацию внешнего capture. |
+| `perfmeter.alerts.capture.end` | Завершить соответствующую классификацию внешнего capture. |
 | `perfmeter.device.info` | Прочитать информацию об устройстве, graphics, display, monitor, pipeline и Unity environment. |
 | `perfmeter.camera.snapshot` | Прочитать transform/projection камеры и настройки URP/HDRP camera. |
 | `perfmeter.rendergraph.snapshot` | Прочитать последние наблюдаемые diagnostics render integration для URP Render Graph или HDRP Custom Pass. |

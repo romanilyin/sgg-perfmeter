@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace SGG.PerfMeter.Tests.PlayMode
 {
@@ -28,6 +29,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		public IEnumerator OverlayLifecycleAndSnapshotsUpdateAcrossFrames()
 		{
 			PerformanceMeter.EnsureRunning();
+			PerfMeterAlertHistorySnapshot startupAlertHistory = PerformanceMeter.GetAlertHistory();
+			Assert.That(startupAlertHistory.IntervalId, Is.Not.Empty);
+			Assert.That(startupAlertHistory.ResetReason, Is.EqualTo(PerfMeterAlertHistoryResetReason.RuntimeStarted));
 			PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.Memory);
 			PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.BottomLeft);
 			PerformanceMeter.SetOverlayTheme(PerfMeterOverlayTheme.Glass);
@@ -42,8 +46,15 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			Assert.That(GameObject.Find(RuntimeObjectName), Is.Not.Null);
 		#if UNITY_6000_4_OR_NEWER
-			Assert.That(GameObject.Find(OverlayObjectName), Is.Not.Null);
+			GameObject overlayObject = GameObject.Find(OverlayObjectName);
+			Assert.That(overlayObject, Is.Not.Null);
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.True);
+			UIDocument document = overlayObject.GetComponent<UIDocument>();
+			PanelSettings panelSettings = Resources.Load<PanelSettings>("PerfMeterOverlayPanelSettings");
+			Assert.That(document, Is.Not.Null);
+			Assert.That(document.panelSettings, Is.SameAs(panelSettings));
+			Assert.That(panelSettings.textSettings, Is.Not.Null);
+			Assert.That(panelSettings.themeStyleSheet, Is.Not.Null);
 		#else
 			Assert.That(GameObject.Find(OverlayObjectName), Is.Null);
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
@@ -56,6 +67,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(metrics.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(metrics.FrameSampleCount, Is.GreaterThanOrEqualTo(1));
+			PerfMeterAlertHistorySnapshot alertHistory = PerformanceMeter.GetAlertHistory();
+			Assert.That(alertHistory.IntervalId, Is.Not.Empty);
+			Assert.That(alertHistory.ResetReason, Is.EqualTo(PerfMeterAlertHistoryResetReason.RulesChanged));
 		#if UNITY_6000_4_OR_NEWER
 			Assert.That(status.OverlayVisible, Is.True);
 		#else

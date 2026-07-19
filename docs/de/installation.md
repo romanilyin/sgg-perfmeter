@@ -1,6 +1,6 @@
 # Installation
 
-SGG PerfMeter wird als Unity-Paket `com.sungeargames.perfmeter` verteilt. Die aktuelle öffentliche npm-Version ist `2026.7.16-1`; Git UPM und lokale Kopien bleiben verfügbar.
+SGG PerfMeter wird als Unity-Paket `com.sungeargames.perfmeter` verteilt. Die aktuelle öffentliche npm-Version ist `2026.7.19-1`; Git UPM und lokale Kopien bleiben verfügbar.
 
 ## Anforderungen
 
@@ -27,7 +27,7 @@ Fuege die npm registry als Unity Package Manager scoped registry zur `Packages/m
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.7.16-1"
+    "com.sungeargames.perfmeter": "2026.7.19-1"
   }
 }
 ```
@@ -67,7 +67,7 @@ Pinne ein Tag oder einen Commit fuer wiederholbare Installationen:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.7.16-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.7.19-1"
   }
 }
 ```

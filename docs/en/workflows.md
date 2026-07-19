@@ -46,9 +46,12 @@ Rules can report budget violations, low FPS, unavailable GPU timing, and overdra
 ```csharp
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
+PerfMeterAlertHistorySnapshot history = PerformanceMeter.GetAlertHistory();
 ```
 
 Editor warnings are throttled by cooldowns and can be disabled through JSON settings or runtime controls.
+
+Alert history identifies its interval and reset reason and separates lifecycle, steady-state, and explicit capture firings. PerfMeter cannot infer an external screenshot from a slow frame. Wrap known capture work with `PerformanceMeter.BeginAlertCapture(captureId)` and `PerformanceMeter.EndAlertCapture(captureId)` when authoritative capture provenance is required.
 
 ## Overdraw Diagnostics
 

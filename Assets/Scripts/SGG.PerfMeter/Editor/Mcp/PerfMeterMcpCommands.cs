@@ -89,6 +89,31 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return AlertsJson(true);
 		}
 
+		public static string AlertsCaptureBegin(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			bool started = RuntimePerformanceMeter.BeginAlertCapture(captureId);
+			return AlertCaptureScopeJson(captureId, started, false);
+		}
+
+		public static string AlertsCaptureEnd(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			bool ended = RuntimePerformanceMeter.EndAlertCapture(captureId);
+			return AlertCaptureScopeJson(captureId, false, ended);
+		}
+
+		private static string AlertCaptureScopeJson(string requestedCaptureId, bool started, bool ended)
+		{
+			string activeCaptureId = RuntimePerformanceMeter.ActiveAlertCaptureId;
+			return "{\"capture_scope_active\":" + JsonBool(!string.IsNullOrEmpty(activeCaptureId))
+				+ ",\"capture_id\":" + JsonString(activeCaptureId)
+				+ ",\"requested_capture_id\":" + JsonString(requestedCaptureId)
+				+ ",\"started\":" + JsonBool(started)
+				+ ",\"ended\":" + JsonBool(ended)
+				+ "}";
+		}
+
 		public static string DeviceInfo()
 		{
 			return DeviceInfoJson(RuntimePerformanceMeter.GetDeviceInfo());
@@ -284,7 +309,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 		{
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			PerfMeterAlertSnapshot[] alerts = RuntimePerformanceMeter.GetLatestAlerts();
-			StringBuilder builder = new StringBuilder(768);
+			PerfMeterAlertHistorySnapshot history = RuntimePerformanceMeter.GetAlertHistory();
+			StringBuilder builder = new StringBuilder(1024);
 			builder.Append("{\"cleared\":").Append(JsonBool(cleared));
 			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(status.Availability.ToString()));
@@ -293,6 +319,26 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"fired_alert_count\":").Append(status.FiredAlertCount);
 			builder.Append(",\"latest_alert_rule_id\":").Append(JsonString(status.LatestAlertRuleId));
 			builder.Append(",\"latest_alert_message\":").Append(JsonString(status.LatestAlertMessage));
+			builder.Append(",\"history\":{");
+			builder.Append("\"interval_id\":").Append(JsonString(history.IntervalId));
+			builder.Append(",\"start_collection_frame\":").Append(history.StartCollectionFrame);
+			builder.Append(",\"start_time_seconds\":").Append(JsonNumber(history.StartTimeSeconds));
+			builder.Append(",\"started_utc\":").Append(JsonString(history.StartedUtc));
+			builder.Append(",\"reset_reason\":").Append(JsonString(history.ResetReason.ToString()));
+			builder.Append(",\"fired_count\":").Append(history.FiredCount);
+			builder.Append(",\"steady_state_fired_count\":").Append(history.SteadyStateFiredCount);
+			builder.Append(",\"lifecycle_fired_count\":").Append(history.LifecycleFiredCount);
+			builder.Append(",\"capture_fired_count\":").Append(history.CaptureFiredCount);
+			builder.Append('}');
+			builder.Append(",\"latest_fired_alert\":");
+			if (string.IsNullOrEmpty(history.LatestFiredAlert.RuleId))
+			{
+				builder.Append("null");
+			}
+			else
+			{
+				AppendAlert(builder, history.LatestFiredAlert);
+			}
 			builder.Append(",\"alerts\":[");
 			for (int i = 0; i < alerts.Length; i++)
 			{
@@ -323,6 +369,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"consecutive_frames\":").Append(alert.ConsecutiveFrames);
 			builder.Append(",\"active\":").Append(JsonBool(alert.Active));
 			builder.Append(",\"message\":").Append(JsonString(alert.Message));
+			builder.Append(",\"classification\":").Append(JsonString(alert.Classification.ToString()));
+			builder.Append(",\"capture_id\":").Append(JsonString(alert.CaptureId));
 			builder.Append('}');
 		}
 

@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.metrics.latest` | custom metrics を含む latest metrics を読み取ります。 |
 | `perfmeter.alerts.latest` | active alerts、counters、Editor warning state を読み取ります。 |
 | `perfmeter.alerts.clear` | active alerts、counters、cooldown state をクリアします。 |
+| `perfmeter.alerts.capture.begin` | 外部 capture の bounded classification を開始します。 |
+| `perfmeter.alerts.capture.end` | 対応する外部 capture classification を終了します。 |
 | `perfmeter.device.info` | device、graphics、display、monitor、pipeline、Unity environment info を読み取ります。 |
 | `perfmeter.camera.snapshot` | camera transform/projection と URP/HDRP camera settings を読み取ります。 |
 | `perfmeter.rendergraph.snapshot` | URP Render Graph または HDRP Custom Pass の最新 observed render integration diagnostics を読み取ります。 |

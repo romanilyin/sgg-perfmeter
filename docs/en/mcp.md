@@ -22,6 +22,8 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.metrics.latest` | Read latest metrics, including custom metrics. |
 | `perfmeter.alerts.latest` | Read active alerts, counters, and Editor warning state. |
 | `perfmeter.alerts.clear` | Clear active alerts, counters, and cooldown state. |
+| `perfmeter.alerts.capture.begin` | Begin a bounded external-capture classification scope. |
+| `perfmeter.alerts.capture.end` | End the matching external-capture classification scope. |
 | `perfmeter.device.info` | Read device, graphics, display, monitor, pipeline, and Unity environment info. |
 | `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
 | `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
@@ -47,3 +49,5 @@ perfmeter.alerts.latest {}
 ```
 
 Use `OverdrawDiagnostic` only for bounded URP diagnostic windows because numerical overdraw and heatmap rendering add extra GPU work. HDRP reports overdraw and heatmap as unsupported while the rest of the diagnostics stay available.
+
+`perfmeter.alerts.latest` reports the alert-history interval and reset reason, classified lifecycle/steady-state/capture counters, and the latest fired alert. PerfMeter does not infer captures from slow frames; wrap an external capture with matching `perfmeter.alerts.capture.begin/end` calls when capture attribution is required.
