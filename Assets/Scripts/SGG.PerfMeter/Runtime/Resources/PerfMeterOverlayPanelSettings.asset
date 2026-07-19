@@ -62,7 +62,7 @@ MonoBehaviour:
   m_Script: {fileID: 19103, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: SGG PerfMeter Text Settings
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.PanelTextSettings
-  m_Version: 
+  m_Version:
   m_ShowObsoleteProperties: 0
   m_DefaultFontAsset: {fileID: 0}
   m_DefaultFontAssetPath: Fonts & Materials/
