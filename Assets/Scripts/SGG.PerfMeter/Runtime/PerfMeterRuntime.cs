@@ -1267,7 +1267,15 @@ namespace SGG.PerfMeter
 		private void ApplyAlertSettings()
 		{
 			_settings = PerfMeterSettingsStore.LoadFromResources();
-			ApplyAlertSettings(_settings);
+			if (!_alertEngineInitialized)
+			{
+				ApplyAlertSettings(_settings);
+				return;
+			}
+
+			_overdrawDefaultFrameCount = _settings.OverdrawDefaultFrameCount;
+			_overdrawMaxFrameCount = _settings.OverdrawMaxFrameCount;
+			_alertEngine.ApplySettings(_settings, _targetFps);
 		}
 
 		private void ApplyAlertSettings(PerfMeterSettingsSnapshot settings)
