@@ -37,7 +37,8 @@ PerfMeter가 예상한 data를 표시하지 않을 때 이 checklist를 사용�
 
 - JSON settings에서 threshold 및 consecutive-frame window를 조정합니다.
 - Editor warning cooldown을 늘립니다.
-- callback 또는 structured log만으로 충분하면 Editor warning log를 비활성화합니다.
+- callback, alert/history data, overlay warning, session만으로 충분하면 `PerformanceMeter.SetStructuredLogsEnabled(false)`로 structured alert log를 비활성화합니다. 이는 structured alert의 `Debug.Log` 출력만 억제합니다.
+- `PerformanceMeter.SetEditorWarningLogsEnabled(false)`로 Editor warning log를 별도로 비활성화합니다. structured-log toggle과 Editor-warning toggle은 독립적입니다.
 
 ## Device마다 Data가 다르게 보임
 

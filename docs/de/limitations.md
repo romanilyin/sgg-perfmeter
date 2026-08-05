@@ -36,7 +36,7 @@ Nicht unterstuetzte Ziele, einschliesslich HDRP, melden `OverdrawState.Unsupport
 
 ## Overlay-Kosten
 
-Der Overlay ist allokationsbewusst und gedrosselt, aber geaenderte Zahlenwerte und Graph-Labels koennen im Refresh-Intervall managed strings erzeugen. Schwere visuelle Diagnostik und Graph-Modi sollten auf Zielgeraeten validiert werden.
+Der Overlay ist allokationsbewusst und gedrosselt, aber geaenderte Zahlenwerte und Graph-Labels koennen im Refresh-Intervall managed strings erzeugen. Es gibt zwei UI Toolkit backend paths: einen eigenen `UIDocument`-host auf Unity `6000.4` und einen eigenen `PanelRenderer`-host auf Unity `6000.5+`. Der host bewahrt panel settings und children fremder UI und baut nur den PerfMeter-eigenen container neu auf. Zahlenwerte verwenden stabile reservierte numeric slots und eine numeric monospace role; `FpsOnly` nutzt einen deterministischen begrenzten Zwei-Zeilen-fallback, wenn eine Zeile nicht passt, waehrend Karten und Balken bei schmaler logical width umbrechen. Das reduziert Clipping-Risiken, verspricht aber nicht jede beliebige resolution oder scale; schwere visuelle Diagnostik, Graph-Modi und das resultierende Layout muessen auf Zielgeraeten validiert werden.
 
 ## Validierungsstatus
 

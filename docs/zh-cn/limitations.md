@@ -36,7 +36,7 @@ URP 中的 numerical overdraw 需要：
 
 ## Overlay Cost
 
-Overlay 会注意 allocation 并进行 throttling，但变化的数值和 graph labels 仍可能在 refresh interval 产生 managed strings。Heavy visual diagnostics 和 graph modes 应在目标设备上验证。
+Overlay 会注意 allocation 并进行 throttling，但变化的数值和 graph labels 仍可能在 refresh interval 产生 managed strings。它有两条 UI Toolkit backend path：Unity `6000.4` 使用 owned `UIDocument` host，Unity `6000.5+` 使用 owned `PanelRenderer` host。host 会保留 foreign UI 的 panel settings 和 children，只 rebuild PerfMeter-owned container。numeric values 使用 stable reserved numeric slots 和 numeric monospace role；当一行无法容纳时，`FpsOnly` 使用 deterministic bounded two-row fallback，cards 和 bars 会在较窄的 logical widths 下 wrap。这可以降低 clipping 风险，但不保证任意 resolution 或 scale；heavy visual diagnostics、graph modes 和最终 layout 仍必须在目标设备上验证。
 
 ## Validation Status
 

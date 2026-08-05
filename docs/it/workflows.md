@@ -14,6 +14,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 L'overlay usa UI Toolkit e non intercetta l'input di gameplay. Supporta FPS-only, testo compatto, grafici, diagnostica completa, barre metriche, temi visivi, filtri modulo, grafici CPU/GPU, widget dei core CPU e righe limitate di metriche personalizzate.
 
+PerfMeter crea e possiede un host UI Toolkit versionato per l'overlay: Unity `6000.4` usa `UIDocument`, mentre Unity `6000.5+` usa `PanelRenderer`. L'host di proprieta e separato dalla UI estranea e ne conserva panel settings e children; i rebuild rimuovono solo il container di proprieta di PerfMeter.
+
 ## Raccolta In Background
 
 Usa la modalita background per test, esecuzioni su dispositivo o workflow agent in cui non serve UI visibile.
@@ -48,7 +50,7 @@ PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
-Gli avvisi Editor sono limitati da cooldown e possono essere disabilitati tramite impostazioni JSON o controlli runtime.
+Gli avvisi Editor sono limitati da cooldown e possono essere disabilitati tramite impostazioni JSON o controlli runtime. I log degli alert strutturati e gli avvisi Editor sono indipendenti: `PerformanceMeter.SetStructuredLogsEnabled(false)` sopprime solo l'output `Debug.Log` degli alert strutturati, mentre `PerformanceMeter.SetEditorWarningLogsEnabled(false)` controlla separatamente i log di avviso Editor. Callback, alerts/history, avvisi dell'overlay e sessioni restano attivi.
 
 ## Diagnostica Overdraw
 

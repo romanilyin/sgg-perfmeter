@@ -37,7 +37,8 @@ Utilisez cette checklist lorsque PerfMeter n'affiche pas les donnees attendues.
 
 - Ajustez les seuils et fenetres de frames consecutives dans les reglages JSON.
 - Augmentez les cooldowns d'avertissements Editor.
-- Desactivez les logs d'avertissements Editor lorsque les callbacks ou logs structures suffisent.
+- Desactivez les logs d'alertes structurees avec `PerformanceMeter.SetStructuredLogsEnabled(false)` lorsque les callbacks, les donnees alerts/history, les avertissements de l'overlay et les sessions suffisent ; cela supprime uniquement la sortie `Debug.Log` des alertes structurees.
+- Desactivez separement les logs d'avertissement Editor avec `PerformanceMeter.SetEditorWarningLogsEnabled(false)` ; les interrupteurs des structured logs et des avertissements Editor sont independants.
 
 ## Les Donnees Different Entre Appareils
 

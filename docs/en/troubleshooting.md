@@ -37,7 +37,8 @@ Use this checklist when PerfMeter does not show expected data.
 
 - Adjust thresholds and consecutive-frame windows in JSON settings.
 - Increase Editor warning cooldowns.
-- Disable Editor warning logs when callbacks or structured logs are enough.
+- Disable structured alert logs with `PerformanceMeter.SetStructuredLogsEnabled(false)` when callbacks, alert/history data, overlay warnings, and sessions are enough; this suppresses only structured alert `Debug.Log` output.
+- Disable Editor warning logs separately with `PerformanceMeter.SetEditorWarningLogsEnabled(false)`; the structured-log and Editor-warning toggles are independent.
 
 ## Data Looks Different Between Devices
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.8.5-2
+
+- Added independent `StructuredLogsEnabled` and `SetStructuredLogsEnabled(bool)` runtime controls without changing callbacks, alert history, overlay warnings, Editor warnings, or sessions.
+- Added stable prefix/value/unit cells, a dedicated monospace numeric font role, bounded `FpsOnly` two-row fallback, and wrapping metric cards/budget bars.
+- Moved the runtime overlay to an owned UI Toolkit host: `UIDocument` on Unity 6000.4 and `PanelRenderer` on Unity 6000.5+.
+- Made overlay rebuilds remove only the PerfMeter-owned container and preserve foreign UI Toolkit settings and children.
+- Added PlayMode coverage for numeric-width stability, max-font widget bounds, responsive layout, host ownership, rebuilds, and repeated enable/disable lifecycle.
+- Updated localized API, workflow, limitation, widget, troubleshooting, and comparison documentation in all supported languages.
+
 ## 2026.7.19-1
 
 - Classified alert firings as lifecycle, steady-state, or explicit external capture events.

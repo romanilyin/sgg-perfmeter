@@ -40,3 +40,8 @@ Das Standardlayout `MetricBars` rendert kompakte Zeilen fuer haeufig beobachtete
 | <img src="../assets/screenshots/widgets/metric-bars-memory.png" alt="Memory metric bars" width="480"> | System memory, GC memory und GPU memory counters. |
 | <img src="../assets/screenshots/widgets/metric-bars-uploads.png" alt="Uploads metric bars" width="480"> | Upload counters und index-buffer upload bytes. |
 | <img src="../assets/screenshots/widgets/metric-bars-custom-metrics.png" alt="Custom metrics metric bars" width="480"> | Projektdefinierte Custom-Metric-Zeilen. |
+
+## Hinweise
+
+- Zahlenwerte verwenden stabile reservierte numeric slots und eine numeric monospace role, damit wechselnde Werte die Spalten nicht verschieben; Labels behalten die ausgewaehlte Overlay-Schrift.
+- Bei schmaler logical width umbrechen Karten und metric bars. `FpsOnly` verwendet einen deterministischen begrenzten Zwei-Zeilen-fallback, wenn eine Zeile nicht passt; dies verspricht keine Darstellung fuer jede beliebige resolution oder scale.

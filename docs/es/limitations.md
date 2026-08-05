@@ -36,7 +36,7 @@ Los targets no compatibles, incluido HDRP, informan `OverdrawState.Unsupported` 
 
 ## Coste Del Overlay
 
-El overlay está diseñado para cuidar las asignaciones y usa throttling, pero los valores numéricos cambiantes y las etiquetas de gráficos aún pueden materializar strings managed en el intervalo de refresco. Los diagnósticos visuales pesados y los modos con gráficos deben validarse en dispositivos objetivo.
+El overlay está diseñado para cuidar las asignaciones y usa throttling, pero los valores numéricos cambiantes y las etiquetas de gráficos aún pueden materializar strings managed en el intervalo de refresco. Tiene dos backend paths de UI Toolkit: un host propio `UIDocument` en Unity `6000.4` y un host propio `PanelRenderer` en Unity `6000.5+`. El host conserva los panel settings y children de la UI ajena y reconstruye únicamente el container propio de PerfMeter. Los valores numéricos usan numeric slots reservados estables y un numeric monospace role; `FpsOnly` usa un fallback determinista y acotado de dos filas cuando una fila no cabe, mientras las tarjetas y barras hacen wrap con logical widths estrechas. Esto reduce el riesgo de clipping, pero no promete todas las resoluciones o escalas arbitrarias; los diagnósticos visuales pesados, los modos con gráficos y el layout resultante deben validarse en dispositivos objetivo.
 
 ## Estado De Validación
 

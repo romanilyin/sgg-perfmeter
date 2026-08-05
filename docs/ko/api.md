@@ -102,8 +102,12 @@ Session option에는 warm-up frames/seconds, sample interval, maximum samples, r
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] alerts = PerformanceMeter.GetLatestAlerts();
 PerformanceMeter.ClearAlerts();
+bool structuredLogs = PerformanceMeter.StructuredLogsEnabled;
+PerformanceMeter.SetStructuredLogsEnabled(false);
 PerformanceMeter.SetEditorWarningLogsEnabled(false);
 ```
+
+`StructuredLogsEnabled`의 기본값은 `true`이며 structured alert의 `Debug.Log` 출력만 제어합니다. `false`로 설정해도 `AlertFired` callback, 최신 alert와 alert history, overlay warning, Editor warning log, session은 비활성화되지 않습니다. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)`는 Editor warning log를 독립적으로 제어합니다.
 
 ## Custom Metrics
 

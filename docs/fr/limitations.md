@@ -36,7 +36,7 @@ Les cibles non prises en charge, y compris HDRP, signalent `OverdrawState.Unsupp
 
 ## Cout De L'overlay
 
-L'overlay limite les allocations et est cadence, mais les valeurs numeriques et labels de graphes modifies peuvent quand meme materialiser des chaines managees a l'intervalle de rafraichissement. Les diagnostics visuels lourds et modes graphes doivent etre valides sur les appareils cibles.
+L'overlay limite les allocations et est cadence, mais les valeurs numeriques et labels de graphes modifies peuvent quand meme materialiser des chaines managees a l'intervalle de rafraichissement. Il possede deux backend paths UI Toolkit : un host `UIDocument` propre a Unity `6000.4` et un host `PanelRenderer` propre a Unity `6000.5+`. Le host preserve les panel settings et children de l'UI etrangere et ne reconstruit que le container appartenant a PerfMeter. Les valeurs numeriques utilisent des numeric slots reserves et stables ainsi qu'un numeric monospace role ; `FpsOnly` utilise un fallback deterministe et borne a deux lignes quand une ligne ne tient pas, tandis que les cartes et barres passent a la ligne avec des logical widths etroites. Cela reduit le risque de clipping, mais ne promet pas toutes les resolutions ou echelles arbitraires ; les diagnostics visuels lourds, les modes graphes et le layout obtenu doivent etre valides sur les appareils cibles.
 
 ## Etat De Validation
 

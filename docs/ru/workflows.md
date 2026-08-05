@@ -14,6 +14,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 Оверлей использует UI Toolkit и не перехватывает игровой ввод. Он поддерживает режим только FPS, компактный текст, графики, полную диагностику, полосы метрик, визуальные темы, фильтры модулей, графики CPU/GPU, виджеты ядер CPU и ограниченные строки пользовательских метрик.
 
+PerfMeter создает и владеет версионированным host UI Toolkit для оверлея: в Unity `6000.4` используется `UIDocument`, а в Unity `6000.5+` — `PanelRenderer`. Собственный host отделен от чужого UI и сохраняет его panel settings и children; при rebuild удаляется только container, принадлежащий PerfMeter.
+
 ## Фоновый сбор
 
 Фоновый режим подходит для тестов, прогонов на устройствах и агентских сценариев без видимого UI.
@@ -48,7 +50,7 @@ PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
-Editor warnings ограничены паузой между срабатываниями и могут быть отключены через JSON-настройки или контролы во время выполнения.
+Editor warnings ограничены паузой между срабатываниями и могут быть отключены через JSON-настройки или контролы во время выполнения. Логи структурированных alert и Editor warnings независимы: `PerformanceMeter.SetStructuredLogsEnabled(false)` подавляет только structured alert `Debug.Log`, а `PerformanceMeter.SetEditorWarningLogsEnabled(false)` отдельно управляет логами предупреждений Editor. Callback-и, alerts/history, предупреждения оверлея и сессии продолжают работать.
 
 ## Диагностика overdraw
 

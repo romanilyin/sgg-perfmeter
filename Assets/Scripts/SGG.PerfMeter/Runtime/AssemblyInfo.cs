@@ -2,8 +2,9 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 [assembly: AssemblyMetadata("SGG.PerfMeter.PackageName", "com.sungeargames.perfmeter")]
-[assembly: AssemblyMetadata("SGG.PerfMeter.PackageVersion", "2026.8.5-1")]
+[assembly: AssemblyMetadata("SGG.PerfMeter.PackageVersion", "2026.8.5-2")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.Tests.EditMode")]
+[assembly: InternalsVisibleTo("SGG.PerfMeter.Tests.PlayMode")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.Editor")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.URP")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.HDRP")]

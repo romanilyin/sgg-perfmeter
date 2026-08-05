@@ -45,3 +45,5 @@ Il layout predefinito `MetricBars` renderizza righe compatte per categorie osser
 
 - I preset possono abilitare un sottoinsieme di questi widget e scegliere un layout come `MetricBars`, `CompactCards`, `Graphs` o `DiagnosticsWide`.
 - Le righe testuali e metric-bar sono renderer di livello inferiore dietro il sistema di layout ed espongono versioni testuali degli stessi gruppi metrici che possono apparire come card, barre budget o grafici in altri layout.
+- I valori numerici usano numeric slots riservati e stabili e un numeric monospace role, cosi i cambi di valore non spostano le colonne; le label mantengono il font selezionato dell'overlay.
+- Con logical widths ridotte, card e metric bars vanno a capo. `FpsOnly` usa un fallback deterministico e bounded a due righe quando una sola riga non entra; cio non promette una resa per ogni resolution o scale arbitraria.

@@ -14,7 +14,7 @@ SGG PerfMeter 的范围更窄且更偏诊断：Unity `6000.4+`、URP `17.4+` Ren
 | --- | --- | --- | --- |
 | 主要定位 | 🔵 URP Render Graph / HDRP Custom Pass 诊断 + automation-ready profiling API | ⚠️ 灵活的 in-game FPS/memory/device counter | ⚠️ Visual FPS/memory/audio stats monitor + debugger |
 | Unity target | ⚠️ Unity `6000.4+`、URP `17.4+` / HDRP `17.4+` | 🔵 广泛支持较旧 Unity | 🔵 广泛支持较旧 Unity |
-| UI backend | 🔵 UI Toolkit overlay | ⚠️ uGUI Canvas/Text labels | ⚠️ uGUI Text/Image modules |
+| UI backend | 🔵 自有 UI Toolkit host：Unity `6000.4` 使用 `UIDocument`；Unity `6000.5+` 使用 `PanelRenderer` | ⚠️ uGUI Canvas/Text labels | ⚠️ uGUI Text/Image modules |
 | Timing source | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Runtime frame/update sampling | ⚠️ `Time.unscaledDeltaTime` history sampling |
 | CPU/GPU split | 🔵 CPU frame、main thread、render thread、present wait、可用时 GPU | 🛑 无等效拆分 | 🛑 无等效拆分 |
 | Bottleneck classification | 🔵 GPU、CPU main、CPU render、present-limited、balanced、unknown | 🛑 无等效功能 | 🛑 无等效功能 |

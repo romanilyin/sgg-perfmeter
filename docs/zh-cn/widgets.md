@@ -45,3 +45,5 @@ Runtime overlay text 未本地化，因此中文文档使用相同的 widget scr
 
 - Presets 可以启用这些 widgets 的子集，并选择 `MetricBars`、`CompactCards`、`Graphs` 或 `DiagnosticsWide` 等 layout。
 - Text-row 和 metric-bar rows 是 layout system 后面的 lower-level renderers，提供相同 metric groups 的文本版本；这些 metric groups 在其他 layouts 中可能以 cards、budget bars 或 graphs 形式出现。
+- numeric values 使用 stable reserved numeric slots 和 numeric monospace role，因此数值变化不会移动 columns；labels 保留所选的 overlay font family。
+- 在较窄的 logical widths 下，cards 和 metric bars 会 wrap。单行无法容纳时，`FpsOnly` 使用 deterministic bounded two-row fallback；这不是对任意 resolution 或 scale 都能完整显示的承诺。

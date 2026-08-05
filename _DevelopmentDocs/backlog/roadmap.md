@@ -27,9 +27,9 @@
 
 | ID | Priority | Status | Scope | Depends On |
 | --- | --- | --- | --- | --- |
-| `PM-LOG-001` StructuredLog toggle | P0 | resolved, unreleased `2026.8.5-1` | Независимый public toggle отключает только structured info `Debug.Log`, сохраняя callbacks, alerts/history, overlay warnings, EditorWarning и sessions. | - |
-| `PM-UI-001` Stable numeric geometry | P1 | open, [GitHub #2](https://github.com/romanilyin/sgg-perfmeter/issues/2) | Устранить clipping и изменение ширины чисел: prefix/value/unit cells, worst-case widths, numeric monospace role, bounded fallback и geometry tests. | - |
-| `PM-UI-002` Owned versioned panel host | P1 | open, partially prepared, [GitHub #1](https://github.com/romanilyin/sgg-perfmeter/issues/1) | Использовать owned `UIDocument` host на Unity 6000.4 и `PanelRenderer` на 6000.5+; не менять foreign UI tree/settings; покрыть reload и lifecycle. | `PM-UI-001` для финальной UI validation |
+| `PM-LOG-001` StructuredLog toggle | P0 | resolved, unreleased `2026.8.5-2` | Независимый public toggle отключает только structured info `Debug.Log`, сохраняя callbacks, alerts/history, overlay warnings, EditorWarning и sessions. | - |
+| `PM-UI-001` Stable numeric geometry | P1 | resolved, unreleased `2026.8.5-2`, [GitHub #2](https://github.com/romanilyin/sgg-perfmeter/issues/2) | Prefix/value/unit cells, worst-case widths, numeric monospace role, bounded `FpsOnly` fallback, wrapping widgets and geometry tests. | - |
+| `PM-UI-002` Owned versioned panel host | P1 | resolved, unreleased `2026.8.5-2`, [GitHub #1](https://github.com/romanilyin/sgg-perfmeter/issues/1) | Owned `UIDocument` host on Unity 6000.4 and `PanelRenderer` on 6000.5+ preserve foreign UI trees/settings and remove only the PerfMeter container. | `PM-UI-001` |
 | `PM-CAP-001` Capture coordinator | P2 | planned | Ввести единый capture domain/state machine, fake backend, overlap guard и pre/post-roll. Изолировать experimental Unity `ExternalGPUProfiler`: только Editor/Development builds, attached external tool и поддерживаемые platform/API combinations. | P1 stabilization |
 | `PM-CAP-002` Correlated artifact bundle | P2 | planned | Атомарно связывать manifest, session/samples, alerts, device/camera/render context, screenshot и authoritative external-capture metadata; добавить MCP request/status/cancel/export/capabilities. | `PM-CAP-001` |
 | `PM-COMP-001` Compatibility status and matrix | P2 | planned | Явно различать `ImportCompatible`, `CoreRuntimeCompatible` и `RenderIntegrationCompatible`; проверять заявленный import floor отдельно от Unity 6000.4+ runtime support. | P1 stabilization |
@@ -52,13 +52,13 @@
 | `PM-HDRP-001` HDRP overdraw/heatmap parity | Deferred | research only | Отдельный HDRP Custom Pass/shader/readback prototype и device/API matrix; не включать в ранний основной roadmap. | dedicated research validation |
 | `PM-OTEL-001` Remote streaming/OpenTelemetry | Deferred | policy undefined | Opt-in batching/export требует transport, credentials, redaction, privacy и support policy до проектирования API. | security/transport decision |
 
-`PM-LOG-001` считается решенным в PerfMeter. Его включение в platformer bootstrap и benchmark runner выполняется после публикации версии и не оставляет package feature открытой.
+`PM-LOG-001`, `PM-UI-001` и `PM-UI-002` реализованы в release candidate `2026.8.5-2`. Их issue closure и внешнее включение StructuredLog toggle выполняются после публикации версии.
 
 ## Release Sequence
 
 | Phase | Scope | Exit Gate |
 | --- | --- | --- |
-| Stabilization | `PM-UI-001`, `PM-UI-002` | Stable bounds, owned container, no foreign UI mutation, lifecycle matrix on Unity 6000.4/6000.5+. |
+| Stabilization | `PM-UI-001`, `PM-UI-002` | Implemented in `2026.8.5-2`; Unity 6000.5.6 targeted gates passed, full version/platform matrix remains a separate pre-release gate. |
 | Capture preview | `PM-CAP-001` | Fake-backend contract tests, no overlap, deterministic state transitions, guarded attached-tool backend and no claim of an authoritative `.rdc`/`.wpix` path from the Unity wrapper. |
 | Capture stable | `PM-CAP-002` | Atomic versioned bundle, truthful artifact provenance, session/alert correlation and external-tool smoke matrix. |
 | Observability | `PM-OBS-001` through `PM-OBS-003` | Startup-only discovery, capability dump, custom markers/counters and measured overhead budgets. |

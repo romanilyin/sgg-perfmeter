@@ -37,7 +37,8 @@ PerfMeter が期待したデータを表示しない場合は、この checklist
 
 - JSON settings で thresholds と consecutive-frame windows を調整します。
 - Editor warning cooldowns を増やします。
-- callbacks または structured logs で十分な場合は Editor warning logs を無効化します。
+- callbacks、alert/history data、overlay warnings、sessions で十分な場合は `PerformanceMeter.SetStructuredLogsEnabled(false)` で structured alert logs を無効化します。これは structured alert の `Debug.Log` 出力だけを抑制します。
+- `PerformanceMeter.SetEditorWarningLogsEnabled(false)` で Editor warning logs を別に無効化します。structured-log toggle と Editor-warning toggle は独立しています。
 
 ## デバイス間でデータが異なる
 

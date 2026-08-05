@@ -102,8 +102,12 @@ Las opciones de sesión incluyen frames/segundos de warm-up, intervalo de sample
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] alerts = PerformanceMeter.GetLatestAlerts();
 PerformanceMeter.ClearAlerts();
+bool structuredLogs = PerformanceMeter.StructuredLogsEnabled;
+PerformanceMeter.SetStructuredLogsEnabled(false);
 PerformanceMeter.SetEditorWarningLogsEnabled(false);
 ```
+
+`StructuredLogsEnabled` es `true` de forma predeterminada y controla únicamente la salida `Debug.Log` de alertas estructuradas. El valor `false` no desactiva los callbacks `AlertFired`, las alertas recientes ni el historial de alertas, los warnings del overlay, los logs de warnings del Editor ni las sesiones. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controla los logs de warnings del Editor de forma independiente.
 
 ## Custom Metrics
 

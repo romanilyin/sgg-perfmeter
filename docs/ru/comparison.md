@@ -14,7 +14,7 @@ SGG PerfMeter имеет более узкий и диагностический
 | --- | --- | --- | --- |
 | Основное позиционирование | 🔵 Диагностика URP Render Graph / HDRP Custom Pass + API профилирования для автоматизации | ⚠️ Гибкий игровой счетчик FPS/memory/device | ⚠️ Визуальный монитор FPS/memory/audio stats + debugger |
 | Цель Unity | ⚠️ Unity `6000.4+`, URP `17.4+` / HDRP `17.4+` | 🔵 Широкая поддержка старых версий Unity | 🔵 Широкая поддержка старых версий Unity |
-| UI backend | 🔵 Оверлей UI Toolkit | ⚠️ Метки uGUI Canvas/Text | ⚠️ Модули uGUI Text/Image |
+| UI backend | 🔵 Собственный UI Toolkit host: `UIDocument` в Unity `6000.4`; `PanelRenderer` в Unity `6000.5+` | ⚠️ Метки uGUI Canvas/Text | ⚠️ Модули uGUI Text/Image |
 | Источник таймингов | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Sampling frame/update во время выполнения | ⚠️ История на `Time.unscaledDeltaTime` |
 | Разделение CPU/GPU | 🔵 CPU frame, main thread, render thread, present wait, GPU когда доступно | 🛑 Нет аналогичного разделения | 🛑 Нет аналогичного разделения |
 | Классификация узких мест | 🔵 GPU, CPU main, CPU render, present-limited, balanced, unknown | 🛑 Нет аналога | 🛑 Нет аналога |

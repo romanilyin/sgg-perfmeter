@@ -38,6 +38,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout.CompactCards);
 			PerformanceMeter.SetOverlayFontFamily(PerfMeterOverlayFontFamily.JetBrainsMono);
 			PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps30);
+			bool heatmapSupported = PerfMeterRenderPipelineDetector.GetActiveKind() != PerfMeterRenderPipelineKind.HighDefinition;
 			PerformanceMeter.SetOverdrawHeatmapVisible(true);
 			PerformanceMeter.SetOverlayVisible(true);
 
@@ -49,10 +50,19 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			GameObject overlayObject = GameObject.Find(OverlayObjectName);
 			Assert.That(overlayObject, Is.Not.Null);
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.True);
-			UIDocument document = overlayObject.GetComponent<UIDocument>();
+			Transform hostTransform = overlayObject.transform.Find(PerfMeterOverlayPanelHost.HostObjectName);
 			PanelSettings panelSettings = Resources.Load<PanelSettings>("PerfMeterOverlayPanelSettings");
+			Assert.That(hostTransform, Is.Not.Null);
+		#if UNITY_6000_5_OR_NEWER
+			PanelRenderer panelRenderer = hostTransform.GetComponent<PanelRenderer>();
+			Assert.That(panelRenderer, Is.Not.Null);
+			Assert.That(hostTransform.GetComponent<UIDocument>(), Is.Null);
+			Assert.That(panelRenderer.panelSettings, Is.SameAs(panelSettings));
+		#else
+			UIDocument document = hostTransform.GetComponent<UIDocument>();
 			Assert.That(document, Is.Not.Null);
 			Assert.That(document.panelSettings, Is.SameAs(panelSettings));
+		#endif
 			Assert.That(panelSettings.textSettings, Is.Not.Null);
 			Assert.That(panelSettings.themeStyleSheet, Is.Not.Null);
 		#else
@@ -84,12 +94,17 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That((status.OverlayModules & PerfMeterOverlayModule.Memory) == PerfMeterOverlayModule.Memory, Is.True);
 			Assert.That((status.OverlayModules & PerfMeterOverlayModule.Overdraw) == 0, Is.True);
 			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps30));
-			Assert.That(status.OverdrawHeatmapVisible, Is.True);
+			Assert.That(status.OverdrawHeatmapVisible, Is.EqualTo(heatmapSupported));
 			Assert.That(metrics.FrameBudgetMs, Is.EqualTo(1000d / 30d).Within(0.001d));
 
 			PerformanceMeter.SetOverdrawHeatmapVisible(false);
 			yield return null;
 			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.False);
+			if (!heatmapSupported)
+			{
+				Assert.That(PerformanceMeter.GetStatus().OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Unsupported));
+				PerformanceMeter.CancelOverdrawMeasurement();
+			}
 
 			PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 			yield return null;
@@ -214,11 +229,13 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			yield return null;
 
 			SceneManager.SetActiveScene(scopeScene);
-			yield return null;
-			yield return null;
-			yield return null;
-
 			PerfMeterSessionSummarySnapshot summary = PerformanceMeter.GetSessionSummary();
+			for (int frame = 0; frame < 16 && (summary.CurrentScene.SceneName != scopeScene.name || summary.CurrentScene.SampleCount < 1); frame++)
+			{
+				yield return null;
+				summary = PerformanceMeter.GetSessionSummary();
+			}
+
 			Assert.That(summary.WholeRun.SampleCount, Is.GreaterThanOrEqualTo(1));
 			Assert.That(summary.CurrentScene.SceneName, Is.EqualTo(scopeScene.name));
 			Assert.That(summary.CurrentScene.SampleCount, Is.GreaterThanOrEqualTo(1));

@@ -37,7 +37,8 @@ Use este checklist quando PerfMeter nao mostrar os dados esperados.
 
 - Ajuste thresholds e janelas de frames consecutivos nas configuracoes JSON.
 - Aumente os cooldowns de avisos do Editor.
-- Desative logs de aviso do Editor quando callbacks ou logs estruturados forem suficientes.
+- Desative logs de alertas estruturados com `PerformanceMeter.SetStructuredLogsEnabled(false)` quando callbacks, dados de alerts/history, avisos do overlay e sessoes forem suficientes; isso suprime apenas a saida `Debug.Log` de alertas estruturados.
+- Desative separadamente os logs de aviso do Editor com `PerformanceMeter.SetEditorWarningLogsEnabled(false)`; os toggles de structured logs e avisos do Editor sao independentes.
 
 ## Dados Parecem Diferentes Entre Devices
 

@@ -14,7 +14,6 @@ namespace SGG.PerfMeter
 		private const int MaxCpuCorePanelCount = 32;
 		private const float GraphBlockWidth = 780f;
 		private const float TextBlockWidth = 520f;
-		private const float FpsOnlyTextBlockWidth = 356f;
 		private const float TextFieldNameWidth = 118f;
 		private const float TextFieldNameGap = 8f;
 		private const float ScaleLabelWidth = 64f;
@@ -46,7 +45,10 @@ namespace SGG.PerfMeter
 		private const float WidgetCardWidth = 144f;
 		private const float WidgetCardHeight = 78f;
 		private const float WidgetGap = 8f;
+		private const float WidgetCardContentWidth = WidgetCardWidth - 20f - 3f;
 		private const float BudgetBarWidth = 372f;
+		private const float BudgetBarContentWidth = BudgetBarWidth - 20f - 3f;
+		private const float BudgetValueContentWidth = BudgetBarContentWidth - 30f;
 		private const float DiagnosticsWideTextWidth = 780f;
 		private const float CompactCardsTextHeight = 260f;
 		private const float OverdrawFocusTextHeight = 220f;
@@ -65,6 +67,32 @@ namespace SGG.PerfMeter
 		private const float CpuCoreBarColumnWidth = 34f;
 		private const float CpuCoreBarTrackHeight = 76f;
 		private const float CpuCoreBarsSidePanelWidth = 318f;
+		private const float NumericCellGap = 3f;
+		private const float NumericCellPadding = 2f;
+		private const float FpsOnlyHorizontalPadding = 20f;
+		private const float NumericMinimumFontSize = 8f;
+		private const float CardValueMinimumFontSize = 16f;
+		private const float CardValueMaximumFontSize = 23f;
+		private const float CardTitleMaximumFontSize = 13f;
+		private const float CardCaptionMinimumFontSize = 8f;
+		private const float CardCaptionMaximumFontSize = 13f;
+		private const float CardValueUnitGap = 4f;
+		private const float BudgetValueMinimumFontSize = 10f;
+		private const float BudgetMaximumFontSize = 14f;
+		private const float CardTitleHeight = 13f;
+		private const float CardValueRowHeight = 25f;
+		private const float CardCaptionHeight = 22f;
+		private const string FpsWorstCaseValue = "9999.9";
+		private const string MillisecondsWorstCaseValue = "999.99";
+		private const string WholeNumberWorstCaseValue = "9999 / 9999";
+		private const string RatioWorstCaseValue = "99.99";
+		private const string BudgetWorstCaseValue = "999.99 / 999.99 ms";
+		private const string FpsWorstCaseCaption = "1% 9999.9 / .1% 9999.9";
+		private const string CpuWorstCaseCaption = "m 999.99 / r 999.99";
+		private const string GpuWorstCaseCaption = "valid 999999/999999";
+		private const string SpikeWorstCaseCaption = "CpuRenderThreadBound";
+		private const string OverdrawWorstCaseCaption = "Unsupported 100%";
+		private const float GeometryThresholdTolerance = 0.5f;
 		private const string PanelSettingsResourcePath = "PerfMeterOverlayPanelSettings";
 
 		private static PerfMeterOverlayThemeTokens _activeTheme = PerfMeterOverlayThemeTokens.ClassicDark;
@@ -107,7 +135,7 @@ namespace SGG.PerfMeter
 		private readonly PerfMeterStatBarField[] _barFields = new PerfMeterStatBarField[MetricBarFieldCapacity];
 		private readonly PerfMeterCpuCoreLoadSnapshot[] _cpuCoreLoadScratch = new PerfMeterCpuCoreLoadSnapshot[MaxCpuCoreRows];
 		private readonly PerfMeterOverlayHistory _history = new PerfMeterOverlayHistory();
-		private UIDocument _document;
+		private PerfMeterOverlayPanelHost _panelHost;
 		private PanelSettings _panelSettings;
 		private VisualElement _container;
 		private VisualElement _contentRow;
@@ -120,11 +148,13 @@ namespace SGG.PerfMeter
 		private VisualElement _barRows;
 		private VisualElement _graphs;
 		private VisualElement _fpsOnlyRow;
-		private Label _fpsOnlyCurrentLabel;
-		private Label _fpsOnlyAverageLabel;
-		private Label _fpsOnlyOnePercentLabel;
-		private Label _fpsOnlyPointOnePercentLabel;
-		private Label _fpsOnlyRenderLabel;
+		private VisualElement _fpsOnlyPrimaryRow;
+		private VisualElement _fpsOnlySecondaryRow;
+		private PerfMeterNumericCell _fpsOnlyCurrentCell;
+		private PerfMeterNumericCell _fpsOnlyAverageCell;
+		private PerfMeterNumericCell _fpsOnlyOnePercentCell;
+		private PerfMeterNumericCell _fpsOnlyPointOnePercentCell;
+		private PerfMeterNumericCell _fpsOnlyRenderCell;
 		private Label _fpsOnlyWarningLabel;
 		private PerfMeterGraphLegendLine _cpuFrameLegend;
 		private PerfMeterGraphLegendLine _cpuMainLegend;
@@ -166,13 +196,31 @@ namespace SGG.PerfMeter
 		private int _lastVisibleBarFieldCount;
 		private int _lastRecordedCollectionFrame = -1;
 		private bool _isVisible = true;
+		private bool _fpsOnlyTwoRows;
+		private float _fpsOnlyWarningWidth;
+		private bool _geometryApplying;
+		private bool _geometryDirty = true;
+		private float _lastGeometryPanelWidth = -1f;
+		private float _lastGeometryScale = -1f;
+		private VisualElement _geometryCallbackRoot;
+		private EventCallback<GeometryChangedEvent> _geometryChangedCallback;
 
 		internal bool IsVisible => _isVisible && isActiveAndEnabled;
 		internal int ActiveTextFieldCount => _mode == PerfMeterOverlayMode.FpsOnly ? 1 : _textFieldCount + _barFieldCount;
+		internal VisualElement PanelRoot => _panelHost?.Root;
+		internal VisualElement OwnedContainer => _container;
+		internal GameObject PanelHostObject => _panelHost?.HostObject;
+		internal bool FpsOnlyUsesTwoRows => _fpsOnlyTwoRows;
+		internal float FpsOnlyRequiredWidth => GetFpsOnlyRequiredWidth();
+
+		internal static bool ShouldUseFpsOnlyTwoRows(float requiredWidth, float availableWidth)
+		{
+			return requiredWidth > availableWidth + GeometryThresholdTolerance;
+		}
 
 		private void Awake()
 		{
-			if (!EnsureDocument())
+			if (!EnsurePanelHost())
 			{
 				enabled = false;
 			}
@@ -180,13 +228,28 @@ namespace SGG.PerfMeter
 
 		private void OnEnable()
 		{
-			if (!EnsureDocument())
+			if (!EnsurePanelHost())
 			{
 				return;
 			}
 			BuildVisualTree();
+			RegisterGeometryCallback();
 			ApplyVisibility();
 			RefreshText(force: true);
+		}
+
+		private void OnDisable()
+		{
+			UnregisterGeometryCallback();
+			ApplyVisibility();
+		}
+
+		private void OnDestroy()
+		{
+			UnregisterGeometryCallback();
+			RemoveOwnedVisualTree();
+			_panelHost?.Dispose();
+			_panelHost = null;
 		}
 
 		private void Update()
@@ -319,19 +382,11 @@ namespace SGG.PerfMeter
 			_cpuGraph?.SetHistoryCapacity(_graphHistoryLength);
 			_gpuGraph?.SetHistoryCapacity(_graphHistoryLength);
 			_cpuCoreGraphs?.SetHistoryCapacity(_graphHistoryLength);
+			RequestGeometryRecalculation();
 		}
 
-		private bool EnsureDocument()
+		private bool EnsurePanelHost()
 		{
-			if (_document == null)
-			{
-				_document = GetComponent<UIDocument>();
-				if (_document == null)
-				{
-					_document = gameObject.AddComponent<UIDocument>();
-				}
-			}
-
 			if (_panelSettings == null)
 			{
 				_panelSettings = Resources.Load<PanelSettings>(PanelSettingsResourcePath);
@@ -343,24 +398,286 @@ namespace SGG.PerfMeter
 				return false;
 			}
 
-			_document.panelSettings = _panelSettings;
-			return true;
+			if (_panelHost == null)
+			{
+				_panelHost = new PerfMeterOverlayPanelHost();
+			}
+
+			return _panelHost.Attach(gameObject, _panelSettings, OnPanelRootChanged);
 		}
 
-		private void BuildVisualTree()
+		private void RegisterGeometryCallback()
 		{
-			VisualElement root = _document.rootVisualElement;
-			if (root == null || _container != null)
+			VisualElement root = _panelHost?.Root;
+			if (root == null)
 			{
 				return;
 			}
 
-			root.pickingMode = PickingMode.Ignore;
-			root.style.position = Position.Absolute;
-			root.style.left = 0f;
-			root.style.top = 0f;
-			root.style.right = 0f;
-			root.style.bottom = 0f;
+			if (_geometryChangedCallback == null)
+			{
+				_geometryChangedCallback = OnPanelGeometryChanged;
+			}
+
+			if (ReferenceEquals(_geometryCallbackRoot, root))
+			{
+				RequestGeometryRecalculation();
+				return;
+			}
+
+			UnregisterGeometryCallback();
+			_geometryCallbackRoot = root;
+			_geometryCallbackRoot.RegisterCallback(_geometryChangedCallback);
+			RequestGeometryRecalculation();
+		}
+
+		private void UnregisterGeometryCallback()
+		{
+			if (_geometryCallbackRoot != null && _geometryChangedCallback != null)
+			{
+				_geometryCallbackRoot.UnregisterCallback(_geometryChangedCallback);
+			}
+
+			_geometryCallbackRoot = null;
+		}
+
+		private void OnPanelGeometryChanged(GeometryChangedEvent changeEvent)
+		{
+			if (!ReferenceEquals(changeEvent.target, _geometryCallbackRoot))
+			{
+				return;
+			}
+
+			RequestGeometryRecalculation();
+		}
+
+		private void RequestGeometryRecalculation()
+		{
+			_geometryDirty = true;
+			if (!_geometryApplying)
+			{
+				ApplyResponsiveGeometry();
+			}
+		}
+
+		private void ApplyResponsiveGeometry()
+		{
+			if (_container == null || _geometryApplying)
+			{
+				return;
+			}
+
+			float panelWidth = GetPanelWidth();
+			if (!_geometryDirty && Mathf.Approximately(panelWidth, _lastGeometryPanelWidth) && Mathf.Approximately(_overlayScale, _lastGeometryScale))
+			{
+				return;
+			}
+
+			_geometryApplying = true;
+			_geometryDirty = false;
+			_lastGeometryPanelWidth = panelWidth;
+			_lastGeometryScale = _overlayScale;
+			try
+			{
+				float availableWidth = GetAvailableLogicalPanelWidth(panelWidth);
+				ApplyFpsOnlyGeometry(availableWidth);
+				ApplyResponsiveWidgetWidth(availableWidth);
+			}
+			finally
+			{
+				_geometryApplying = false;
+			}
+		}
+
+		private float GetPanelWidth()
+		{
+			VisualElement root = _panelHost?.Root;
+			float width = root != null ? root.contentRect.width : 0f;
+			if (width <= 0f && root != null)
+			{
+				width = root.resolvedStyle.width;
+			}
+
+			if (width <= 0f)
+			{
+				width = Screen.width;
+			}
+
+			return width > 0f ? width : GraphBlockWidth + OverlayMargin;
+		}
+
+		private float GetAvailableLogicalPanelWidth(float panelWidth)
+		{
+			float scale = Mathf.Max(0.01f, _overlayScale);
+			return Mathf.Max(1f, panelWidth / scale - OverlayMargin);
+		}
+
+		private float GetResponsiveGraphWidth(float availableWidth)
+		{
+			return Mathf.Min(GraphBlockWidth, Mathf.Max(1f, availableWidth));
+		}
+
+		private void ApplyResponsiveWidgetWidth(float availableWidth)
+		{
+			float width = GetResponsiveGraphWidth(availableWidth);
+			if (_widgetBlock != null)
+			{
+				_widgetBlock.style.width = width;
+			}
+
+			_fpsCard?.SetAvailableWidth(width);
+			_cpuCard?.SetAvailableWidth(width);
+			_gpuCard?.SetAvailableWidth(width);
+			_spikeCard?.SetAvailableWidth(width);
+			_overdrawCard?.SetAvailableWidth(width);
+			_cpuBudgetBar?.SetAvailableWidth(width);
+			_gpuBudgetBar?.SetAvailableWidth(width);
+		}
+
+		private void ApplyFpsOnlyGeometry(float availableWidth)
+		{
+			if (_mode != PerfMeterOverlayMode.FpsOnly || _fpsOnlyRow == null)
+			{
+				return;
+			}
+
+			float requestedFontSize = GetTextFontSize();
+			SetFpsOnlyFontSize(requestedFontSize);
+			bool twoRows = ShouldUseFpsOnlyTwoRows(GetFpsOnlyRequiredWidth(), availableWidth);
+			if (twoRows)
+			{
+				float availableContentWidth = Mathf.Max(1f, availableWidth - FpsOnlyHorizontalPadding);
+				float widestRow = Mathf.Max(GetFpsOnlyRowRequiredWidth(true), GetFpsOnlyRowRequiredWidth(false));
+				if (widestRow > availableContentWidth)
+				{
+					float fitScale = availableContentWidth / widestRow;
+					SetFpsOnlyFontSize(Mathf.Max(NumericMinimumFontSize, requestedFontSize * fitScale));
+				}
+			}
+
+			ApplyFpsOnlyRowArrangement(twoRows);
+			float blockWidth = Mathf.Min(Mathf.Max(FpsOnlyHorizontalPadding, GetFpsOnlyRequiredWidth()), availableWidth);
+			if (_textBlock != null)
+			{
+				_textBlock.style.width = blockWidth;
+				_textBlock.style.height = GetTextBlockHeight();
+			}
+
+			if (_contentRow != null && _mode == PerfMeterOverlayMode.FpsOnly)
+			{
+				float contentWidth = blockWidth + (ShouldShowCpuCoreBarsBlock() ? BlockGap + CpuCoreBarsSidePanelWidth : 0f);
+				_contentRow.style.width = contentWidth;
+				_container.style.width = contentWidth;
+			}
+		}
+
+		private float GetFpsOnlyRequiredWidth()
+		{
+			float width = 0f;
+			int count = 0;
+			if (HasModule(PerfMeterOverlayModule.Fps))
+			{
+				width = AddFpsOnlyCellWidth(width, _fpsOnlyCurrentCell, ref count, true);
+				width = AddFpsOnlyCellWidth(width, _fpsOnlyAverageCell, ref count, true);
+				width = AddFpsOnlyCellWidth(width, _fpsOnlyOnePercentCell, ref count, true);
+				width = AddFpsOnlyCellWidth(width, _fpsOnlyPointOnePercentCell, ref count, true);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Timing))
+			{
+				width = AddFpsOnlyCellWidth(width, _fpsOnlyRenderCell, ref count, true);
+			}
+
+			if (HasModule(PerfMeterOverlayModule.Warnings))
+			{
+				float warningWidth = _fpsOnlyWarningWidth;
+				if (warningWidth > 0f)
+				{
+					width += warningWidth;
+					count++;
+				}
+			}
+
+			width += Mathf.Max(0, count - 1) * NumericCellGap;
+			return width > 0f ? width + FpsOnlyHorizontalPadding : FpsOnlyHorizontalPadding;
+		}
+
+		private float GetFpsOnlyRowRequiredWidth(bool firstRow)
+		{
+			float width = 0f;
+			int count = 0;
+			if (HasModule(PerfMeterOverlayModule.Fps))
+			{
+				if (firstRow)
+				{
+					width = AddFpsOnlyCellWidth(width, _fpsOnlyCurrentCell, ref count, true);
+					width = AddFpsOnlyCellWidth(width, _fpsOnlyAverageCell, ref count, true);
+					width = AddFpsOnlyCellWidth(width, _fpsOnlyOnePercentCell, ref count, true);
+					width = AddFpsOnlyCellWidth(width, _fpsOnlyPointOnePercentCell, ref count, true);
+				}
+			}
+
+			if (!firstRow && HasModule(PerfMeterOverlayModule.Timing))
+			{
+				width = AddFpsOnlyCellWidth(width, _fpsOnlyRenderCell, ref count, true);
+			}
+
+			if (!firstRow && HasModule(PerfMeterOverlayModule.Warnings))
+			{
+				float warningWidth = _fpsOnlyWarningWidth;
+				if (warningWidth > 0f)
+				{
+					width += warningWidth;
+					count++;
+				}
+			}
+
+			return count > 0 ? width + Mathf.Max(0, count - 1) * NumericCellGap : 0f;
+		}
+
+		private static float AddFpsOnlyCellWidth(float width, PerfMeterNumericCell cell, ref int count, bool include)
+		{
+			if (!include || cell == null)
+			{
+				return width;
+			}
+
+			count++;
+			return width + cell.RequiredWidth;
+		}
+
+		private static float MeasureLabelWidth(Label label, string text)
+		{
+			if (label == null)
+			{
+				return 0f;
+			}
+
+			if (label.panel != null)
+			{
+				Vector2 measured = label.MeasureTextSize(text, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined);
+				if (measured.x > 0f && !float.IsNaN(measured.x) && !float.IsInfinity(measured.x))
+				{
+					return Mathf.Ceil(measured.x);
+				}
+			}
+
+			float fontSize = label.style.fontSize.value.value;
+			if (fontSize <= 0f || float.IsNaN(fontSize) || float.IsInfinity(fontSize))
+			{
+				fontSize = 12f;
+			}
+
+			return Mathf.Ceil(Mathf.Max(1f, (text ?? string.Empty).Length * fontSize * 0.58f));
+		}
+
+		private void BuildVisualTree()
+		{
+			VisualElement root = _panelHost?.Root;
+			if (root == null || _container != null)
+			{
+				return;
+			}
 
 			_container = new VisualElement
 			{
@@ -440,16 +757,58 @@ namespace SGG.PerfMeter
 			root.Add(_container);
 			ApplyModeLayout();
 			ApplyCorner();
+			RequestGeometryRecalculation();
 		}
 
 		private void RebuildVisualTree()
 		{
-			if (_document == null || _document.rootVisualElement == null)
+			if (_panelHost?.Root == null)
 			{
 				return;
 			}
 
-			_document.rootVisualElement.Clear();
+			RemoveOwnedVisualTree();
+			ResetVisualReferences();
+			BuildVisualTree();
+			ApplyVisibility();
+			if (_isVisible)
+			{
+				RefreshText(force: true);
+			}
+		}
+
+		private void OnPanelRootChanged(VisualElement root)
+		{
+			UnregisterGeometryCallback();
+			RemoveOwnedVisualTree();
+			ResetVisualReferences();
+			if (!isActiveAndEnabled || root == null)
+			{
+				return;
+			}
+
+			BuildVisualTree();
+			RegisterGeometryCallback();
+			ApplyVisibility();
+			if (_isVisible)
+			{
+				RefreshText(force: true);
+			}
+		}
+
+		private void RemoveOwnedVisualTree()
+		{
+			if (_container != null)
+			{
+				_container.RemoveFromHierarchy();
+				return;
+			}
+
+			_panelHost?.Root?.Q<VisualElement>("sgg-perfmeter-overlay")?.RemoveFromHierarchy();
+		}
+
+		private void ResetVisualReferences()
+		{
 			_container = null;
 			_contentRow = null;
 			_widgetBlock = null;
@@ -461,12 +820,15 @@ namespace SGG.PerfMeter
 			_barRows = null;
 			_graphs = null;
 			_fpsOnlyRow = null;
-			_fpsOnlyCurrentLabel = null;
-			_fpsOnlyAverageLabel = null;
-			_fpsOnlyOnePercentLabel = null;
-			_fpsOnlyPointOnePercentLabel = null;
-			_fpsOnlyRenderLabel = null;
+			_fpsOnlyPrimaryRow = null;
+			_fpsOnlySecondaryRow = null;
+			_fpsOnlyCurrentCell = null;
+			_fpsOnlyAverageCell = null;
+			_fpsOnlyOnePercentCell = null;
+			_fpsOnlyPointOnePercentCell = null;
+			_fpsOnlyRenderCell = null;
 			_fpsOnlyWarningLabel = null;
+			_fpsOnlyWarningWidth = 0f;
 			_fpsCard = null;
 			_cpuCard = null;
 			_gpuCard = null;
@@ -491,13 +853,6 @@ namespace SGG.PerfMeter
 			_lastVisibleBarFieldCount = 0;
 			Array.Clear(_textFields, 0, _textFields.Length);
 			Array.Clear(_barFields, 0, _barFields.Length);
-
-			BuildVisualTree();
-			ApplyVisibility();
-			if (_isVisible)
-			{
-				RefreshText(force: true);
-			}
 		}
 
 		private VisualElement CreateBlock(string name, float width)
@@ -521,11 +876,11 @@ namespace SGG.PerfMeter
 		private void BuildWidgetRows()
 		{
 			VisualElement cardRow = CreateWidgetRow("sgg-perfmeter-widget-cards");
-			_fpsCard = CreateMetricCard("FPS", AccentColor);
-			_cpuCard = CreateMetricCard("CPU", FrameColor);
-			_gpuCard = CreateMetricCard("GPU", GpuColor);
-			_spikeCard = CreateMetricCard("Spikes", WarningColor);
-			_overdrawCard = CreateMetricCard("Overdraw", MainColor);
+			_fpsCard = CreateMetricCard("fps", "FPS", AccentColor, FpsWorstCaseValue, FpsWorstCaseCaption);
+			_cpuCard = CreateMetricCard("cpu", "CPU", FrameColor, MillisecondsWorstCaseValue, CpuWorstCaseCaption);
+			_gpuCard = CreateMetricCard("gpu", "GPU", GpuColor, MillisecondsWorstCaseValue, GpuWorstCaseCaption);
+			_spikeCard = CreateMetricCard("spikes", "Spikes", WarningColor, WholeNumberWorstCaseValue, SpikeWorstCaseCaption);
+			_overdrawCard = CreateMetricCard("overdraw", "Overdraw", MainColor, RatioWorstCaseValue, OverdrawWorstCaseCaption);
 			cardRow.Add(_fpsCard);
 			cardRow.Add(_cpuCard);
 			cardRow.Add(_gpuCard);
@@ -550,19 +905,29 @@ namespace SGG.PerfMeter
 				pickingMode = PickingMode.Ignore
 			};
 			row.style.flexDirection = FlexDirection.Row;
+			row.style.flexWrap = Wrap.Wrap;
+			row.style.width = Length.Percent(100f);
 			row.style.alignItems = Align.Stretch;
 			row.style.marginBottom = WidgetGap;
 			return row;
 		}
 
-		private static PerfMeterMetricCard CreateMetricCard(string title, Color accent)
+		private static PerfMeterMetricCard CreateMetricCard(string name, string title, Color accent, string worstCaseValue, string worstCaseCaption)
 		{
-			return new PerfMeterMetricCard(title, accent, GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.Bold), GetRuntimeFont(PerfMeterOverlayFontRole.Regular));
+			return new PerfMeterMetricCard(
+				name,
+				title,
+				worstCaseValue,
+				worstCaseCaption,
+				accent,
+				GetRuntimeFont(PerfMeterOverlayFontRole.Medium),
+				GetRuntimeFont(PerfMeterOverlayFontRole.Numeric),
+				GetRuntimeFont(PerfMeterOverlayFontRole.Regular));
 		}
 
 		private static PerfMeterBudgetBar CreateBudgetBar(string title, Color accent)
 		{
-			return new PerfMeterBudgetBar(title, accent, GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.SemiBold));
+			return new PerfMeterBudgetBar(title, accent, GetRuntimeFont(PerfMeterOverlayFontRole.Medium), GetRuntimeFont(PerfMeterOverlayFontRole.Numeric));
 		}
 
 		private void BuildGraphRows()
@@ -756,47 +1121,116 @@ namespace SGG.PerfMeter
 				name = "sgg-perfmeter-fps-only-row",
 				pickingMode = PickingMode.Ignore
 			};
-			_fpsOnlyRow.style.flexDirection = FlexDirection.Row;
-			_fpsOnlyRow.style.alignItems = Align.Center;
-			_fpsOnlyRow.style.justifyContent = Justify.Center;
+			_fpsOnlyRow.style.flexDirection = FlexDirection.Column;
+			_fpsOnlyRow.style.alignItems = Align.Stretch;
 			_fpsOnlyRow.style.width = Length.Percent(100f);
 			_fpsOnlyRow.style.minHeight = 16f;
 			_fpsOnlyRow.style.display = DisplayStyle.None;
 
-			_fpsOnlyCurrentLabel = CreateFpsOnlyLabel("FPS --", AccentColor, true);
-			_fpsOnlyAverageLabel = CreateFpsOnlyLabel("AVG --", TextColor, true);
-			_fpsOnlyOnePercentLabel = CreateFpsOnlyLabel("1% --", TextColor, true);
-			_fpsOnlyPointOnePercentLabel = CreateFpsOnlyLabel(".1% --", TextColor, true);
-			_fpsOnlyRenderLabel = CreateFpsOnlyLabel("REN -- MS", TextColor, true);
-			_fpsOnlyWarningLabel = CreateFpsOnlyLabel("WARN", WarningColor, false);
+			_fpsOnlyPrimaryRow = CreateFpsOnlyMetricRow("sgg-perfmeter-fps-only-primary-row");
+			_fpsOnlySecondaryRow = CreateFpsOnlyMetricRow("sgg-perfmeter-fps-only-secondary-row");
+			_fpsOnlyRow.Add(_fpsOnlyPrimaryRow);
+			_fpsOnlyRow.Add(_fpsOnlySecondaryRow);
 
-			_fpsOnlyRow.Add(_fpsOnlyCurrentLabel);
-			_fpsOnlyRow.Add(_fpsOnlyAverageLabel);
-			_fpsOnlyRow.Add(_fpsOnlyOnePercentLabel);
-			_fpsOnlyRow.Add(_fpsOnlyPointOnePercentLabel);
-			_fpsOnlyRow.Add(_fpsOnlyRenderLabel);
-			_fpsOnlyRow.Add(_fpsOnlyWarningLabel);
+			Font prefixFont = GetRuntimeFont(PerfMeterOverlayFontRole.SemiBold);
+			Font numericFont = GetRuntimeFont(PerfMeterOverlayFontRole.Numeric);
+			_fpsOnlyCurrentCell = new PerfMeterNumericCell("sgg-perfmeter-fps-only-current", "FPS", string.Empty, FpsWorstCaseValue, prefixFont, numericFont);
+			_fpsOnlyAverageCell = new PerfMeterNumericCell("sgg-perfmeter-fps-only-average", "AVG", string.Empty, FpsWorstCaseValue, prefixFont, numericFont);
+			_fpsOnlyOnePercentCell = new PerfMeterNumericCell("sgg-perfmeter-fps-only-one-percent", "1%", string.Empty, FpsWorstCaseValue, prefixFont, numericFont);
+			_fpsOnlyPointOnePercentCell = new PerfMeterNumericCell("sgg-perfmeter-fps-only-point-one-percent", ".1%", string.Empty, FpsWorstCaseValue, prefixFont, numericFont);
+			_fpsOnlyRenderCell = new PerfMeterNumericCell("sgg-perfmeter-fps-only-render", "REN", "MS", MillisecondsWorstCaseValue, prefixFont, numericFont);
+			_fpsOnlyWarningLabel = new Label("WARN")
+			{
+				name = "sgg-perfmeter-fps-only-warning",
+				pickingMode = PickingMode.Ignore
+			};
+			_fpsOnlyWarningLabel.style.color = WarningColor;
+			_fpsOnlyWarningLabel.style.fontSize = GetTextFontSize();
+			_fpsOnlyWarningLabel.style.unityFont = prefixFont;
+			_fpsOnlyWarningLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+			_fpsOnlyWarningLabel.style.whiteSpace = WhiteSpace.NoWrap;
+			_fpsOnlyWarningLabel.style.flexShrink = 0f;
+			_fpsOnlyWarningLabel.style.overflow = Overflow.Visible;
+			_fpsOnlyWarningWidth = MeasureLabelWidth(_fpsOnlyWarningLabel, "WARN");
+			_fpsOnlyWarningLabel.style.width = _fpsOnlyWarningWidth;
+			_fpsOnlyWarningLabel.style.display = DisplayStyle.None;
+
+			SetFpsOnlyCellsVisible(false);
+			ApplyFpsOnlyRowArrangement(false);
 			_textRows.Add(_fpsOnlyRow);
 		}
 
-		private static Label CreateFpsOnlyLabel(string text, Color color, bool addGap)
+		private static VisualElement CreateFpsOnlyMetricRow(string name)
 		{
-			Label label = CreateSmallLabel(text, color, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.SemiBold);
-			label.style.marginRight = addGap ? 8f : 0f;
-			return label;
+			VisualElement row = new VisualElement
+			{
+				name = name,
+				pickingMode = PickingMode.Ignore
+			};
+			row.style.flexDirection = FlexDirection.Row;
+			row.style.alignItems = Align.Center;
+			row.style.justifyContent = Justify.Center;
+			row.style.width = Length.Percent(100f);
+			row.style.minHeight = 16f;
+			return row;
 		}
 
-		private static void SetLabelText(Label label, string value)
+		private void SetFpsOnlyCellsVisible(bool visible)
 		{
-			if (label == null)
+			_fpsOnlyCurrentCell?.SetVisible(visible);
+			_fpsOnlyAverageCell?.SetVisible(visible);
+			_fpsOnlyOnePercentCell?.SetVisible(visible);
+			_fpsOnlyPointOnePercentCell?.SetVisible(visible);
+			_fpsOnlyRenderCell?.SetVisible(visible);
+		}
+
+		private void ApplyFpsOnlyRowArrangement(bool twoRows)
+		{
+			if (_fpsOnlyPrimaryRow == null || _fpsOnlySecondaryRow == null)
 			{
 				return;
 			}
 
-			string text = value ?? string.Empty;
-			if (!string.Equals(label.text, text, StringComparison.Ordinal))
+			_fpsOnlyPrimaryRow.Clear();
+			_fpsOnlySecondaryRow.Clear();
+			if (twoRows)
 			{
-				label.text = text;
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyCurrentCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyAverageCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyOnePercentCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyPointOnePercentCell.Root);
+				_fpsOnlySecondaryRow.Add(_fpsOnlyRenderCell.Root);
+				_fpsOnlySecondaryRow.Add(_fpsOnlyWarningLabel);
+				_fpsOnlySecondaryRow.style.display = DisplayStyle.Flex;
+			}
+			else
+			{
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyCurrentCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyAverageCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyOnePercentCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyPointOnePercentCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyRenderCell.Root);
+				_fpsOnlyPrimaryRow.Add(_fpsOnlyWarningLabel);
+				_fpsOnlySecondaryRow.style.display = DisplayStyle.None;
+			}
+
+			ApplyFpsOnlyRowGaps(_fpsOnlyPrimaryRow);
+			ApplyFpsOnlyRowGaps(_fpsOnlySecondaryRow);
+
+			_fpsOnlyTwoRows = twoRows;
+			_fpsOnlyRow.style.minHeight = twoRows ? FpsOnlyHeight + TextRowStride : FpsOnlyHeight;
+		}
+
+		private static void ApplyFpsOnlyRowGaps(VisualElement row)
+		{
+			if (row == null)
+			{
+				return;
+			}
+
+			for (int index = 0; index < row.childCount; index++)
+			{
+				row[index].style.marginRight = index < row.childCount - 1 ? NumericCellGap : 0f;
 			}
 		}
 
@@ -861,11 +1295,13 @@ namespace SGG.PerfMeter
 			bool showGraphs = (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
 			bool showCpuCoreBarsBlock = ShouldShowCpuCoreBarsBlock();
 			bool showCpuCoreGraphsBlock = ShouldShowCpuCoreGraphsBlock();
+			float availableWidth = GetAvailableLogicalPanelWidth(GetPanelWidth());
+			float responsiveGraphWidth = GetResponsiveGraphWidth(availableWidth);
 			if (_widgetBlock != null)
 			{
 				_widgetBlock.style.display = showWidgets ? DisplayStyle.Flex : DisplayStyle.None;
 				_widgetBlock.style.height = showWidgets ? StyleKeyword.Auto : 0f;
-				_widgetBlock.style.width = GraphBlockWidth;
+				_widgetBlock.style.width = responsiveGraphWidth;
 			}
 
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
@@ -885,7 +1321,8 @@ namespace SGG.PerfMeter
 
 			float textWidth = GetTextBlockWidth();
 			float contentRowWidth = textWidth + (showCpuCoreBarsBlock ? BlockGap + CpuCoreBarsSidePanelWidth : 0f);
-			float containerWidth = Mathf.Max(showGraphs || showWidgets || showCpuCoreGraphsBlock ? GraphBlockWidth : 0f, contentRowWidth);
+			float primaryBlockWidth = showGraphs || showCpuCoreGraphsBlock ? GraphBlockWidth : showWidgets ? responsiveGraphWidth : 0f;
+			float containerWidth = Mathf.Max(primaryBlockWidth, contentRowWidth);
 			_container.style.width = containerWidth;
 			_contentRow.style.width = contentRowWidth;
 			_textBlock.style.width = textWidth;
@@ -910,6 +1347,7 @@ namespace SGG.PerfMeter
 
 			ApplyBlockAlignment();
 			ApplyTuningToVisuals();
+			RequestGeometryRecalculation();
 		}
 
 		private bool ShouldShowWidgetBlock()
@@ -936,7 +1374,7 @@ namespace SGG.PerfMeter
 		{
 			if (_mode == PerfMeterOverlayMode.FpsOnly)
 			{
-				return FpsOnlyTextBlockWidth;
+				return Mathf.Min(GetFpsOnlyRequiredWidth(), GetAvailableLogicalPanelWidth(GetPanelWidth()));
 			}
 
 			return _layout == PerfMeterOverlayLayout.DiagnosticsWide || _layout == PerfMeterOverlayLayout.MetricBars ? DiagnosticsWideTextWidth : TextBlockWidth;
@@ -1028,43 +1466,27 @@ namespace SGG.PerfMeter
 
 		private void SetFpsOnlyFontSize(float fontSize)
 		{
-			if (_fpsOnlyCurrentLabel != null)
-			{
-				_fpsOnlyCurrentLabel.style.fontSize = fontSize;
-			}
-
-			if (_fpsOnlyAverageLabel != null)
-			{
-				_fpsOnlyAverageLabel.style.fontSize = fontSize;
-			}
-
-			if (_fpsOnlyOnePercentLabel != null)
-			{
-				_fpsOnlyOnePercentLabel.style.fontSize = fontSize;
-			}
-
-			if (_fpsOnlyPointOnePercentLabel != null)
-			{
-				_fpsOnlyPointOnePercentLabel.style.fontSize = fontSize;
-			}
-
-			if (_fpsOnlyRenderLabel != null)
-			{
-				_fpsOnlyRenderLabel.style.fontSize = fontSize;
-			}
+			float safeFontSize = Mathf.Max(NumericMinimumFontSize, fontSize);
+			_fpsOnlyCurrentCell?.SetFontSize(safeFontSize);
+			_fpsOnlyAverageCell?.SetFontSize(safeFontSize);
+			_fpsOnlyOnePercentCell?.SetFontSize(safeFontSize);
+			_fpsOnlyPointOnePercentCell?.SetFontSize(safeFontSize);
+			_fpsOnlyRenderCell?.SetFontSize(safeFontSize);
 
 			if (_fpsOnlyWarningLabel != null)
 			{
-				_fpsOnlyWarningLabel.style.fontSize = fontSize;
+				_fpsOnlyWarningLabel.style.fontSize = safeFontSize;
+				_fpsOnlyWarningWidth = MeasureLabelWidth(_fpsOnlyWarningLabel, "WARN");
+				_fpsOnlyWarningLabel.style.width = _fpsOnlyWarningWidth;
 			}
 		}
 
 		private void SetWidgetFontSizes()
 		{
 			float small = Mathf.Max(9f, _overlayFontSize - 1f);
-			float value = Mathf.Max(18f, _overlayFontSize + 13f);
+			float value = Mathf.Max(18f, _overlayFontSize + 5f);
 			float caption = Mathf.Max(9f, _overlayFontSize - 2f);
-			_fpsCard?.SetFontSizes(small, value + 5f, caption);
+			_fpsCard?.SetFontSizes(small, value + 2f, caption);
 			_cpuCard?.SetFontSizes(small, value, caption);
 			_gpuCard?.SetFontSizes(small, value, caption);
 			_spikeCard?.SetFontSizes(small, value, caption);
@@ -1098,7 +1520,7 @@ namespace SGG.PerfMeter
 					case PerfMeterOverlayMode.Graphs:
 						return GetStableTextBlockHeight(reservedRows, MetricBarsGraphsHeight);
 					case PerfMeterOverlayMode.FpsOnly:
-						return GetStableTextBlockHeight(GetReservedTextRowCount(), FpsOnlyHeight + TextRowStride);
+						return GetStableTextBlockHeight(GetReservedTextRowCount(), GetFpsOnlyHeight());
 					default:
 						return GetStableTextBlockHeight(reservedRows, MetricBarsTextHeight);
 				}
@@ -1117,7 +1539,7 @@ namespace SGG.PerfMeter
 			switch (_mode)
 			{
 				case PerfMeterOverlayMode.FpsOnly:
-					return GetStableTextBlockHeight(GetReservedTextRowCount(), FpsOnlyHeight + TextRowStride);
+					return GetStableTextBlockHeight(GetReservedTextRowCount(), GetFpsOnlyHeight());
 				case PerfMeterOverlayMode.TextCompact:
 					return GetStableTextBlockHeight(GetReservedTextRowCount(), TextCompactHeight);
 				case PerfMeterOverlayMode.Graphs:
@@ -1125,6 +1547,11 @@ namespace SGG.PerfMeter
 				default:
 					return GetStableTextBlockHeight(GetReservedTextRowCount(), FullTextHeight);
 			}
+		}
+
+		private float GetFpsOnlyHeight()
+		{
+			return FpsOnlyHeight + (_fpsOnlyTwoRows ? TextRowStride : 0f);
 		}
 
 		private static float GetStableTextBlockHeight(int reservedRows, float maxHeight)
@@ -1260,6 +1687,10 @@ namespace SGG.PerfMeter
 			_container.style.top = StyleKeyword.Auto;
 			_container.style.bottom = StyleKeyword.Auto;
 
+			bool right = _corner == PerfMeterOverlayCorner.TopRight || _corner == PerfMeterOverlayCorner.BottomRight;
+			bool bottom = _corner == PerfMeterOverlayCorner.BottomLeft || _corner == PerfMeterOverlayCorner.BottomRight;
+			_container.style.transformOrigin = new TransformOrigin(Length.Percent(right ? 100f : 0f), Length.Percent(bottom ? 100f : 0f));
+
 			switch (_corner)
 			{
 				case PerfMeterOverlayCorner.TopLeft:
@@ -1285,14 +1716,11 @@ namespace SGG.PerfMeter
 		{
 			if (_container != null)
 			{
-				_container.style.display = _isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+				_container.style.display = _isVisible && isActiveAndEnabled ? DisplayStyle.Flex : DisplayStyle.None;
 				_container.MarkDirtyRepaint();
 			}
 
-			if (_document != null && _document.rootVisualElement != null)
-			{
-				_document.rootVisualElement.MarkDirtyRepaint();
-			}
+			_panelHost?.MarkDirtyRepaint();
 		}
 
 		private void RefreshText(bool force)
@@ -1521,29 +1949,34 @@ namespace SGG.PerfMeter
 
 			_fpsCard?.SetValue(
 				FormatFpsValue(averageFps),
+				"FPS",
 				"1% " + FormatFpsValue(onePercentLowFps) + " / .1% " + FormatFpsValue(pointOnePercentLowFps),
 				averageFps > 0d && currentFps < 1000d / frameBudgetMs * 0.9d ? WarningColor : AccentColor);
 
 			Color cpuAccent = cpuAvailable && metrics.CpuFrameTimeMs > frameBudgetMs ? WarningColor : FrameColor;
 			_cpuCard?.SetValue(
 				FormatMsValue(metrics.CpuFrameTimeMs),
+				"MS",
 				"m " + FormatMsValue(metrics.CpuMainThreadFrameTimeMs) + " / r " + FormatMsValue(metrics.CpuRenderThreadFrameTimeMs),
 				cpuAvailable ? cpuAccent : UnavailableColor);
 
 			Color gpuAccent = !gpuAvailable ? UnavailableColor : metrics.GpuFrameTimeMs > frameBudgetMs ? WarningColor : GpuColor;
 			_gpuCard?.SetValue(
 				gpuAvailable ? FormatMsValue(metrics.GpuFrameTimeMs) : "--",
+				"MS",
 				"valid " + metrics.GpuValidSampleCount.ToString(CultureInfo.InvariantCulture) + "/" + metrics.FrameSampleCount.ToString(CultureInfo.InvariantCulture),
 				gpuAccent);
 
 			_spikeCard?.SetValue(
 				metrics.FrameSpikeCount.ToString(CultureInfo.InvariantCulture) + " / " + metrics.SevereFrameSpikeCount.ToString(CultureInfo.InvariantCulture),
+				string.Empty,
 				!string.IsNullOrEmpty(warning) ? "warning active" : GetBottleneckText(metrics.Bottleneck),
 				metrics.SevereFrameSpikeCount > 0 || !string.IsNullOrEmpty(warning) ? WarningColor : AccentColor);
 
 			Color overdrawAccent = metrics.OverdrawState == PerfMeterOverdrawMeasurementState.Error || metrics.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported ? WarningColor : MainColor;
 			_overdrawCard?.SetValue(
-				FormatOverdrawRatio(metrics.OverdrawRatio),
+				FormatOverdrawCardValue(metrics.OverdrawRatio),
+				"X",
 				GetOverdrawStateText(metrics.OverdrawState) + " " + FormatPercent(metrics.OverdrawProgress),
 				overdrawAccent);
 
@@ -1934,26 +2367,30 @@ namespace SGG.PerfMeter
 			double pointOnePercentLowFps = metrics.PointOnePercentLowFps > 1d ? metrics.PointOnePercentLowFps : onePercentLowFps;
 			int targetFps = Math.Max(1, (int)status.TargetFps);
 
-			SetFpsOnlyMetric(_fpsOnlyCurrentLabel, "FPS ", currentFps, targetFps, showFps);
-			SetFpsOnlyMetric(_fpsOnlyAverageLabel, "AVG ", averageFps, targetFps, showFps);
-			SetFpsOnlyMetric(_fpsOnlyOnePercentLabel, "1% ", onePercentLowFps, targetFps, showFps);
-			SetFpsOnlyMetric(_fpsOnlyPointOnePercentLabel, ".1% ", pointOnePercentLowFps, targetFps, showFps);
+			_fpsOnlyCurrentCell?.SetVisible(showFps);
+			_fpsOnlyAverageCell?.SetVisible(showFps);
+			_fpsOnlyOnePercentCell?.SetVisible(showFps);
+			_fpsOnlyPointOnePercentCell?.SetVisible(showFps);
+			if (showFps)
+			{
+				_fpsOnlyCurrentCell.SetValue(FormatFpsValue(currentFps), GetFpsValueColor(currentFps, targetFps));
+				_fpsOnlyAverageCell.SetValue(FormatFpsValue(averageFps), GetFpsValueColor(averageFps, targetFps));
+				_fpsOnlyOnePercentCell.SetValue(FormatFpsValue(onePercentLowFps), GetFpsValueColor(onePercentLowFps, targetFps));
+				_fpsOnlyPointOnePercentCell.SetValue(FormatFpsValue(pointOnePercentLowFps), GetFpsValueColor(pointOnePercentLowFps, targetFps));
+			}
 
 			bool showRender = HasModule(PerfMeterOverlayModule.Timing);
-			SetLabelVisible(_fpsOnlyRenderLabel, showRender);
+			_fpsOnlyRenderCell?.SetVisible(showRender);
 			if (showRender)
 			{
-				SetLabelText(_fpsOnlyRenderLabel, "REN " + FormatMsValue(metrics.CpuRenderThreadFrameTimeMs) + " MS");
-				_fpsOnlyRenderLabel.style.color = GetFpsValueColor(FpsFromFrameMs(metrics.CpuRenderThreadFrameTimeMs), targetFps);
+				_fpsOnlyRenderCell.SetValue(
+					FormatMsValue(metrics.CpuRenderThreadFrameTimeMs),
+					metrics.CpuRenderThreadFrameTimeMs > 0d ? RenderColor : UnavailableColor);
 			}
 
 			bool showWarning = !string.IsNullOrEmpty(warning) && HasModule(PerfMeterOverlayModule.Warnings);
 			SetLabelVisible(_fpsOnlyWarningLabel, showWarning);
-			if (showWarning)
-			{
-				SetLabelText(_fpsOnlyWarningLabel, "WARN");
-				_fpsOnlyWarningLabel.style.color = WarningColor;
-			}
+			_fpsOnlyWarningLabel.style.color = WarningColor;
 		}
 
 		private void HideFpsOnlyRow()
@@ -1962,18 +2399,6 @@ namespace SGG.PerfMeter
 			{
 				_fpsOnlyRow.style.display = DisplayStyle.None;
 			}
-		}
-
-		private static void SetFpsOnlyMetric(Label label, string prefix, double value, int targetFps, bool visible)
-		{
-			SetLabelVisible(label, visible);
-			if (!visible || label == null)
-			{
-				return;
-			}
-
-			SetLabelText(label, prefix + FormatFpsValue(value));
-			label.style.color = GetFpsValueColor(value, targetFps);
 		}
 
 		private static Color GetFpsValueColor(double fps, int targetFps)
@@ -2189,6 +2614,11 @@ namespace SGG.PerfMeter
 		private static Font GetRuntimeFont(PerfMeterOverlayFontRole role)
 		{
 			PerfMeterOverlayFontResources resources = LoadFontResources();
+			if (role == PerfMeterOverlayFontRole.Numeric)
+			{
+				return GetNumericRuntimeFont(resources);
+			}
+
 			if (resources != null)
 			{
 				switch (_activeFontFamily)
@@ -2197,6 +2627,20 @@ namespace SGG.PerfMeter
 						return role == PerfMeterOverlayFontRole.Regular ? resources.JetBrainsMonoRegular ?? GetLegacyRuntimeFont() : resources.JetBrainsMonoMedium ?? resources.JetBrainsMonoRegular ?? GetLegacyRuntimeFont();
 					case PerfMeterOverlayFontFamily.Manrope:
 						return GetManropeFont(resources, role) ?? GetLegacyRuntimeFont();
+				}
+			}
+
+			return GetLegacyRuntimeFont();
+		}
+
+		private static Font GetNumericRuntimeFont(PerfMeterOverlayFontResources resources)
+		{
+			if (resources != null)
+			{
+				Font numericFont = resources.JetBrainsMonoMedium ?? resources.JetBrainsMonoRegular;
+				if (numericFont != null)
+				{
+					return numericFont;
 				}
 			}
 
@@ -2888,6 +3332,11 @@ namespace SGG.PerfMeter
 			return value > 0d ? value.ToString("0.00", CultureInfo.InvariantCulture) + "x" : "--";
 		}
 
+		private static string FormatOverdrawCardValue(double value)
+		{
+			return value > 0d ? value.ToString("0.00", CultureInfo.InvariantCulture) : "--";
+		}
+
 		private static string FormatPercent(float value)
 		{
 			return (Mathf.Clamp01(value) * 100f).ToString("0", CultureInfo.InvariantCulture) + "%";
@@ -3086,6 +3535,141 @@ namespace SGG.PerfMeter
 		private static Color WithAlpha(Color color, float alpha)
 		{
 			return new Color(color.r, color.g, color.b, alpha);
+		}
+
+		private sealed class PerfMeterNumericCell
+		{
+			private readonly string _worstCaseValue;
+			private readonly string _unit;
+			private float _fontSize = -1f;
+			private float _requiredWidth;
+			private string _value = string.Empty;
+
+			internal PerfMeterNumericCell(string name, string prefix, string unit, string worstCaseValue, Font prefixFont, Font numericFont)
+			{
+				_worstCaseValue = string.IsNullOrEmpty(worstCaseValue) ? "--" : worstCaseValue;
+				_unit = unit ?? string.Empty;
+				Root = new VisualElement
+				{
+					name = name,
+					pickingMode = PickingMode.Ignore
+				};
+				Root.style.flexDirection = FlexDirection.Row;
+				Root.style.alignItems = Align.Center;
+				Root.style.flexShrink = 0f;
+				Root.style.height = 17f;
+				Root.style.overflow = Overflow.Visible;
+
+				Prefix = CreateLabel(name + "-prefix", prefix ?? string.Empty, MutedTextColor, prefixFont, TextAnchor.MiddleLeft);
+				Value = CreateLabel(name + "-value", "--", TextColor, numericFont, TextAnchor.MiddleRight);
+				Unit = CreateLabel(name + "-unit", _unit, MutedTextColor, prefixFont, TextAnchor.MiddleLeft);
+				Value.style.paddingLeft = NumericCellPadding;
+				Value.style.paddingRight = NumericCellPadding;
+				if (string.IsNullOrEmpty(_unit))
+				{
+					Unit.style.display = DisplayStyle.None;
+				}
+				else
+				{
+					Unit.style.marginLeft = CardValueUnitGap;
+				}
+
+				Root.Add(Prefix);
+				Root.Add(Value);
+				Root.Add(Unit);
+				SetFontSize(12f);
+			}
+
+			internal VisualElement Root { get; }
+			internal Label Prefix { get; }
+			internal Label Value { get; }
+			internal Label Unit { get; }
+			internal float RequiredWidth => _requiredWidth;
+
+			internal void SetValue(string value, Color accent)
+			{
+				string safeValue = string.IsNullOrEmpty(value) ? "--" : value;
+				if (!string.Equals(_value, safeValue, StringComparison.Ordinal))
+				{
+					_value = safeValue;
+					Value.text = safeValue;
+				}
+
+				Value.style.color = accent;
+			}
+
+			internal void SetFonts(Font prefixFont, Font numericFont)
+			{
+				Prefix.style.unityFont = prefixFont;
+				Value.style.unityFont = numericFont;
+				Unit.style.unityFont = prefixFont;
+				RecalculateWidth();
+			}
+
+			internal void SetFontSize(float fontSize)
+			{
+				float safeFontSize = Mathf.Max(NumericMinimumFontSize, fontSize);
+				if (Mathf.Approximately(_fontSize, safeFontSize))
+				{
+					return;
+				}
+
+				_fontSize = safeFontSize;
+				Prefix.style.fontSize = safeFontSize;
+				Value.style.fontSize = safeFontSize;
+				Unit.style.fontSize = safeFontSize;
+				RecalculateWidth();
+			}
+
+			internal void SetVisible(bool visible)
+			{
+				Root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+
+			private void RecalculateWidth()
+			{
+				float prefixWidth = Measure(Prefix, Prefix.text);
+				float valueWidth = Measure(Value, _worstCaseValue) + NumericCellPadding * 2f;
+				float unitWidth = string.IsNullOrEmpty(_unit) ? 0f : Measure(Unit, _unit);
+				float unitGap = unitWidth > 0f ? CardValueUnitGap : 0f;
+				Prefix.style.width = prefixWidth;
+				Value.style.width = valueWidth;
+				Unit.style.width = unitWidth;
+				_requiredWidth = Mathf.Ceil(prefixWidth + valueWidth + unitGap + unitWidth);
+				Root.style.width = _requiredWidth;
+			}
+
+			private static float Measure(Label label, string text)
+			{
+				float measured = MeasureLabelWidth(label, text);
+				if (measured > 0f)
+				{
+					return measured;
+				}
+
+				float fontSize = Mathf.Max(NumericMinimumFontSize, label.resolvedStyle.fontSize);
+				if (float.IsNaN(fontSize) || float.IsInfinity(fontSize))
+				{
+					fontSize = 12f;
+				}
+				return Mathf.Max(1f, (text ?? string.Empty).Length * fontSize * 0.58f);
+			}
+
+			private static Label CreateLabel(string name, string text, Color color, Font font, TextAnchor align)
+			{
+				Label label = new Label(text)
+				{
+					name = name,
+					pickingMode = PickingMode.Ignore
+				};
+				label.style.color = color;
+				label.style.unityFont = font;
+				label.style.unityTextAlign = align;
+				label.style.whiteSpace = WhiteSpace.NoWrap;
+				label.style.flexShrink = 0f;
+				label.style.overflow = Overflow.Visible;
+				return label;
+			}
 		}
 
 		private sealed class PerfMeterOverlayTextField
@@ -3879,17 +4463,29 @@ namespace SGG.PerfMeter
 		private sealed class PerfMeterMetricCard : VisualElement
 		{
 			private readonly Label _titleLabel;
+			private readonly VisualElement _valueRow;
 			private readonly Label _valueLabel;
+			private readonly Label _unitLabel;
 			private readonly Label _captionLabel;
+			private readonly string _worstCaseValue;
+			private readonly string _worstCaseCaption;
 			private string _value = string.Empty;
+			private string _unit = string.Empty;
 			private string _caption = string.Empty;
+			private float _requestedValueFontSize;
+			private float _requestedCaptionFontSize;
+			private float _availableContentWidth = WidgetCardContentWidth;
 
-			internal PerfMeterMetricCard(string title, Color accent, Font titleFont, Font valueFont, Font captionFont)
+			internal PerfMeterMetricCard(string name, string title, string worstCaseValue, string worstCaseCaption, Color accent, Font titleFont, Font numericFont, Font captionFont)
 			{
+				_worstCaseValue = string.IsNullOrEmpty(worstCaseValue) ? "--" : worstCaseValue;
+				_worstCaseCaption = string.IsNullOrEmpty(worstCaseCaption) ? "--" : worstCaseCaption;
 				pickingMode = PickingMode.Ignore;
+				this.name = "sgg-perfmeter-widget-card-" + name;
 				style.width = WidgetCardWidth;
 				style.height = WidgetCardHeight;
 				style.marginRight = WidgetGap;
+				style.flexShrink = 0f;
 				style.paddingLeft = 10f;
 				style.paddingRight = 10f;
 				style.paddingTop = 8f;
@@ -3898,23 +4494,58 @@ namespace SGG.PerfMeter
 				style.justifyContent = Justify.SpaceBetween;
 				style.overflow = Overflow.Hidden;
 
-				_titleLabel = CreateCardLabel(title, MutedTextColor, TextAnchor.MiddleLeft, titleFont);
-				_valueLabel = CreateCardLabel("--", TextColor, TextAnchor.MiddleLeft, valueFont);
-				_captionLabel = CreateCardLabel(string.Empty, MutedTextColor, TextAnchor.MiddleLeft, captionFont);
-				_valueLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+				_titleLabel = CreateCardLabel(this.name + "-title", title, MutedTextColor, TextAnchor.MiddleLeft, titleFont);
+				_titleLabel.style.height = CardTitleHeight;
+				_titleLabel.style.flexShrink = 0f;
+				_valueRow = new VisualElement
+				{
+					name = this.name + "-value-row",
+					pickingMode = PickingMode.Ignore
+				};
+				_valueRow.style.flexDirection = FlexDirection.Row;
+				_valueRow.style.alignItems = Align.Center;
+				_valueRow.style.width = Length.Percent(100f);
+				_valueRow.style.height = CardValueRowHeight;
+				_valueRow.style.flexShrink = 0f;
+				_valueLabel = CreateCardLabel(this.name + "-value", "--", TextColor, TextAnchor.MiddleLeft, numericFont);
+				_valueLabel.style.flexShrink = 0f;
+				_valueLabel.style.whiteSpace = WhiteSpace.NoWrap;
+				_valueLabel.style.overflow = Overflow.Visible;
+				_unitLabel = CreateCardLabel(this.name + "-unit", string.Empty, MutedTextColor, TextAnchor.MiddleLeft, numericFont);
+				_unitLabel.style.marginLeft = CardValueUnitGap;
+				_unitLabel.style.flexShrink = 0f;
+				_unitLabel.style.overflow = Overflow.Visible;
+				_unitLabel.style.display = DisplayStyle.None;
+				_captionLabel = CreateCardLabel(this.name + "-caption", string.Empty, MutedTextColor, TextAnchor.MiddleLeft, captionFont);
+				_captionLabel.style.height = CardCaptionHeight;
+				_captionLabel.style.flexShrink = 0f;
+				_captionLabel.style.whiteSpace = WhiteSpace.NoWrap;
+				_captionLabel.style.overflow = Overflow.Visible;
+				_valueRow.Add(_valueLabel);
+				_valueRow.Add(_unitLabel);
 				Add(_titleLabel);
-				Add(_valueLabel);
+				Add(_valueRow);
 				Add(_captionLabel);
 				SetAccent(accent);
+				SetAvailableWidth(WidgetCardWidth);
 			}
 
-			internal void SetValue(string value, string caption, Color accent)
+			internal void SetValue(string value, string unit, string caption, Color accent)
 			{
 				string safeValue = value ?? string.Empty;
 				if (_value != safeValue)
 				{
 					_value = safeValue;
 					_valueLabel.text = safeValue;
+				}
+
+				string safeUnit = unit ?? string.Empty;
+				if (_unit != safeUnit)
+				{
+					_unit = safeUnit;
+					_unitLabel.text = safeUnit;
+					_unitLabel.style.display = string.IsNullOrEmpty(safeUnit) ? DisplayStyle.None : DisplayStyle.Flex;
+					ResolveValueFontSize();
 				}
 
 				string safeCaption = caption ?? string.Empty;
@@ -3929,9 +4560,20 @@ namespace SGG.PerfMeter
 
 			internal void SetFontSizes(float title, float value, float caption)
 			{
-				_titleLabel.style.fontSize = title;
-				_valueLabel.style.fontSize = value;
-				_captionLabel.style.fontSize = caption;
+				_titleLabel.style.fontSize = Mathf.Min(CardTitleMaximumFontSize, Mathf.Max(CardCaptionMinimumFontSize, title));
+				_requestedValueFontSize = value;
+				_unitLabel.style.fontSize = Mathf.Min(CardValueMaximumFontSize - 3f, Mathf.Max(CardCaptionMinimumFontSize, value - 3f));
+				_requestedCaptionFontSize = caption;
+				ResolveValueFontSize();
+				ResolveCaptionFontSize();
+			}
+
+			internal void SetAvailableWidth(float width)
+			{
+				style.width = WidgetCardWidth;
+				_availableContentWidth = WidgetCardContentWidth;
+				ResolveValueFontSize();
+				ResolveCaptionFontSize();
 			}
 
 			private void SetAccent(Color accent)
@@ -3949,10 +4591,65 @@ namespace SGG.PerfMeter
 				_valueLabel.style.color = accent;
 			}
 
-			private static Label CreateCardLabel(string text, Color color, TextAnchor align, Font font)
+			private void ResolveValueFontSize()
+			{
+				float preferredSize = Mathf.Min(CardValueMaximumFontSize, Mathf.Max(CardValueMinimumFontSize, _requestedValueFontSize > 0f ? _requestedValueFontSize : CardValueMinimumFontSize));
+				float unitWidth = string.IsNullOrEmpty(_unit) ? 0f : MeasureLabelWidth(_unitLabel, _unit);
+				float availableValueWidth = Mathf.Max(1f, _availableContentWidth - unitWidth - CardValueUnitGap);
+				float resolvedSize = ResolveCardValueFontSize(_valueLabel, _worstCaseValue, preferredSize, availableValueWidth);
+				_valueLabel.style.fontSize = resolvedSize;
+				float valueWidth = MeasureLabelWidth(_valueLabel, _worstCaseValue);
+				if (valueWidth <= 0f)
+				{
+					valueWidth = _worstCaseValue.Length * resolvedSize * 0.58f;
+				}
+
+				_unitLabel.style.width = unitWidth;
+				_valueLabel.style.width = Mathf.Ceil(Mathf.Min(availableValueWidth, Mathf.Max(1f, valueWidth)));
+			}
+
+			private void ResolveCaptionFontSize()
+			{
+				float preferredSize = Mathf.Min(CardCaptionMaximumFontSize, Mathf.Max(CardCaptionMinimumFontSize, _requestedCaptionFontSize > 0f ? _requestedCaptionFontSize : CardCaptionMinimumFontSize));
+				_captionLabel.style.fontSize = preferredSize;
+				float measuredWidth = MeasureLabelWidth(_captionLabel, _worstCaseCaption);
+				if (measuredWidth <= 0f)
+				{
+					measuredWidth = _worstCaseCaption.Length * preferredSize * 0.58f;
+				}
+
+				if (measuredWidth > _availableContentWidth && measuredWidth > 0f)
+				{
+					preferredSize = Mathf.Max(CardCaptionMinimumFontSize, preferredSize * _availableContentWidth / measuredWidth);
+					_captionLabel.style.fontSize = preferredSize;
+				}
+
+				_captionLabel.style.width = _availableContentWidth;
+			}
+
+			private static float ResolveCardValueFontSize(Label label, string worstCaseText, float preferredSize, float availableWidth)
+			{
+				float resolvedSize = Mathf.Min(CardValueMaximumFontSize, Mathf.Max(CardValueMinimumFontSize, preferredSize));
+				label.style.fontSize = resolvedSize;
+				float measuredWidth = MeasureLabelWidth(label, worstCaseText);
+				if (measuredWidth <= 0f)
+				{
+					measuredWidth = (worstCaseText ?? string.Empty).Length * resolvedSize * 0.58f;
+				}
+				if (measuredWidth > availableWidth && measuredWidth > 0f)
+				{
+					resolvedSize = Mathf.Max(CardValueMinimumFontSize, resolvedSize * availableWidth / measuredWidth);
+					label.style.fontSize = resolvedSize;
+				}
+
+				return resolvedSize;
+			}
+
+			private static Label CreateCardLabel(string name, string text, Color color, TextAnchor align, Font font)
 			{
 				Label label = new Label(text)
 				{
+					name = name,
 					pickingMode = PickingMode.Ignore
 				};
 				label.style.color = color;
@@ -3970,13 +4667,17 @@ namespace SGG.PerfMeter
 			private readonly Label _valueLabel;
 			private readonly VisualElement _fill;
 			private string _value = string.Empty;
+			private float _requestedFontSize;
+			private float _availableValueWidth = BudgetValueContentWidth;
 
 			internal PerfMeterBudgetBar(string title, Color accent, Font titleFont, Font valueFont)
 			{
 				pickingMode = PickingMode.Ignore;
+				name = "sgg-perfmeter-widget-budget-" + title.Replace(" ", "-").ToLowerInvariant();
 				style.width = BudgetBarWidth;
 				style.height = 44f;
 				style.marginRight = WidgetGap;
+				style.flexShrink = 0f;
 				style.paddingLeft = 10f;
 				style.paddingRight = 10f;
 				style.paddingTop = 6f;
@@ -3997,15 +4698,21 @@ namespace SGG.PerfMeter
 				};
 				header.style.flexDirection = FlexDirection.Row;
 				header.style.justifyContent = Justify.SpaceBetween;
+				header.style.width = Length.Percent(100f);
 				header.style.marginBottom = 5f;
 				_titleLabel = CreateBarLabel(title, MutedTextColor, TextAnchor.MiddleLeft, titleFont);
+				_titleLabel.name = name + "-title";
 				_valueLabel = CreateBarLabel("--", TextColor, TextAnchor.MiddleRight, valueFont);
+				_valueLabel.name = name + "-value";
+				_valueLabel.style.flexShrink = 0f;
+				_valueLabel.style.overflow = Overflow.Visible;
 				header.Add(_titleLabel);
 				header.Add(_valueLabel);
 				Add(header);
 
 				VisualElement track = new VisualElement
 				{
+					name = name + "-track",
 					pickingMode = PickingMode.Ignore
 				};
 				track.style.position = Position.Relative;
@@ -4048,8 +4755,36 @@ namespace SGG.PerfMeter
 
 			internal void SetFontSize(float fontSize)
 			{
-				_titleLabel.style.fontSize = fontSize;
-				_valueLabel.style.fontSize = fontSize;
+				float safeFontSize = Mathf.Min(BudgetMaximumFontSize, Mathf.Max(BudgetValueMinimumFontSize, fontSize));
+				_titleLabel.style.fontSize = safeFontSize;
+				_requestedFontSize = safeFontSize;
+				ResolveValueFontSize();
+			}
+
+			internal void SetAvailableWidth(float width)
+			{
+				style.width = BudgetBarWidth;
+				_availableValueWidth = BudgetValueContentWidth;
+				ResolveValueFontSize();
+			}
+
+			private void ResolveValueFontSize()
+			{
+				float availableWidth = Mathf.Max(1f, _availableValueWidth);
+				float resolvedSize = Mathf.Min(BudgetMaximumFontSize, Mathf.Max(BudgetValueMinimumFontSize, _requestedFontSize > 0f ? _requestedFontSize : BudgetValueMinimumFontSize));
+				_valueLabel.style.fontSize = resolvedSize;
+				float measuredWidth = MeasureLabelWidth(_valueLabel, BudgetWorstCaseValue);
+				if (measuredWidth <= 0f)
+				{
+					measuredWidth = BudgetWorstCaseValue.Length * resolvedSize * 0.58f;
+				}
+				if (measuredWidth > availableWidth && measuredWidth > 0f)
+				{
+					resolvedSize = Mathf.Max(BudgetValueMinimumFontSize, resolvedSize * availableWidth / measuredWidth);
+					_valueLabel.style.fontSize = resolvedSize;
+				}
+
+				_valueLabel.style.width = Mathf.Ceil(Mathf.Min(availableWidth, Mathf.Max(1f, measuredWidth)));
 			}
 
 			private static Label CreateBarLabel(string text, Color color, TextAnchor align, Font font)
@@ -4142,7 +4877,8 @@ namespace SGG.PerfMeter
 			Regular,
 			Medium,
 			SemiBold,
-			Bold
+			Bold,
+			Numeric
 		}
 
 		private enum PerfMeterStatBarFormat

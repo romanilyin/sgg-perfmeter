@@ -179,9 +179,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
 			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
 
+			bool heatmapSupported = PerfMeterRenderPipelineDetector.GetActiveKind() != PerfMeterRenderPipelineKind.HighDefinition;
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverdrawHeatmapVisible(true));
-			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.True);
-			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.True);
+			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.EqualTo(heatmapSupported));
+			Assert.That(PerformanceMeter.GetStatus().OverdrawHeatmapVisible, Is.EqualTo(heatmapSupported));
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverdrawHeatmapVisible(false));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
