@@ -12,9 +12,10 @@
 - Unity validation target: `6000.5.6f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
 - Release work date: 2026-08-05
-- GitHub Actions release workflow: disabled
+- GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
 Current release notes/checklist: `_DevelopmentDocs/release/2026.8.5-2-ux-0-release.md`.
+Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
 
@@ -46,4 +47,4 @@ Unity.exe -batchmode -quit -projectPath "C:\Work\Unity\sgg-perfmeter" -executeMe
 
 ## Workflow State
 
-The previous manual-only GitHub Actions release workflow was removed while docs and release gates are being reorganized. Do not re-enable automatic `push`, `pull_request`, `schedule`, or `workflow_run` triggers unless project policy changes.
+The npm publish workflow runs only when a normal GitHub Release is published. It uses the GitHub-hosted runner, the protected `npm` environment and npm Trusted Publishing OIDC; it must not use an npm write token or an automatic `push`, `pull_request`, `schedule` or `workflow_run` trigger.
