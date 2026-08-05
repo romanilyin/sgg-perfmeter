@@ -39,14 +39,16 @@ After saving the trusted publisher, open **Publishing access**, select **Require
 4. GitHub Actions runs `.github/workflows/publish-npm.yml` on the GitHub-hosted runner and publishes from `Assets/Scripts/SGG.PerfMeter`.
 5. Verify the published npm version and its provenance attestation before updating public install pins.
 
-The workflow uses Node 24 and npm 11.5.1 or later, requests `id-token: write`, and receives a short-lived OIDC credential directly from npm. Trusted publishing adds provenance automatically for this public repository and public package.
+The workflow uses Node 24 and npm 11.5.1 or later, requests `id-token: write`, and receives a short-lived OIDC credential directly from npm. It publishes the date-based package version with the explicit `latest` dist-tag because npm treats the final hyphen segment as a SemVer prerelease identifier. Trusted publishing adds provenance automatically for this public repository and public package.
+
+If the release-triggered run fails before publication, manually dispatch the same workflow from `main` with the existing release tag. The recovery path verifies that the tag belongs to an already published normal GitHub Release, checks out the qualified `refs/tags/...` ref and requires an exact `package.json` version match before publishing.
 
 `npm whoami` and `npm publish --dry-run` do not validate OIDC authentication. OIDC credential exchange occurs only during `npm publish` or `npm stage publish` inside the configured workflow.
 
 ## GitHub Controls
 
 - The workflow uses the protected `npm` GitHub Environment.
-- The environment accepts only release tags matching the configured version-tag policy.
+- The environment accepts release tags matching the configured version-tag policy and `main` for the guarded manual recovery path; deployment requires owner approval.
 - The release tag must exactly match the package version or the workflow fails before publishing.
 - Do not add an npm write token as a fallback; fix the trusted-publisher, workflow filename, environment or OIDC permission instead.
 
