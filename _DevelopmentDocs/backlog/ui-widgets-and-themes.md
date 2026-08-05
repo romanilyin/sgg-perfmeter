@@ -2,34 +2,11 @@
 
 Статус: design backlog. Не является обещанием текущего release scope.
 
-## Active Roadmap
+## Roadmap Status
 
-| ID | Priority | Status | Scope |
-| --- | --- | --- | --- |
-| StructuredLog toggle | P0 | open | Independent public toggle for structured info logs |
-| [GitHub #2](https://github.com/romanilyin/sgg-perfmeter/issues/2) | P1 | open | Text overflow and stable numeric geometry |
-| [GitHub #1](https://github.com/romanilyin/sgg-perfmeter/issues/1) | P2 | open, partially prepared | Unity 6000.5+ `PanelRenderer` host migration |
+Центральные приоритеты и зависимости находятся в `roadmap.md`.
 
-### P0: Independent StructuredLog toggle
-
-Current limitation:
-
-- `SetEditorWarningLogsEnabled(false)` disables only `PerfMeterAlertAction.EditorWarning`;
-- `PerfMeterAlertAction.StructuredLog` independently emits `[SGG PerfMeter Alert] ...` through `Debug.Log`;
-- the public API has no separate toggle for structured logs.
-
-Required:
-
-- add public `PerformanceMeter.StructuredLogsEnabled` and `PerformanceMeter.SetStructuredLogsEnabled(bool)`;
-- route the setting through `PerfMeterRuntime` to `PerfMeterAlertEngine` and guard only the `StructuredLog` `Debug.Log` action;
-- keep the toggle independent from callback events, latest alerts/history, overlay warnings, `EditorWarning`, and session recording/export;
-- after the PerfMeter release, disable structured logs in the platformer bootstrap and benchmark runner alongside `SetEditorWarningLogsEnabled(false)`.
-
-Acceptance:
-
-- structured info logs can be disabled without changing callbacks, alert state/history, overlay warnings, editor warnings, or session recording/export;
-- enabling the setting restores structured info logs for rules containing `PerfMeterAlertAction.StructuredLog`;
-- the platformer bootstrap and benchmark runner can call `PerformanceMeter.SetStructuredLogsEnabled(false)`.
+`StructuredLog` toggle завершен в unreleased package version `2026.8.5-1`. Его внешнее включение в platformer выполняется после публикации версии.
 
 ### P1: Text overflow and stable numeric geometry
 
@@ -56,7 +33,7 @@ Acceptance:
 - numeric cell widths remain stable across representative value changes;
 - extreme scale/font combinations use a deterministic fallback inside the available panel bounds.
 
-### P2: Versioned UI Toolkit panel host
+### P1: Versioned UI Toolkit panel host
 
 Current limitation:
 

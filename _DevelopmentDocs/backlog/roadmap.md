@@ -1,0 +1,87 @@
+# SGG PerfMeter Product Roadmap
+
+Статус: внутренний приоритизированный backlog. Порядок отражает зависимости и продуктовую ценность, но не обещает календарный release scope.
+
+Основание: review текущего backlog и локального research report `C:\Work\Unity\deep-research-report-perfmeter-new-26-8-4.md` от августа 2026 года.
+
+## Модель приоритетов
+
+| Priority | Значение |
+| --- | --- |
+| P0 | Блокирующий дефект или обязательная работа текущего release pass. |
+| P1 | Следующая стабилизационная итерация; закрывает текущий пользовательский дефект или высокий compatibility risk. |
+| P2 | Стратегическая foundation-работа с высокой продуктовой ценностью после P1. |
+| P3 | Следующая самостоятельная feature-итерация после соответствующей foundation. |
+| P4 | Дорогая или platform-native experimental работа без обязательства ближайшего release. |
+| Deferred | Осознанно не входит в ближайшую основную программу. |
+
+## Архитектурные ограничения
+
+- PerfMeter остается low-overhead диагностическим и capture-coordination слоем, а не заменой Unity Profiler, RenderDoc, PIX, Profile Analyzer или Frame Debugger.
+- Core package не получает hard dependencies на Adaptive Performance, Memory Profiler или platform-native tooling; интеграции поставляются через optional assemblies/providers/backends.
+- Heavy captures и native integrations выключены по умолчанию и требуют явного API, MCP, user action или настроенного alert rule.
+- Недоступные метрики и providers возвращают explicit `Unavailable`/degraded state, а не ложный `0`.
+- Public API и artifact schemas развиваются additively; старые контракты сохраняются минимум на один стабильный replacement cycle.
+
+## Roadmap
+
+| ID | Priority | Status | Scope | Depends On |
+| --- | --- | --- | --- | --- |
+| `PM-LOG-001` StructuredLog toggle | P0 | resolved, unreleased `2026.8.5-1` | Независимый public toggle отключает только structured info `Debug.Log`, сохраняя callbacks, alerts/history, overlay warnings, EditorWarning и sessions. | - |
+| `PM-UI-001` Stable numeric geometry | P1 | open, [GitHub #2](https://github.com/romanilyin/sgg-perfmeter/issues/2) | Устранить clipping и изменение ширины чисел: prefix/value/unit cells, worst-case widths, numeric monospace role, bounded fallback и geometry tests. | - |
+| `PM-UI-002` Owned versioned panel host | P1 | open, partially prepared, [GitHub #1](https://github.com/romanilyin/sgg-perfmeter/issues/1) | Использовать owned `UIDocument` host на Unity 6000.4 и `PanelRenderer` на 6000.5+; не менять foreign UI tree/settings; покрыть reload и lifecycle. | `PM-UI-001` для финальной UI validation |
+| `PM-CAP-001` Capture coordinator | P2 | planned | Ввести единый capture domain/state machine, fake backend, overlap guard и pre/post-roll. Изолировать experimental Unity `ExternalGPUProfiler`: только Editor/Development builds, attached external tool и поддерживаемые platform/API combinations. | P1 stabilization |
+| `PM-CAP-002` Correlated artifact bundle | P2 | planned | Атомарно связывать manifest, session/samples, alerts, device/camera/render context, screenshot и authoritative external-capture metadata; добавить MCP request/status/cancel/export/capabilities. | `PM-CAP-001` |
+| `PM-COMP-001` Compatibility status and matrix | P2 | planned | Явно различать `ImportCompatible`, `CoreRuntimeCompatible` и `RenderIntegrationCompatible`; проверять заявленный import floor отдельно от Unity 6000.4+ runtime support. | P1 stabilization |
+| `PM-OBS-001` Dynamic Profiler metric catalog | P2 | planned | Discover/cache recorder descriptors, разрешать semantic metrics через exact names и aliases, публиковать capability provenance и различать unavailable/no-sample/sampled. | P1 stabilization |
+| `PM-OBS-002` Profiler instrumentation | P2 | planned | Добавить zero-allocation markers/counters для collect, providers, capture/export, bottleneck, CPU/GPU, thermal и capture state. | `PM-OBS-001` |
+| `PM-OBS-003` Self-observability and overhead budgets | P2 | planned, partially prepared | Измерять стоимость collector/overlay/render integration отдельно, публиковать её в status/MCP и ввести allocation/performance gates без скрытого вычитания из основных метрик. | `PM-UI-002`, `PM-OBS-002` |
+| `PM-PLAT-001` Adaptive Performance telemetry | P2 | planned | Optional provider для thermal/power trends, CPU/GPU performance levels, alerts и session columns с provider provenance. | capability/provider seams, `PM-CAP-002` |
+| `PM-MEM-001` Memory snapshot trigger | P3 | planned | Optional Memory Profiler backend для manual/threshold/leak capture с cooldown, free-space guard, capture flags и bundle manifest. | `PM-CAP-001`, `PM-CAP-002` |
+| `PM-GFX-001` PSO and shader-stutter diagnostics | P3 | planned | Коррелировать shader/graphics-pipeline creation markers, graphics API и optional `GraphicsStateCollection` trace/prewarm workflow. | `PM-OBS-001`, `PM-CAP-001` |
+| `PM-REN-001` Render integration context | P3 | planned | Расширить camera/SRP/pass/GRD/VRS context и перейти к integration-neutral snapshot API через additive compatibility facade. Добавлять Editor navigation только при наличии стабильного public Unity API. | `PM-OBS-001` |
+| `PM-GRD-001` GPU Resident Drawer telemetry | P3 | planned | Показывать GRD/Forward+/compute support, фактическую активность, effectiveness counters и fallback/degraded reasons. | `PM-OBS-001`, `PM-REN-001` |
+| `PM-CI-001` Profile Analyzer and benchmark CI | P3 | planned | Коррелировать session IDs/custom markers с Profile Analyzer и добавить performance tests, baseline thresholds и CI/JUnit artifacts. | `PM-OBS-002` |
+| `PM-SESSION-001` Session analysis UI | P3 | design backlog | Timeline, worst-frame inspector, budget violations и scene-scope summaries поверх существующего recorder/export. | stable session/artifact schemas |
+| `PM-UI-003` Widgets, themes and layout descriptors | P4 | design backlog | Расширяемые bounded widgets, semantic theme tokens, manifests, layout descriptors и safety limits без steady-state tree rebuild. | `PM-UI-001`, `PM-UI-002`, `PM-OBS-003` |
+| `PM-RG-001` Deeper Render Graph diagnostics | P4 | waiting for stable public APIs | Добавлять pass/resource/aliasing/merge counters только через стабильные Unity APIs; сохранять degraded state вместо reflection. | Unity public APIs |
+| `PM-ANDROID-001` Android Perfetto/AGI | P4 | experimental candidate | Low-overhead ATrace/ADPF correlation и Editor sidecar для `adb`, Perfetto config, artifact import и AGI workflow. | `PM-CAP-002`, `PM-PLAT-001` |
+| `PM-APPLE-001` Apple thermal, MetricKit and Metal | P4 | experimental candidate | Optional native provider/backend для thermal/low-power/MetricKit и Development-only Metal capture. | `PM-CAP-002`, provider seams |
+| `PM-PIX-001` Native PIX timing capture | P4 | experimental candidate | Windows-only circular timing capture, завершаемый после alert, с authoritative artifact provenance. | `PM-CAP-001`, `PM-CAP-002` |
+| `PM-RDOC-001` Native RenderDoc backend | P4 | experimental candidate | Dynamic-load только уже подключенного RenderDoc API для naming/comments/path/enumeration; не поставлять и не inject RenderDoc binary. | stable `PM-CAP-001` and Unity backend |
+| `PM-HDRP-001` HDRP overdraw/heatmap parity | Deferred | research only | Отдельный HDRP Custom Pass/shader/readback prototype и device/API matrix; не включать в ранний основной roadmap. | dedicated research validation |
+| `PM-OTEL-001` Remote streaming/OpenTelemetry | Deferred | policy undefined | Opt-in batching/export требует transport, credentials, redaction, privacy и support policy до проектирования API. | security/transport decision |
+
+`PM-LOG-001` считается решенным в PerfMeter. Его включение в platformer bootstrap и benchmark runner выполняется после публикации версии и не оставляет package feature открытой.
+
+## Release Sequence
+
+| Phase | Scope | Exit Gate |
+| --- | --- | --- |
+| Stabilization | `PM-UI-001`, `PM-UI-002` | Stable bounds, owned container, no foreign UI mutation, lifecycle matrix on Unity 6000.4/6000.5+. |
+| Capture preview | `PM-CAP-001` | Fake-backend contract tests, no overlap, deterministic state transitions, guarded attached-tool backend and no claim of an authoritative `.rdc`/`.wpix` path from the Unity wrapper. |
+| Capture stable | `PM-CAP-002` | Atomic versioned bundle, truthful artifact provenance, session/alert correlation and external-tool smoke matrix. |
+| Observability | `PM-OBS-001` through `PM-OBS-003` | Startup-only discovery, capability dump, custom markers/counters and measured overhead budgets. |
+| Platform telemetry | `PM-PLAT-001`, then selected P3 integrations | Optional assemblies, no core hard dependency, explicit unavailable states and device validation. |
+| Platform capture previews | Selected P4 backends | Experimental feature flags, native lifecycle/IL2CPP tests and tool-specific artifact confirmation. |
+
+## Required Gates
+
+- Compile/runtime matrix: latest Unity 6000.4 and 6000.5 patches; import-only checks for the declared import floor and Unity 6000.3.
+- URP 17.4 and HDRP 17.4; Windows D3D11/D3D12, Linux Vulkan, macOS/iOS Metal, Android Vulkan and explicit GLES degraded mode as applicable.
+- Fake backends are mandatory in automated tests; real RenderDoc/PIX/platform-tool smokes are release-candidate gates.
+- Capture samples are classified separately from normal baseline samples; capture overhead must not silently contaminate normal performance evidence.
+- Steady-state collector and hidden overlay target `0 B/frame`; dynamic discovery runs only at startup/reconfigure and export stays outside frame-critical paths.
+- Bundles enforce project-local path validation, atomic commit, disk quota/retention and redaction of sensitive paths, screenshots and device metadata.
+
+## Not Planned
+
+- Built-in Render Pipeline support remains unsupported and is not planned.
+- XR/world-space overlay remains outside scope until a concrete supported target exists.
+
+## Detailed Backlogs
+
+- UI ownership, geometry, widgets and themes: `ui-widgets-and-themes.md`.
+- Collector, sessions, self-overhead and rendering diagnostics: `profiler-backlog.md`.
+- HDRP status and deferred overdraw work: `hdrp-support.md`.
+- Resolved PerfMeter-owned MCP reports: `mcp-problem-reports.md`.
