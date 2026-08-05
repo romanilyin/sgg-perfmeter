@@ -195,6 +195,21 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void StructuredLogApiDefaultsEnabledAndTogglesRuntimeState()
+		{
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(false));
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
+
+			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(true));
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+
+			PerformanceMeter.Stop();
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+		}
+
+		[Test]
 		public void OverlayTextCacheSkipsUnchangedStringMaterialization()
 		{
 			PerfMeterOverlay.PerfMeterOverlayCachedText cache = new PerfMeterOverlay.PerfMeterOverlayCachedText();
@@ -897,6 +912,47 @@ namespace SGG.PerfMeter.Tests.EditMode
 			LogAssert.NoUnexpectedReceived();
 			Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
 			Assert.That(engine.FiredAlertCount, Is.EqualTo(0));
+		}
+
+		[Test]
+		public void AlertEngineStructuredLogToggleDoesNotAffectOtherActionsOrHistory()
+		{
+			PerfMeterAlertEngine engine = new PerfMeterAlertEngine(new[]
+			{
+				new PerfMeterRule("structured.toggle", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 10d, 1, 0f, PerfMeterAlertAction.StructuredLog | PerfMeterAlertAction.Callback | PerfMeterAlertAction.EditorWarning)
+			});
+			int callbackCount = 0;
+			System.Action<PerfMeterAlertSnapshot> handler = alert => callbackCount++;
+			PerformanceMeter.AlertFired += handler;
+
+			try
+			{
+				engine.SetStructuredLogsEnabled(false);
+				LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("\\[SGG PerfMeter Alert\\] structured.toggle"));
+				engine.Evaluate(CreateMetrics(1, 20d, PerfMeterBottleneck.CpuMainThreadBound), 0d);
+				LogAssert.NoUnexpectedReceived();
+
+				Assert.That(callbackCount, Is.EqualTo(1));
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(1));
+				Assert.That(engine.LatestAlert.RuleId, Is.EqualTo("structured.toggle"));
+				Assert.That(engine.History.FiredCount, Is.EqualTo(1));
+
+				engine.SetStructuredLogsEnabled(true);
+				LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("\\[SGG PerfMeter Alert\\] structured.toggle"));
+				engine.Evaluate(CreateMetrics(2, 20d, PerfMeterBottleneck.CpuMainThreadBound), 2d);
+				LogAssert.NoUnexpectedReceived();
+
+				Assert.That(callbackCount, Is.EqualTo(2));
+				Assert.That(engine.ActiveAlertCount, Is.EqualTo(1));
+				Assert.That(engine.FiredAlertCount, Is.EqualTo(2));
+				Assert.That(engine.History.FiredCount, Is.EqualTo(2));
+				Assert.That(engine.History.LatestFiredAlert.CollectionFrame, Is.EqualTo(2));
+			}
+			finally
+			{
+				PerformanceMeter.AlertFired -= handler;
+			}
 		}
 
 		[Test]

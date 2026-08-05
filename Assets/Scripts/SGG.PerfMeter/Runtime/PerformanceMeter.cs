@@ -397,6 +397,15 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		public static bool StructuredLogsEnabled
+		{
+			get
+			{
+				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+				return runtime != null ? runtime.StructuredLogsEnabled : true;
+			}
+		}
+
 		public static void SetOverlayVisible(bool visible)
 		{
 			PerfMeterRuntime.EnsureRunning();
@@ -524,6 +533,16 @@ namespace SGG.PerfMeter
 			if (runtime != null)
 			{
 				runtime.SetEditorWarningLogsEnabled(enabled);
+			}
+		}
+
+		public static void SetStructuredLogsEnabled(bool enabled)
+		{
+			PerfMeterRuntime.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			if (runtime != null)
+			{
+				runtime.SetStructuredLogsEnabled(enabled);
 			}
 		}
 
