@@ -37,6 +37,14 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | `perfmeter.session.summary` | Aktuelle Session-summary lesen. |
 | `perfmeter.session.export` | Aktuelle Session als projektlokales JSON oder CSV exportieren. |
 
+## Self-Overhead Im Runtime-Status
+
+`perfmeter.runtime.status` enthaelt das additive Objekt `self_overhead`; dies ist kein separater Command. Top-level Keys sind `state`, `cpu_timing_available`, `gpu_timing_availability` und `has_budget_violation`.
+
+Komponentenobjekte sind `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` und `hdrp_render_integration`. Jedes enthaelt `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` und `allocation_budget_state`.
+
+Die Werte beschreiben feste 120-Frame-Fenster fuer CPU-Callbacks mit Durchschnitt pro Aufruf. GPU-Attribution ist `Unavailable`; eine inaktive Render-Integration ist `Unsupported`, eine unterstuetzte Komponente ohne Aufruf `NotMeasured`. Session-JSON/CSV-Schemas bleiben unveraendert, bestehende CPU/GPU-Metriken werden nicht angepasst.
+
 ## Typischer Profiling-Run
 
 ```text

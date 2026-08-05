@@ -14,21 +14,26 @@
 
 Границы:
 
-- PM-OBS-003 отвечает за публикацию self-overhead, accounting и budget/gate reporting; текущая instrumentation не вычитает overhead и не меняет public API, status, MCP или export schemas.
+- PM-OBS-003 отдельно публикует self-overhead и budget reporting; Profiler instrumentation не вычитает overhead и не меняет export schemas.
 - PM-PLAT-001 отвечает за реальный thermal provider; до его появления `Thermal.Available` не означает наличие synthetic sample.
 
-## Self-Overhead Accounting
+## PM-OBS-003 Self-Observability And Overhead Budgets
 
-Текущий статус: частично подготовлено, не завершено.
+Текущий статус: реализовано на `feature/profilers`, не выпущено отдельно.
 
-- Overlay marker pass сделан opt-in diagnostic mode.
-- Полное вычитание собственного overhead из frame metrics не реализовано.
+Реализованный scope:
 
-Что нужно:
+- Low-overhead CPU timing и current-thread allocations измеряются в фиксированных окнах по 120 кадров; средние считаются на один callback invocation.
+- Компоненты: collector, custom metric providers, CPU-core provider, overlay, URP Render Graph integration и HDRP Custom Pass integration.
+- Additive `PerformanceMeter.GetSelfOverhead()`, `PerfMeterStatusSnapshot.SelfOverhead` и объект `self_overhead` в `perfmeter.runtime.status` публикуют состояния, counts, average/max CPU time, total/average allocations и budget states.
+- Diagnostic budgets per invocation: collector `0.5 ms`/`0 B`, custom providers `0.5 ms`/`4096 B`, CPU core `1.0 ms`/`0 B`, overlay `2.0 ms`/`131072 B`, URP/HDRP integration `0.5 ms`/`0 B`.
 
-1. Отдельно измерять стоимость overlay/render integration markers.
-2. Показывать self-overhead как диагностическую метрику, а не скрытую поправку.
-3. Не вычитать автоматически из основных цифр, пока нет стабильной валидации на Editor/player/mobile.
+Границы:
+
+- GPU callback attribution остается `Unavailable`: надежное отделение GPU overhead render integration от остального frame work не заявляется.
+- Inactive render integration возвращает `Unsupported`; поддерживаемый компонент без вызовов — `NotMeasured`.
+- Accounting носит диагностический характер. Self-overhead не вычитается из существующих CPU/GPU metrics, adjusted metrics не добавляются.
+- Session JSON/CSV schemas не меняются; performance/allocation budgets не являются автоматической коррекцией или release benchmark guarantee.
 
 ## Deeper Render Graph Diagnostics
 

@@ -37,6 +37,14 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.summary` | current session summary を読み取ります。 |
 | `perfmeter.session.export` | current session を project-local JSON または CSV に export します。 |
 
+## Runtime Self-Overhead Payload
+
+`perfmeter.runtime.status` は additive な `self_overhead` object を含みます。これは別の command ではありません。Top-level keys は `state`、`cpu_timing_available`、`gpu_timing_availability`、`has_budget_violation` です。
+
+Component objects は `collector`、`custom_metric_providers`、`cpu_core_provider`、`overlay`、`urp_render_integration`、`hdrp_render_integration` です。それぞれ `component`、`state`、`window_frame_count`、`invocation_count`、`average_cpu_time_ms`、`max_cpu_time_ms`、`allocated_bytes`、`average_allocated_bytes`、`cpu_budget_ms`、`allocation_budget_bytes`、`cpu_budget_state`、`allocation_budget_state` を含みます。
+
+値は固定 120-frame CPU callback window と invocation 単位の average を表します。GPU attribution は `Unavailable`、inactive render integration は `Unsupported`、呼び出されていない supported component は `NotMeasured` です。Session JSON/CSV schema は変更されず、既存の CPU/GPU metrics も補正されません。
+
 ## Typical Profiling Run
 
 ```text

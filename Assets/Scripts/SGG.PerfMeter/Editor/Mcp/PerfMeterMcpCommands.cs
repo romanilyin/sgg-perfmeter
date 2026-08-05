@@ -262,7 +262,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 		private static string StatusJson(PerfMeterStatusSnapshot status, bool repaintRequested = false)
 		{
 			bool requestedVisible = PerfMeterMcpOverlaySession.GetRequestedVisibility(status);
-			StringBuilder builder = new StringBuilder(768);
+			StringBuilder builder = new StringBuilder(2048);
 			builder.Append("{\"state\":").Append(JsonString(status.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(status.Availability.ToString()));
 			builder.Append(",\"collection_mode\":").Append(JsonString(status.CollectionMode.ToString()));
@@ -275,6 +275,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"application_focused\":").Append(JsonBool(status.ApplicationFocused));
 			builder.Append(",\"application_paused\":").Append(JsonBool(status.ApplicationPaused));
 			builder.Append(",\"bottleneck\":").Append(JsonString(status.Bottleneck.ToString()));
+			AppendSelfOverhead(builder, status.SelfOverhead);
 			builder.Append(",\"available_counters\":").Append(JsonString(status.AvailableCounters.ToString()));
 			builder.Append(",\"unavailable_counters\":").Append(JsonString(status.UnavailableCounters.ToString()));
 			builder.Append(",\"overlay_visible\":").Append(JsonBool(status.OverlayVisible));
@@ -572,6 +573,45 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			builder.Append(']');
+		}
+
+		private static void AppendSelfOverhead(StringBuilder builder, PerfMeterSelfOverheadSnapshot selfOverhead)
+		{
+			builder.Append(",\"self_overhead\":{");
+			builder.Append("\"state\":").Append(JsonString(selfOverhead.State.ToString()));
+			builder.Append(",\"cpu_timing_available\":").Append(JsonBool(selfOverhead.CpuTimingAvailable));
+			builder.Append(",\"gpu_timing_availability\":").Append(JsonString(selfOverhead.GpuTimingAvailability.ToString()));
+			builder.Append(",\"has_budget_violation\":").Append(JsonBool(selfOverhead.HasBudgetViolation));
+			builder.Append(",\"collector\":");
+			AppendSelfOverheadComponent(builder, selfOverhead.Collector);
+			builder.Append(",\"custom_metric_providers\":");
+			AppendSelfOverheadComponent(builder, selfOverhead.CustomMetricProviders);
+			builder.Append(",\"cpu_core_provider\":");
+			AppendSelfOverheadComponent(builder, selfOverhead.CpuCoreProvider);
+			builder.Append(",\"overlay\":");
+			AppendSelfOverheadComponent(builder, selfOverhead.Overlay);
+			builder.Append(",\"urp_render_integration\":");
+			AppendSelfOverheadComponent(builder, selfOverhead.UrpRenderIntegration);
+			builder.Append(",\"hdrp_render_integration\":");
+			AppendSelfOverheadComponent(builder, selfOverhead.HdrpRenderIntegration);
+			builder.Append('}');
+		}
+
+		private static void AppendSelfOverheadComponent(StringBuilder builder, PerfMeterSelfOverheadComponentSnapshot component)
+		{
+			builder.Append("{\"component\":").Append(JsonString(component.Component.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(component.State.ToString()));
+			builder.Append(",\"window_frame_count\":").Append(component.WindowFrameCount);
+			builder.Append(",\"invocation_count\":").Append(component.InvocationCount);
+			builder.Append(",\"average_cpu_time_ms\":").Append(JsonNumber(component.AverageCpuTimeMs));
+			builder.Append(",\"max_cpu_time_ms\":").Append(JsonNumber(component.MaxCpuTimeMs));
+			builder.Append(",\"allocated_bytes\":").Append(component.AllocatedBytes);
+			builder.Append(",\"average_allocated_bytes\":").Append(JsonNumber(component.AverageAllocatedBytes));
+			builder.Append(",\"cpu_budget_ms\":").Append(JsonNumber(component.CpuBudgetMs));
+			builder.Append(",\"allocation_budget_bytes\":").Append(component.AllocationBudgetBytes);
+			builder.Append(",\"cpu_budget_state\":").Append(JsonString(component.CpuBudgetState.ToString()));
+			builder.Append(",\"allocation_budget_state\":").Append(JsonString(component.AllocationBudgetState.ToString()));
+			builder.Append('}');
 		}
 
 		private static void AppendOverlayModules(StringBuilder builder, PerfMeterOverlayModule modules)

@@ -46,6 +46,27 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Counter availability는 `AvailableCounters`, `UnavailableCounters`, warnings를 통해 노출됩니다.
 
+## Self-Observability And Overhead Budgets
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability는 고정 120-frame window에서 CPU callback cost를 low-overhead로 측정합니다. Average는 invocation 기준입니다. 전체 state는 `NotInitialized`, `Collecting`, `Ready`이고 component state는 `NotMeasured`, `Collecting`, `Ready`, `Unsupported`입니다.
+
+Component는 `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, `HdrpRenderIntegration`입니다. 각 component는 window/invocation count, average/maximum CPU milliseconds, total/average allocated bytes, budget 및 `NotEvaluated`/`WithinBudget`/`Exceeded` state를 노출합니다.
+
+| Component | CPU budget | Allocation budget |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+GPU self-timing은 명시적으로 `Unavailable`입니다. 이 diagnostics는 기존 CPU/GPU metrics에서 overhead를 빼거나 값을 조정하지 않습니다.
+
 ## Dynamic Profiler Metric Catalog
 
 ```csharp

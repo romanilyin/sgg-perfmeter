@@ -37,6 +37,14 @@ L'obiettivo e un output JSON strutturato per agent, invece di parsing di screens
 | `perfmeter.session.summary` | Legge il riepilogo della sessione corrente. |
 | `perfmeter.session.export` | Esporta la sessione corrente in JSON o CSV locale al progetto. |
 
+## Self-Overhead Nello Stato Runtime
+
+`perfmeter.runtime.status` include l'oggetto additivo `self_overhead`; non e un comando separato. Le chiavi principali sono `state`, `cpu_timing_available`, `gpu_timing_availability` e `has_budget_violation`.
+
+Gli oggetti componente sono `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` e `hdrp_render_integration`. Ognuno contiene `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` e `allocation_budget_state`.
+
+I valori descrivono finestre fisse di 120 frame per callback CPU con medie per invocazione. L'attribuzione GPU e `Unavailable`; una render integration inattiva e `Unsupported`, mentre un componente supportato senza chiamate e `NotMeasured`. Gli schemi JSON/CSV di sessione non cambiano e le metriche CPU/GPU esistenti non vengono modificate.
+
 ## Esecuzione Di Profiling Tipica
 
 ```text

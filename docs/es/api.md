@@ -46,6 +46,27 @@ Grupos clave de métricas:
 
 La disponibilidad de contadores se expone mediante `AvailableCounters`, `UnavailableCounters` y warnings.
 
+## Self-Observability Y Budgets De Overhead
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability informa mediciones low-overhead del coste de callbacks CPU en ventanas fijas de 120 frames. Los promedios son por invocacion. El estado general es `NotInitialized`, `Collecting` o `Ready`; el estado de componente es `NotMeasured`, `Collecting`, `Ready` o `Unsupported`.
+
+Los componentes son `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` y `HdrpRenderIntegration`. Cada uno expone recuentos de frames e invocaciones, milisegundos CPU medios/maximos, bytes asignados totales/medios, budgets y estados `NotEvaluated`/`WithinBudget`/`Exceeded`.
+
+| Componente | Budget CPU | Budget de asignacion |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+El self-timing de GPU es explicitamente `Unavailable`. Estos diagnostics no restan ni ajustan las metricas CPU/GPU existentes.
+
 ## Catálogo dinámico de métricas del Profiler
 
 ```csharp

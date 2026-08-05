@@ -151,6 +151,7 @@ namespace SGG.PerfMeter
 
 			public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
 			{
+				using PerfMeterSelfObservability.MeasurementScope selfOverheadScope = PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.UrpRenderIntegration);
 				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
 				string cameraName = cameraData.camera != null ? cameraData.camera.name : string.Empty;
 				string cameraType = cameraData.camera != null ? cameraData.camera.cameraType.ToString() : string.Empty;

@@ -51,6 +51,7 @@ namespace SGG.PerfMeter
 
 		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
 		{
+			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.Collector))
 			using (PerfMeterProfilerInstrumentation.CollectMarker.Auto())
 			{
 				return CollectCore(collectionFrame, frameBudgetMs, out frameTimingAvailability, out warning, out frameTimingSampleIgnored);

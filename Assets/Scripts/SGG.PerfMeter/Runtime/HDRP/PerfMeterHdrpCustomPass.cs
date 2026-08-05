@@ -25,6 +25,7 @@ namespace SGG.PerfMeter
 			{
 				return;
 			}
+			using PerfMeterSelfObservability.MeasurementScope selfOverheadScope = PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.HdrpRenderIntegration);
 
 			PerfMeterRenderGraphAnalytics.RecordHdrpCustomPassSnapshot(
 				camera.name,

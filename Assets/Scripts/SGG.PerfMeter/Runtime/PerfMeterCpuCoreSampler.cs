@@ -92,6 +92,7 @@ namespace SGG.PerfMeter
 			}
 
 			_nextSampleTime = unscaledTime + SampleIntervalSeconds;
+			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.CpuCoreProvider))
 			using (PerfMeterProfilerInstrumentation.CpuCoreMarker.Auto())
 			{
 				SampleCoreLoads();

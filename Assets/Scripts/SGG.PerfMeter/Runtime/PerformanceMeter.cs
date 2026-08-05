@@ -71,6 +71,12 @@ namespace SGG.PerfMeter
 			return runtime != null && runtime.RefreshProfilerMetricCatalog();
 		}
 
+		public static PerfMeterSelfOverheadSnapshot GetSelfOverhead()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.SelfOverhead : PerfMeterSelfOverheadSnapshot.NotInitialized;
+		}
+
 		public static PerfMeterAlertSnapshot[] GetLatestAlerts()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -650,6 +656,7 @@ namespace SGG.PerfMeter
 		internal static PerfMeterCustomMetricSnapshot[] Collect()
 		{
 			PerfMeterCustomMetricSnapshot[] metrics;
+			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.CustomMetricProviders))
 			using (PerfMeterProfilerInstrumentation.CustomMetricsMarker.Auto())
 			{
 				metrics = CollectCore();

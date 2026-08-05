@@ -94,7 +94,13 @@ The instrumentation is internal and visible only while profiling the Editor, a D
 
 - Markers cover collection/frame timing (`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), providers (`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture (`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`), and JSON/CSV export (`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`). `SGG.PerfMeter.Thermal.Sample` is a reserved internal provider hook.
 - Counters cover CPU/GPU frame times (`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`) as end-of-frame gauges in nanoseconds. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive`, and `SGG.PerfMeter.Thermal.Available` encode availability/active state as `0`/`1`; `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState`, and `SGG.PerfMeter.Capture.OverdrawState` use enum codes; `SGG.PerfMeter.Provider.CustomMetricCount` is a count. Counters use the `Scripts` category and `FlushOnEndOfFrame`.
-- No synthetic thermal sample is emitted; `SGG.PerfMeter.Thermal.Available` remains `0`/unavailable until a real platform provider supplies data. Instrumentation records internal scopes/values only, does not subtract overhead, and does not publish budgets; overhead publication, accounting, and budgets are separate future functionality.
+- No synthetic thermal sample is emitted; `SGG.PerfMeter.Thermal.Available` remains `0`/unavailable until a real platform provider supplies data.
+
+## Self-Observability And Overhead Budgets
+
+Use `PerformanceMeter.GetSelfOverhead()` or `PerformanceMeter.GetStatus().SelfOverhead` to inspect diagnostic CPU callback cost and allocations for collector, custom providers, CPU-core provider, overlay, and URP/HDRP integration. Measurements use fixed 120-frame windows, per-invocation averages, and component-specific CPU/allocation budgets.
+
+The inactive render integration reports `Unsupported`; a supported component without calls reports `NotMeasured`; GPU self-timing reports `Unavailable`. Accounting is diagnostic only: PerfMeter does not subtract overhead from or otherwise adjust existing CPU/GPU metrics.
 
 ## Agent Automation
 

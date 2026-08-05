@@ -72,11 +72,17 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
+			PerfMeterSelfOverheadSnapshot selfOverhead = PerformanceMeter.GetSelfOverhead();
 			Assert.That(status.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(metrics.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(status.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(metrics.CollectionFrame, Is.GreaterThanOrEqualTo(0));
 			Assert.That(metrics.FrameSampleCount, Is.GreaterThanOrEqualTo(1));
+			Assert.That(selfOverhead.State, Is.EqualTo(PerfMeterSelfOverheadState.Collecting));
+			Assert.That(selfOverhead.CpuTimingAvailable, Is.True);
+			Assert.That(selfOverhead.GpuTimingAvailability, Is.EqualTo(PerfMeterAvailability.Unavailable));
+			Assert.That(selfOverhead.Collector.InvocationCount, Is.GreaterThanOrEqualTo(1));
+			Assert.That(status.SelfOverhead.Collector.InvocationCount, Is.GreaterThanOrEqualTo(1));
 			PerfMeterAlertHistorySnapshot alertHistory = PerformanceMeter.GetAlertHistory();
 			Assert.That(alertHistory.IntervalId, Is.Not.Empty);
 			Assert.That(alertHistory.ResetReason, Is.EqualTo(PerfMeterAlertHistoryResetReason.RulesChanged));

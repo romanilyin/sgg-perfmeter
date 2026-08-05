@@ -46,6 +46,27 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Counter availability は `AvailableCounters`、`UnavailableCounters`、warnings で公開されます。
 
+## Self-Observability And Overhead Budgets
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability は、固定 120-frame window で CPU callback cost を low-overhead に計測します。average は invocation 単位です。全体 state は `NotInitialized`、`Collecting`、`Ready`、component state は `NotMeasured`、`Collecting`、`Ready`、`Unsupported` です。
+
+Components は `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Overlay`、`UrpRenderIntegration`、`HdrpRenderIntegration` です。各 component は window/invocation count、average/maximum CPU milliseconds、total/average allocated bytes、budget、`NotEvaluated`/`WithinBudget`/`Exceeded` state を公開します。
+
+| Component | CPU budget | Allocation budget |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+GPU self-timing は明示的に `Unavailable` です。これらの diagnostics は既存の CPU/GPU metrics から overhead を差し引かず、値を補正しません。
+
 ## Dynamic Profiler Metric Catalog
 
 ```csharp

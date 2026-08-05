@@ -37,6 +37,14 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.summary` | current session summary를 읽습니다. |
 | `perfmeter.session.export` | current session을 project-local JSON 또는 CSV로 export합니다. |
 
+## Runtime Self-Overhead Payload
+
+`perfmeter.runtime.status`는 additive `self_overhead` object를 포함하며 별도 command가 아닙니다. Top-level key는 `state`, `cpu_timing_available`, `gpu_timing_availability`, `has_budget_violation`입니다.
+
+Component object는 `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration`, `hdrp_render_integration`입니다. 각각 `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state`, `allocation_budget_state`를 포함합니다.
+
+값은 고정 120-frame CPU callback window와 invocation 기준 average를 나타냅니다. GPU attribution은 `Unavailable`, inactive render integration은 `Unsupported`, 호출되지 않은 supported component는 `NotMeasured`입니다. Session JSON/CSV schema는 변경되지 않으며 기존 CPU/GPU metrics도 조정하지 않습니다.
+
 ## 일반적인 Profiling Run
 
 ```text

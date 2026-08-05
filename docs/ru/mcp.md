@@ -37,6 +37,14 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.summary` | Прочитать summary текущей сессии. |
 | `perfmeter.session.export` | Экспортировать текущую сессию в project-local JSON или CSV. |
 
+## Self-overhead в runtime status
+
+`perfmeter.runtime.status` содержит additive-объект `self_overhead`; это не отдельная команда. Верхний уровень: `state`, `cpu_timing_available`, `gpu_timing_availability` и `has_budget_violation`.
+
+Объекты компонентов: `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` и `hdrp_render_integration`. Каждый содержит `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` и `allocation_budget_state`.
+
+Значения описывают фиксированные окна CPU callbacks по 120 кадров со средними на один вызов. GPU attribution имеет значение `Unavailable`; неактивная render integration — `Unsupported`, а поддерживаемый компонент без вызовов — `NotMeasured`. Схемы session JSON/CSV не меняются, существующие CPU/GPU-метрики не корректируются.
+
 ## Типичный прогон профилирования
 
 ```text
