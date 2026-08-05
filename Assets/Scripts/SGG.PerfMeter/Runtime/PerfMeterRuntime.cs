@@ -54,6 +54,7 @@ namespace SGG.PerfMeter
 		internal static PerfMeterRuntime Instance => _instance;
 		internal PerfMeterStatusSnapshot Status => _status;
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
+		internal PerfMeterProfilerMetricCatalogSnapshot ProfilerMetricCatalog => _collector.GetProfilerMetricCatalog();
 		internal bool IsOverlayVisible => IsRuntimeOverlaySupported && _overlay != null && _overlay.IsVisible;
 		internal PerfMeterOverlayCorner OverlayCorner => _overlayCorner;
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
@@ -72,6 +73,13 @@ namespace SGG.PerfMeter
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
 		internal static PerfMeterOverdrawMeasurementState OverdrawState => _instance != null ? _instance._overdrawController.State : PerfMeterOverdrawMeasurementState.Off;
+
+		internal bool RefreshProfilerMetricCatalog()
+		{
+			bool refreshed = _collector.RefreshProfilerMetricCatalog();
+			RefreshStatusOverlayState();
+			return refreshed;
+		}
 
 		internal static void EnsureRunning()
 		{
@@ -1159,7 +1167,7 @@ namespace SGG.PerfMeter
 				GetCollectionMode(),
 				_status.FrameTimingAvailability,
 				CombineWarnings(CombineWarnings(_lastCollectorWarning, _overdrawController.Warning), GetCpuCoreWarning()),
-				_status.LastError,
+				_collector.LastError,
 				_status.Bottleneck,
 				GetAvailableCounters(),
 				GetUnavailableCounters(),

@@ -90,6 +90,7 @@ Custom metrics는 API reads, session JSON export, MCP latest metrics, 그리고 
 일반적인 MCP 기반 run은 다음과 같습니다.
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}
@@ -98,3 +99,5 @@ perfmeter.session.summary {}
 perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
+
+`perfmeter.profiler.capabilities {}`는 cache된 state를 읽기만 하며 runtime을 시작하거나 discovery를 수행하지 않습니다.

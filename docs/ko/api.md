@@ -46,6 +46,16 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Counter availability는 `AvailableCounters`, `UnavailableCounters`, warnings를 통해 노출됩니다.
 
+## Dynamic Profiler Metric Catalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` 및 `GetProfilerMetricCapabilities()`는 cache된 catalog를 읽습니다. Catalog state는 `NotInitialized`, `Ready`, `Error`이며, 각 capability는 `Unavailable`, `AvailableNoSample`, `AvailableSampled`를 보고하고 `Resolution`은 `None`, `Exact`, `Alias` provenance를 나타냅니다. Discovery는 runtime startup 및 명시적 refresh/reconfigure에서만 수행되며 steady-state collection 중에는 수행되지 않습니다. 기존 numeric metrics는 compatibility values로 유지되므로 availability의 authoritative signal로 capability의 `SampleState`/`IsAvailable`를 사용합니다.
+
 ## Structured Snapshots
 
 ```csharp

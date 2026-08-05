@@ -446,6 +446,109 @@ namespace SGG.PerfMeter
 		CpuCoreLoad = 1 << 11
 	}
 
+	public enum PerfMeterProfilerMetricSemantic
+	{
+		DrawCalls = 0,
+		SetPassCalls = 1,
+		Batches = 2,
+		Vertices = 3,
+		SrpBatcherInstances = 4,
+		BrgDrawCalls = 5,
+		BrgInstances = 6,
+		IndexBufferUploadInFrameBytes = 7,
+		SystemUsedMemory = 8,
+		GcReservedMemory = 9,
+		GpuMemory = 10
+	}
+
+	public enum PerfMeterProfilerMetricSampleState
+	{
+		Unavailable = 0,
+		AvailableNoSample = 1,
+		AvailableSampled = 2
+	}
+
+	public enum PerfMeterProfilerMetricResolution
+	{
+		None = 0,
+		Exact = 1,
+		Alias = 2
+	}
+
+	public enum PerfMeterProfilerMetricCatalogState
+	{
+		NotInitialized = 0,
+		Ready = 1,
+		Error = 2
+	}
+
+	public readonly struct PerfMeterProfilerMetricCapabilitySnapshot
+	{
+		public PerfMeterProfilerMetricCapabilitySnapshot(
+			PerfMeterProfilerMetricSemantic semantic,
+			PerfMeterProfilerMetricSampleState sampleState,
+			PerfMeterProfilerMetricResolution resolution,
+			string category,
+			string resolvedRecorderNames,
+			string unit,
+			string dataType,
+			int resolvedComponentCount,
+			int sampledComponentCount)
+		{
+			Semantic = semantic;
+			SampleState = sampleState;
+			Resolution = resolution;
+			Category = category ?? string.Empty;
+			ResolvedRecorderNames = resolvedRecorderNames ?? string.Empty;
+			Unit = unit ?? string.Empty;
+			DataType = dataType ?? string.Empty;
+			ResolvedComponentCount = Mathf.Max(0, resolvedComponentCount);
+			SampledComponentCount = Mathf.Clamp(sampledComponentCount, 0, ResolvedComponentCount);
+		}
+
+		public bool IsAvailable => SampleState != PerfMeterProfilerMetricSampleState.Unavailable;
+		public PerfMeterProfilerMetricSemantic Semantic { get; }
+		public PerfMeterProfilerMetricSampleState SampleState { get; }
+		public PerfMeterProfilerMetricResolution Resolution { get; }
+		public string Category { get; }
+		public string ResolvedRecorderNames { get; }
+		public string Unit { get; }
+		public string DataType { get; }
+		public int ResolvedComponentCount { get; }
+		public int SampledComponentCount { get; }
+	}
+
+	public readonly struct PerfMeterProfilerMetricCatalogSnapshot
+	{
+		public PerfMeterProfilerMetricCatalogSnapshot(
+			PerfMeterProfilerMetricCatalogState state,
+			int revision,
+			int discoveryCount,
+			PerfMeterProfilerMetricCapabilitySnapshot[] capabilities,
+			string lastError)
+		{
+			State = state;
+			Revision = Mathf.Max(0, revision);
+			DiscoveryCount = Mathf.Max(0, discoveryCount);
+			Capabilities = capabilities ?? System.Array.Empty<PerfMeterProfilerMetricCapabilitySnapshot>();
+			LastError = lastError ?? string.Empty;
+		}
+
+		public static PerfMeterProfilerMetricCatalogSnapshot NotInitialized => new PerfMeterProfilerMetricCatalogSnapshot(
+			PerfMeterProfilerMetricCatalogState.NotInitialized,
+			0,
+			0,
+			System.Array.Empty<PerfMeterProfilerMetricCapabilitySnapshot>(),
+			string.Empty);
+
+		public bool IsReady => State == PerfMeterProfilerMetricCatalogState.Ready;
+		public PerfMeterProfilerMetricCatalogState State { get; }
+		public int Revision { get; }
+		public int DiscoveryCount { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot[] Capabilities { get; }
+		public string LastError { get; }
+	}
+
 	public readonly struct PerfMeterStatusSnapshot
 	{
 		public PerfMeterStatusSnapshot(

@@ -90,6 +90,7 @@ Custom metrics 会通过 API reads、session JSON export、MCP latest metrics �
 典型 MCP-driven run：
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}
@@ -98,3 +99,5 @@ perfmeter.session.summary {}
 perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
+
+`perfmeter.profiler.capabilities {}` 是缓存读取；不会启动 runtime，也不会执行 discovery。

@@ -54,6 +54,23 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.LatestMetrics : PerfMeterMetricsSnapshot.Stopped;
 		}
 
+		public static PerfMeterProfilerMetricCatalogSnapshot GetProfilerMetricCatalog()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.ProfilerMetricCatalog : PerfMeterProfilerMetricCatalogSnapshot.NotInitialized;
+		}
+
+		public static PerfMeterProfilerMetricCapabilitySnapshot[] GetProfilerMetricCapabilities()
+		{
+			return GetProfilerMetricCatalog().Capabilities;
+		}
+
+		public static bool TryRefreshProfilerMetricCatalog()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.RefreshProfilerMetricCatalog();
+		}
+
 		public static PerfMeterAlertSnapshot[] GetLatestAlerts()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;

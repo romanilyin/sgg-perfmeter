@@ -20,6 +20,7 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | `perfmeter.runtime.reset_stats` | Rolling stats, alert counters und aktive Session-Counter zuruecksetzen. |
 | `perfmeter.runtime.mode.set` | `Stopped`, `Background`, `Overlay` oder `OverdrawDiagnostic` setzen. |
 | `perfmeter.metrics.latest` | Latest metrics inklusive custom metrics lesen. |
+| `perfmeter.profiler.capabilities` | Gecachte Profiler-Metrik-Capabilities und Aufloesungs-Provenienz lesen, ohne Runtime oder Discovery zu starten. |
 | `perfmeter.alerts.latest` | Aktive alerts, counters und Editor warning state lesen. |
 | `perfmeter.alerts.clear` | Aktive alerts, counters und cooldown state loeschen. |
 | `perfmeter.alerts.capture.begin` | Begrenzte Klassifizierung fuer eine externe Aufnahme starten. |
@@ -39,6 +40,7 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 ## Typischer Profiling-Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

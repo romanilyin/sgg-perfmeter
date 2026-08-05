@@ -20,6 +20,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.reset_stats` | 重置 rolling stats、alert counters 和 active session counters。 |
 | `perfmeter.runtime.mode.set` | 切换 `Stopped`、`Background`、`Overlay` 或 `OverdrawDiagnostic`。 |
 | `perfmeter.metrics.latest` | 读取 latest metrics，包括 custom metrics。 |
+| `perfmeter.profiler.capabilities` | 读取缓存的 Profiler metric capabilities 和 provenance，不启动 runtime 或 discovery。 |
 | `perfmeter.alerts.latest` | 读取 active alerts、counters 和 Editor warning state。 |
 | `perfmeter.alerts.clear` | 清除 active alerts、counters 和 cooldown state。 |
 | `perfmeter.alerts.capture.begin` | 开始外部 capture 的 bounded classification。 |
@@ -39,6 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 ## 典型 Profiling Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

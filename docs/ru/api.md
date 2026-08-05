@@ -46,6 +46,16 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Доступность счетчиков видна через `AvailableCounters`, `UnavailableCounters` и warnings.
 
+## Динамический каталог Profiler-метрик
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` и `GetProfilerMetricCapabilities()` читают кэшированный каталог. Состояние каталога — `NotInitialized`, `Ready` или `Error`; каждая capability сообщает `Unavailable`, `AvailableNoSample` или `AvailableSampled`, а `Resolution` указывает provenance `None`, `Exact` или `Alias`. Discovery выполняется только при старте runtime и в явных путях refresh/reconfigure, но не при steady-state collection. Существующие numeric metrics сохраняют compatibility values; authoritative availability определяется по `SampleState`/`IsAvailable` capability.
+
 ## Структурированные снимки
 
 ```csharp

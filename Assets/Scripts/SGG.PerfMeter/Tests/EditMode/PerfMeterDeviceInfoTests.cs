@@ -63,6 +63,27 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void ProfilerCapabilitiesMcpCommandIsReadOnlyAndDoesNotStartRuntime()
+		{
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
+			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.profiler.capabilities\""));
+			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.ProfilerCapabilities"));
+			Assert.That(metadata, Does.Contain("Read the cached ProfilerRecorder metric catalog"));
+			Assert.That(metadata, Does.Contain("\"risk\": \"read\""));
+			Assert.That(metadata, Does.Contain("\"idempotency\": \"safe\""));
+
+			string json = PerfMeterMcpCommands.ProfilerCapabilities();
+
+			Assert.That(json, Does.StartWith("{"));
+			Assert.That(json, Does.EndWith("}"));
+			Assert.That(json, Does.Contain("\"state\":\"NotInitialized\""));
+			Assert.That(json, Does.Contain("\"revision\":0"));
+			Assert.That(json, Does.Contain("\"discovery_count\":0"));
+			Assert.That(json, Does.Contain("\"metrics\":[]"));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+		}
+
+		[Test]
 		public void CameraSnapshotMcpCommandDoesNotStartRuntime()
 		{
 			string json = PerfMeterMcpCommands.CameraSnapshot("{}");

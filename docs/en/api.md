@@ -46,6 +46,16 @@ Key metric groups:
 
 Counter availability is exposed through `AvailableCounters`, `UnavailableCounters`, and warnings.
 
+## Dynamic Profiler Metric Catalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` and `GetProfilerMetricCapabilities()` read the cached catalog. The catalog state is `NotInitialized`, `Ready`, or `Error`; each capability reports `Unavailable`, `AvailableNoSample`, or `AvailableSampled`, with `None`, `Exact`, or `Alias` resolution provenance. Discovery runs only at runtime startup and explicit refresh/reconfigure, not during steady-state collection. Existing numeric metrics remain compatibility values; use capability `SampleState`/`IsAvailable` as the authoritative availability signal.
+
 ## Structured Snapshots
 
 ```csharp

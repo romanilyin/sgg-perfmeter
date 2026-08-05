@@ -46,6 +46,16 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Counter availability は `AvailableCounters`、`UnavailableCounters`、warnings で公開されます。
 
+## Dynamic Profiler Metric Catalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` と `GetProfilerMetricCapabilities()` は cache 済み catalog を読み取ります。catalog state は `NotInitialized`、`Ready`、`Error` です。各 capability は `Unavailable`、`AvailableNoSample`、`AvailableSampled` を示し、`Resolution` は provenance `None`、`Exact`、`Alias` を示します。Discovery は runtime startup と明示的な refresh/reconfigure のときだけ実行され、steady-state collection 中には実行されません。既存の numeric metrics は compatibility values として残るため、availability の authoritative signal には capability の `SampleState`/`IsAvailable` を使用してください。
+
 ## Structured Snapshots
 
 ```csharp

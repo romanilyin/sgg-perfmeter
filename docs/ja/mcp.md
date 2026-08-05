@@ -20,6 +20,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.reset_stats` | rolling stats、alert counters、active session counters をリセットします。 |
 | `perfmeter.runtime.mode.set` | `Stopped`、`Background`、`Overlay`、`OverdrawDiagnostic` を切り替えます。 |
 | `perfmeter.metrics.latest` | custom metrics を含む latest metrics を読み取ります。 |
+| `perfmeter.profiler.capabilities` | cache 済み Profiler metric capabilities と resolution provenance を、runtime や discovery を開始せずに読み取ります。 |
 | `perfmeter.alerts.latest` | active alerts、counters、Editor warning state を読み取ります。 |
 | `perfmeter.alerts.clear` | active alerts、counters、cooldown state をクリアします。 |
 | `perfmeter.alerts.capture.begin` | 外部 capture の bounded classification を開始します。 |
@@ -39,6 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 ## Typical Profiling Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

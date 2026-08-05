@@ -46,6 +46,16 @@ Groupes de metriques principaux:
 
 La disponibilite des compteurs est exposee par `AvailableCounters`, `UnavailableCounters` et les avertissements.
 
+## Catalogue Dynamique Des Metriques Profiler
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` et `GetProfilerMetricCapabilities()` lisent le catalogue en cache. L'etat du catalogue est `NotInitialized`, `Ready` ou `Error`; chaque capability indique `Unavailable`, `AvailableNoSample` ou `AvailableSampled`, et `Resolution` donne la provenance `None`, `Exact` ou `Alias`. La discovery s'effectue uniquement au demarrage du runtime et lors d'un refresh/reconfigure explicite, pas pendant la collecte steady-state. Les valeurs numeriques existantes restent des valeurs de compatibilite; utilisez `SampleState`/`IsAvailable` de la capability comme signal d'autorite pour la disponibilite.
+
 ## Snapshots Structures
 
 ```csharp

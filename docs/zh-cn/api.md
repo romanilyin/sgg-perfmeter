@@ -46,6 +46,16 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Counter availability 通过 `AvailableCounters`、`UnavailableCounters` 和 warnings 暴露。
 
+## Dynamic Profiler Metric Catalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` 和 `GetProfilerMetricCapabilities()` 读取缓存的 catalog。Catalog state 为 `NotInitialized`、`Ready` 或 `Error`；每个 capability 报告 `Unavailable`、`AvailableNoSample` 或 `AvailableSampled`，`Resolution` 表示 `None`、`Exact` 或 `Alias` provenance。Discovery 只在 runtime 启动和显式 refresh/reconfigure 时执行，不会在 steady-state collection 中执行。现有 numeric metrics 仍是 compatibility values；availability 应以 capability 的 `SampleState`/`IsAvailable` 作为 authoritative signal。
+
 ## Structured Snapshots
 
 ```csharp

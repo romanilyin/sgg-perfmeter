@@ -90,6 +90,7 @@ Le custom metrics sono esposte tramite letture API, esportazione sessione JSON, 
 Una tipica esecuzione guidata da MCP:
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}
@@ -98,3 +99,5 @@ perfmeter.session.summary {}
 perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
+
+`perfmeter.profiler.capabilities {}` e una lettura dalla cache; non avvia il runtime e non esegue la discovery.

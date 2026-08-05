@@ -90,6 +90,7 @@ Custom metrics は API reads、session JSON export、MCP latest metrics、`Custo
 典型的な MCP-driven run は次の通りです。
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}
@@ -98,3 +99,5 @@ perfmeter.session.summary {}
 perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
+
+`perfmeter.profiler.capabilities {}` は cache 済み state の read であり、runtime の起動や discovery は行いません。

@@ -20,6 +20,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.reset_stats` | Сбросить rolling stats, счетчики alerts/оповещений и счетчики активной сессии. |
 | `perfmeter.runtime.mode.set` | Переключить `Stopped`, `Background`, `Overlay` или `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Прочитать latest metrics, включая пользовательские метрики. |
+| `perfmeter.profiler.capabilities` | Прочитать кэшированные capabilities и provenance Profiler-метрик без запуска runtime и discovery. |
 | `perfmeter.alerts.latest` | Прочитать активные alerts/оповещения, счетчики и состояние Editor warnings. |
 | `perfmeter.alerts.clear` | Очистить активные alerts/оповещения, счетчики и состояние cooldown. |
 | `perfmeter.alerts.capture.begin` | Начать ограниченную классификацию внешнего capture. |
@@ -39,6 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 ## Типичный прогон профилирования
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

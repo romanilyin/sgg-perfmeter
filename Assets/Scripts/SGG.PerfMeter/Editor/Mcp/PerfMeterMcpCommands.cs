@@ -78,6 +78,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return MetricsJson(RuntimePerformanceMeter.GetLatestMetrics());
 		}
 
+		public static string ProfilerCapabilities()
+		{
+			return ProfilerCapabilitiesJson(RuntimePerformanceMeter.GetProfilerMetricCatalog());
+		}
+
 		public static string AlertsLatest()
 		{
 			return AlertsJson(false);
@@ -509,6 +514,39 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendCustomMetrics(builder, customMetrics);
 			AppendEditorState(builder);
 			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static string ProfilerCapabilitiesJson(PerfMeterProfilerMetricCatalogSnapshot catalog)
+		{
+			PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = catalog.Capabilities;
+			StringBuilder builder = new StringBuilder(2048);
+			builder.Append("{\"state\":").Append(JsonString(catalog.State.ToString()));
+			builder.Append(",\"revision\":").Append(catalog.Revision);
+			builder.Append(",\"discovery_count\":").Append(catalog.DiscoveryCount);
+			builder.Append(",\"last_error\":").Append(JsonString(catalog.LastError));
+			builder.Append(",\"metrics\":[");
+			for (int i = 0; i < capabilities.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				PerfMeterProfilerMetricCapabilitySnapshot capability = capabilities[i];
+				builder.Append("{\"semantic\":").Append(JsonString(capability.Semantic.ToString()));
+				builder.Append(",\"sample_state\":").Append(JsonString(capability.SampleState.ToString()));
+				builder.Append(",\"resolution\":").Append(JsonString(capability.Resolution.ToString()));
+				builder.Append(",\"category\":").Append(JsonString(capability.Category));
+				builder.Append(",\"resolved_recorder_names\":").Append(JsonString(capability.ResolvedRecorderNames));
+				builder.Append(",\"unit\":").Append(JsonString(capability.Unit));
+				builder.Append(",\"data_type\":").Append(JsonString(capability.DataType));
+				builder.Append(",\"resolved_component_count\":").Append(capability.ResolvedComponentCount);
+				builder.Append(",\"sampled_component_count\":").Append(capability.SampledComponentCount);
+				builder.Append('}');
+			}
+
+			builder.Append("]}");
 			return builder.ToString();
 		}
 

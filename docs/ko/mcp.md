@@ -20,6 +20,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.reset_stats` | rolling stats, alert counters, active session counters를 reset합니다. |
 | `perfmeter.runtime.mode.set` | `Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic` 중 하나로 전환합니다. |
 | `perfmeter.metrics.latest` | custom metrics를 포함한 latest metrics를 읽습니다. |
+| `perfmeter.profiler.capabilities` | cache된 Profiler metric capabilities와 provenance를 읽으며 runtime이나 discovery를 시작하지 않습니다. |
 | `perfmeter.alerts.latest` | active alerts, counters, Editor warning state를 읽습니다. |
 | `perfmeter.alerts.clear` | active alerts, counters, cooldown state를 지웁니다. |
 | `perfmeter.alerts.capture.begin` | 외부 capture의 bounded classification을 시작합니다. |
@@ -39,6 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 ## 일반적인 Profiling Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

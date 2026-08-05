@@ -20,6 +20,7 @@ L'obiettivo e un output JSON strutturato per agent, invece di parsing di screens
 | `perfmeter.runtime.reset_stats` | Reimposta rolling stats, contatori alert e contatori della sessione attiva. |
 | `perfmeter.runtime.mode.set` | Passa a `Stopped`, `Background`, `Overlay` o `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Legge le metriche piu recenti, incluse le custom metrics. |
+| `perfmeter.profiler.capabilities` | Legge le capability e la provenienza di risoluzione delle metriche Profiler in cache senza avviare il runtime o la discovery. |
 | `perfmeter.alerts.latest` | Legge alert attivi, contatori e stato degli avvisi Editor. |
 | `perfmeter.alerts.clear` | Cancella alert attivi, contatori e stato cooldown. |
 | `perfmeter.alerts.capture.begin` | Avvia la classificazione limitata di una cattura esterna. |
@@ -39,6 +40,7 @@ L'obiettivo e un output JSON strutturato per agent, invece di parsing di screens
 ## Esecuzione Di Profiling Tipica
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

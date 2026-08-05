@@ -250,6 +250,53 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator ProfilerMetricCatalogDiscoversOnceAcrossFramesAndRefreshesExplicitly()
+		{
+			PerformanceMeter.EnsureRunning();
+			yield return null;
+
+			PerfMeterProfilerMetricCatalogSnapshot initial = PerformanceMeter.GetProfilerMetricCatalog();
+			Assert.That(initial.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.Ready));
+			Assert.That(initial.Capabilities, Has.Length.EqualTo(11));
+			Assert.That(initial.DiscoveryCount, Is.GreaterThanOrEqualTo(1));
+			Assert.That(initial.Revision, Is.GreaterThanOrEqualTo(1));
+			initial.Capabilities[0] = default;
+			Assert.That(
+				PerformanceMeter.GetProfilerMetricCatalog().Capabilities[0].Semantic,
+				Is.EqualTo(PerfMeterProfilerMetricSemantic.DrawCalls));
+
+			for (int frame = 0; frame < 3; frame++)
+			{
+				yield return null;
+				PerfMeterProfilerMetricCatalogSnapshot repeated = PerformanceMeter.GetProfilerMetricCatalog();
+				Assert.That(repeated.DiscoveryCount, Is.EqualTo(initial.DiscoveryCount));
+				Assert.That(repeated.Revision, Is.EqualTo(initial.Revision));
+			}
+
+			Assert.That(PerformanceMeter.TryRefreshProfilerMetricCatalog(), Is.True);
+			PerfMeterProfilerMetricCatalogSnapshot refreshed = PerformanceMeter.GetProfilerMetricCatalog();
+			Assert.That(refreshed.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.Ready));
+			Assert.That(refreshed.DiscoveryCount, Is.EqualTo(initial.DiscoveryCount + 1));
+			Assert.That(refreshed.Revision, Is.EqualTo(initial.Revision + 1));
+			Assert.That(refreshed.Capabilities, Has.Length.EqualTo(11));
+
+			GameObject runtimeObject = GameObject.Find(RuntimeObjectName);
+			Assert.That(runtimeObject, Is.Not.Null);
+			runtimeObject.SetActive(false);
+			yield return null;
+			PerfMeterProfilerMetricCatalogSnapshot disabled = PerformanceMeter.GetProfilerMetricCatalog();
+			Assert.That(disabled.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.NotInitialized));
+			Assert.That(disabled.Capabilities, Is.Empty);
+
+			runtimeObject.SetActive(true);
+			yield return null;
+			PerfMeterProfilerMetricCatalogSnapshot reenabled = PerformanceMeter.GetProfilerMetricCatalog();
+			Assert.That(reenabled.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.Ready));
+			Assert.That(reenabled.DiscoveryCount, Is.EqualTo(1));
+			Assert.That(reenabled.Revision, Is.EqualTo(1));
+		}
+
+		[UnityTest]
 		public IEnumerator OverdrawRequestReportsTerminalOrActionableWaitingState()
 		{
 			PerformanceMeter.EnsureRunning();
