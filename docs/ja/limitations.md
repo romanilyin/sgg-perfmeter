@@ -36,7 +36,7 @@ HDRP を含む unsupported targets は warnings とともに `OverdrawState.Unsu
 
 ## Overlay Cost
 
-overlay は allocation-conscious かつ throttled ですが、変化する numeric values と graph labels は refresh interval で managed strings を materialize する場合があります。heavy visual diagnostics と graph modes は target devices で検証してください。
+overlay には 2 つの UI Toolkit backend path があります。Unity `6000.4` では owned `UIDocument` host、Unity `6000.5+` では owned `PanelRenderer` host を使用します。host は foreign UI の panel settings と children を保持し、PerfMeter が所有する container だけを rebuild します。numeric values は stable reserved numeric slots と numeric monospace role を使用します。`FpsOnly` は 1 行に収まらない場合に deterministic な bounded two-row fallback を使用し、cards と bars は狭い logical widths で wrap します。これは clipping のリスクを下げますが、任意の resolution や scale を保証するものではありません。heavy visual diagnostics、graph modes、最終 layout は target devices で検証してください。
 
 ## Validation Status
 

@@ -14,7 +14,7 @@ SGG PerfMeter는 의도적으로 더 좁고 진단 중심입니다. Unity `6000.
 | --- | --- | --- | --- |
 | 주요 포지셔닝 | 🔵 URP Render Graph / HDRP Custom Pass diagnostics + automation-ready profiling API | ⚠️ flexible in-game FPS/memory/device counter | ⚠️ visual FPS/memory/audio stats monitor + debugger |
 | Unity target | ⚠️ Unity `6000.4+`, URP `17.4+` / HDRP `17.4+` | 🔵 넓은 older Unity support | 🔵 넓은 older Unity support |
-| UI backend | 🔵 UI Toolkit overlay | ⚠️ uGUI Canvas/Text labels | ⚠️ uGUI Text/Image modules |
+| UI backend | 🔵 PerfMeter 소유 UI Toolkit host: Unity `6000.4`의 `UIDocument`; Unity `6000.5+`의 `PanelRenderer` | ⚠️ uGUI Canvas/Text labels | ⚠️ uGUI Text/Image modules |
 | Timing source | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Runtime frame/update sampling | ⚠️ `Time.unscaledDeltaTime` history sampling |
 | CPU/GPU split | 🔵 사용 가능한 경우 CPU frame, main thread, render thread, present wait, GPU | 🛑 동등한 split 없음 | 🛑 동등한 split 없음 |
 | Bottleneck classification | 🔵 GPU, CPU main, CPU render, present-limited, balanced, unknown | 🛑 동등한 기능 없음 | 🛑 동등한 기능 없음 |

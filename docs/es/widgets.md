@@ -45,3 +45,5 @@ El layout predeterminado `MetricBars` renderiza filas compactas para categorías
 
 - Los presets pueden activar un subconjunto de estos widgets y elegir un layout como `MetricBars`, `CompactCards`, `Graphs` o `DiagnosticsWide`.
 - Las filas de texto y metric-bar son renderers de menor nivel detrás del sistema de layouts y exponen versiones textuales de los mismos grupos de métricas que pueden aparecer como tarjetas, barras de budget o gráficos en otros layouts.
+- Los valores numéricos usan numeric slots reservados estables y un numeric monospace role, de modo que los cambios de valor no desplazan las columnas; las etiquetas conservan la fuente seleccionada del overlay.
+- Con logical widths estrechas, las tarjetas y metric bars hacen wrap. `FpsOnly` usa un fallback determinista y acotado de dos filas cuando una sola fila no cabe; esto no promete una presentación para todas las resoluciones o escalas arbitrarias.

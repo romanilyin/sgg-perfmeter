@@ -14,6 +14,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 overlay는 UI Toolkit을 사용하며 gameplay input을 가로채지 않습니다. FPS-only, compact text, graph, full diagnostics, metric bars, visual themes, module filters, CPU/GPU graphs, CPU core widgets, 제한된 custom metric rows를 지원합니다.
 
+PerfMeter는 overlay를 위해 versioned UI Toolkit host를 생성하고 소유합니다. Unity `6000.4`에서는 `UIDocument`, Unity `6000.5+`에서는 `PanelRenderer`를 사용합니다. 이 owned host는 foreign UI와 분리되며 foreign UI의 panel settings와 children을 보존합니다. rebuild에서는 PerfMeter가 소유한 container만 제거합니다.
+
 ## Background Collection
 
 보이는 UI가 필요 없는 test, device run, agent workflow에는 background mode를 사용합니다.
@@ -48,7 +50,7 @@ PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
-Editor warning은 cooldown으로 throttled되며 JSON settings 또는 runtime control을 통해 비활성화할 수 있습니다.
+Editor warning은 cooldown으로 throttled되며 JSON settings 또는 runtime control을 통해 비활성화할 수 있습니다. Structured alert log와 Editor warning은 서로 독립적입니다. `PerformanceMeter.SetStructuredLogsEnabled(false)`는 structured alert의 `Debug.Log` 출력만 억제하고, `PerformanceMeter.SetEditorWarningLogsEnabled(false)`는 Editor warning log를 별도로 제어합니다. callback, alert/history, overlay warning, session은 계속 활성 상태입니다.
 
 ## Overdraw Diagnostics
 

@@ -36,7 +36,7 @@ HDRP를 포함한 지원되지 않는 target은 warnings와 함께 `OverdrawStat
 
 ## Overlay 비용
 
-overlay는 allocation-conscious이며 throttled되지만, 변경된 numeric value와 graph label은 refresh interval마다 managed string을 만들 수 있습니다. 무거운 visual diagnostics 및 graph mode는 target device에서 검증해야 합니다.
+overlay에는 두 가지 UI Toolkit backend path가 있습니다. Unity `6000.4`에서는 owned `UIDocument` host를, Unity `6000.5+`에서는 owned `PanelRenderer` host를 사용합니다. host는 foreign UI의 panel settings와 children을 보존하며 PerfMeter가 소유한 container만 rebuild합니다. numeric value는 stable reserved numeric slot과 numeric monospace role을 사용합니다. `FpsOnly`는 한 줄에 들어가지 않을 때 deterministic bounded two-row fallback을 사용하고, card와 bar는 좁은 logical width에서 wrap됩니다. 이는 clipping 위험을 줄이지만 임의의 모든 resolution이나 scale을 보장하지 않으므로, heavy visual diagnostics, graph mode 및 최종 layout은 target device에서 검증해야 합니다.
 
 ## Validation Status
 

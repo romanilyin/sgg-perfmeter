@@ -37,7 +37,8 @@ Usa questa checklist quando PerfMeter non mostra i dati attesi.
 
 - Regola soglie e finestre consecutive-frame nelle impostazioni JSON.
 - Aumenta i cooldown degli avvisi Editor.
-- Disabilita i log di avviso Editor quando callback o log strutturati sono sufficienti.
+- Disabilita i log degli alert strutturati con `PerformanceMeter.SetStructuredLogsEnabled(false)` quando bastano callback, dati alerts/history, avvisi dell'overlay e sessioni; questo sopprime solo l'output `Debug.Log` degli alert strutturati.
+- Disabilita separatamente i log di avviso Editor con `PerformanceMeter.SetEditorWarningLogsEnabled(false)`; i toggle per structured logs e avvisi Editor sono indipendenti.
 
 ## I Dati Sembrano Diversi Tra Dispositivi
 

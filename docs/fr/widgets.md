@@ -45,3 +45,5 @@ La disposition `MetricBars` par defaut rend des lignes compactes pour les catego
 
 - Les presets peuvent activer un sous-ensemble de ces widgets et choisir une disposition comme `MetricBars`, `CompactCards`, `Graphs` ou `DiagnosticsWide`.
 - Les lignes textuelles et les lignes de barres de metriques sont des renderers de plus bas niveau derriere le systeme de disposition et exposent des versions textuelles des memes groupes de metriques qui peuvent apparaitre comme cartes, barres de budget ou graphes dans d'autres dispositions.
+- Les valeurs numeriques utilisent des numeric slots reserves et stables ainsi qu'un numeric monospace role, afin que les changements de valeur ne deplacent pas les colonnes ; les labels conservent la police selectionnee de l'overlay.
+- Avec des logical widths etroites, les cartes et les metric bars passent a la ligne. `FpsOnly` utilise un fallback deterministe et borne a deux lignes lorsqu'une seule ligne ne tient pas ; cela ne promet pas un affichage pour toutes les resolutions ou echelles arbitraires.

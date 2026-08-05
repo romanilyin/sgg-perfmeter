@@ -102,8 +102,12 @@ Session options には warm-up frames/seconds、sample interval、maximum sample
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] alerts = PerformanceMeter.GetLatestAlerts();
 PerformanceMeter.ClearAlerts();
+bool structuredLogs = PerformanceMeter.StructuredLogsEnabled;
+PerformanceMeter.SetStructuredLogsEnabled(false);
 PerformanceMeter.SetEditorWarningLogsEnabled(false);
 ```
+
+`StructuredLogsEnabled` のデフォルトは `true` で、構造化 alert の `Debug.Log` 出力だけを制御します。`false` にしても `AlertFired` callback、最新の alerts と alert history、overlay warnings、Editor warning logs、sessions は無効になりません。`PerformanceMeter.SetEditorWarningLogsEnabled(bool)` は Editor warning logs を独立して制御します。
 
 ## Custom Metrics
 

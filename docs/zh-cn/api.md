@@ -102,8 +102,12 @@ Session options 包含 warm-up frames/seconds、sample interval、maximum sample
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] alerts = PerformanceMeter.GetLatestAlerts();
 PerformanceMeter.ClearAlerts();
+bool structuredLogs = PerformanceMeter.StructuredLogsEnabled;
+PerformanceMeter.SetStructuredLogsEnabled(false);
 PerformanceMeter.SetEditorWarningLogsEnabled(false);
 ```
+
+`StructuredLogsEnabled` 默认值为 `true`，只控制 structured alert 的 `Debug.Log` 输出。设置为 `false` 不会禁用 `AlertFired` callbacks、latest alerts 或 alert history、overlay warnings、Editor warning logs 或 sessions。`PerformanceMeter.SetEditorWarningLogsEnabled(bool)` 独立控制 Editor warning logs。
 
 ## Custom Metrics
 

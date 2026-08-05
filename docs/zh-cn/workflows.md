@@ -14,6 +14,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 Overlay 使用 UI Toolkit，不会拦截 gameplay input。它支持 FPS-only、compact text、graph、full diagnostics、metric bars、visual themes、module filters、CPU/GPU graphs、CPU core widgets，以及有限的 custom metric rows。
 
+PerfMeter 为 overlay 创建并拥有 versioned UI Toolkit host：Unity `6000.4` 使用 `UIDocument`，Unity `6000.5+` 使用 `PanelRenderer`。这个 owned host 与 foreign UI 分离，并保留 foreign UI 的 panel settings 和 children；rebuild 只移除 PerfMeter-owned container。
+
 ## Background Collection
 
 在 tests、device runs 或不需要可见 UI 的 agent workflows 中使用 background mode。
@@ -48,7 +50,7 @@ PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 ```
 
-Editor warnings 会受 cooldowns 限流，并可通过 JSON settings 或 runtime controls 禁用。
+Editor warnings 会受 cooldowns 限流，并可通过 JSON settings 或 runtime controls 禁用。Structured alert logs 与 Editor warnings 相互独立：`PerformanceMeter.SetStructuredLogsEnabled(false)` 只抑制 structured alert 的 `Debug.Log` 输出，而 `PerformanceMeter.SetEditorWarningLogsEnabled(false)` 单独控制 Editor warning logs。Callbacks、alert/history、overlay warnings 和 sessions 仍保持 active。
 
 ## Overdraw Diagnostics
 

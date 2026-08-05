@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.8.5-2
+
+- Added an independent runtime toggle for structured alert logs.
+- Stabilized FPS/card numeric geometry with monospace value cells and bounded responsive fallbacks.
+- Added an owned `UIDocument`/`PanelRenderer` host split for Unity 6000.4/6000.5+ without modifying foreign UI Toolkit trees.
+- Added PlayMode layout, ownership, rebuild, and lifecycle regression coverage.
+
 ## 2026.7.19-1
 
 - Added lifecycle, steady-state, and explicit capture provenance to alert snapshots and history.

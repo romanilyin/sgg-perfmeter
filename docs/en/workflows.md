@@ -14,6 +14,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 The overlay uses UI Toolkit and does not intercept gameplay input. It supports FPS-only, compact text, graph, full diagnostics, metric bars, visual themes, module filters, CPU/GPU graphs, CPU core widgets, and limited custom metric rows.
 
+PerfMeter creates and owns a versioned UI Toolkit host for the overlay: Unity `6000.4` uses `UIDocument`, while Unity `6000.5+` uses `PanelRenderer`. The owned host is separate from foreign UI and preserves foreign panel settings and children; rebuilds remove only the PerfMeter-owned container.
+
 ## Background Collection
 
 Use background mode for tests, device runs, or agent workflows where visible UI is not needed.
@@ -49,7 +51,7 @@ PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 PerfMeterAlertHistorySnapshot history = PerformanceMeter.GetAlertHistory();
 ```
 
-Editor warnings are throttled by cooldowns and can be disabled through JSON settings or runtime controls.
+Editor warnings are throttled by cooldowns and can be disabled through JSON settings or runtime controls. Structured alert logs and Editor warnings are independent: `PerformanceMeter.SetStructuredLogsEnabled(false)` suppresses only structured alert `Debug.Log` output, while `PerformanceMeter.SetEditorWarningLogsEnabled(false)` controls Editor warning logs. Callbacks, alert/history data, overlay warnings, and sessions remain active.
 
 Alert history identifies its interval and reset reason and separates lifecycle, steady-state, and explicit capture firings. PerfMeter cannot infer an external screenshot from a slow frame. Wrap known capture work with `PerformanceMeter.BeginAlertCapture(captureId)` and `PerformanceMeter.EndAlertCapture(captureId)` when authoritative capture provenance is required.
 

@@ -45,3 +45,5 @@ Runtime overlay text는 localization되지 않으므로 widget screenshot은 여
 
 - Preset은 이 widget들의 subset을 활성화하고 `MetricBars`, `CompactCards`, `Graphs`, `DiagnosticsWide` 같은 layout을 선택할 수 있습니다.
 - Text-row 및 metric-bar row는 layout system 뒤의 lower-level renderer이며, 다른 layout에서 card, budget bar, graph로 나타날 수 있는 동일한 metric group의 textual version을 노출합니다.
+- numeric value는 stable reserved numeric slot과 numeric monospace role을 사용하므로 값이 바뀌어도 column이 이동하지 않습니다. label은 선택한 overlay font family를 유지합니다.
+- 좁은 logical width에서는 card와 metric bar가 wrap됩니다. 한 줄에 들어가지 않으면 `FpsOnly`는 deterministic bounded two-row fallback을 사용합니다. 이는 임의의 모든 resolution이나 scale을 보장하는 동작이 아닙니다.

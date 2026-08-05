@@ -45,3 +45,5 @@ The default `MetricBars` layout renders compact rows for frequently watched cate
 
 - Presets can enable a subset of these widgets and choose a layout such as `MetricBars`, `CompactCards`, `Graphs`, or `DiagnosticsWide`.
 - Text-row and metric-bar rows are lower-level renderers behind the layout system and expose textual versions of the same metric groups that may appear as cards, budget bars, or graphs in other layouts.
+- Numeric values use stable reserved numeric slots and a numeric monospace role, so changing values do not shift their columns; labels keep the selected overlay font family.
+- At narrow logical widths, cards and metric bars wrap. `FpsOnly` uses a deterministic bounded two-row fallback when its single row does not fit; this is a bounded layout behavior, not a promise for every arbitrary resolution or scale.

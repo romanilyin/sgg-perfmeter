@@ -14,7 +14,7 @@ SGG PerfMeter e intenzionalmente piu mirato e diagnostico: Unity `6000.4+`, URP 
 | --- | --- | --- | --- |
 | Posizionamento primario | 🔵 Diagnostica URP Render Graph / HDRP Custom Pass + API di profiling pronta per automazione | ⚠️ Counter FPS/memoria/device in-game flessibile | ⚠️ Monitor e debugger visivo per statistiche FPS/memoria/audio |
 | Target Unity | ⚠️ Unity `6000.4+`, URP `17.4+` / HDRP `17.4+` | 🔵 Ampio supporto per Unity meno recenti | 🔵 Ampio supporto per Unity meno recenti |
-| Backend UI | 🔵 Overlay UI Toolkit | ⚠️ Label uGUI Canvas/Text | ⚠️ Moduli uGUI Text/Image |
+| Backend UI | 🔵 Host UI Toolkit di proprieta: `UIDocument` su Unity `6000.4`; `PanelRenderer` su Unity `6000.5+` | ⚠️ Label uGUI Canvas/Text | ⚠️ Moduli uGUI Text/Image |
 | Sorgente timing | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Campionamento runtime frame/update | ⚠️ Campionamento storico `Time.unscaledDeltaTime` |
 | Split CPU/GPU | 🔵 CPU frame, main thread, render thread, present wait, GPU quando disponibile | 🛑 Nessuno split equivalente | 🛑 Nessuno split equivalente |
 | Classificazione bottleneck | 🔵 GPU, CPU main, CPU render, present-limited, balanced, unknown | 🛑 Nessun equivalente | 🛑 Nessun equivalente |

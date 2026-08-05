@@ -37,7 +37,8 @@
 
 - 在 JSON settings 中调整 thresholds 和 consecutive-frame windows。
 - 增加 Editor warning cooldowns。
-- 当 callbacks 或 structured logs 已足够时，禁用 Editor warning logs。
+- 当 callbacks、alert/history data、overlay warnings 和 sessions 已足够时，使用 `PerformanceMeter.SetStructuredLogsEnabled(false)` 禁用 structured alert logs；它只抑制 structured alert 的 `Debug.Log` 输出。
+- 使用 `PerformanceMeter.SetEditorWarningLogsEnabled(false)` 单独禁用 Editor warning logs；structured-log toggle 与 Editor-warning toggle 相互独立。
 
 ## 不同设备上的数据看起来不同
 

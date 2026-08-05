@@ -36,7 +36,7 @@ Unsupported targets, including HDRP, report `OverdrawState.Unsupported` with war
 
 ## Overlay Cost
 
-The overlay is allocation-conscious and throttled, but changed numeric values and graph labels can still materialize managed strings at the refresh interval. Heavy visual diagnostics and graph modes should be validated on target devices.
+The overlay is allocation-conscious and throttled, but changed numeric values and graph labels can still materialize managed strings at the refresh interval. It has two UI Toolkit backend paths: an owned `UIDocument` host on Unity `6000.4` and an owned `PanelRenderer` host on Unity `6000.5+`. The host preserves foreign UI panel settings and children and rebuilds only the PerfMeter-owned container. Numeric values use stable reserved slots and a numeric monospace role; `FpsOnly` uses a deterministic bounded two-row fallback when one row does not fit, while cards and bars wrap at narrow logical widths. These bounds do not promise every arbitrary resolution or scale, so heavy visual diagnostics, graph modes, and the resulting layout should be validated on target devices.
 
 ## Validation Status
 

@@ -37,7 +37,8 @@
 
 - Настройте thresholds и окна последовательных кадров в JSON-настройках.
 - Увеличьте паузы между Editor warnings.
-- Отключите логи Editor warnings, если callback-и или структурированные логи достаточны.
+- Отключите structured alert logs через `PerformanceMeter.SetStructuredLogsEnabled(false)`, если достаточно callback-ов, данных alerts/history, предупреждений оверлея и сессий; это подавляет только structured alert `Debug.Log`.
+- Отдельно отключите логи Editor warnings через `PerformanceMeter.SetEditorWarningLogsEnabled(false)`; переключатели structured logs и Editor warnings независимы.
 
 ## Данные отличаются между устройствами
 

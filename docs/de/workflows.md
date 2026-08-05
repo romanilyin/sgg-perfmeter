@@ -14,6 +14,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 Der Overlay nutzt UI Toolkit und faengt Gameplay-Eingaben nicht ab. Er unterstuetzt FPS-only, compact text, graphs, full diagnostics, metric bars, visual themes, module filters, CPU/GPU graphs, CPU core widgets und begrenzte custom metric rows.
 
+PerfMeter erstellt und besitzt einen versionierten UI Toolkit host fuer den Overlay: Unity `6000.4` verwendet `UIDocument`, Unity `6000.5+` verwendet `PanelRenderer`. Der eigene host ist von fremder UI getrennt und bewahrt deren panel settings und children; bei einem rebuild wird nur der PerfMeter-eigene container entfernt.
+
 ## Background Collection
 
 Background mode eignet sich fuer Tests, Device-Runs oder Agent-Workflows ohne sichtbare UI.
@@ -39,6 +41,8 @@ Session-Exports enthalten timings, FPS lows, spikes, bottleneck counts, render c
 ## Alerts
 
 Regeln koennen Budget-Verletzungen, niedrige FPS, fehlendes GPU timing und overdraw thresholds melden.
+
+Strukturierte Alert-Logs und Editor-Warnungen sind unabhaengig: `PerformanceMeter.SetStructuredLogsEnabled(false)` unterdrueckt nur strukturierte Alert-`Debug.Log`-Ausgabe, waehrend `PerformanceMeter.SetEditorWarningLogsEnabled(false)` Editor-Warnungslogs separat steuert. Callbacks, Alerts/History, Overlay-Warnungen und Sessions bleiben aktiv.
 
 ## Overdraw-Diagnostik
 

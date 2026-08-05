@@ -45,3 +45,5 @@ default `MetricBars` layout は、よく監視する categories を compact rows
 
 - Presets はこれらの widgets の subset を有効化し、`MetricBars`、`CompactCards`、`Graphs`、`DiagnosticsWide` などの layout を選択できます。
 - Text-row と metric-bar rows は layout system の背後にある lower-level renderers であり、他の layouts では cards、budget bars、graphs として現れる同じ metric groups の textual versions を公開します。
+- numeric values は stable reserved numeric slots と numeric monospace role を使用するため、値が変わっても columns は移動しません。labels は選択した overlay font family を保持します。
+- 狭い logical widths では cards と metric bars が wrap します。1 行に収まらない場合、`FpsOnly` は deterministic な bounded two-row fallback を使用します。これは任意の resolution や scale を保証するものではありません。

@@ -45,3 +45,5 @@ O layout padrao `MetricBars` renderiza linhas compactas para categorias observad
 
 - Presets podem ativar um subconjunto destes widgets e escolher um layout como `MetricBars`, `CompactCards`, `Graphs` ou `DiagnosticsWide`.
 - Linhas de texto e linhas de metric-bar sao renderizadores de nivel mais baixo por tras do sistema de layout e expoem versoes textuais dos mesmos grupos de metricas que podem aparecer como cards, barras de budget ou graficos em outros layouts.
+- Valores numericos usam numeric slots reservados estaveis e um numeric monospace role, para que a mudanca de valor nao desloque as colunas; labels mantêm a fonte selecionada do overlay.
+- Com logical widths estreitas, cards e metric bars fazem wrap. `FpsOnly` usa um fallback deterministico e limitado de duas linhas quando uma unica linha nao cabe; isso nao promete uma exibicao para toda resolution ou scale arbitraria.

@@ -102,8 +102,12 @@ PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
 PerformanceMeter.AlertFired += alert => UnityEngine.Debug.Log(alert.Message);
 PerfMeterAlertSnapshot[] alerts = PerformanceMeter.GetLatestAlerts();
 PerformanceMeter.ClearAlerts();
+bool structuredLogs = PerformanceMeter.StructuredLogsEnabled;
+PerformanceMeter.SetStructuredLogsEnabled(false);
 PerformanceMeter.SetEditorWarningLogsEnabled(false);
 ```
+
+Свойство `StructuredLogsEnabled` по умолчанию равно `true` и управляет только структурированным alert `Debug.Log`. Значение `false` не отключает callback `AlertFired`, последние alerts и историю оповещений, предупреждения оверлея, логи предупреждений Editor или сессии. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` независимо управляет логами предупреждений Editor.
 
 ## Пользовательские метрики
 

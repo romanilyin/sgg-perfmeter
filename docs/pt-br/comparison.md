@@ -14,7 +14,7 @@ SGG PerfMeter e intencionalmente mais estreito e mais diagnostico: Unity `6000.4
 | --- | --- | --- | --- |
 | Posicionamento principal | 🔵 Diagnosticos URP Render Graph / HDRP Custom Pass + API de profiling pronta para automacao | ⚠️ Contador flexivel in-game de FPS/memoria/device | ⚠️ Monitor visual de stats de FPS/memoria/audio + debugger |
 | Alvo Unity | ⚠️ Unity `6000.4+`, URP `17.4+` / HDRP `17.4+` | 🔵 Suporte amplo a versoes antigas do Unity | 🔵 Suporte amplo a versoes antigas do Unity |
-| Backend de UI | 🔵 Overlay UI Toolkit | ⚠️ Labels uGUI Canvas/Text | ⚠️ Modulos uGUI Text/Image |
+| Backend de UI | 🔵 Host próprio de UI Toolkit: `UIDocument` no Unity `6000.4`; `PanelRenderer` no Unity `6000.5+` | ⚠️ Labels uGUI Canvas/Text | ⚠️ Modulos uGUI Text/Image |
 | Fonte de timing | 🔵 `FrameTimingManager` + rolling stats | ⚠️ Sampling runtime de frame/update | ⚠️ Sampling de historico por `Time.unscaledDeltaTime` |
 | Separacao CPU/GPU | 🔵 CPU frame, main thread, render thread, present wait, GPU quando disponivel | 🛑 Sem separacao equivalente | 🛑 Sem separacao equivalente |
 | Classificacao de gargalo | 🔵 GPU, CPU main, CPU render, present-limited, balanced, unknown | 🛑 Sem equivalente | 🛑 Sem equivalente |
