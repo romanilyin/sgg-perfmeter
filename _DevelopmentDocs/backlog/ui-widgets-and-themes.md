@@ -6,7 +6,7 @@
 
 Центральные приоритеты и зависимости находятся в `roadmap.md`.
 
-`StructuredLog` toggle, stable numeric geometry и versioned owned panel host завершены в unreleased package version `2026.8.5-2`.
+`StructuredLog` toggle, stable numeric geometry и versioned owned panel host выпущены в package version `2026.8.5-2`.
 
 ### Resolved: Text overflow and stable numeric geometry
 
