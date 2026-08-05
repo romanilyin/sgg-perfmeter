@@ -49,10 +49,19 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			GameObject overlayObject = GameObject.Find(OverlayObjectName);
 			Assert.That(overlayObject, Is.Not.Null);
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.True);
-			UIDocument document = overlayObject.GetComponent<UIDocument>();
+			Transform hostTransform = overlayObject.transform.Find(PerfMeterOverlayPanelHost.HostObjectName);
 			PanelSettings panelSettings = Resources.Load<PanelSettings>("PerfMeterOverlayPanelSettings");
+			Assert.That(hostTransform, Is.Not.Null);
+		#if UNITY_6000_5_OR_NEWER
+			PanelRenderer panelRenderer = hostTransform.GetComponent<PanelRenderer>();
+			Assert.That(panelRenderer, Is.Not.Null);
+			Assert.That(hostTransform.GetComponent<UIDocument>(), Is.Null);
+			Assert.That(panelRenderer.panelSettings, Is.SameAs(panelSettings));
+		#else
+			UIDocument document = hostTransform.GetComponent<UIDocument>();
 			Assert.That(document, Is.Not.Null);
 			Assert.That(document.panelSettings, Is.SameAs(panelSettings));
+		#endif
 			Assert.That(panelSettings.textSettings, Is.Not.Null);
 			Assert.That(panelSettings.themeStyleSheet, Is.Not.Null);
 		#else
