@@ -2,6 +2,21 @@
 
 Полезные идеи, которые еще не являются реализованным release scope.
 
+## PM-OBS-002 Unity Profiler Instrumentation
+
+Текущий статус: реализовано на `feature/profilers`, не выпущено отдельно.
+
+Реализованный scope:
+
+- Internal markers охватывают collect/frame timing, custom metrics, CPU core, device/camera snapshots, bottleneck classification, session/alert capture scopes и JSON/CSV export.
+- Internal `Scripts`-category counters используют `FlushOnEndOfFrame`: CPU/GPU frame timing хранится в nanoseconds, availability/active — как `0`/`1`, bottleneck/session/overdraw — как enum codes, custom metric — как count.
+- `SGG.PerfMeter.Thermal.Sample` и `SGG.PerfMeter.Thermal.Available` оставлены как reserved internal provider hook: synthetic thermal sample не создается, а availability сбрасывается в `0` до PM-PLAT-001 с реальным provider.
+
+Границы:
+
+- PM-OBS-003 отвечает за публикацию self-overhead, accounting и budget/gate reporting; текущая instrumentation не вычитает overhead и не меняет public API, status, MCP или export schemas.
+- PM-PLAT-001 отвечает за реальный thermal provider; до его появления `Thermal.Available` не означает наличие synthetic sample.
+
 ## Self-Overhead Accounting
 
 Текущий статус: частично подготовлено, не завершено.

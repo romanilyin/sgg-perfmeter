@@ -85,6 +85,14 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Las custom metrics se exponen mediante lecturas de API, exportación JSON de sesiones, métricas latest de MCP y hasta ocho filas de overlay cuando el módulo `CustomMetrics` está activado.
 
+## Instrumentación de Unity Profiler
+
+La instrumentación es interna y solo es visible al perfilar el Editor, un Development Build u otro build con Profiler habilitado. En los Release players sin Profiler, estos markers/counters son no-op y no generan datos de instrumentación; los schemas de public API, status, MCP y export no cambian.
+
+- Los markers cubren collect/frame timing (`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), providers (`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture (`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`) y export JSON/CSV (`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`). `SGG.PerfMeter.Thermal.Sample` es un hook interno reservado para providers.
+- Los counters cubren tiempos de frame CPU/GPU (`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`) como gauges de fin de frame en nanosegundos. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive` y `SGG.PerfMeter.Thermal.Available` codifican disponibilidad/activo como `0`/`1`; `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState` y `SGG.PerfMeter.Capture.OverdrawState` usan códigos de enum; `SGG.PerfMeter.Provider.CustomMetricCount` es un recuento. Los counters usan la categoría `Scripts` y `FlushOnEndOfFrame`.
+- No se emite ningún sample térmico sintético; `SGG.PerfMeter.Thermal.Available` permanece en `0`/unavailable hasta que un provider de plataforma real proporcione datos. La instrumentación solo registra scopes/values internos, no resta overhead ni publica budgets; la publicación, el accounting y los budgets del overhead son funcionalidad futura separada.
+
 ## Automatización Con Agentes
 
 Una ejecución típica dirigida por MCP:

@@ -279,6 +279,10 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(refreshed.DiscoveryCount, Is.EqualTo(initial.DiscoveryCount + 1));
 			Assert.That(refreshed.Revision, Is.EqualTo(initial.Revision + 1));
 			Assert.That(refreshed.Capabilities, Has.Length.EqualTo(11));
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 4));
+			Assert.That(PerformanceMeter.BeginAlertCapture("disable-reenable"), Is.True);
+			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Recording));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.EqualTo(1));
 
 			GameObject runtimeObject = GameObject.Find(RuntimeObjectName);
 			Assert.That(runtimeObject, Is.Not.Null);
@@ -287,6 +291,10 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerfMeterProfilerMetricCatalogSnapshot disabled = PerformanceMeter.GetProfilerMetricCatalog();
 			Assert.That(disabled.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.NotInitialized));
 			Assert.That(disabled.Capabilities, Is.Empty);
+			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.Empty);
+			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Idle));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.Zero);
 
 			runtimeObject.SetActive(true);
 			yield return null;
@@ -294,6 +302,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(reenabled.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.Ready));
 			Assert.That(reenabled.DiscoveryCount, Is.EqualTo(1));
 			Assert.That(reenabled.Revision, Is.EqualTo(1));
+			Assert.That(PerformanceMeter.GetStatus().SessionState, Is.EqualTo(PerfMeterSessionState.Stopped));
+			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Stopped));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.Zero);
 		}
 
 		[UnityTest]

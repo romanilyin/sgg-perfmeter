@@ -24,17 +24,26 @@ namespace SGG.PerfMeter
 
 		internal static PerfMeterSessionExportResult ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting)
 		{
-			return Export(path, BuildJson(summary, samples, status), overwriteExisting);
+			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
+			{
+				return Export(path, BuildJson(summary, samples, status), overwriteExisting);
+			}
 		}
 
 		internal static PerfMeterSessionExportResult ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting, PerfMeterPackageIdentity packageIdentity)
 		{
-			return Export(path, BuildJson(summary, samples, status, packageIdentity), overwriteExisting);
+			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
+			{
+				return Export(path, BuildJson(summary, samples, status, packageIdentity), overwriteExisting);
+			}
 		}
 
 		internal static PerfMeterSessionExportResult ExportCsv(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting)
 		{
-			return Export(path, BuildCsv(summary, samples, status), overwriteExisting);
+			using (PerfMeterProfilerInstrumentation.ExportCsvMarker.Auto())
+			{
+				return Export(path, BuildCsv(summary, samples, status), overwriteExisting);
+			}
 		}
 
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)

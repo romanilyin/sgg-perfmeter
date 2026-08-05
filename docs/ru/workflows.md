@@ -85,6 +85,14 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Пользовательские метрики доступны через API-чтение, экспорт сессии в JSON, latest metrics в MCP и до восьми строк оверлея при включенном модуле `CustomMetrics`.
 
+## Инструментация Unity Profiler
+
+Инструментация является внутренней и видна только при профилировании Editor, Development Build или другого profiler-enabled build. В Release player без Profiler эти markers/counters являются no-op и не создают instrumentation data; public API, status, MCP и export schemas не меняются.
+
+- Маркеры охватывают collect/frame timing (`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), providers (`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture (`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`) и JSON/CSV export (`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`). `SGG.PerfMeter.Thermal.Sample` — зарезервированный internal provider hook.
+- Counters охватывают CPU/GPU frame times (`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`) как end-of-frame gauges в nanoseconds. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive` и `SGG.PerfMeter.Thermal.Available` кодируют availability/active как `0`/`1`; `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState` и `SGG.PerfMeter.Capture.OverdrawState` используют enum codes; `SGG.PerfMeter.Provider.CustomMetricCount` — count. Все counters используют category `Scripts` и `FlushOnEndOfFrame`.
+- Synthetic thermal sample не создается; `SGG.PerfMeter.Thermal.Available` остается `0`/unavailable, пока реальный platform provider не начнет поставлять данные. Инструментация только записывает внутренние scopes/values, не вычитает overhead и не публикует budgets; publication, accounting и budgets для overhead — отдельная future functionality.
+
 ## MCP-автоматизация
 
 Типичный прогон через MCP:

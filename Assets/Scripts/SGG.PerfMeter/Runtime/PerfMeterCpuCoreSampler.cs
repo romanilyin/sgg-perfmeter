@@ -92,6 +92,14 @@ namespace SGG.PerfMeter
 			}
 
 			_nextSampleTime = unscaledTime + SampleIntervalSeconds;
+			using (PerfMeterProfilerInstrumentation.CpuCoreMarker.Auto())
+			{
+				SampleCoreLoads();
+			}
+		}
+
+		private void SampleCoreLoads()
+		{
 			try
 			{
 				if (!TrySampleTicks(out int count))

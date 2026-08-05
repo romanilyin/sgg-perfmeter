@@ -51,8 +51,17 @@ namespace SGG.PerfMeter
 
 		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
 		{
+			using (PerfMeterProfilerInstrumentation.CollectMarker.Auto())
+			{
+				return CollectCore(collectionFrame, frameBudgetMs, out frameTimingAvailability, out warning, out frameTimingSampleIgnored);
+			}
+		}
+
+		private PerfMeterMetricsSnapshot CollectCore(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
+		{
 			if (!_isRunning)
 			{
+				PerfMeterProfilerInstrumentation.ResetFrameTimings();
 				frameTimingAvailability = PerfMeterFrameTimingAvailability.NotCollected;
 				warning = CollectorStoppedWarning;
 				frameTimingSampleIgnored = false;
@@ -60,10 +69,16 @@ namespace SGG.PerfMeter
 			}
 			_profilerMetricCatalog.RefreshSampleStates();
 
-			FrameTimingManager.CaptureFrameTimings();
-			uint timingCount = FrameTimingManager.GetLatestTimings(1, _frameTimings);
-			FrameTiming timing = timingCount > 0 ? _frameTimings[0] : default;
-			bool hasValidCpuFrameTiming = timingCount > 0 && HasValidCpuFrameTiming(timing);
+			uint timingCount;
+			FrameTiming timing;
+			bool hasValidCpuFrameTiming;
+			using (PerfMeterProfilerInstrumentation.FrameTimingMarker.Auto())
+			{
+				FrameTimingManager.CaptureFrameTimings();
+				timingCount = FrameTimingManager.GetLatestTimings(1, _frameTimings);
+				timing = timingCount > 0 ? _frameTimings[0] : default;
+				hasValidCpuFrameTiming = timingCount > 0 && HasValidCpuFrameTiming(timing);
+			}
 			frameTimingSampleIgnored = timingCount > 0 && !hasValidCpuFrameTiming;
 			frameTimingAvailability = hasValidCpuFrameTiming ? PerfMeterFrameTimingAvailability.Available : PerfMeterFrameTimingAvailability.Unavailable;
 
@@ -84,6 +99,15 @@ namespace SGG.PerfMeter
 				cpuMainThreadPresentWaitTimeMs,
 				gpuFrameTimeMs,
 				gpuFrameTimeAvailable);
+			PerfMeterProfilerInstrumentation.RecordFrameTimings(
+				hasValidCpuFrameTiming,
+				cpuFrameTimeMs,
+				cpuMainThreadFrameTimeMs,
+				cpuRenderThreadFrameTimeMs,
+				cpuMainThreadPresentWaitTimeMs,
+				gpuFrameTimeAvailable,
+				gpuFrameTimeMs);
+			PerfMeterProfilerInstrumentation.RecordBottleneck(bottleneck);
 
 			warning = GetWarning(gpuFrameTimeAvailable, frameTimingSampleIgnored || invalidGpuFrameTiming);
 
@@ -169,6 +193,30 @@ namespace SGG.PerfMeter
 		}
 
 		internal static PerfMeterBottleneck ClassifyBottleneck(
+			PerfMeterFrameTimingAvailability frameTimingAvailability,
+			double frameBudgetMs,
+			double cpuFrameTimeMs,
+			double cpuMainThreadFrameTimeMs,
+			double cpuRenderThreadFrameTimeMs,
+			double cpuMainThreadPresentWaitTimeMs,
+			double gpuFrameTimeMs,
+			bool gpuFrameTimeAvailable)
+		{
+			using (PerfMeterProfilerInstrumentation.BottleneckMarker.Auto())
+			{
+				return ClassifyBottleneckCore(
+					frameTimingAvailability,
+					frameBudgetMs,
+					cpuFrameTimeMs,
+					cpuMainThreadFrameTimeMs,
+					cpuRenderThreadFrameTimeMs,
+					cpuMainThreadPresentWaitTimeMs,
+					gpuFrameTimeMs,
+					gpuFrameTimeAvailable);
+			}
+		}
+
+		private static PerfMeterBottleneck ClassifyBottleneckCore(
 			PerfMeterFrameTimingAvailability frameTimingAvailability,
 			double frameBudgetMs,
 			double cpuFrameTimeMs,

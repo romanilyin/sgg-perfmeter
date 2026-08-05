@@ -85,6 +85,14 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Custom metrics sao expostas por leituras de API, exportacao JSON de sessao, MCP latest metrics e ate oito linhas de overlay quando o modulo `CustomMetrics` esta ativado.
 
+## Instrumentacao Do Unity Profiler
+
+A instrumentacao e interna e visivel somente ao criar perfil do Editor, de um Development Build ou de outro build com Profiler habilitado. Em Release players sem Profiler, esses markers/counters sao no-op e nao geram dados de instrumentacao; os schemas de public API, status, MCP e export permanecem inalterados.
+
+- Os markers cobrem collect/frame timing (`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), providers (`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture (`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`) e export JSON/CSV (`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`). `SGG.PerfMeter.Thermal.Sample` e um hook interno reservado para providers.
+- Os counters cobrem tempos de frame CPU/GPU (`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`) como gauges de fim de frame em nanossegundos. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive` e `SGG.PerfMeter.Thermal.Available` codificam availability/active como `0`/`1`; `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState` e `SGG.PerfMeter.Capture.OverdrawState` usam enum codes; `SGG.PerfMeter.Provider.CustomMetricCount` e um count. Todos os counters usam a categoria `Scripts` e `FlushOnEndOfFrame`.
+- Nenhum thermal sample sintetico e emitido; `SGG.PerfMeter.Thermal.Available` permanece em `0`/indisponivel ate que um provider de plataforma real forneca dados. A instrumentacao registra apenas scopes/values internos, nao subtrai overhead nem publica budgets; publicacao, accounting e budgets de overhead sao funcionalidade futura separada.
+
 ## Automacao De Agents
 
 Uma execucao tipica dirigida por MCP:

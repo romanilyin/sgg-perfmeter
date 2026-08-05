@@ -85,6 +85,14 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Custom metrics는 API reads, session JSON export, MCP latest metrics, 그리고 `CustomMetrics` module이 활성화된 경우 최대 8개의 overlay row를 통해 노출됩니다.
 
+## Unity Profiler Instrumentation
+
+이 instrumentation은 internal이며 Editor, Development Build 또는 다른 profiler-enabled build를 profiling할 때만 Unity Profiler에 표시됩니다. Profiler가 없는 Release player에서는 marker/counter가 no-op이고 instrumentation data를 생성하지 않습니다. public API, status, MCP, export schema는 변경되지 않습니다.
+
+- Marker는 collection/frame timing(`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), provider(`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture(`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`), JSON/CSV export(`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`) 범위를 기록합니다. `SGG.PerfMeter.Thermal.Sample`은 reserved internal provider hook입니다.
+- Counter는 CPU/GPU frame time(`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`)을 nanoseconds 단위의 end-of-frame gauge로 기록합니다. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive`, `SGG.PerfMeter.Thermal.Available`은 availability/active를 `0`/`1`로 인코딩하고, `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState`, `SGG.PerfMeter.Capture.OverdrawState`는 enum code를 사용하며, `SGG.PerfMeter.Provider.CustomMetricCount`는 count입니다. Counter는 `Scripts` category와 `FlushOnEndOfFrame`을 사용합니다.
+- synthetic thermal sample은 생성되지 않습니다. `SGG.PerfMeter.Thermal.Available`은 `0`/unavailable 상태로 real platform provider가 data를 공급할 때까지 사용할 수 없습니다. 이 instrumentation은 internal scope/value만 기록하고 overhead를 subtract하거나 budget을 publish하지 않습니다. overhead publication, accounting, budget은 별도의 future functionality입니다.
+
 ## Agent Automation
 
 일반적인 MCP 기반 run은 다음과 같습니다.
