@@ -14,6 +14,7 @@ namespace SGG.PerfMeter
 		private float _structuredLogCooldownSeconds = 2f;
 		private float _callbackCooldownSeconds = 0.5f;
 		private bool _editorWarningsEnabled = true;
+		private bool _structuredLogsEnabled = true;
 		private int _firedAlertCount;
 		private int _steadyStateFiredCount;
 		private int _lifecycleFiredCount;
@@ -57,6 +58,11 @@ namespace SGG.PerfMeter
 			_structuredLogCooldownSeconds = settings.StructuredLogCooldownSeconds;
 			_callbackCooldownSeconds = settings.CallbackCooldownSeconds;
 			_editorWarningsEnabled = settings.EditorWarningsEnabled;
+		}
+
+		internal void SetStructuredLogsEnabled(bool enabled)
+		{
+			_structuredLogsEnabled = enabled;
 		}
 
 		internal void Evaluate(PerfMeterMetricsSnapshot metrics, double timeSeconds)
@@ -156,7 +162,11 @@ namespace SGG.PerfMeter
 			bool actionFired = false;
 			if ((rule.Actions & PerfMeterAlertAction.StructuredLog) != 0 && CanFire(timeSeconds, state.StructuredLogFired, state.LastStructuredLogTime, cooldown > 0f ? cooldown : _structuredLogCooldownSeconds))
 			{
-				Debug.Log("[SGG PerfMeter Alert] " + alert.Message);
+				if (_structuredLogsEnabled)
+				{
+					Debug.Log("[SGG PerfMeter Alert] " + alert.Message);
+				}
+
 				state.LastStructuredLogTime = timeSeconds;
 				state.StructuredLogFired = true;
 				actionFired = true;

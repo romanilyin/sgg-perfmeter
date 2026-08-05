@@ -45,6 +45,7 @@ namespace SGG.PerfMeter
 		private bool _applicationFocused = true;
 		private bool _applicationPaused;
 		private bool _cpuCoreSamplingActive;
+		private bool _structuredLogsEnabled = true;
 		private int _focusResumeIgnoreFrames;
 		private int _alertSampleCount;
 		private string _alertCaptureId = string.Empty;
@@ -64,6 +65,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
 		internal bool EditorWarningLogsEnabled => _settings.EditorWarningsEnabled;
+		internal bool StructuredLogsEnabled => _structuredLogsEnabled;
 		internal string ActiveAlertCaptureId => _alertCaptureId;
 		internal PerfMeterCollectionMode CollectionMode => GetCollectionMode();
 		internal bool IsSessionRecording => _sessionRecorder.IsRecording;
@@ -713,6 +715,12 @@ namespace SGG.PerfMeter
 			RefreshStatusOverlayState();
 		}
 
+		internal void SetStructuredLogsEnabled(bool enabled)
+		{
+			_structuredLogsEnabled = enabled;
+			_alertEngine.SetStructuredLogsEnabled(enabled);
+		}
+
 		internal static double GetFrameBudgetMs(PerfMeterTargetFps targetFps)
 		{
 			return 1000d / (int)NormalizeTargetFps(targetFps);
@@ -1285,6 +1293,7 @@ namespace SGG.PerfMeter
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
 			_alertEngine = new PerfMeterAlertEngine(PerfMeterAlertEngine.CreateDefaultRules(_targetFps, settings));
 			_alertEngine.ApplySettings(settings, _targetFps);
+			_alertEngine.SetStructuredLogsEnabled(_structuredLogsEnabled);
 			PerfMeterAlertHistoryResetReason resetReason = _alertEngineInitialized
 				? PerfMeterAlertHistoryResetReason.RulesChanged
 				: PerfMeterAlertHistoryResetReason.RuntimeStarted;
