@@ -47,4 +47,4 @@ Unity.exe -batchmode -quit -projectPath "C:\Work\Unity\sgg-perfmeter" -executeMe
 
 ## Workflow State
 
-The npm publish workflow runs only when a normal GitHub Release is published. It uses the GitHub-hosted runner, the protected `npm` environment and npm Trusted Publishing OIDC; it must not use an npm write token or an automatic `push`, `pull_request`, `schedule` or `workflow_run` trigger.
+The npm publish workflow runs when a normal GitHub Release is published or through its guarded manual recovery from `main`. It uses the GitHub-hosted runner, owner-approved `npm` environment and npm Trusted Publishing OIDC; it must not use an npm write token or an automatic `push`, `pull_request`, `schedule` or `workflow_run` trigger.
