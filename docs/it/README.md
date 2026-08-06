@@ -28,6 +28,15 @@ SGG PerfMeter identifica i colli di bottiglia dei frame, confronta le variazioni
 - Opt-in overdraw measurement e overdraw heatmap visiva tramite URP Render Graph; in HDRP overdraw/heatmap non sono supportati, mentre i core diagnostics restano disponibili.
 - Snapshot di device, URP/HDRP camera, render integration, status, metrics, alerts, sessions e custom metrics per codice e automazione MCP.
 
+## Telemetria di piattaforma opzionale
+
+PerfMeter puo raccogliere segnali opzionali di thermal e Adaptive Performance tramite un provider. La core assembly non ha una hard dependency su `com.unity.adaptiveperformance`; l'assembly opzionale `SGG.PerfMeter.AdaptivePerformance` si attiva per Unity `6000.4+` quando `com.unity.adaptiveperformance` e alla versione `5.1.0+`.
+
+- **API del provider**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`, `UnregisterPlatformTelemetryProvider(...)` e `GetPlatformTelemetry()` consentono al massimo un provider attivo e restituiscono l'immutabile `PerfMeterPlatformTelemetrySnapshot` con ID/versione del provider, tempi di sample/cambiamento, thermal warning, temperature level/trend, CPU/GPU performance levels, adaptive bottleneck e disponibilita per campo. Un secondo provider diverso viene rifiutato.
+- **Raccolta ed export**: il runtime campiona il provider una volta per ogni frame raccolto. JSON/CSV della sessione e capture samples conservano lo snapshot e la provenienza del provider. Il comando MCP `perfmeter.platform.telemetry` espone lo snapshot strutturato corrente.
+- **Profiler e alert**: `SGG.PerfMeter.Thermal.Sample` e `SGG.PerfMeter.Thermal.Available` espongono il marker di raccolta termica e il counter di disponibilita. L'alert predefinito `thermal.throttling` usa la metrica `ThermalWarningLevel` quando e disponibile un livello di throttling imminente o attivo.
+- **L'indisponibilita e esplicita**: provider e campi non supportati restano unavailable; JSON serializza i valori numerici non disponibili come `null` e CSV usa campi vuoti, con flag di disponibilita invece di zeri fittizi. La validazione del package Adaptive Performance reale e dei dispositivi target resta un gate della release matrix/release candidate; questo README non dichiara alcun risultato su dispositivo.
+
 ## Avvio Rapido
 
 1. Installa il pacchetto Unity da npm registry o Git UPM.

@@ -131,6 +131,16 @@ namespace SGG.PerfMeter
 
 		internal void Update(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricSnapshot[] customMetrics = null)
 		{
+			Update(metrics, frame, timeSeconds, customMetrics, PerfMeterPlatformTelemetrySnapshot.Unavailable());
+		}
+
+		internal void Update(
+			PerfMeterMetricsSnapshot metrics,
+			int frame,
+			double timeSeconds,
+			PerfMeterCustomMetricSnapshot[] customMetrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry)
+		{
 			if (_state != PerfMeterSessionState.Recording)
 			{
 				return;
@@ -138,11 +148,11 @@ namespace SGG.PerfMeter
 
 			using (PerfMeterProfilerInstrumentation.SessionCaptureMarker.Auto())
 			{
-				UpdateRecording(metrics, frame, timeSeconds, customMetrics);
+				UpdateRecording(metrics, frame, timeSeconds, customMetrics, platformTelemetry);
 			}
 		}
 
-		private void UpdateRecording(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricSnapshot[] customMetrics)
+		private void UpdateRecording(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricSnapshot[] customMetrics, PerfMeterPlatformTelemetrySnapshot platformTelemetry)
 		{
 			if (frame < 0 || frame < _wholeRunStats.LastFrame)
 			{
@@ -184,7 +194,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			PerfMeterSessionSampleSnapshot sample = new PerfMeterSessionSampleSnapshot(frame, timeSeconds, _lastSceneName, metrics, CopyCustomMetrics(customMetrics));
+			PerfMeterSessionSampleSnapshot sample = new PerfMeterSessionSampleSnapshot(frame, timeSeconds, _lastSceneName, metrics, CopyCustomMetrics(customMetrics), platformTelemetry);
 			_samples[_sampleCount] = sample;
 			_sampleCount++;
 			_wholeRunStats.Add(sample, metrics);
@@ -208,7 +218,7 @@ namespace SGG.PerfMeter
 			for (int i = 0; i < _sampleCount; i++)
 			{
 				PerfMeterSessionSampleSnapshot sample = _samples[i];
-				copy[i] = new PerfMeterSessionSampleSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, sample.Metrics, CopyCustomMetrics(sample.CustomMetrics));
+				copy[i] = new PerfMeterSessionSampleSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, sample.Metrics, CopyCustomMetrics(sample.CustomMetrics), sample.PlatformTelemetry);
 			}
 
 			return copy;

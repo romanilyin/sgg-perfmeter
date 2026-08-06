@@ -25,6 +25,7 @@ namespace SGG.PerfMeter
 		private PerfMeterStatusSnapshot _status;
 		private PerfMeterMetricsSnapshot _latestMetrics;
 		private PerfMeterCustomMetricSnapshot[] _latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+		private PerfMeterPlatformTelemetrySnapshot _latestPlatformTelemetry = PerfMeterPlatformTelemetrySnapshot.Unavailable();
 		private PerfMeterOverlay _overlay;
 		private string _lastCollectorWarning = string.Empty;
 		private PerfMeterOverlayCorner _overlayCorner = PerfMeterOverlayCorner.TopRight;
@@ -65,6 +66,7 @@ namespace SGG.PerfMeter
 		internal static PerfMeterCaptureCapabilitiesSnapshot CaptureCapabilities => PerfMeterCaptureBundleExporter.GetCapabilities();
 		internal PerfMeterStatusSnapshot Status => _status.WithSelfOverhead(PerfMeterSelfObservability.GetSnapshot());
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
+		internal PerfMeterPlatformTelemetrySnapshot LatestPlatformTelemetry => _latestPlatformTelemetry;
 		internal PerfMeterProfilerMetricCatalogSnapshot ProfilerMetricCatalog => _collector.GetProfilerMetricCatalog();
 		internal PerfMeterSelfOverheadSnapshot SelfOverhead => PerfMeterSelfObservability.GetSnapshot();
 		internal PerfMeterCaptureStatusSnapshot CaptureStatus => _captureCoordinator != null ? _captureCoordinator.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
@@ -200,6 +202,7 @@ namespace SGG.PerfMeter
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			runtime._latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+			runtime._latestPlatformTelemetry = PerfMeterPlatformTelemetrySnapshot.Unavailable();
 			PerfMeterProfilerInstrumentation.Reset();
 			if (!captureReleased)
 			{
@@ -293,8 +296,10 @@ namespace SGG.PerfMeter
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
 			UpdateCpuCoreSampler(Time.unscaledTime);
 			_latestCustomMetrics = PerfMeterCustomMetricRegistry.Collect();
+			_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Collect();
+			PerfMeterProfilerInstrumentation.RecordThermalAvailability(_latestPlatformTelemetry.IsAvailable && _latestPlatformTelemetry.ThermalWarningLevelAvailable);
 			PerfMeterCaptureStatusSnapshot captureStatus = _captureCoordinator != null ? _captureCoordinator.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
-			PerfMeterSessionSampleSnapshot frameSample = new PerfMeterSessionSampleSnapshot(frame, Time.realtimeSinceStartupAsDouble, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, _latestMetrics, _latestCustomMetrics);
+			PerfMeterSessionSampleSnapshot frameSample = new PerfMeterSessionSampleSnapshot(frame, Time.realtimeSinceStartupAsDouble, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, _latestMetrics, _latestCustomMetrics, _latestPlatformTelemetry);
 			if (CaptureBundles.IsRecordingCaptureFrame(captureStatus))
 			{
 				bool needsContext = CaptureBundles.NeedsCaptureContext(captureStatus.CaptureId);
@@ -307,14 +312,14 @@ namespace SGG.PerfMeter
 			}
 			else
 			{
-				_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics);
+				_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics, _latestPlatformTelemetry);
 			}
 			_lastAlertClassification = !string.IsNullOrEmpty(_alertCaptureId)
 				? PerfMeterAlertClassification.Capture
 				: _alertSampleCount < AlertLifecycleWarmupSamples
 					? PerfMeterAlertClassification.Lifecycle
 					: PerfMeterAlertClassification.SteadyState;
-			_alertEngine.Evaluate(_latestMetrics, Time.realtimeSinceStartupAsDouble, _lastAlertClassification, _alertCaptureId);
+			_alertEngine.Evaluate(_latestMetrics, _latestPlatformTelemetry, Time.realtimeSinceStartupAsDouble, _lastAlertClassification, _alertCaptureId);
 			_alertSampleCount++;
 			_lastCollectorWarning = warning;
 			RefreshRunningStatus(frame, frameTimingAvailability, warning);
@@ -1111,6 +1116,7 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapVisible = false;
 				_status = CreateStoppedStatus();
 				_latestMetrics = PerfMeterMetricsSnapshot.Stopped;
+				_latestPlatformTelemetry = PerfMeterPlatformTelemetrySnapshot.Unavailable();
 				PerfMeterProfilerInstrumentation.Reset();
 				if (!captureReleased)
 				{

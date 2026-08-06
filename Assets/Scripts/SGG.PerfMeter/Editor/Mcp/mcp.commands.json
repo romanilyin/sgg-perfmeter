@@ -67,8 +67,8 @@
         "additionalProperties": false
       }
     },
-    {
-      "id": "perfmeter.runtime.ensure",
+	{
+	  "id": "perfmeter.runtime.ensure",
       "title": "Start PerfMeter runtime",
       "description": "Ensure SGG PerfMeter runtime is running.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeEnsure",
@@ -144,6 +144,22 @@
       "idempotency": "safe",
       "timeout_ms": 10000,
       "tags": ["perfmeter", "metrics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.platform.telemetry",
+      "title": "PerfMeter platform telemetry",
+      "description": "Read optional thermal, temperature trend, CPU/GPU performance level, and adaptive bottleneck telemetry with per-field availability.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.PlatformTelemetry",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "platform", "thermal", "telemetry"],
       "capability": "perfmeter",
       "schema": {
         "type": "object",

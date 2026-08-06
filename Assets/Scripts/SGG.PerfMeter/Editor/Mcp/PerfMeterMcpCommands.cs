@@ -90,6 +90,15 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return MetricsJson(RuntimePerformanceMeter.GetLatestMetrics());
 		}
 
+		public static string PlatformTelemetry()
+		{
+			StringBuilder builder = new StringBuilder(768);
+			AppendPlatformTelemetry(builder, RuntimePerformanceMeter.GetPlatformTelemetry());
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		public static string ProfilerCapabilities()
 		{
 			return ProfilerCapabilitiesJson(RuntimePerformanceMeter.GetProfilerMetricCatalog());
@@ -494,6 +503,28 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"core_runtime_reason\":").Append(JsonString(status.CoreRuntimeReason));
 			builder.Append(",\"render_integration_reason\":").Append(JsonString(status.RenderIntegrationReason));
 			builder.Append('}');
+		}
+
+		private static void AppendPlatformTelemetry(StringBuilder builder, PerfMeterPlatformTelemetrySnapshot telemetry)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(telemetry.Availability.ToString()));
+			builder.Append(",\"provider_id\":").Append(JsonString(telemetry.ProviderId));
+			builder.Append(",\"provider_version\":").Append(JsonString(telemetry.ProviderVersion));
+			builder.Append(",\"sample_time_seconds\":").Append(JsonNumber(telemetry.SampleTimeSeconds));
+			builder.Append(",\"last_change_time_seconds\":").Append(JsonNumber(telemetry.LastChangeTimeSeconds));
+			builder.Append(",\"thermal_warning_level_available\":").Append(JsonBool(telemetry.ThermalWarningLevelAvailable));
+			builder.Append(",\"thermal_warning_level\":").Append(telemetry.ThermalWarningLevelAvailable ? JsonString(telemetry.ThermalWarningLevel.ToString()) : "null");
+			builder.Append(",\"temperature_level_available\":").Append(JsonBool(telemetry.TemperatureLevelAvailable));
+			builder.Append(",\"temperature_level\":").Append(telemetry.TemperatureLevelAvailable ? JsonNumber(telemetry.TemperatureLevel) : "null");
+			builder.Append(",\"temperature_trend_available\":").Append(JsonBool(telemetry.TemperatureTrendAvailable));
+			builder.Append(",\"temperature_trend\":").Append(telemetry.TemperatureTrendAvailable ? JsonNumber(telemetry.TemperatureTrend) : "null");
+			builder.Append(",\"cpu_performance_level_available\":").Append(JsonBool(telemetry.CpuPerformanceLevelAvailable));
+			builder.Append(",\"cpu_performance_level\":").Append(telemetry.CpuPerformanceLevelAvailable ? telemetry.CpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : "null");
+			builder.Append(",\"gpu_performance_level_available\":").Append(JsonBool(telemetry.GpuPerformanceLevelAvailable));
+			builder.Append(",\"gpu_performance_level\":").Append(telemetry.GpuPerformanceLevelAvailable ? telemetry.GpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : "null");
+			builder.Append(",\"performance_bottleneck_available\":").Append(JsonBool(telemetry.PerformanceBottleneckAvailable));
+			builder.Append(",\"performance_bottleneck\":").Append(telemetry.PerformanceBottleneckAvailable ? JsonString(telemetry.PerformanceBottleneck.ToString()) : "null");
+			builder.Append(",\"warning\":").Append(JsonString(telemetry.Warning));
 		}
 
 		private static string CaptureExportJson(PerfMeterCaptureBundleExportResult result)

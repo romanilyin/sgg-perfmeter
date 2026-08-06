@@ -38,6 +38,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(coordinator.TryGetExportData("bundle-data", out PerfMeterCaptureBundleExportData data), Is.True);
 			Assert.That(data.CaptureSamples, Has.Length.EqualTo(1));
 			Assert.That(data.BaselineSamples, Has.Length.EqualTo(1));
+			Assert.That(data.CaptureSamples[0].PlatformTelemetry.ProviderId, Is.EqualTo("capture.provider"));
+			Assert.That(data.CaptureSamples[0].PlatformTelemetry.TemperatureLevel, Is.EqualTo(0.7f));
 			Assert.That(data.AlertEvents[0].CaptureId, Is.EqualTo("bundle-data"));
 		}
 
@@ -128,6 +130,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 				string manifest = File.ReadAllText(Path.Combine(fullPath, "manifest.json"));
 				Assert.That(manifest, Does.Contain("\"schema\":\"sgg.perfmeter.capture-bundle\""));
 				Assert.That(manifest, Does.Contain(Sha256(File.ReadAllBytes(Path.Combine(fullPath, "session.json")))));
+				string captureSamples = File.ReadAllText(Path.Combine(fullPath, "capture-samples.json"));
+				Assert.That(captureSamples, Does.Contain("\"provider_id\":\"capture.provider\""));
+				Assert.That(captureSamples, Does.Contain("\"temperature_level\":0.7"));
 				string context = File.ReadAllText(Path.Combine(fullPath, "context.json"));
 				Assert.That(context, Does.Contain("\"configured_settings\""));
 				Assert.That(context, Does.Contain("\"effective_settings\""));
@@ -351,7 +356,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
 			PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1);
 			coordinator.Start(options, new PerfMeterCaptureBundleOptions(includeScreenshot), CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
-			PerfMeterSessionSampleSnapshot captureSample = new PerfMeterSessionSampleSnapshot(10, 1d, "Scene", CreateMetrics(10));
+			PerfMeterSessionSampleSnapshot captureSample = new PerfMeterSessionSampleSnapshot(10, 1d, "Scene", CreateMetrics(10), Array.Empty<PerfMeterCustomMetricSnapshot>(), CreatePlatformTelemetry());
 			coordinator.RecordCaptureFrame(captureSample, PerformanceMeter.GetDeviceInfo(), default, PerfMeterRenderGraphSnapshot.NotObserved, PerformanceMeter.GetStatus());
 			PerfMeterSessionSampleSnapshot baseline = new PerfMeterSessionSampleSnapshot(9, 0.9d, "Scene", CreateMetrics(9));
 			PerfMeterAlertSnapshot alert = new PerfMeterAlertSnapshot("capture.alert", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, 0d, 16d, 10, 1d, 1, true, "capture alert", PerfMeterAlertClassification.Capture, captureId);
@@ -372,6 +377,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 
 			return coordinator;
+		}
+
+		private static PerfMeterPlatformTelemetrySnapshot CreatePlatformTelemetry()
+		{
+			return new PerfMeterPlatformTelemetrySnapshot(
+				PerfMeterAvailability.Available,
+				"capture.provider",
+				"1.0",
+				1d,
+				1d,
+				true,
+				PerfMeterThermalWarningLevel.ThrottlingImminent,
+				true,
+				0.7f,
+				true,
+				0.2f,
+				true,
+				2,
+				true,
+				3,
+				true,
+				PerfMeterAdaptiveBottleneck.Gpu);
 		}
 
 		private static PerfMeterCaptureStatusSnapshot CaptureStatus(string captureId, PerfMeterCaptureState state)

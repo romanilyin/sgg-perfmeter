@@ -28,6 +28,15 @@ SGG PerfMeter는 프레임 병목을 식별하고, 성능 변화를 비교하고
 - URP Render Graph를 통한 opt-in overdraw measurement 및 visual overdraw heatmap. HDRP overdraw/heatmap은 unsupported이며 core diagnostics는 계속 사용할 수 있습니다.
 - code 및 MCP automation용 device, URP/HDRP camera, render integration, status, metrics, alerts, sessions, custom metrics snapshot.
 
+## 선택적 플랫폼 텔레메트리
+
+PerfMeter는 하나의 provider를 통해 thermal 및 Adaptive Performance 신호를 선택적으로 수집할 수 있습니다. core assembly에는 `com.unity.adaptiveperformance` hard dependency가 없으며, 선택적 `SGG.PerfMeter.AdaptivePerformance` assembly는 `com.unity.adaptiveperformance`가 `5.1.0+`일 때 Unity `6000.4+`용으로 활성화됩니다.
+
+- **Provider API**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`, `UnregisterPlatformTelemetryProvider(...)`, `GetPlatformTelemetry()`는 active provider를 최대 하나만 허용하며 provider ID/version, sample/change time, thermal warning, temperature level/trend, CPU/GPU performance level, adaptive bottleneck, field별 availability를 포함한 immutable `PerfMeterPlatformTelemetrySnapshot`을 반환합니다. 서로 다른 두 번째 provider 등록은 거부됩니다.
+- **수집 및 export**: runtime은 수집된 각 frame마다 provider를 한 번 sample합니다. session JSON/CSV와 capture samples는 snapshot 및 provider provenance를 보존합니다. MCP command `perfmeter.platform.telemetry`로 현재 structured snapshot을 확인할 수 있습니다.
+- **Profiler 및 alert**: `SGG.PerfMeter.Thermal.Sample`과 `SGG.PerfMeter.Thermal.Available`은 thermal collection marker와 availability counter를 노출합니다. 기본 `thermal.throttling` alert는 imminent 또는 active throttling level이 available할 때 `ThermalWarningLevel` metric을 사용합니다.
+- **Unavailable 상태는 명시적입니다**: 지원되지 않는 provider와 field는 unavailable로 유지됩니다. JSON은 unavailable numeric value를 `null`로, CSV는 빈 field로 serialize하며 availability flag로 fake zero와 구분합니다. 실제 Adaptive Performance package 및 target device validation은 release matrix/release-candidate gate로 남아 있으며, 이 README는 device result가 실행되었다고 주장하지 않습니다.
+
 ## 빠른 시작
 
 1. npm registry 또는 Git UPM으로 Unity package를 설치합니다.

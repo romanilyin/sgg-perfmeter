@@ -80,6 +80,15 @@ SGG PerfMeter помогает понять, упирается ли кадр в
 - Числовое измерение overdraw по запросу и визуальную heatmap overdraw через URP Render Graph; в HDRP overdraw/heatmap возвращают unsupported, при этом core diagnostics остаются доступны.
 - Снимки для device, URP/HDRP camera, render integration, status, metrics, alerts/оповещений, session и custom metrics для кода и автоматизации через MCP.
 
+## Опциональная платформенная телеметрия
+
+PerfMeter может собирать опциональные thermal- и Adaptive Performance-сигналы через один provider. Core assembly не имеет hard dependency на `com.unity.adaptiveperformance`; optional assembly `SGG.PerfMeter.AdaptivePerformance` включается для Unity `6000.4+`, когда доступен `com.unity.adaptiveperformance` версии `5.1.0+`.
+
+- **Provider API**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`, `UnregisterPlatformTelemetryProvider(...)` и `GetPlatformTelemetry()` поддерживают не более одного активного provider и возвращают immutable `PerfMeterPlatformTelemetrySnapshot` с ID/version provider-а, временем sample/изменения, thermal warning, temperature level/trend, CPU/GPU performance levels, adaptive bottleneck и доступностью каждого поля. Регистрация другого provider-а при уже активном provider-е отклоняется.
+- **Сбор и экспорт**: runtime опрашивает provider один раз на каждый собранный кадр. Session JSON/CSV и capture samples сохраняют snapshot и provenance provider-а. MCP-команда `perfmeter.platform.telemetry` отдает текущий structured snapshot.
+- **Profiler и alerts**: `SGG.PerfMeter.Thermal.Sample` и `SGG.PerfMeter.Thermal.Available` показывают marker сбора thermal-данных и counter доступности. Default alert `thermal.throttling` использует metric `ThermalWarningLevel`, когда доступен уровень imminent или active throttling.
+- **Недоступность обозначается явно**: неподдерживаемые provider-ы и поля остаются unavailable; в JSON недоступные числовые значения сериализуются как `null`, а в CSV оставляются пустыми, с availability flags вместо фиктивных нулей. Проверка реального Adaptive Performance package и целевых устройств остается release-matrix/release-candidate gate; этот README не заявляет результат такой проверки.
+
 ## Быстрый старт
 
 1. Установите пакет Unity через npm registry или Git UPM.

@@ -18,6 +18,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		{
 			PerformanceMeter.Stop();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
+			PerfMeterPlatformTelemetryRegistry.ClearForTests();
 		}
 
 		[TearDown]
@@ -25,6 +26,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		{
 			PerformanceMeter.Stop();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
+			PerfMeterPlatformTelemetryRegistry.ClearForTests();
 		}
 
 		[UnityTest]
@@ -225,6 +227,49 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(File.Exists(csvPath), Is.True);
 			Assert.That(File.ReadAllText(jsonPath), Does.Contain("\"samples\""));
 			Assert.That(File.ReadAllText(csvPath), Does.StartWith("frame,time_seconds,scene,bottleneck"));
+		}
+
+		[UnityTest]
+		public IEnumerator PlatformTelemetryIsSampledByRuntimeAndCorrelatedWithSessionFrames()
+		{
+			PlayModeFakePlatformTelemetryProvider provider = new PlayModeFakePlatformTelemetryProvider();
+			PerformanceMeter.RegisterPlatformTelemetryProvider(provider);
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.001f, 8));
+
+			yield return null;
+			yield return null;
+			yield return null;
+
+			PerfMeterPlatformTelemetrySnapshot telemetry = PerformanceMeter.GetPlatformTelemetry();
+			int samplesAfterRuntimeCollection = provider.CollectionCount;
+			Assert.That(telemetry.IsAvailable, Is.True);
+			Assert.That(telemetry.ProviderId, Is.EqualTo(provider.Id));
+			Assert.That(telemetry.ThermalWarningLevel, Is.EqualTo(PerfMeterThermalWarningLevel.ThrottlingImminent));
+			Assert.That(PerfMeterProfilerInstrumentation.ThermalAvailable, Is.EqualTo(1));
+			Assert.That(PerformanceMeter.GetPlatformTelemetry().SampleTimeSeconds, Is.EqualTo(telemetry.SampleTimeSeconds));
+			Assert.That(provider.CollectionCount, Is.EqualTo(samplesAfterRuntimeCollection), "Public reads must use the frame-cached runtime snapshot.");
+
+			PerfMeterSessionSampleSnapshot[] samples = PerformanceMeter.GetSessionSamples();
+			Assert.That(samples, Is.Not.Empty);
+			for (int index = 0; index < samples.Length; index++)
+			{
+				Assert.That(samples[index].PlatformTelemetry.ProviderId, Is.EqualTo(provider.Id));
+				Assert.That(samples[index].PlatformTelemetry.SampleTimeSeconds, Is.GreaterThan(0d));
+			}
+
+			GameObject runtimeObject = GameObject.Find(RuntimeObjectName);
+			runtimeObject.SetActive(false);
+			Assert.That(PerformanceMeter.GetPlatformTelemetry().IsAvailable, Is.False);
+			Assert.That(PerfMeterProfilerInstrumentation.ThermalAvailable, Is.Zero);
+			runtimeObject.SetActive(true);
+			yield return null;
+			Assert.That(PerformanceMeter.GetPlatformTelemetry().IsAvailable, Is.True);
+
+			PerformanceMeter.UnregisterPlatformTelemetryProvider(provider);
+			yield return null;
+
+			Assert.That(PerformanceMeter.GetPlatformTelemetry().IsAvailable, Is.False);
+			Assert.That(PerfMeterProfilerInstrumentation.ThermalAvailable, Is.Zero);
 		}
 
 		[UnityTest]
@@ -502,6 +547,36 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				}
 
 				error = string.Empty;
+				return true;
+			}
+		}
+
+		private sealed class PlayModeFakePlatformTelemetryProvider : IPerfMeterPlatformTelemetryProvider
+		{
+			public string Id => "playmode.fake";
+			internal int CollectionCount { get; private set; }
+
+			public bool TryCollect(out PerfMeterPlatformTelemetrySnapshot snapshot)
+			{
+				CollectionCount++;
+				snapshot = new PerfMeterPlatformTelemetrySnapshot(
+					PerfMeterAvailability.Available,
+					Id,
+					"test",
+					Time.realtimeSinceStartupAsDouble,
+					Time.realtimeSinceStartupAsDouble,
+					true,
+					PerfMeterThermalWarningLevel.ThrottlingImminent,
+					true,
+					0.8f,
+					true,
+					0.3f,
+					true,
+					2,
+					true,
+					3,
+					true,
+					PerfMeterAdaptiveBottleneck.Gpu);
 				return true;
 			}
 		}

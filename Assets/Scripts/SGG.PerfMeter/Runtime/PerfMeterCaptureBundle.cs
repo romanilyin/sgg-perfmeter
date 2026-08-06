@@ -534,7 +534,7 @@ namespace SGG.PerfMeter
 		private static PerfMeterSessionSampleSnapshot CopySample(PerfMeterSessionSampleSnapshot sample)
 		{
 			PerfMeterCustomMetricSnapshot[] customMetrics = sample.CustomMetrics == null ? Array.Empty<PerfMeterCustomMetricSnapshot>() : (PerfMeterCustomMetricSnapshot[])sample.CustomMetrics.Clone();
-			return new PerfMeterSessionSampleSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, sample.Metrics, customMetrics);
+			return new PerfMeterSessionSampleSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, sample.Metrics, customMetrics, sample.PlatformTelemetry);
 		}
 
 		private static PerfMeterSessionSampleSnapshot[] CopySamples(PerfMeterSessionSampleSnapshot[] samples)

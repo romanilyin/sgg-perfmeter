@@ -30,6 +30,22 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetLatestCustomMetrics() : PerfMeterCustomMetricRegistry.Collect();
 		}
 
+		public static void RegisterPlatformTelemetryProvider(IPerfMeterPlatformTelemetryProvider provider)
+		{
+			PerfMeterPlatformTelemetryRegistry.Register(provider);
+		}
+
+		public static void UnregisterPlatformTelemetryProvider(IPerfMeterPlatformTelemetryProvider provider)
+		{
+			PerfMeterPlatformTelemetryRegistry.Unregister(provider);
+		}
+
+		public static PerfMeterPlatformTelemetrySnapshot GetPlatformTelemetry()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.LatestPlatformTelemetry : PerfMeterPlatformTelemetryRegistry.Collect();
+		}
+
 		public static PerfMeterCpuCoreLoadSnapshot[] GetCpuCoreLoads()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;

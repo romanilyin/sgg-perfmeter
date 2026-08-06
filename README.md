@@ -82,6 +82,15 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 
+## Optional Platform Telemetry
+
+PerfMeter can collect optional thermal and Adaptive Performance signals through one provider. The core assembly has no hard `com.unity.adaptiveperformance` dependency; the optional `SGG.PerfMeter.AdaptivePerformance` assembly is enabled for Unity `6000.4+` when `com.unity.adaptiveperformance` is `5.1.0+`.
+
+- **Provider API**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`, `UnregisterPlatformTelemetryProvider(...)`, and `GetPlatformTelemetry()` allow at most one active provider and return the immutable `PerfMeterPlatformTelemetrySnapshot` with provider ID/version, sample/change timestamps, thermal warning, temperature level/trend, CPU/GPU performance levels, adaptive bottleneck, and per-field availability. A different second provider is rejected.
+- **Collection and exports**: the runtime samples the provider once per collected frame. Session JSON/CSV and capture samples preserve the snapshot and provider provenance. MCP command `perfmeter.platform.telemetry` exposes the current structured snapshot.
+- **Profiler and alerts**: `SGG.PerfMeter.Thermal.Sample` and `SGG.PerfMeter.Thermal.Available` expose the thermal collection marker and availability counter. The default `thermal.throttling` alert uses the `ThermalWarningLevel` metric when an imminent or active throttling level is available.
+- **Unavailable is explicit**: unsupported providers and fields stay unavailable; JSON serializes unavailable numeric values as `null` and CSV uses empty fields, with availability flags instead of fake zero readings. Real Adaptive Performance package and target-device validation remain release-matrix/release-candidate gates; no device result is implied here.
+
 ## Quick Start
 
 1. Install the Unity package from npm registry or Git UPM.
