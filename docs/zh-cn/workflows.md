@@ -130,3 +130,12 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}` 是缓存读取；不会启动 runtime，也不会执行 discovery。
+
+## 可选内存快照 workflow
+
+1. 使用 Unity `6000.4+`，并通过 Package Manager 安装 `com.unity.memoryprofiler` `1.1.0+`。可选的 `SGG.PerfMeter.MemoryProfiler` assembly 会自动注册 backend；没有该 package 时 core integration 保持 unavailable。
+2. 在 Play Mode 中读取 `PerformanceMeter.GetMemorySnapshotCapabilities()` 或 `perfmeter.memory.snapshot.capabilities`，确认 backend 和所需 capture flags 可用。
+3. 使用 `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))` 请求 manual snapshot，或者使用 `ConfigureMemorySnapshotTriggers(...)` 显式启用 system-memory threshold 或 bounded leak-growth window。
+4. 读取 `GetMemorySnapshotStatus()` 或 `perfmeter.memory.snapshot.status`，直到 snapshot 和 correlated bundle 到达 terminal state。使用 `PerformanceMeter.ExportCaptureBundle(captureId)` 或 `perfmeter.capture.export` 导出已准备好的 evidence。
+
+memory-only evidence 通过现有 capture-bundle API 写入 `Temp/PerfMeter/CaptureBundles`。bundle 将 `MemoryProfiler` 记录为 requested tool，包含内存 provenance 和 `.snap` 的 streaming SHA-256，但不包含 external GPU artifact。owned source 位于 `Temp/PerfMeter/MemorySnapshots`；成功 export 后只消费一次。

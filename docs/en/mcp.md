@@ -68,6 +68,26 @@ perfmeter.alerts.latest {}
 
 Use `OverdrawDiagnostic` only for bounded URP diagnostic windows because numerical overdraw and heatmap rendering add extra GPU work. HDRP reports overdraw and heatmap as unsupported while the rest of the diagnostics stay available.
 
+## Memory Snapshot Commands
+
+| Command | Purpose and main inputs |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | Request one manual snapshot with `capture_id`, optional capture-flag booleans, `minimum_free_disk_mb`, and `cooldown_seconds`. |
+| `perfmeter.memory.snapshot.status` | Read snapshot and correlated bundle state without starting the runtime or exposing the temporary source path. |
+| `perfmeter.memory.snapshot.capabilities` | Read backend provenance, supported flags, the 512 MiB snapshot limit, and the owned temporary root. |
+| `perfmeter.memory.snapshot.triggers.configure` | Explicitly enable/disable system-memory threshold and bounded leak-growth triggers, their frame window, flags, free-space guard, and cooldown. |
+
+The request and trigger-configuration commands require Play Mode. Automation is disabled by default. A typical sequence is:
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+Poll status until the bundle is export-ready, then use the existing `perfmeter.capture.export` command. A memory-only bundle uses `requested_tool: MemoryProfiler`, includes `memory-snapshot.json` and manifest provenance, and has no external GPU artifact. The successful export is one-shot and removes the owned staging source.
+
 `perfmeter.alerts.latest` reports the alert-history interval and reset reason, classified lifecycle/steady-state/capture counters, and the latest fired alert. PerfMeter does not infer captures from slow frames; wrap an external capture with matching `perfmeter.alerts.capture.begin/end` calls when capture attribution is required.
 
 For a correlated capture, use `perfmeter.capture.request`, poll `perfmeter.capture.status` to a terminal bundle state, then call `perfmeter.capture.export`. Export paths and optional external artifact paths must be relative and project-local. An observed `.rdc`/`.wpix` copy is hashed but never reported as authoritative because Unity cannot authenticate the attached tool or artifact association; `require_authoritative_external_artifact` therefore fails explicitly.

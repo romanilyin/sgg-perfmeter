@@ -190,3 +190,31 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Diagnosticos de overdraw sao modos diagnosticos explicitos e podem adicionar trabalho de GPU. Em HDRP estas APIs reportam com seguranca unsupported state para overdraw e heatmap, sem prometer HDRP heatmap output.
+
+## Snapshots de memoria opcionais
+
+Snapshots de memoria sao uma integracao opcional. No Unity `6000.4+`, `com.unity.memoryprofiler` `1.1.0+` habilita o assembly separado `SGG.PerfMeter.MemoryProfiler`, que registra automaticamente o backend `MemoryProfiler`. O assembly core nao possui dependencia obrigatoria.
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+A superficie publica inclui `RegisterMemorySnapshotBackend(...)`, `UnregisterMemorySnapshotBackend(...)`, `GetMemorySnapshotCapabilities()`, `GetMemorySnapshotStatus()`, `RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`, `ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)` e `GetMemorySnapshotTriggers()`. Um backend personalizado implementa `IPerfMeterMemorySnapshotBackend`; o assembly opcional fornece o backend do Unity Memory Profiler.
+
+`PerfMeterMemorySnapshotOptions` usa por padrao flags de objetos managed/native, 1 GiB de espaco livre minimo e cooldown de 300 segundos. `RequestMemorySnapshot` e manual por padrao e retorna resultados explicitos como `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest` ou `Failed`. Leituras nao iniciam o runtime; uma solicitacao valida inicia.
+
+`ConfigureMemorySnapshotTriggers` habilita, por opt-in, a heuristica de limite de memoria do sistema e crescimento limitado de vazamento. `GetMemorySnapshotTriggers()` fica desabilitado por padrao. Solicitacoes disparadas usam os mesmos guards de single-flight, cooldown, espaco livre e capture flags das solicitacoes manuais.

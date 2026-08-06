@@ -46,6 +46,85 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.LatestPlatformTelemetry : PerfMeterPlatformTelemetryRegistry.Collect();
 		}
 
+		public static void RegisterMemorySnapshotBackend(IPerfMeterMemorySnapshotBackend backend)
+		{
+			PerfMeterMemorySnapshotBackendRegistry.Register(backend);
+		}
+
+		public static void UnregisterMemorySnapshotBackend(IPerfMeterMemorySnapshotBackend backend)
+		{
+			PerfMeterMemorySnapshotBackendRegistry.Unregister(backend);
+		}
+
+		public static PerfMeterMemorySnapshotCapabilitiesSnapshot GetMemorySnapshotCapabilities()
+		{
+			bool available = PerfMeterMemorySnapshotBackendRegistry.TryGet(
+				out _,
+				out string backendId,
+				out string backendVersion,
+				out PerfMeterMemoryCaptureFlags supportedFlags,
+				out string error);
+			return new PerfMeterMemorySnapshotCapabilitiesSnapshot(
+				available ? PerfMeterAvailability.Available : PerfMeterAvailability.Unavailable,
+				backendId,
+				backendVersion,
+				supportedFlags,
+				PerfMeterMemorySnapshotCoordinator.MaxSnapshotBytes,
+				PerfMeterMemorySnapshotStorage.RelativeSnapshotRoot,
+				error);
+		}
+
+		public static PerfMeterMemorySnapshotStatusSnapshot GetMemorySnapshotStatus()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.MemorySnapshotStatus : PerfMeterMemorySnapshotStatusSnapshot.NotRunning;
+		}
+
+		public static PerfMeterMemorySnapshotRequestResult RequestMemorySnapshot(PerfMeterMemorySnapshotOptions options)
+		{
+			if (!PerfMeterMemorySnapshotCoordinator.IsValidOptions(options))
+			{
+				return PerfMeterMemorySnapshotRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterMemorySnapshotRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.RequestMemorySnapshot(options) : PerfMeterMemorySnapshotRequestResult.Unavailable;
+		}
+
+		public static bool ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions options)
+		{
+			if (!IsValidMemorySnapshotTriggerOptions(options) || !PerfMeterRuntime.EnsureRunning())
+			{
+				return false;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.ConfigureMemorySnapshotTriggers(options);
+		}
+
+		public static PerfMeterMemorySnapshotTriggerOptions GetMemorySnapshotTriggers()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.MemorySnapshotTriggers : PerfMeterMemorySnapshotTriggerOptions.Disabled;
+		}
+
+		private static bool IsValidMemorySnapshotTriggerOptions(PerfMeterMemorySnapshotTriggerOptions options)
+		{
+			if (!options.Enabled)
+			{
+				return true;
+			}
+
+			return (options.SystemMemoryThresholdBytes > 0L || options.LeakGrowthThresholdBytes > 0L) &&
+				options.CaptureFlags != PerfMeterMemoryCaptureFlags.None &&
+				(options.CaptureFlags & ~PerfMeterMemorySnapshotCoordinator.AllCaptureFlags) == 0;
+		}
+
 		public static PerfMeterCpuCoreLoadSnapshot[] GetCpuCoreLoads()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -171,7 +250,7 @@ namespace SGG.PerfMeter
 		{
 			if (string.IsNullOrWhiteSpace(options.CaptureId) ||
 				options.CaptureId.Length > 128 ||
-				options.Tool == PerfMeterCaptureTool.Unknown ||
+				(options.Tool != PerfMeterCaptureTool.RenderDoc && options.Tool != PerfMeterCaptureTool.Pix) ||
 				options.CaptureFrames > 120 ||
 				options.PreRollFrames > 600 ||
 				options.PostRollFrames > 600)

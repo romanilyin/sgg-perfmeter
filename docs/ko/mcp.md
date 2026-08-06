@@ -65,3 +65,23 @@ perfmeter.alerts.latest {}
 ```
 
 Numerical overdraw와 heatmap rendering은 추가 GPU work를 만들기 때문에 `OverdrawDiagnostic`은 bounded URP diagnostic window에만 사용합니다. HDRP는 overdraw/heatmap을 unsupported로 보고하지만 나머지 diagnostics는 계속 사용할 수 있습니다.
+
+## 메모리 스냅샷 command
+
+| Command | 목적 및 주요 입력 |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | `capture_id`, 선택적 capture-flag boolean, `minimum_free_disk_mb`, `cooldown_seconds`로 manual snapshot을 request합니다. |
+| `perfmeter.memory.snapshot.status` | runtime을 시작하거나 임시 source path를 노출하지 않고 snapshot 및 correlated bundle state를 읽습니다. |
+| `perfmeter.memory.snapshot.capabilities` | backend provenance, 지원 flags, 512 MiB snapshot limit, owned temporary root를 읽습니다. |
+| `perfmeter.memory.snapshot.triggers.configure` | system-memory threshold와 bounded leak-growth trigger, frame window, flags, free-space guard, cooldown을 명시적으로 enable/disable합니다. |
+
+request와 trigger configuration command에는 Play Mode가 필요합니다. automation은 기본적으로 disabled입니다. 일반적인 순서는 다음과 같습니다.
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+bundle이 export-ready가 될 때까지 status를 확인한 후 기존 `perfmeter.capture.export` command를 사용합니다. memory-only bundle은 `requested_tool: MemoryProfiler`, `memory-snapshot.json`, manifest provenance를 포함하고 external GPU artifact는 만들지 않습니다. 성공한 export는 one-shot이며 owned staging source를 삭제합니다.

@@ -70,7 +70,8 @@ namespace SGG.PerfMeter
 			PerfMeterCaptureScreenshotState screenshotState,
 			PerfMeterCaptureExternalArtifactState externalArtifactState,
 			string committedRelativePath,
-			string warning)
+			string warning,
+			PerfMeterMemorySnapshotState memorySnapshotState = PerfMeterMemorySnapshotState.NotRequested)
 		{
 			Availability = availability;
 			State = state;
@@ -87,6 +88,7 @@ namespace SGG.PerfMeter
 			ExternalArtifactState = externalArtifactState;
 			CommittedRelativePath = committedRelativePath ?? string.Empty;
 			Warning = warning ?? string.Empty;
+			MemorySnapshotState = memorySnapshotState;
 		}
 
 		public static PerfMeterCaptureBundleStatusSnapshot None => new PerfMeterCaptureBundleStatusSnapshot(
@@ -107,7 +109,7 @@ namespace SGG.PerfMeter
 			string.Empty);
 
 		public bool IsTerminal => State == PerfMeterCaptureBundleState.Ready || State == PerfMeterCaptureBundleState.Exported || State == PerfMeterCaptureBundleState.Canceled || State == PerfMeterCaptureBundleState.Unavailable || State == PerfMeterCaptureBundleState.Error;
-		public bool IsExportReady => IsTerminal;
+		public bool IsExportReady => IsTerminal && State != PerfMeterCaptureBundleState.Exported;
 		public PerfMeterAvailability Availability { get; }
 		public PerfMeterCaptureBundleState State { get; }
 		public string BundleId { get; }
@@ -123,6 +125,7 @@ namespace SGG.PerfMeter
 		public PerfMeterCaptureExternalArtifactState ExternalArtifactState { get; }
 		public string CommittedRelativePath { get; }
 		public string Warning { get; }
+		public PerfMeterMemorySnapshotState MemorySnapshotState { get; }
 	}
 
 	public readonly struct PerfMeterCaptureCapabilitiesSnapshot
@@ -138,7 +141,8 @@ namespace SGG.PerfMeter
 			long totalQuotaBytes,
 			int maxCommittedBundles,
 			int retentionDays,
-			string bundleRoot)
+			string bundleRoot,
+			long maxMemorySnapshotBytes = 0L)
 		{
 			RenderDocSupported = renderDocSupported;
 			PixSupported = pixSupported;
@@ -151,6 +155,7 @@ namespace SGG.PerfMeter
 			MaxCommittedBundles = maxCommittedBundles;
 			RetentionDays = retentionDays;
 			BundleRoot = bundleRoot ?? string.Empty;
+			MaxMemorySnapshotBytes = Math.Max(0L, maxMemorySnapshotBytes);
 		}
 
 		public bool RenderDocSupported { get; }
@@ -164,6 +169,7 @@ namespace SGG.PerfMeter
 		public int MaxCommittedBundles { get; }
 		public int RetentionDays { get; }
 		public string BundleRoot { get; }
+		public long MaxMemorySnapshotBytes { get; }
 	}
 
 	public readonly struct PerfMeterCaptureBundleExportResult
@@ -212,6 +218,60 @@ namespace SGG.PerfMeter
 			PerfMeterSettingsSnapshot effectiveSettings)
 		{
 			_record = new BundleRecord(captureOptions, bundleOptions, captureStatus, configuredSettings, effectiveSettings);
+		}
+
+		internal void StartMemorySnapshot(
+			PerfMeterMemorySnapshotOptions options,
+			PerfMeterMemorySnapshotStatusSnapshot memoryStatus,
+			PerfMeterSettingsSnapshot configuredSettings,
+			PerfMeterSettingsSnapshot effectiveSettings)
+		{
+			PerfMeterCaptureOptions captureOptions = new PerfMeterCaptureOptions(options.CaptureId, PerfMeterCaptureTool.MemoryProfiler);
+			PerfMeterCaptureStatusSnapshot captureStatus = MemoryCaptureStatus(memoryStatus);
+			_record = new BundleRecord(captureOptions, default, captureStatus, configuredSettings, effectiveSettings)
+			{
+				MemorySnapshotState = memoryStatus.State
+			};
+		}
+
+		internal void ObserveMemorySnapshot(
+			PerfMeterMemorySnapshotStatusSnapshot memoryStatus,
+			PerfMeterMemorySnapshotArtifact artifact,
+			PerfMeterSessionSummarySnapshot sessionSummary,
+			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterStatusSnapshot runtimeStatus,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render)
+		{
+			if (_record == null || _record.CaptureOptions.Tool != PerfMeterCaptureTool.MemoryProfiler || !string.Equals(_record.CaptureOptions.CaptureId, memoryStatus.CaptureId, StringComparison.Ordinal))
+			{
+				return;
+			}
+
+			_record.MemorySnapshotState = memoryStatus.State;
+			_record.CaptureStatus = MemoryCaptureStatus(memoryStatus);
+			if (memoryStatus.IsActive)
+			{
+				return;
+			}
+
+			_record.CaptureContext(device, camera, render, runtimeStatus);
+			_record.Freeze(sessionSummary, baselineSamples, runtimeStatus, Array.Empty<PerfMeterAlertSnapshot>(), false);
+			_record.MemorySnapshotArtifact = artifact;
+			_record.Warning = string.Empty;
+			switch (memoryStatus.State)
+			{
+				case PerfMeterMemorySnapshotState.Completed:
+					_record.State = artifact.IsAvailable ? PerfMeterCaptureBundleState.Ready : PerfMeterCaptureBundleState.Error;
+					break;
+				case PerfMeterMemorySnapshotState.Unavailable:
+					_record.State = PerfMeterCaptureBundleState.Unavailable;
+					break;
+				default:
+					_record.State = PerfMeterCaptureBundleState.Error;
+					break;
+			}
 		}
 
 		internal void UpdateCaptureStatus(PerfMeterCaptureStatusSnapshot captureStatus)
@@ -371,6 +431,22 @@ namespace SGG.PerfMeter
 			return true;
 		}
 
+		internal bool TryGetMemorySnapshotArtifact(out PerfMeterMemorySnapshotArtifact artifact)
+		{
+			artifact = _record != null ? _record.MemorySnapshotArtifact : default;
+			return artifact.IsAvailable;
+		}
+
+		internal void ClearMemorySnapshotArtifact(string captureId, string path)
+		{
+			if (_record != null &&
+				string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) &&
+				string.Equals(_record.MemorySnapshotArtifact.SourcePath, path, StringComparison.Ordinal))
+			{
+				_record.MemorySnapshotArtifact = default;
+			}
+		}
+
 		internal void MarkExported(string captureId, string relativePath, PerfMeterCaptureExternalArtifactState externalArtifactState)
 		{
 			if (_record == null || !string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal))
@@ -422,6 +498,8 @@ namespace SGG.PerfMeter
 			internal PerfMeterCaptureBundleState State { get; set; }
 			internal PerfMeterCaptureScreenshotState ScreenshotState { get; set; }
 			internal PerfMeterCaptureExternalArtifactState ExternalArtifactState { get; set; }
+			internal PerfMeterMemorySnapshotState MemorySnapshotState { get; set; } = PerfMeterMemorySnapshotState.NotRequested;
+			internal PerfMeterMemorySnapshotArtifact MemorySnapshotArtifact { get; set; }
 			internal bool ScreenshotStarted { get; set; }
 			internal byte[] ScreenshotBytes { get; set; }
 			internal string CommittedRelativePath { get; set; }
@@ -498,7 +576,8 @@ namespace SGG.PerfMeter
 					ScreenshotState,
 					ExternalArtifactState,
 					CommittedRelativePath,
-					CombineWarnings(CaptureStatus.Warning, Warning));
+					CombineWarnings(CaptureStatus.Warning, Warning),
+					MemorySnapshotState);
 			}
 
 			internal PerfMeterCaptureBundleExportData CreateExportData()
@@ -527,7 +606,8 @@ namespace SGG.PerfMeter
 					Render,
 					(PerfMeterAlertSnapshot[])AlertEvents.Clone(),
 					AlertEventsTruncated,
-					screenshot);
+					screenshot,
+					MemorySnapshotArtifact);
 			}
 		}
 
@@ -562,6 +642,42 @@ namespace SGG.PerfMeter
 
 			return string.IsNullOrEmpty(second) ? first : first + " " + second;
 		}
+
+		private static PerfMeterCaptureStatusSnapshot MemoryCaptureStatus(PerfMeterMemorySnapshotStatusSnapshot status)
+		{
+			PerfMeterCaptureState state;
+			switch (status.State)
+			{
+				case PerfMeterMemorySnapshotState.Capturing:
+					state = PerfMeterCaptureState.Capturing;
+					break;
+				case PerfMeterMemorySnapshotState.Completed:
+					state = PerfMeterCaptureState.Completed;
+					break;
+				case PerfMeterMemorySnapshotState.Unavailable:
+					state = PerfMeterCaptureState.Unavailable;
+					break;
+				case PerfMeterMemorySnapshotState.Error:
+					state = PerfMeterCaptureState.Error;
+					break;
+				default:
+					state = PerfMeterCaptureState.Idle;
+					break;
+			}
+
+			return new PerfMeterCaptureStatusSnapshot(
+				status.Availability,
+				state,
+				status.CaptureId,
+				PerfMeterCaptureTool.MemoryProfiler,
+				0,
+				1,
+				0,
+				0,
+				state == PerfMeterCaptureState.Completed ? 1 : 0,
+				0,
+				status.Warning);
+		}
 	}
 
 	internal sealed class PerfMeterCaptureBundleExportData
@@ -583,7 +699,8 @@ namespace SGG.PerfMeter
 			PerfMeterRenderGraphSnapshot render,
 			PerfMeterAlertSnapshot[] alertEvents,
 			bool alertEventsTruncated,
-			byte[] screenshotBytes)
+			byte[] screenshotBytes,
+			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact)
 		{
 			Status = status;
 			CaptureOptions = captureOptions;
@@ -602,6 +719,7 @@ namespace SGG.PerfMeter
 			AlertEvents = alertEvents ?? Array.Empty<PerfMeterAlertSnapshot>();
 			AlertEventsTruncated = alertEventsTruncated;
 			ScreenshotBytes = screenshotBytes;
+			MemorySnapshotArtifact = memorySnapshotArtifact;
 		}
 
 		internal PerfMeterCaptureBundleStatusSnapshot Status { get; }
@@ -621,5 +739,6 @@ namespace SGG.PerfMeter
 		internal PerfMeterAlertSnapshot[] AlertEvents { get; }
 		internal bool AlertEventsTruncated { get; }
 		internal byte[] ScreenshotBytes { get; }
+		internal PerfMeterMemorySnapshotArtifact MemorySnapshotArtifact { get; }
 	}
 }

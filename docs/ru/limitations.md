@@ -49,3 +49,12 @@ Profiler counters зависят от платформы, версии Unity, н
 ## Статус валидации
 
 Текущая валидация включает автоматизированное покрытие EditMode, HDRP smoke validation в Unity `6000.4.10f1` и предыдущую smoke-валидацию Android S23 Vulkan/GLES. Более широкое покрытие player-билдов и устройств все еще полезно перед тем, как использовать данные как подтверждение готовности к релизу.
+
+## Ограничения и приватность опциональных снимков памяти
+
+- Функция недоступна без `com.unity.memoryprofiler` `1.1.0+` в Unity `6000.4+`; core package не устанавливает и не требует эту зависимость.
+- По умолчанию разрешён только ручной capture. Триггеры system-memory threshold и bounded leak-growth требуют opt-in; каждый запрос проходит single-flight/overlap, cooldown, minimum-free-space, backend и capture-flag guards.
+- Owned `.snap` staging находится в `Temp/PerfMeter/MemorySnapshots` и ограничен 512 MiB. Memory-only evidence экспортируется в `Temp/PerfMeter/CaptureBundles`; общий bundle quota — 2 GiB. Успешный export одноразовый и удаляет staging source, при этом cleanup может вернуть явное предупреждение.
+- Снимок может содержать чувствительную память процесса. Защитите и проверьте его перед передачей. Bundle содержит `contains_sensitive_memory`, provenance backend/flags, `memory-snapshot.json` и SHA-256 metadata; внешний GPU artifact не создаётся.
+- Удаление при OS lock и portable managed-защита от гонок с reparse points выполняются best-effort. Небезопасные или чужие paths отклоняются, а сбой cleanup остаётся видимым как warning.
+- Подтверждены memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, optional compile с `com.unity.memoryprofiler@1.1.12`, а также Unity `6000.4.12f1` full EditMode `182/182` и full PlayMode `14/14`. Это не заявление о release-player или device behavior.

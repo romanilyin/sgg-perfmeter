@@ -44,6 +44,81 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void MemorySnapshotBundleStreamsOwnedArtifactAndRecordsProvenance()
+		{
+			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+			string snapshotRoot = Path.Combine(projectRoot, PerfMeterMemorySnapshotStorage.RelativeSnapshotRoot);
+			string sourcePath = Path.Combine(snapshotRoot, ".sgg-perfmeter-memory-" + Guid.NewGuid().ToString("N") + ".snap");
+			string externalPath = Path.Combine(snapshotRoot, "unexpected-" + Guid.NewGuid().ToString("N") + ".rdc");
+			string externalRelativePath = externalPath.Substring(projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1).Replace('\\', '/');
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/memory-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(projectRoot, relativePath);
+			byte[] snapshotBytes = { 1, 2, 3, 5, 8, 13 };
+
+			try
+			{
+				Directory.CreateDirectory(snapshotRoot);
+				File.WriteAllBytes(sourcePath, snapshotBytes);
+				File.WriteAllBytes(externalPath, new byte[] { 1 });
+				PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+				PerfMeterMemorySnapshotOptions options = new PerfMeterMemorySnapshotOptions("memory-bundle");
+				PerfMeterMemorySnapshotStatusSnapshot completed = MemoryStatus(options, PerfMeterMemorySnapshotState.Completed, snapshotBytes.LongLength);
+				coordinator.StartMemorySnapshot(options, completed, default, default);
+				coordinator.ObserveMemorySnapshot(
+					completed,
+					new PerfMeterMemorySnapshotArtifact(completed, sourcePath),
+					PerfMeterSessionSummarySnapshot.Empty,
+					Array.Empty<PerfMeterSessionSampleSnapshot>(),
+					PerformanceMeter.GetStatus(),
+					PerformanceMeter.GetDeviceInfo(),
+					default,
+					PerfMeterRenderGraphSnapshot.NotObserved);
+
+				Assert.That(coordinator.GetStatus("memory-bundle").State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+				Assert.That(coordinator.GetStatus("memory-bundle").MemorySnapshotState, Is.EqualTo(PerfMeterMemorySnapshotState.Completed));
+				Assert.That(coordinator.TryGetExportData("memory-bundle", out PerfMeterCaptureBundleExportData data), Is.True);
+				PerfMeterCaptureBundleExportResult rejectedExternal = PerfMeterCaptureBundleExporter.Export(data, relativePath, externalRelativePath, false);
+				Assert.That(rejectedExternal.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+				Assert.That(rejectedExternal.Error, Is.EqualTo("external_artifact_not_supported_for_memory_snapshot"));
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(File.ReadAllBytes(Path.Combine(fullPath, "memory-snapshot.snap")), Is.EqualTo(snapshotBytes));
+				string manifest = File.ReadAllText(Path.Combine(fullPath, "manifest.json"));
+				Assert.That(manifest, Does.Contain("\"requested_tool\":\"MemoryProfiler\""));
+				Assert.That(manifest, Does.Contain("\"memory_snapshot_state\":\"Completed\""));
+				Assert.That(manifest, Does.Contain("\"memory_snapshot_requested_flags\":\"ManagedObjects, NativeObjects\""));
+				Assert.That(manifest, Does.Contain("\"contains_sensitive_memory\":true"));
+				Assert.That(manifest, Does.Contain("Memory snapshot contains sensitive process memory."));
+				Assert.That(manifest, Does.Contain(Sha256(snapshotBytes)));
+				string metadata = File.ReadAllText(Path.Combine(fullPath, "memory-snapshot.json"));
+				Assert.That(metadata, Does.Contain("\"backend_id\":\"fake.memory\""));
+				Assert.That(metadata, Does.Contain("\"capture_flags_confirmed\":false"));
+				Assert.That(metadata, Does.Contain("Memory snapshot contains sensitive process memory."));
+				Assert.That(File.Exists(Path.Combine(fullPath, "external-capture.json")), Is.False);
+				coordinator.MarkExported("memory-bundle", result.RelativePath, result.Bundle.ExternalArtifactState);
+				Assert.That(coordinator.TryGetExportData("memory-bundle", out _), Is.False);
+			}
+			finally
+			{
+				if (File.Exists(sourcePath))
+				{
+					File.Delete(sourcePath);
+				}
+
+				if (File.Exists(externalPath))
+				{
+					File.Delete(externalPath);
+				}
+
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
 		public void ScreenshotRequestStaysPendingUntilExplicitCompletion()
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("screenshot", includeScreenshot: true, completeScreenshot: false);
@@ -414,6 +489,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 				0,
 				state == PerfMeterCaptureState.Completed ? 1 : 0,
 				0,
+				string.Empty);
+		}
+
+		private static PerfMeterMemorySnapshotStatusSnapshot MemoryStatus(PerfMeterMemorySnapshotOptions options, PerfMeterMemorySnapshotState state, long sizeBytes)
+		{
+			return new PerfMeterMemorySnapshotStatusSnapshot(
+				PerfMeterAvailability.Available,
+				state,
+				options.CaptureId,
+				options.Trigger,
+				options.CaptureFlags,
+				"fake.memory",
+				"1.0",
+				1d,
+				2d,
+				sizeBytes,
+				0d,
 				string.Empty);
 		}
 

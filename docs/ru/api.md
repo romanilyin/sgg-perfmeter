@@ -190,3 +190,31 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Диагностика overdraw использует явные диагностические режимы, которые могут добавлять работу GPU. В HDRP эти API безопасно возвращают unsupported state для overdraw и heatmap, не обещая HDRP heatmap output.
+
+## Опциональные снимки памяти
+
+Снимки памяти — это опциональная интеграция. В Unity `6000.4+` установка `com.unity.memoryprofiler` `1.1.0+` включает отдельную сборку `SGG.PerfMeter.MemoryProfiler`, которая автоматически регистрирует backend `MemoryProfiler`. У core assembly нет hard dependency.
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+Публичная поверхность: `RegisterMemorySnapshotBackend(...)`, `UnregisterMemorySnapshotBackend(...)`, `GetMemorySnapshotCapabilities()`, `GetMemorySnapshotStatus()`, `RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`, `ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)` и `GetMemorySnapshotTriggers()`. Пользовательский backend реализует `IPerfMeterMemorySnapshotBackend`; опциональная сборка поставляет Unity Memory Profiler backend.
+
+`PerfMeterMemorySnapshotOptions` по умолчанию выбирает managed/native object flags, требует 1 GiB свободного места и задаёт cooldown 300 секунд. `RequestMemorySnapshot` по умолчанию выполняет ручной захват и возвращает явный результат: `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest` или `Failed`. Read-методы не запускают runtime, а корректный запрос запускает его.
+
+`ConfigureMemorySnapshotTriggers` включает opt-in эвристику порога system memory и ограниченного роста утечки. `GetMemorySnapshotTriggers()` по умолчанию возвращает disabled. Для trigger-запросов действуют те же single-flight, cooldown, free-space и capture-flag guards, что и для ручных запросов.

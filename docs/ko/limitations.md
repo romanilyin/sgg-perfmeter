@@ -49,3 +49,12 @@ overlay에는 두 가지 UI Toolkit backend path가 있습니다. Unity `6000.4`
 ## Validation Status
 
 현재 validation에는 automated EditMode coverage, Unity `6000.4.10f1`의 HDRP smoke validation, 이전 Android S23 Vulkan/GLES smoke validation이 포함됩니다. 데이터를 release-signoff evidence로 다루기 전에는 더 넓은 player-build 및 device coverage가 여전히 유용합니다.
+
+## 선택적 메모리 스냅샷: 제한 및 개인정보
+
+- Unity `6000.4+`에서 `com.unity.memoryprofiler` `1.1.0+`가 없으면 기능을 사용할 수 없습니다. core package는 이 dependency를 install하거나 요구하지 않습니다.
+- 기본값은 manual capture만 허용합니다. system-memory threshold와 bounded leak-growth trigger는 opt-in이며 모든 request에 single-flight/overlap, cooldown, minimum free-space, backend, capture-flag guard가 적용됩니다.
+- owned `.snap` staging은 `Temp/PerfMeter/MemorySnapshots` 아래에 있고 512 MiB로 제한됩니다. memory-only evidence는 `Temp/PerfMeter/CaptureBundles` 아래로 export되며 bundle retention total quota는 2 GiB입니다. 성공한 export는 one-shot으로 staging source를 삭제하지만 cleanup warning이 명시될 수 있습니다.
+- snapshot에는 민감한 process memory가 포함될 수 있습니다. 공유하기 전에 보호하고 검토하십시오. bundle은 `contains_sensitive_memory`, backend/flag provenance, `memory-snapshot.json`, SHA-256 metadata를 기록하며 external GPU artifact는 만들지 않습니다.
+- OS file lock으로 인한 삭제와 portable managed reparse-point race 보호는 best-effort입니다. 안전하지 않거나 소유하지 않은 path는 reject되고 cleanup failure는 warning으로 남습니다.
+- evidence에는 memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, `com.unity.memoryprofiler@1.1.12` optional compile, Unity `6000.4.12f1` full EditMode `182/182`와 full PlayMode `14/14`가 포함됩니다. release-player 또는 device behavior를 주장하는 결과는 아닙니다.

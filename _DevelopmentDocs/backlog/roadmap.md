@@ -37,7 +37,7 @@
 | `PM-OBS-002` Profiler instrumentation | P2 | resolved, released `2026.8.6-1` | Internal Scripts-category end-of-frame gauge markers/counters for collection, providers, snapshots, bottleneck, capture/export, CPU/GPU timing, thermal hook and state codes; no public schema changes or overhead subtraction. | `PM-OBS-001` |
 | `PM-OBS-003` Self-observability and overhead budgets | P2 | resolved, released `2026.8.6-1` | Fixed 120-frame CPU callback windows для collector, custom providers, CPU-core provider, overlay и URP/HDRP integration; additive API/status/MCP snapshots и per-invocation allocation/performance budgets. GPU attribution остается `Unavailable`, основные CPU/GPU-метрики не корректируются. | `PM-UI-002`, `PM-OBS-002` |
 | `PM-PLAT-001` Adaptive Performance telemetry | P2 | resolved, released `2026.8.6-2` | Optional `SGG.PerfMeter.AdaptivePerformance` provider для thermal state/temperature trends, CPU/GPU performance levels, alerts и session/capture samples с provider provenance; core package не получает hard dependency на `com.unity.adaptiveperformance`, а assembly активируется через version define для `5.1.0+` и явно сохраняет unavailable states. | capability/provider seams, `PM-CAP-002` |
-| `PM-MEM-001` Memory snapshot trigger | P3 | planned | Optional Memory Profiler backend для manual/threshold/leak capture с cooldown, free-space guard, capture flags и bundle manifest. | `PM-CAP-001`, `PM-CAP-002` |
+| `PM-MEM-001` Memory snapshot trigger | P3 | implemented, pending release | Optional Memory Profiler backend для manual/threshold/leak capture с cooldown, free-space guard, capture flags и bundle manifest. | `PM-CAP-001`, `PM-CAP-002` |
 | `PM-GFX-001` PSO and shader-stutter diagnostics | P3 | planned | Коррелировать shader/graphics-pipeline creation markers, graphics API и optional `GraphicsStateCollection` trace/prewarm workflow. | `PM-OBS-001`, `PM-CAP-001` |
 | `PM-REN-001` Render integration context | P3 | planned | Расширить camera/SRP/pass/GRD/VRS context и перейти к integration-neutral snapshot API через additive compatibility facade. Добавлять Editor navigation только при наличии стабильного public Unity API. | `PM-OBS-001` |
 | `PM-GRD-001` GPU Resident Drawer telemetry | P3 | planned | Показывать GRD/Forward+/compute support, фактическую активность, effectiveness counters и fallback/degraded reasons. | `PM-OBS-001`, `PM-REN-001` |
@@ -64,6 +64,8 @@
 
 `PM-PLAT-001` выпущен в `2026.8.6-2`; targeted platform telemetry EditMode `7/7`, telemetry lifecycle PlayMode `1/1` и full matrix прошли. Optional `SGG.PerfMeter.AdaptivePerformance` assembly успешно скомпилирована с `com.unity.adaptiveperformance@5.1.6`; target-device behavior явно waived из-за отсутствия поддерживаемого устройства и не заявляется как проверенное.
 
+`PM-MEM-001` реализован, но ожидает release pass: targeted memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, optional assembly compile с реальным `com.unity.memoryprofiler@1.1.12`, а также Unity `6000.4.12f1` full EditMode `182/182` и full PlayMode `14/14` подтверждены. Release-player и device behavior для этой интеграции здесь не заявляются.
+
 ## Release Sequence
 
 | Phase | Scope | Exit Gate |
@@ -81,6 +83,7 @@
 - URP 17.4 and HDRP 17.4; Windows D3D11/D3D12, Linux Vulkan, macOS/iOS Metal, Android Vulkan and explicit GLES degraded mode as applicable.
 - Fake backends are mandatory in automated tests; real RenderDoc/PIX/platform-tool smokes are release-candidate gates.
 - Adaptive Performance `5.1+` package integration and real target-device thermal/performance validation remain release-candidate gates; fake providers and contract tests do not replace them.
+- Memory Profiler `1.1.0+` real-package integration, release-player behavior, and target-device validation remain the `PM-MEM-001` release gate; targeted tests and the `1.1.12` optional compile check do not replace it.
 - Capture samples are classified separately from normal baseline samples; capture overhead must not silently contaminate normal performance evidence.
 - Steady-state collector and hidden overlay target `0 B/frame`; dynamic discovery runs only at startup/reconfigure and export stays outside frame-critical paths.
 - Bundles enforce project-local path validation, atomic commit, disk quota/retention and redaction of sensitive paths, screenshots and device metadata.

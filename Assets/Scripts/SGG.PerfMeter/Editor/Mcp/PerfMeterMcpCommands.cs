@@ -201,6 +201,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"max_roll_frames\":").Append(capabilities.MaxRollFrames);
 			builder.Append(",\"max_bundle_bytes\":").Append(capabilities.MaxBundleBytes);
 			builder.Append(",\"max_screenshot_bytes\":").Append(capabilities.MaxScreenshotBytes);
+			builder.Append(",\"max_memory_snapshot_bytes\":").Append(capabilities.MaxMemorySnapshotBytes);
 			builder.Append(",\"total_quota_bytes\":").Append(capabilities.TotalQuotaBytes);
 			builder.Append(",\"max_committed_bundles\":").Append(capabilities.MaxCommittedBundles);
 			builder.Append(",\"retention_days\":").Append(capabilities.RetentionDays);
@@ -208,6 +209,68 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"tool_identity\":\"unknown\"");
 			builder.Append(",\"tool_version\":\"unknown\"");
 			builder.Append(",\"external_artifact_authority\":\"unavailable_without_native_provider\"");
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		public static string MemorySnapshotRequest(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			PerfMeterMemoryCaptureFlags flags = ParseMemoryCaptureFlags(argsJson);
+			int minimumFreeDiskMb = RequireRange(ExtractInt(argsJson, "minimum_free_disk_mb", 1024), 0, 1048576, "minimum_free_disk_mb");
+			int cooldownSeconds = RequireRange(ExtractInt(argsJson, "cooldown_seconds", 300), 0, 86400, "cooldown_seconds");
+			PerfMeterMemorySnapshotRequestResult result = RuntimePerformanceMeter.RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions(
+				captureId,
+				flags,
+				minimumFreeDiskMb * 1024L * 1024L,
+				cooldownSeconds));
+			return MemorySnapshotCommandJson(result.ToString(), RuntimePerformanceMeter.GetMemorySnapshotStatus(), RuntimePerformanceMeter.GetCaptureBundleStatus(captureId));
+		}
+
+		public static string MemorySnapshotStatus()
+		{
+			PerfMeterMemorySnapshotStatusSnapshot status = RuntimePerformanceMeter.GetMemorySnapshotStatus();
+			return MemorySnapshotCommandJson("status", status, RuntimePerformanceMeter.GetCaptureBundleStatus(status.CaptureId));
+		}
+
+		public static string MemorySnapshotCapabilities()
+		{
+			PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetMemorySnapshotCapabilities();
+			StringBuilder builder = new StringBuilder(640);
+			builder.Append("{\"availability\":").Append(JsonString(capabilities.Availability.ToString()));
+			builder.Append(",\"backend_id\":").Append(JsonString(capabilities.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(capabilities.BackendVersion));
+			builder.Append(",\"supported_capture_flags\":").Append(JsonString(capabilities.SupportedCaptureFlags.ToString()));
+			builder.Append(",\"max_snapshot_bytes\":").Append(capabilities.MaxSnapshotBytes);
+			builder.Append(",\"snapshot_root\":").Append(JsonString(capabilities.SnapshotRoot));
+			builder.Append(",\"warning\":").Append(JsonString(capabilities.Warning));
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		public static string MemorySnapshotTriggersConfigure(string argsJson)
+		{
+			bool enabled = RequireBool(argsJson, "enabled");
+			int thresholdMb = RequireRange(ExtractInt(argsJson, "system_memory_threshold_mb", 0), 0, 1048576, "system_memory_threshold_mb");
+			int growthMb = RequireRange(ExtractInt(argsJson, "leak_growth_threshold_mb", 0), 0, 1048576, "leak_growth_threshold_mb");
+			int windowFrames = RequireRange(ExtractInt(argsJson, "leak_window_frames", 300), 30, 36000, "leak_window_frames");
+			int minimumFreeDiskMb = RequireRange(ExtractInt(argsJson, "minimum_free_disk_mb", 1024), 0, 1048576, "minimum_free_disk_mb");
+			int cooldownSeconds = RequireRange(ExtractInt(argsJson, "cooldown_seconds", 300), 0, 86400, "cooldown_seconds");
+			PerfMeterMemorySnapshotTriggerOptions options = new PerfMeterMemorySnapshotTriggerOptions(
+				enabled,
+				thresholdMb * 1024L * 1024L,
+				growthMb * 1024L * 1024L,
+				windowFrames,
+				ParseMemoryCaptureFlags(argsJson),
+				minimumFreeDiskMb * 1024L * 1024L,
+				cooldownSeconds);
+			bool configured = RuntimePerformanceMeter.ConfigureMemorySnapshotTriggers(options);
+			StringBuilder builder = new StringBuilder(512);
+			builder.Append("{\"configured\":").Append(JsonBool(configured));
+			builder.Append(",\"triggers\":");
+			AppendMemorySnapshotTriggers(builder, RuntimePerformanceMeter.GetMemorySnapshotTriggers());
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -487,6 +550,19 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return builder.ToString();
 		}
 
+		private static string MemorySnapshotCommandJson(string result, PerfMeterMemorySnapshotStatusSnapshot status, PerfMeterCaptureBundleStatusSnapshot bundle)
+		{
+			StringBuilder builder = new StringBuilder(1024);
+			builder.Append("{\"result\":").Append(JsonString(result));
+			builder.Append(",\"memory_snapshot\":");
+			AppendMemorySnapshotStatus(builder, status);
+			builder.Append(",\"bundle\":");
+			AppendCaptureBundleStatus(builder, bundle);
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		private static void AppendCompatibilityStatus(StringBuilder builder, PerfMeterCompatibilityStatus status)
 		{
 			builder.Append("{\"import_compatible\":").Append(JsonBool(status.ImportCompatible));
@@ -572,8 +648,38 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"alert_events_truncated\":").Append(JsonBool(status.AlertEventsTruncated));
 			builder.Append(",\"screenshot_state\":").Append(JsonString(status.ScreenshotState.ToString()));
 			builder.Append(",\"external_artifact_state\":").Append(JsonString(status.ExternalArtifactState.ToString()));
+			builder.Append(",\"memory_snapshot_state\":").Append(JsonString(status.MemorySnapshotState.ToString()));
 			builder.Append(",\"committed_relative_path\":").Append(JsonString(status.CommittedRelativePath));
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendMemorySnapshotStatus(StringBuilder builder, PerfMeterMemorySnapshotStatusSnapshot status)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
+			builder.Append(",\"capture_id\":").Append(JsonString(status.CaptureId));
+			builder.Append(",\"trigger\":").Append(JsonString(status.Trigger.ToString()));
+			builder.Append(",\"requested_capture_flags\":").Append(JsonString(status.RequestedCaptureFlags.ToString()));
+			builder.Append(",\"backend_id\":").Append(JsonString(status.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(status.BackendVersion));
+			builder.Append(",\"started_time_seconds\":").Append(JsonNumber(status.StartedTimeSeconds));
+			builder.Append(",\"completed_time_seconds\":").Append(JsonNumber(status.CompletedTimeSeconds));
+			builder.Append(",\"artifact_size_bytes\":").Append(status.ArtifactSizeBytes);
+			builder.Append(",\"cooldown_remaining_seconds\":").Append(JsonNumber(status.CooldownRemainingSeconds));
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendMemorySnapshotTriggers(StringBuilder builder, PerfMeterMemorySnapshotTriggerOptions options)
+		{
+			builder.Append("{\"enabled\":").Append(JsonBool(options.Enabled));
+			builder.Append(",\"system_memory_threshold_bytes\":").Append(options.SystemMemoryThresholdBytes);
+			builder.Append(",\"leak_growth_threshold_bytes\":").Append(options.LeakGrowthThresholdBytes);
+			builder.Append(",\"leak_window_frames\":").Append(options.LeakWindowFrames);
+			builder.Append(",\"capture_flags\":").Append(JsonString(options.CaptureFlags.ToString()));
+			builder.Append(",\"minimum_free_disk_bytes\":").Append(options.MinimumFreeDiskBytes);
+			builder.Append(",\"cooldown_seconds\":").Append(JsonNumber(options.CooldownSeconds));
 			builder.Append('}');
 		}
 
@@ -1356,6 +1462,39 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument tool must be RenderDoc or Pix");
+		}
+
+		private static PerfMeterMemoryCaptureFlags ParseMemoryCaptureFlags(string argsJson)
+		{
+			PerfMeterMemoryCaptureFlags flags = PerfMeterMemoryCaptureFlags.None;
+			bool managedObjects = !TryExtractBool(argsJson, "managed_objects", out bool managed) || managed;
+			bool nativeObjects = !TryExtractBool(argsJson, "native_objects", out bool native) || native;
+			if (managedObjects)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.ManagedObjects;
+			}
+
+			if (nativeObjects)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeObjects;
+			}
+
+			if (TryExtractBool(argsJson, "native_allocations", out bool allocations) && allocations)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeAllocations;
+			}
+
+			if (TryExtractBool(argsJson, "native_allocation_sites", out bool sites) && sites)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeAllocationSites;
+			}
+
+			if (TryExtractBool(argsJson, "native_stack_traces", out bool stacks) && stacks)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeStackTraces;
+			}
+
+			return flags;
 		}
 
 		private static int RequireRange(int value, int minimum, int maximum, string property)

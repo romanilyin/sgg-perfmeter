@@ -49,3 +49,12 @@ L'overlay limite les allocations et est cadence, mais les valeurs numeriques et 
 ## Etat De Validation
 
 La validation actuelle inclut une couverture automatisee EditMode, HDRP smoke validation dans Unity `6000.4.10f1` et une precedente validation smoke Android S23 Vulkan/GLES. Une couverture plus large de player builds et d'appareils reste utile avant de traiter les donnees comme preuve de validation de release.
+
+## Limites et confidentialité des snapshots mémoire optionnels
+
+- La fonction est indisponible sans `com.unity.memoryprofiler` `1.1.0+` sous Unity `6000.4+`; le package core n'installe ni n'exige cette dépendance.
+- La capture manuelle est la seule option par défaut. Les triggers de seuil de mémoire système et de croissance de fuite bornée sont opt-in; chaque requête est soumise aux gardes single-flight/overlap, cooldown, espace libre minimum, backend et capture-flags.
+- Le staging `.snap` possédé se trouve sous `Temp/PerfMeter/MemorySnapshots` et est limité à 512 Mio. L'evidence uniquement mémoire est exportée sous `Temp/PerfMeter/CaptureBundles`, avec un quota total de rétention de 2 Gio. Un export réussi est à usage unique et supprime la source de staging, avec des avertissements explicites en cas de nettoyage impossible.
+- Les snapshots peuvent contenir de la mémoire sensible du processus. Protégez-les et examinez-les avant tout partage. Le bundle indique `contains_sensitive_memory`, la provenance du backend et des flags, `memory-snapshot.json` et les métadonnées SHA-256; il ne crée aucun artefact GPU externe.
+- La suppression bloquée par l'OS et la protection portable managed contre les courses avec des reparse points sont best-effort. Les chemins dangereux ou non possédés sont rejetés et les échecs de nettoyage restent visibles comme avertissements.
+- Les preuves comprennent memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, la compilation optionnelle avec `com.unity.memoryprofiler@1.1.12`, ainsi que Unity `6000.4.12f1` full EditMode `182/182` et full PlayMode `14/14`. Cela ne constitue pas une affirmation sur le release-player ou le comportement appareil.

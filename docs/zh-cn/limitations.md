@@ -49,3 +49,12 @@ Overlay 会注意 allocation 并进行 throttling，但变化的数值和 graph 
 ## Validation Status
 
 当前验证包含自动化 EditMode coverage、Unity `6000.4.10f1` 中的 HDRP smoke validation，以及之前的 Android S23 Vulkan/GLES smoke validation。在将数据作为 release-signoff evidence 前，更广泛的 player-build 和 device coverage 仍然有价值。
+
+## 可选内存快照：限制与隐私
+
+- Unity `6000.4+` 中没有 `com.unity.memoryprofiler` `1.1.0+` 时，此功能不可用；core package 不会安装或要求该 dependency。
+- 默认只启用 manual capture。system-memory threshold 和 bounded leak-growth trigger 需要 opt-in；每个 request 都受 single-flight/overlap、cooldown、minimum free-space、backend 和 capture-flag guard 约束。
+- owned `.snap` staging 位于 `Temp/PerfMeter/MemorySnapshots`，上限为 512 MiB。memory-only evidence 导出到 `Temp/PerfMeter/CaptureBundles`，bundle retention total quota 为 2 GiB。成功 export 是 one-shot 并删除 staging source；清理失败会有明确 warning。
+- snapshot 可能包含敏感的 process memory。分享前请保护并检查内容。bundle 会记录 `contains_sensitive_memory`、backend/flag provenance、`memory-snapshot.json` 和 SHA-256 metadata，但不会创建 external GPU artifact。
+- OS file lock 导致的删除，以及 portable managed 对 reparse-point race 的保护，均为 best-effort。不安全或非 owned path 会被 reject，cleanup failure 会保留为 warning。
+- evidence 包括 memory EditMode `9/9`、capture-bundle EditMode `14/14`、PlayMode threshold `1/1`、使用 `com.unity.memoryprofiler@1.1.12` 的 optional compile，以及 Unity `6000.4.12f1` full EditMode `182/182` 和 full PlayMode `14/14`。这不代表 release-player 或 device behavior 已获验证。

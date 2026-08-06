@@ -130,3 +130,12 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}`는 cache된 state를 읽기만 하며 runtime을 시작하거나 discovery를 수행하지 않습니다.
+
+## 선택적 메모리 스냅샷 workflow
+
+1. Unity `6000.4+`를 사용하고 Package Manager에서 `com.unity.memoryprofiler` `1.1.0+`를 install합니다. 선택적 `SGG.PerfMeter.MemoryProfiler` assembly가 backend를 자동 등록합니다. 이 package가 없으면 core integration은 unavailable 상태입니다.
+2. Play Mode에서 `PerformanceMeter.GetMemorySnapshotCapabilities()` 또는 `perfmeter.memory.snapshot.capabilities`를 읽고 backend와 필요한 capture flags를 확인합니다.
+3. `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))`로 manual snapshot을 request하거나 `ConfigureMemorySnapshotTriggers(...)`로 system-memory threshold 또는 bounded leak-growth window를 명시적으로 enable합니다.
+4. `GetMemorySnapshotStatus()` 또는 `perfmeter.memory.snapshot.status`를 읽어 snapshot과 correlated bundle이 terminal state가 될 때까지 기다립니다. 준비된 evidence는 `PerformanceMeter.ExportCaptureBundle(captureId)` 또는 `perfmeter.capture.export`로 export합니다.
+
+memory-only evidence는 기존 capture-bundle API를 통해 `Temp/PerfMeter/CaptureBundles` 아래에 기록됩니다. bundle은 requested tool로 `MemoryProfiler`를 기록하고 메모리 provenance 및 `.snap`의 streaming SHA-256을 포함하지만 external GPU artifact는 포함하지 않습니다. owned source는 `Temp/PerfMeter/MemorySnapshots` 아래에 있으며 성공한 export에서 한 번만 소비됩니다.

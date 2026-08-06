@@ -49,3 +49,12 @@ El overlay está diseñado para cuidar las asignaciones y usa throttling, pero l
 ## Estado De Validación
 
 La validación actual incluye cobertura automatizada EditMode, HDRP smoke validation en Unity `6000.4.10f1` y validación smoke previa en Android S23 Vulkan/GLES. Sigue siendo útil ampliar cobertura de player builds y dispositivos antes de tratar los datos como evidencia de aprobación para release.
+
+## Límites y privacidad de los snapshots de memoria opcionales
+
+- La función no está disponible sin `com.unity.memoryprofiler` `1.1.0+` en Unity `6000.4+`; el paquete core no instala ni requiere esa dependencia.
+- La captura manual es la única opción predeterminada. Los triggers de umbral de memoria del sistema y crecimiento acotado de fugas son opt-in; cada solicitud está sujeta a guards de single-flight/overlap, cooldown, espacio libre mínimo, backend y flags de captura.
+- El staging `.snap` propiedad de PerfMeter está bajo `Temp/PerfMeter/MemorySnapshots` y se limita a 512 MiB. La evidencia solo de memoria se exporta bajo `Temp/PerfMeter/CaptureBundles`, con una cuota total de retención de 2 GiB. Un export correcto es de un solo uso y elimina el source de staging, con warnings explícitos si la limpieza no puede completarse.
+- Los snapshots pueden contener memoria sensible del proceso. Protégelos y revísalos antes de compartirlos. El bundle registra `contains_sensitive_memory`, provenance de backend/flags, `memory-snapshot.json` y metadatos SHA-256; no crea un artefacto GPU externo.
+- El borrado bloqueado por el sistema operativo y la protección portable managed frente a carreras con reparse points son best-effort. Los paths inseguros o ajenos se rechazan y los fallos de limpieza se mantienen visibles como warnings.
+- La evidencia incluye memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, compilación opcional con `com.unity.memoryprofiler@1.1.12` y Unity `6000.4.12f1` full EditMode `182/182` más full PlayMode `14/14`. No es una afirmación sobre release-player ni comportamiento en dispositivos.

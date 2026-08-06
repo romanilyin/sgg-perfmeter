@@ -173,12 +173,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(coordinator.Reset(), Is.False);
 			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Error));
 			Assert.That(coordinator.Status.CaptureId, Is.EqualTo("capture-1"));
+			Assert.That(coordinator.HasActiveResources, Is.True);
 			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("capture-2", PerfMeterCaptureTool.RenderDoc)), Is.EqualTo(PerfMeterCaptureRequestResult.RejectedOverlap));
 
 			backend.EndSucceeds = true;
 			Assert.That(coordinator.Reset(), Is.True);
 			Assert.That(backend.EndCount, Is.EqualTo(2));
 			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Idle));
+			Assert.That(coordinator.HasActiveResources, Is.False);
 		}
 
 		[TestCase(PerfMeterCaptureTool.RenderDoc, RuntimePlatform.WindowsEditor, GraphicsDeviceType.Direct3D11, true)]

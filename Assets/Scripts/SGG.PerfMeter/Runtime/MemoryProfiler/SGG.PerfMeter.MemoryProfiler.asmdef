@@ -1,0 +1,26 @@
+{
+	"name": "SGG.PerfMeter.MemoryProfiler",
+	"rootNamespace": "SGG.PerfMeter",
+	"references": [
+		"SGG.PerfMeter",
+		"Unity.MemoryProfiler"
+	],
+	"includePlatforms": [],
+	"excludePlatforms": [],
+	"allowUnsafeCode": false,
+	"overrideReferences": false,
+	"precompiledReferences": [],
+	"autoReferenced": true,
+	"defineConstraints": [
+		"UNITY_6000_4_OR_NEWER",
+		"SGG_PERFMETER_MEMORY_PROFILER_1_1_OR_NEWER"
+	],
+	"versionDefines": [
+		{
+			"name": "com.unity.memoryprofiler",
+			"expression": "1.1.0",
+			"define": "SGG_PERFMETER_MEMORY_PROFILER_1_1_OR_NEWER"
+		}
+	],
+	"noEngineReferences": false
+}

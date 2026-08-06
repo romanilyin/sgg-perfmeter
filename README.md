@@ -61,6 +61,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
 - Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
+- Optionally capture sensitive memory snapshots through the separate Memory Profiler integration and correlate them with the existing evidence-bundle surface.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
 - Give tools and agents structured data for comparisons, A/B tests, and hotspot search instead of relying on screenshots or Console scraping.
 
@@ -90,6 +91,16 @@ PerfMeter can collect optional thermal and Adaptive Performance signals through 
 - **Collection and exports**: the runtime samples the provider once per collected frame. Session JSON/CSV and capture samples preserve the snapshot and provider provenance. MCP command `perfmeter.platform.telemetry` exposes the current structured snapshot.
 - **Profiler and alerts**: `SGG.PerfMeter.Thermal.Sample` and `SGG.PerfMeter.Thermal.Available` expose the thermal collection marker and availability counter. The default `thermal.throttling` alert uses the `ThermalWarningLevel` metric when an imminent or active throttling level is available.
 - **Unavailable is explicit**: unsupported providers and fields stay unavailable; JSON serializes unavailable numeric values as `null` and CSV uses empty fields, with availability flags instead of fake zero readings. Real Adaptive Performance package and target-device validation remain release-matrix/release-candidate gates; no device result is implied here.
+
+## Optional Memory Snapshots
+
+Memory snapshots are an opt-in extension, not a core-package dependency. On Unity `6000.4+`, installing `com.unity.memoryprofiler` `1.1.0+` enables the separate `SGG.PerfMeter.MemoryProfiler` assembly, which auto-registers the Memory Profiler backend. Check `PerformanceMeter.GetMemorySnapshotCapabilities()` before requesting a snapshot.
+
+- Manual requests use `RequestMemorySnapshot(...)`; system-memory threshold and bounded leak-growth triggers are disabled by default and must be explicitly configured.
+- `GetMemorySnapshotStatus()` reports single-flight, cooldown, free-space, and capture-flag decisions. Memory-only evidence uses the existing capture-bundle API and is exported below `Temp/PerfMeter/CaptureBundles` with `MemoryProfiler` provenance; it does not create an external GPU artifact.
+- A `.snap` source is owned under `Temp/PerfMeter/MemorySnapshots`, limited to 512 MiB, and copied with a streaming SHA-256 into the bundle. The total bundle retention quota is 2 GiB. Treat snapshots as sensitive process-memory data and protect/review them before sharing.
+
+See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](./docs/en/workflows.md), and [Limitations](./docs/en/limitations.md) pages for the optional integration details.
 
 ## Quick Start
 

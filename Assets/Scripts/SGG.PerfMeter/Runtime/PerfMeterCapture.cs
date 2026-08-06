@@ -8,7 +8,8 @@ namespace SGG.PerfMeter
 	{
 		Unknown = 0,
 		RenderDoc = 1,
-		Pix = 2
+		Pix = 2,
+		MemoryProfiler = 3
 	}
 
 	public enum PerfMeterCaptureState
@@ -165,6 +166,7 @@ namespace SGG.PerfMeter
 			_completedPostRollFrames,
 			_warning);
 		internal bool ScopeActive => _scopeActive;
+		internal bool HasActiveResources => IsActiveState(_state) || _backendActive || _scopeActive;
 
 		internal PerfMeterCaptureRequestResult Request(PerfMeterCaptureOptions options)
 		{

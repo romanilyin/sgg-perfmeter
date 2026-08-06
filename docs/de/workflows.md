@@ -118,3 +118,12 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}` ist ein Lesen des Caches; es startet weder die Runtime noch eine Discovery.
+
+## Workflow fuer optionale Speicher-Snapshots
+
+1. Verwende Unity `6000.4+` und installiere `com.unity.memoryprofiler` `1.1.0+` ueber den Package Manager. Die optionale Assembly `SGG.PerfMeter.MemoryProfiler` registriert danach automatisch das Backend; ohne dieses Paket bleibt die Core-Integration unavailable.
+2. Lies im Play Mode `PerformanceMeter.GetMemorySnapshotCapabilities()` oder `perfmeter.memory.snapshot.capabilities` und pruefe Backend sowie benoetigte Capture-Flags.
+3. Fordere einen manuellen Snapshot mit `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))` an oder konfiguriere mit `ConfigureMemorySnapshotTriggers(...)` eine ausdruecklich aktivierte System-Speicherschwelle bzw. ein begrenztes Leak-Wachstumsfenster.
+4. Lies `GetMemorySnapshotStatus()` oder `perfmeter.memory.snapshot.status`, bis Snapshot und korreliertes Bundle einen terminal state erreichen. Exportiere fertige Evidence mit `PerformanceMeter.ExportCaptureBundle(captureId)` oder `perfmeter.capture.export`.
+
+Memory-only-Evidence wird ueber die bestehende Capture-Bundle-API unter `Temp/PerfMeter/CaptureBundles` geschrieben. Das Bundle fuehrt `MemoryProfiler` als angefordertes Tool, enthaelt Speicher-Provenance und einen Streaming-SHA-256 fuer die `.snap`-Datei und enthaelt kein externes GPU-Artefakt. Die Quelle liegt unter `Temp/PerfMeter/MemorySnapshots`; ein erfolgreicher Export verwendet sie nur einmal.

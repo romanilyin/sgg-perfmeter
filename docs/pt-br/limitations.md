@@ -49,3 +49,12 @@ O overlay considera as alocacoes e usa throttling, mas valores numericos alterad
 ## Status De Validacao
 
 A validacao atual inclui cobertura automatizada EditMode, HDRP smoke validation no Unity `6000.4.10f1` e validacao smoke anterior no Android S23 Vulkan/GLES. Cobertura mais ampla de player-build e dispositivos ainda e util antes de tratar os dados como evidencia de sign-off de release.
+
+## Limites e privacidade dos snapshots de memoria opcionais
+
+- O recurso fica indisponivel sem `com.unity.memoryprofiler` `1.1.0+` no Unity `6000.4+`; o pacote core nao instala nem exige essa dependencia.
+- A captura manual e a unica opcao padrao. Triggers de limite de memoria do sistema e crescimento limitado de vazamento sao opt-in; cada solicitacao passa por guards de single-flight/overlap, cooldown, espaco livre minimo, backend e capture flags.
+- O staging `.snap` pertencente ao PerfMeter fica em `Temp/PerfMeter/MemorySnapshots` e e limitado a 512 MiB. A evidencia somente de memoria e exportada em `Temp/PerfMeter/CaptureBundles`, com quota total de retencao de 2 GiB. Uma exportacao bem-sucedida e de uso unico e remove a origem de staging, com avisos explicitos se a limpeza falhar.
+- Snapshots podem conter memoria sensivel do processo. Proteja-os e revise-os antes de compartilhar. O bundle registra `contains_sensitive_memory`, proveniencia de backend/flags, `memory-snapshot.json` e metadados SHA-256; nao cria artefato GPU externo.
+- Exclusao bloqueada pelo sistema operacional e protecao portable managed contra races com reparse points sao best-effort. Paths inseguros ou nao pertencentes sao rejeitados, e falhas de limpeza permanecem visiveis como warnings.
+- A evidencia inclui memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, compilacao opcional com `com.unity.memoryprofiler@1.1.12` e Unity `6000.4.12f1` full EditMode `182/182` mais full PlayMode `14/14`. Isso nao afirma comportamento de release-player ou de dispositivos.

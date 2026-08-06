@@ -65,3 +65,23 @@ perfmeter.alerts.latest {}
 ```
 
 Используйте `OverdrawDiagnostic` только для ограниченных URP диагностических окон, потому что числовой overdraw и рендеринг heatmap добавляют дополнительную работу GPU. HDRP возвращает unsupported для overdraw/heatmap, но остальные diagnostics остаются доступны.
+
+## Команды снимков памяти
+
+| Команда | Назначение и основные входы |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | Запросить ручной снимок с `capture_id`, необязательными boolean-флагами захвата, `minimum_free_disk_mb` и `cooldown_seconds`. |
+| `perfmeter.memory.snapshot.status` | Прочитать состояние снимка и связанного bundle без запуска runtime и без раскрытия временного source path. |
+| `perfmeter.memory.snapshot.capabilities` | Прочитать provenance backend, поддерживаемые flags, лимит снимка 512 MiB и принадлежащий PerfMeter temporary root. |
+| `perfmeter.memory.snapshot.triggers.configure` | Явно включить или выключить триггеры system-memory threshold и bounded leak-growth, их frame window, flags, free-space guard и cooldown. |
+
+Команды запроса и настройки trigger требуют Play Mode. Automation по умолчанию выключена. Типичная последовательность:
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+Ожидайте export-ready состояния, затем используйте существующую команду `perfmeter.capture.export`. Memory-only bundle содержит `requested_tool: MemoryProfiler`, `memory-snapshot.json` и provenance в manifest, но не внешний GPU artifact. Успешный export выполняется один раз и удаляет принадлежащий staging source.

@@ -49,3 +49,12 @@ L'overlay e attento alle allocazioni e throttled, ma valori numerici e label dei
 ## Stato Della Validazione
 
 La validazione attuale include copertura automatizzata EditMode, HDRP smoke validation in Unity `6000.4.10f1` e precedente smoke validation su Android S23 Vulkan/GLES. Una copertura piu ampia di player-build e dispositivi resta utile prima di trattare i dati come evidenza per il sign-off di release.
+
+## Limiti e privacy degli snapshot di memoria opzionali
+
+- La funzione non è disponibile senza `com.unity.memoryprofiler` `1.1.0+` su Unity `6000.4+`; il pacchetto core non installa né richiede questa dipendenza.
+- La cattura manuale è l'unica modalità predefinita. I trigger di soglia della memoria di sistema e crescita limitata delle perdite sono opt-in; ogni richiesta è soggetta a guardie single-flight/overlap, cooldown, spazio libero minimo, backend e capture flags.
+- Lo staging `.snap` posseduto è sotto `Temp/PerfMeter/MemorySnapshots` ed è limitato a 512 MiB. L'evidence solo memoria viene esportata sotto `Temp/PerfMeter/CaptureBundles`, con una quota totale di retention di 2 GiB. Un export riuscito è monouso e rimuove la sorgente di staging, con avvisi espliciti se la pulizia non è possibile.
+- Gli snapshot possono contenere memoria sensibile del processo. Proteggili e controllali prima di condividerli. Il bundle registra `contains_sensitive_memory`, la provenienza di backend/flag, `memory-snapshot.json` e i metadati SHA-256; non crea un artefatto GPU esterno.
+- La cancellazione bloccata dal sistema operativo e la protezione portable managed contro le race con reparse point sono best-effort. I path non sicuri o non posseduti vengono rifiutati e gli errori di pulizia restano visibili come warning.
+- Le evidenze includono memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, compilazione opzionale con `com.unity.memoryprofiler@1.1.12` e Unity `6000.4.12f1` full EditMode `182/182` più full PlayMode `14/14`. Non è una dichiarazione sul release-player o sul comportamento su dispositivi.

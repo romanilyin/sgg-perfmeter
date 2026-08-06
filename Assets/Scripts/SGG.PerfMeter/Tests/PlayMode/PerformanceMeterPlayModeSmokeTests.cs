@@ -19,6 +19,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerformanceMeter.Stop();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 			PerfMeterPlatformTelemetryRegistry.ClearForTests();
+			PerfMeterMemorySnapshotBackendRegistry.ClearForTests();
 		}
 
 		[TearDown]
@@ -27,6 +28,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerformanceMeter.Stop();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 			PerfMeterPlatformTelemetryRegistry.ClearForTests();
+			PerfMeterMemorySnapshotBackendRegistry.ClearForTests();
 		}
 
 		[UnityTest]
@@ -270,6 +272,55 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			Assert.That(PerformanceMeter.GetPlatformTelemetry().IsAvailable, Is.False);
 			Assert.That(PerfMeterProfilerInstrumentation.ThermalAvailable, Is.Zero);
+		}
+
+		[UnityTest]
+		public IEnumerator MemoryThresholdTriggerCreatesExportableBundleAndHonorsCooldown()
+		{
+			PlayModeFakeMemorySnapshotBackend backend = new PlayModeFakeMemorySnapshotBackend();
+			PerformanceMeter.RegisterMemorySnapshotBackend(backend);
+			Assert.That(PerformanceMeter.ConfigureMemorySnapshotTriggers(new PerfMeterMemorySnapshotTriggerOptions(
+				true,
+				1L,
+				0L,
+				30,
+				PerfMeterMemorySnapshotOptions.DefaultCaptureFlags,
+				0L,
+				3600d)), Is.True);
+
+			for (int frame = 0; frame < 8 && backend.CaptureCount == 0; frame++)
+			{
+				yield return null;
+			}
+
+			Assert.That(backend.CaptureCount, Is.EqualTo(1));
+			PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+			Assert.That(status.State, Is.EqualTo(PerfMeterMemorySnapshotState.Completed));
+			Assert.That(status.Trigger, Is.EqualTo(PerfMeterMemorySnapshotTrigger.SystemMemoryThreshold));
+			Assert.That(status.ArtifactSizeBytes, Is.GreaterThan(0L));
+			Assert.That(status.CaptureId, Does.StartWith("memory-systemmemorythreshold-"));
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+
+			yield return null;
+			yield return null;
+			Assert.That(backend.CaptureCount, Is.EqualTo(1));
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/playmode-memory-" + System.Guid.NewGuid().ToString("N");
+			string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
+			try
+			{
+				PerfMeterCaptureBundleExportResult result = PerformanceMeter.ExportCaptureBundle(status.CaptureId, relativePath);
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(File.Exists(Path.Combine(fullPath, "memory-snapshot.snap")), Is.True);
+				Assert.That(File.Exists(backend.LastPath), Is.False, "Owned temporary snapshot should be deleted after atomic bundle export.");
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
 		}
 
 		[UnityTest]
@@ -577,6 +628,25 @@ namespace SGG.PerfMeter.Tests.PlayMode
 					3,
 					true,
 					PerfMeterAdaptiveBottleneck.Gpu);
+				return true;
+			}
+		}
+
+		private sealed class PlayModeFakeMemorySnapshotBackend : IPerfMeterMemorySnapshotBackend
+		{
+			public string Id => "playmode.memory";
+			public string Version => "test";
+			public PerfMeterMemoryCaptureFlags SupportedCaptureFlags => PerfMeterMemorySnapshotCoordinator.AllCaptureFlags;
+			internal int CaptureCount { get; private set; }
+			internal string LastPath { get; private set; }
+
+			public bool TryCapture(string path, PerfMeterMemoryCaptureFlags captureFlags, System.Action<PerfMeterMemorySnapshotBackendResult> completed, out string error)
+			{
+				CaptureCount++;
+				LastPath = path;
+				File.WriteAllBytes(path, new byte[] { 1, 2, 3, 4 });
+				completed(new PerfMeterMemorySnapshotBackendResult(true, path, string.Empty));
+				error = string.Empty;
 				return true;
 			}
 		}

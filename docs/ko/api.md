@@ -190,3 +190,31 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Overdraw diagnostics는 명시적인 diagnostic mode이며 GPU work를 추가할 수 있습니다. HDRP에서는 이 API들이 HDRP heatmap output을 약속하지 않고 overdraw와 heatmap의 unsupported state를 안전하게 보고합니다.
+
+## 선택적 메모리 스냅샷
+
+메모리 스냅샷은 선택적 통합 기능입니다. Unity `6000.4+`에서 `com.unity.memoryprofiler` `1.1.0+`를 resolve하면 별도 `SGG.PerfMeter.MemoryProfiler` assembly가 활성화되고 `MemoryProfiler` backend를 자동 등록합니다. core assembly에는 hard dependency가 없습니다.
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+공개 surface는 `RegisterMemorySnapshotBackend(...)`, `UnregisterMemorySnapshotBackend(...)`, `GetMemorySnapshotCapabilities()`, `GetMemorySnapshotStatus()`, `RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`, `ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)`, `GetMemorySnapshotTriggers()`입니다. 사용자 정의 backend는 `IPerfMeterMemorySnapshotBackend`를 구현하며 선택적 assembly가 Unity Memory Profiler backend를 제공합니다.
+
+`PerfMeterMemorySnapshotOptions`의 기본값은 managed/native object flags, 최소 1 GiB free disk, 300초 cooldown입니다. `RequestMemorySnapshot`은 기본적으로 manual capture이며 `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest`, `Failed` 같은 명시적 결과를 반환합니다. read는 runtime을 시작하지 않지만 유효한 request는 runtime을 시작합니다.
+
+`ConfigureMemorySnapshotTriggers`로 system-memory threshold 및 bounded leak-growth heuristic를 명시적으로 opt-in할 수 있습니다. `GetMemorySnapshotTriggers()`의 기본 상태는 disabled입니다. trigger request에도 manual request와 동일한 single-flight, cooldown, free-space, capture-flag guard가 적용됩니다.

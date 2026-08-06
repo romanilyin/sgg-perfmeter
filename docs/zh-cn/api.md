@@ -190,3 +190,31 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Overdraw diagnostics 是显式 diagnostic modes，可能增加 GPU work。在 HDRP 中，这些 API 会安全报告 overdraw 和 heatmap 的 unsupported state，而不会承诺 HDRP heatmap output。
+
+## 可选内存快照
+
+内存快照是可选集成。在 Unity `6000.4+` 中安装并解析 `com.unity.memoryprofiler` `1.1.0+` 后，独立的 `SGG.PerfMeter.MemoryProfiler` assembly 会启用并自动注册 `MemoryProfiler` backend。core assembly 没有 hard dependency。
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+公开 API 包括 `RegisterMemorySnapshotBackend(...)`、`UnregisterMemorySnapshotBackend(...)`、`GetMemorySnapshotCapabilities()`、`GetMemorySnapshotStatus()`、`RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`、`ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)` 和 `GetMemorySnapshotTriggers()`。自定义 backend 实现 `IPerfMeterMemorySnapshotBackend`；可选 assembly 提供 Unity Memory Profiler backend。
+
+`PerfMeterMemorySnapshotOptions` 默认使用 managed/native object flags、最低 1 GiB 可用磁盘空间和 300 秒 cooldown。`RequestMemorySnapshot` 默认执行 manual capture，并返回 `Started`、`AlreadyActive`、`RejectedOverlap`、`Cooldown`、`Unavailable`、`InsufficientDiskSpace`、`InvalidRequest` 或 `Failed` 等明确结果。读取 API 不会启动 runtime；有效 request 会启动 runtime。
+
+`ConfigureMemorySnapshotTriggers` 可显式 opt-in system-memory threshold 和 bounded leak-growth heuristic。`GetMemorySnapshotTriggers()` 默认是 disabled。trigger request 与 manual request 使用相同的 single-flight、cooldown、free-space 和 capture-flag guard。

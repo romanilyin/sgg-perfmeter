@@ -354,6 +354,95 @@
       }
     },
     {
+      "id": "perfmeter.memory.snapshot.request",
+      "title": "Request PerfMeter memory snapshot",
+      "description": "Request one optional Memory Profiler snapshot with cooldown, free-space guard, requested capture flags, and a correlated evidence bundle. The binary snapshot can contain sensitive process memory.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotRequest",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "bundle"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "managed_objects": { "type": "boolean" },
+          "native_objects": { "type": "boolean" },
+          "native_allocations": { "type": "boolean" },
+          "native_allocation_sites": { "type": "boolean" },
+          "native_stack_traces": { "type": "boolean" },
+          "minimum_free_disk_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "cooldown_seconds": { "type": "integer", "minimum": 0, "maximum": 86400 }
+        },
+        "required": ["capture_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.memory.snapshot.status",
+      "title": "Read PerfMeter memory snapshot status",
+      "description": "Read memory snapshot and correlated bundle state without starting the runtime or exposing the temporary snapshot path.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "bundle"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.memory.snapshot.capabilities",
+      "title": "Read PerfMeter memory snapshot capabilities",
+      "description": "Read optional backend provenance, supported capture flags, snapshot size limit, and owned temporary root without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotCapabilities",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "capabilities"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.memory.snapshot.triggers.configure",
+      "title": "Configure PerfMeter memory snapshot triggers",
+      "description": "Opt in or out of bounded system-memory threshold and leak-growth heuristic triggers. Triggered snapshots use the same cooldown, free-space, sensitivity, and bundle policies as manual requests.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotTriggersConfigure",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "configuration"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "system_memory_threshold_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "leak_growth_threshold_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "leak_window_frames": { "type": "integer", "minimum": 30, "maximum": 36000 },
+          "managed_objects": { "type": "boolean" },
+          "native_objects": { "type": "boolean" },
+          "native_allocations": { "type": "boolean" },
+          "native_allocation_sites": { "type": "boolean" },
+          "native_stack_traces": { "type": "boolean" },
+          "minimum_free_disk_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "cooldown_seconds": { "type": "integer", "minimum": 0, "maximum": 86400 }
+        },
+        "required": ["enabled"],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.device.info",
       "title": "PerfMeter device and environment info",
       "description": "Read Unity device, graphics, display, render pipeline, and environment information.",

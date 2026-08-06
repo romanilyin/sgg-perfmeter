@@ -65,3 +65,23 @@ perfmeter.alerts.latest {}
 ```
 
 Nutze `OverdrawDiagnostic` nur fuer begrenzte URP-Diagnosefenster, weil numerical overdraw und heatmap rendering zusaetzliche GPU-Arbeit erzeugen. HDRP meldet overdraw/heatmap als unsupported, waehrend die restlichen diagnostics verfuegbar bleiben.
+
+## Befehle fuer Speicher-Snapshots
+
+| Befehl | Zweck und wichtigste Eingaben |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | Einen manuellen Snapshot mit `capture_id`, optionalen Boolean-Capture-Flags, `minimum_free_disk_mb` und `cooldown_seconds` anfordern. |
+| `perfmeter.memory.snapshot.status` | Snapshot- und korrelierten Bundle-Status lesen, ohne die Runtime zu starten oder den temporaeren Source-Pfad offenzulegen. |
+| `perfmeter.memory.snapshot.capabilities` | Backend-Provenance, unterstuetzte Flags, das 512-MiB-Limit und den eigenen temporaeren Root lesen. |
+| `perfmeter.memory.snapshot.triggers.configure` | System-Speicherschwellen- und begrenzte Leak-Wachstums-Trigger, Frame-Fenster, Flags, Free-Space-Guard und cooldown explizit aktivieren/deaktivieren. |
+
+Die Request- und Trigger-Konfigurationsbefehle benoetigen Play Mode. Automation ist standardmaessig deaktiviert. Ein typischer Ablauf:
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+Warte, bis das Bundle exportbereit ist, und verwende dann den bestehenden Befehl `perfmeter.capture.export`. Ein Memory-only-Bundle verwendet `requested_tool: MemoryProfiler`, enthaelt `memory-snapshot.json` und Manifest-Provenance, erzeugt aber kein externes GPU-Artefakt. Ein erfolgreicher Export ist einmalig und entfernt die eigene Staging-Quelle.

@@ -13,7 +13,8 @@ namespace SGG.PerfMeter
 		internal const string RelativeBundleRoot = "Temp/PerfMeter/CaptureBundles";
 		internal const long MaxBundleBytes = 64L * 1024L * 1024L;
 		internal const long MaxScreenshotBytes = 16L * 1024L * 1024L;
-		internal const long TotalQuotaBytes = 512L * 1024L * 1024L;
+		internal const long MaxMemorySnapshotBytes = PerfMeterMemorySnapshotCoordinator.MaxSnapshotBytes;
+		internal const long TotalQuotaBytes = 2L * 1024L * 1024L * 1024L;
 		internal const int MaxCommittedBundles = 16;
 		internal const int RetentionDays = 7;
 		private const string BundleSchema = "sgg.perfmeter.capture-bundle";
@@ -107,6 +108,19 @@ namespace SGG.PerfMeter
 				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
 			}
 
+			if (!TryInspectMemorySnapshot(projectRoot, data.MemorySnapshotArtifact, out MemoryArtifactMetadata memoryMetadata, out string memoryError))
+			{
+				PerfMeterCaptureBundleExportStatus status = string.Equals(memoryError, "memory_snapshot_size_limit_exceeded", StringComparison.Ordinal)
+					? PerfMeterCaptureBundleExportStatus.QuotaExceeded
+					: PerfMeterCaptureBundleExportStatus.IoError;
+				return Result(false, status, string.Empty, memoryError, data.Status);
+			}
+
+			if (componentBytes + memoryMetadata.SizeBytes > MaxBundleBytes + MaxMemorySnapshotBytes)
+			{
+				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
+			}
+
 			string stagingPath = Path.Combine(bundleRoot, ".sgg-perfmeter-staging-" + Guid.NewGuid().ToString("N"));
 			try
 			{
@@ -119,8 +133,23 @@ namespace SGG.PerfMeter
 					entries.Add(new FileManifestEntry(component.Key, component.Value.LongLength, Sha256(component.Value)));
 				}
 
-				byte[] manifest = Utf8(BuildManifest(data, externalMetadata, entries));
-				if (componentBytes + manifest.LongLength > MaxBundleBytes)
+				if (!string.IsNullOrEmpty(memoryMetadata.SourcePath))
+				{
+					FileManifestEntry memoryEntry = CopyMemorySnapshot(stagingPath, projectRoot, memoryMetadata);
+					entries.Add(memoryEntry);
+					memoryMetadata = memoryMetadata.WithObservedFile(memoryEntry.SizeBytes, memoryEntry.Hash);
+				}
+
+				if (memoryMetadata.State != PerfMeterMemorySnapshotState.NotRequested)
+				{
+					byte[] memoryMetadataBytes = Utf8(BuildMemorySnapshotMetadata(data, memoryMetadata));
+					WriteFile(stagingPath, "memory-snapshot.json", memoryMetadataBytes);
+					entries.Add(new FileManifestEntry("memory-snapshot.json", memoryMetadataBytes.LongLength, Sha256(memoryMetadataBytes)));
+					componentBytes += memoryMetadataBytes.LongLength;
+				}
+
+				byte[] manifest = Utf8(BuildManifest(data, externalMetadata, memoryMetadata, entries));
+				if (componentBytes + memoryMetadata.SizeBytes + manifest.LongLength > MaxBundleBytes + MaxMemorySnapshotBytes)
 				{
 					return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
 				}
@@ -160,8 +189,13 @@ namespace SGG.PerfMeter
 					data.Status.ScreenshotState,
 					externalMetadata.State,
 					relativePath,
-					data.Status.Warning);
+					data.Status.Warning,
+					data.Status.MemorySnapshotState);
 				return Result(true, PerfMeterCaptureBundleExportStatus.Exported, relativePath, retentionWarning, exportedStatus);
+			}
+			catch (MemorySnapshotQuotaExceededException)
+			{
+				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "memory_snapshot_size_limit_exceeded", data.Status);
 			}
 			catch (Exception exception)
 			{
@@ -191,7 +225,8 @@ namespace SGG.PerfMeter
 				TotalQuotaBytes,
 				MaxCommittedBundles,
 				RetentionDays,
-				RelativeBundleRoot);
+				RelativeBundleRoot,
+				MaxMemorySnapshotBytes);
 		}
 
 		private static Dictionary<string, byte[]> BuildComponents(PerfMeterCaptureBundleExportData data, ExternalArtifactMetadata externalMetadata, byte[] externalArtifactBytes)
@@ -202,9 +237,13 @@ namespace SGG.PerfMeter
 				{ "session.json", Utf8(RedactSensitivePaths(PerfMeterSessionExporter.BuildJson(data.SessionSummary, data.BaselineSamples, data.RuntimeStatus))) },
 				{ "capture-samples.json", Utf8(RedactSensitivePaths(PerfMeterSessionExporter.BuildCaptureSamplesJson(data.Status.CaptureId, data.CaptureSamples))) },
 				{ "alerts.json", Utf8(BuildAlerts(data)) },
-				{ "context.json", Utf8(RedactSensitivePaths(BuildContext(data))) },
-				{ "external-capture.json", Utf8(BuildExternalCapture(data, externalMetadata)) }
+				{ "context.json", Utf8(RedactSensitivePaths(BuildContext(data))) }
 			};
+
+			if (data.CaptureOptions.Tool != PerfMeterCaptureTool.MemoryProfiler)
+			{
+				components.Add("external-capture.json", Utf8(BuildExternalCapture(data, externalMetadata)));
+			}
 
 			if (data.ScreenshotBytes != null && data.ScreenshotBytes.Length > 0)
 			{
@@ -219,7 +258,7 @@ namespace SGG.PerfMeter
 			return components;
 		}
 
-		private static string BuildManifest(PerfMeterCaptureBundleExportData data, ExternalArtifactMetadata externalMetadata, List<FileManifestEntry> entries)
+		private static string BuildManifest(PerfMeterCaptureBundleExportData data, ExternalArtifactMetadata externalMetadata, MemoryArtifactMetadata memoryMetadata, List<FileManifestEntry> entries)
 		{
 			StringBuilder builder = new StringBuilder(2048);
 			builder.Append("{\"schema\":").Append(JsonString(BundleSchema));
@@ -243,7 +282,16 @@ namespace SGG.PerfMeter
 			builder.Append(",\"screenshot_state\":").Append(JsonString(data.Status.ScreenshotState.ToString()));
 			builder.Append(",\"contains_runtime_pixels\":").Append(JsonBool(data.ScreenshotBytes != null && data.ScreenshotBytes.Length > 0));
 			builder.Append(",\"external_artifact_state\":").Append(JsonString(externalMetadata.State.ToString()));
-			builder.Append(",\"warning\":").Append(JsonString(RedactSensitivePaths(data.Status.Warning)));
+			builder.Append(",\"memory_snapshot_state\":").Append(JsonString(memoryMetadata.State.ToString()));
+			builder.Append(",\"memory_snapshot_trigger\":").Append(JsonString(memoryMetadata.Trigger.ToString()));
+			builder.Append(",\"memory_snapshot_requested_flags\":").Append(JsonString(memoryMetadata.RequestedFlags.ToString()));
+			builder.Append(",\"memory_snapshot_backend_id\":").Append(JsonString(memoryMetadata.BackendId));
+			builder.Append(",\"memory_snapshot_backend_version\":").Append(JsonString(memoryMetadata.BackendVersion));
+			builder.Append(",\"memory_snapshot_file\":").Append(JsonString(string.IsNullOrEmpty(memoryMetadata.SourcePath) ? string.Empty : "memory-snapshot.snap"));
+			builder.Append(",\"memory_snapshot_size_bytes\":").Append(memoryMetadata.SizeBytes);
+			builder.Append(",\"memory_snapshot_sha256\":").Append(JsonString(memoryMetadata.Hash));
+			builder.Append(",\"contains_sensitive_memory\":").Append(JsonBool(!string.IsNullOrEmpty(memoryMetadata.SourcePath)));
+			builder.Append(",\"warning\":").Append(JsonString(MemoryWarning(data.Status.Warning, !string.IsNullOrEmpty(memoryMetadata.SourcePath))));
 			builder.Append(",\"files\":[");
 			for (int i = 0; i < entries.Count; i++)
 			{
@@ -357,6 +405,28 @@ namespace SGG.PerfMeter
 			return builder.ToString();
 		}
 
+		private static string BuildMemorySnapshotMetadata(PerfMeterCaptureBundleExportData data, MemoryArtifactMetadata metadata)
+		{
+			StringBuilder builder = new StringBuilder(768);
+			builder.Append("{\"schema\":\"sgg.perfmeter.memory-snapshot\",\"schema_version\":1");
+			builder.Append(",\"capture_id\":").Append(JsonString(data.Status.CaptureId));
+			builder.Append(",\"state\":").Append(JsonString(metadata.State.ToString()));
+			builder.Append(",\"trigger\":").Append(JsonString(metadata.Trigger.ToString()));
+			builder.Append(",\"requested_capture_flags\":").Append(JsonString(metadata.RequestedFlags.ToString()));
+			builder.Append(",\"capture_flags_confirmed\":false");
+			builder.Append(",\"backend_id\":").Append(JsonString(metadata.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(metadata.BackendVersion));
+			builder.Append(",\"started_time_seconds\":").Append(JsonNumber(metadata.StartedTimeSeconds));
+			builder.Append(",\"completed_time_seconds\":").Append(JsonNumber(metadata.CompletedTimeSeconds));
+			builder.Append(",\"artifact_file\":").Append(JsonString(string.IsNullOrEmpty(metadata.SourcePath) ? string.Empty : "memory-snapshot.snap"));
+			builder.Append(",\"artifact_size_bytes\":").Append(metadata.SizeBytes);
+			builder.Append(",\"artifact_sha256\":").Append(JsonString(metadata.Hash));
+			builder.Append(",\"contains_sensitive_memory\":").Append(JsonBool(!string.IsNullOrEmpty(metadata.SourcePath)));
+			builder.Append(",\"warning\":").Append(JsonString(MemoryWarning(metadata.Warning, !string.IsNullOrEmpty(metadata.SourcePath))));
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		private static bool TryResolveBundleDestination(string path, out string projectRoot, out string bundleRoot, out string finalPath, out string relativePath, out string error)
 		{
 			projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
@@ -399,6 +469,17 @@ namespace SGG.PerfMeter
 		{
 			metadata = ExternalArtifactMetadata.Unavailable;
 			error = string.Empty;
+			if (tool == PerfMeterCaptureTool.MemoryProfiler)
+			{
+				if (!string.IsNullOrWhiteSpace(path))
+				{
+					error = "external_artifact_not_supported_for_memory_snapshot";
+					return false;
+				}
+
+				return true;
+			}
+
 			if (string.IsNullOrWhiteSpace(path))
 			{
 				return true;
@@ -436,6 +517,71 @@ namespace SGG.PerfMeter
 
 			metadata = new ExternalArtifactMetadata(PerfMeterCaptureExternalArtifactState.FileObserved, extension, info.Length, string.Empty, fullPath);
 			return true;
+		}
+
+		private static bool TryInspectMemorySnapshot(string projectRoot, PerfMeterMemorySnapshotArtifact artifact, out MemoryArtifactMetadata metadata, out string error)
+		{
+			PerfMeterMemorySnapshotStatusSnapshot status = artifact.Status;
+			metadata = new MemoryArtifactMetadata(
+				status.State,
+				status.Trigger,
+				status.RequestedCaptureFlags,
+				status.BackendId,
+				status.BackendVersion,
+				status.StartedTimeSeconds,
+				status.CompletedTimeSeconds,
+				status.ArtifactSizeBytes,
+				string.Empty,
+				artifact.SourcePath,
+				status.Warning);
+			error = string.Empty;
+			if (!artifact.IsAvailable)
+			{
+				return true;
+			}
+
+			try
+			{
+				string fullPath = Path.GetFullPath(artifact.SourcePath);
+				string snapshotRoot = Path.GetFullPath(Path.Combine(projectRoot, PerfMeterMemorySnapshotStorage.RelativeSnapshotRoot)).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string normalizedRoot = snapshotRoot + Path.DirectorySeparatorChar;
+				if (!fullPath.StartsWith(normalizedRoot, PathComparison) ||
+					!string.Equals(Path.GetDirectoryName(fullPath), snapshotRoot, PathComparison) ||
+					!string.Equals(Path.GetExtension(fullPath), ".snap", StringComparison.OrdinalIgnoreCase) ||
+					!File.Exists(fullPath) ||
+					!IsSafeExistingPath(projectRoot, fullPath, out error))
+				{
+					error = string.IsNullOrEmpty(error) ? "memory_snapshot_artifact_must_be_owned_project_local_file" : error;
+					return false;
+				}
+
+				FileInfo info = new FileInfo(fullPath);
+				if ((info.Attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0 || info.Length <= 0L)
+				{
+					error = "memory_snapshot_artifact_must_be_regular_nonempty_file";
+					return false;
+				}
+
+				if (info.Length > MaxMemorySnapshotBytes)
+				{
+					error = "memory_snapshot_size_limit_exceeded";
+					return false;
+				}
+
+				if (status.ArtifactSizeBytes > 0L && info.Length != status.ArtifactSizeBytes)
+				{
+					error = "memory_snapshot_artifact_changed_after_capture";
+					return false;
+				}
+
+				metadata = metadata.WithSource(fullPath, info.Length);
+				return true;
+			}
+			catch (Exception exception) when (IsPathOrIoException(exception))
+			{
+				error = "memory_snapshot_artifact_io_error: " + exception.Message;
+				return false;
+			}
 		}
 
 		private static bool IsSafeExistingPath(string root, string target, out string error)
@@ -595,6 +741,70 @@ namespace SGG.PerfMeter
 					return destination.ToArray();
 				}
 			}
+		}
+
+		private static FileManifestEntry CopyMemorySnapshot(string stagingPath, string projectRoot, MemoryArtifactMetadata metadata)
+		{
+			string destinationPath = Path.Combine(stagingPath, "memory-snapshot.snap");
+			using (FileStream source = new FileStream(metadata.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+			using (FileStream destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+			using (SHA256 sha = SHA256.Create())
+			{
+				if (!IsSafeExistingPath(projectRoot, metadata.SourcePath, out _) || (File.GetAttributes(metadata.SourcePath) & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0)
+				{
+					throw new IOException("Memory snapshot changed during validation.");
+				}
+
+				if (source.Length > MaxMemorySnapshotBytes)
+				{
+					throw new MemorySnapshotQuotaExceededException();
+				}
+
+				if (source.Length != metadata.SizeBytes)
+				{
+					throw new InvalidDataException("Memory snapshot changed before export.");
+				}
+
+				byte[] buffer = new byte[81920];
+				long total = 0L;
+				int read;
+				while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
+				{
+					total += read;
+					if (total > MaxMemorySnapshotBytes)
+					{
+						throw new MemorySnapshotQuotaExceededException();
+					}
+
+					destination.Write(buffer, 0, read);
+					sha.TransformBlock(buffer, 0, read, buffer, 0);
+				}
+
+				sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+				destination.Flush(true);
+				if (total != metadata.SizeBytes)
+				{
+					throw new InvalidDataException("Memory snapshot changed during export.");
+				}
+
+				return new FileManifestEntry("memory-snapshot.snap", total, ToHex(sha.Hash));
+			}
+		}
+
+		private static string MemoryWarning(string warning, bool containsSensitiveMemory)
+		{
+			string redacted = RedactSensitivePaths(warning);
+			if (!containsSensitiveMemory)
+			{
+				return redacted;
+			}
+
+			const string sensitiveWarning = "Memory snapshot contains sensitive process memory.";
+			return string.IsNullOrEmpty(redacted) ? sensitiveWarning : redacted + " " + sensitiveWarning;
+		}
+
+		private sealed class MemorySnapshotQuotaExceededException : Exception
+		{
 		}
 
 		private static bool IsPathOrIoException(Exception exception)
@@ -765,6 +975,57 @@ namespace SGG.PerfMeter
 			internal ExternalArtifactMetadata WithObservedBytes(byte[] bytes)
 			{
 				return new ExternalArtifactMetadata(State, Extension, bytes.LongLength, Sha256(bytes), SourcePath);
+			}
+		}
+
+		private readonly struct MemoryArtifactMetadata
+		{
+			internal MemoryArtifactMetadata(
+				PerfMeterMemorySnapshotState state,
+				PerfMeterMemorySnapshotTrigger trigger,
+				PerfMeterMemoryCaptureFlags requestedFlags,
+				string backendId,
+				string backendVersion,
+				double startedTimeSeconds,
+				double completedTimeSeconds,
+				long sizeBytes,
+				string hash,
+				string sourcePath,
+				string warning)
+			{
+				State = state;
+				Trigger = trigger;
+				RequestedFlags = requestedFlags;
+				BackendId = backendId ?? string.Empty;
+				BackendVersion = backendVersion ?? string.Empty;
+				StartedTimeSeconds = startedTimeSeconds;
+				CompletedTimeSeconds = completedTimeSeconds;
+				SizeBytes = Math.Max(0L, sizeBytes);
+				Hash = hash ?? string.Empty;
+				SourcePath = sourcePath ?? string.Empty;
+				Warning = warning ?? string.Empty;
+			}
+
+			internal PerfMeterMemorySnapshotState State { get; }
+			internal PerfMeterMemorySnapshotTrigger Trigger { get; }
+			internal PerfMeterMemoryCaptureFlags RequestedFlags { get; }
+			internal string BackendId { get; }
+			internal string BackendVersion { get; }
+			internal double StartedTimeSeconds { get; }
+			internal double CompletedTimeSeconds { get; }
+			internal long SizeBytes { get; }
+			internal string Hash { get; }
+			internal string SourcePath { get; }
+			internal string Warning { get; }
+
+			internal MemoryArtifactMetadata WithSource(string sourcePath, long sizeBytes)
+			{
+				return new MemoryArtifactMetadata(State, Trigger, RequestedFlags, BackendId, BackendVersion, StartedTimeSeconds, CompletedTimeSeconds, sizeBytes, Hash, sourcePath, Warning);
+			}
+
+			internal MemoryArtifactMetadata WithObservedFile(long sizeBytes, string hash)
+			{
+				return new MemoryArtifactMetadata(State, Trigger, RequestedFlags, BackendId, BackendVersion, StartedTimeSeconds, CompletedTimeSeconds, sizeBytes, hash, SourcePath, Warning);
 			}
 		}
 

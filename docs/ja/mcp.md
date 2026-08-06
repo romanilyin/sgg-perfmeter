@@ -65,3 +65,23 @@ perfmeter.alerts.latest {}
 ```
 
 numerical overdraw と heatmap rendering は追加の GPU work を発生させるため、`OverdrawDiagnostic` は bounded URP diagnostic windows でのみ使用してください。HDRP は overdraw/heatmap を unsupported として報告しますが、その他の diagnostics は利用できます。
+
+## メモリスナップショットの command
+
+| Command | 目的と主な入力 |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | `capture_id`、任意の capture-flag boolean、`minimum_free_disk_mb`、`cooldown_seconds` で manual snapshot を request します。 |
+| `perfmeter.memory.snapshot.status` | runtime を起動せず、一時 source path を公開せずに snapshot と correlated bundle の state を読み取ります。 |
+| `perfmeter.memory.snapshot.capabilities` | backend provenance、対応 flags、512 MiB の snapshot limit、owned temporary root を読み取ります。 |
+| `perfmeter.memory.snapshot.triggers.configure` | system-memory threshold と bounded leak-growth trigger、frame window、flags、空き容量 guard、cooldown を明示的に enable/disable します。 |
+
+request と trigger configuration の command には Play Mode が必要です。automation は既定で無効です。典型的な順序は次のとおりです。
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+bundle が export-ready になるまで status を読み、その後既存の `perfmeter.capture.export` を使います。memory-only bundle は `requested_tool: MemoryProfiler`、`memory-snapshot.json`、manifest provenance を含み、external GPU artifact を持ちません。成功した export は one-shot で、owned staging source を削除します。

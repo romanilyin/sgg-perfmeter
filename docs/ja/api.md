@@ -190,3 +190,31 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Overdraw diagnostics は明示的な diagnostic modes であり、GPU work を追加する場合があります。HDRP では、これらの APIs は HDRP heatmap output を約束せず、overdraw と heatmap の unsupported state を安全に返します。
+
+## オプションのメモリスナップショット
+
+メモリスナップショットはオプションの統合機能です。Unity `6000.4+` で `com.unity.memoryprofiler` `1.1.0+` を解決すると、分離された `SGG.PerfMeter.MemoryProfiler` assembly が有効になり、`MemoryProfiler` backend を自動登録します。core assembly に hard dependency はありません。
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+公開 API は `RegisterMemorySnapshotBackend(...)`、`UnregisterMemorySnapshotBackend(...)`、`GetMemorySnapshotCapabilities()`、`GetMemorySnapshotStatus()`、`RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`、`ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)`、`GetMemorySnapshotTriggers()` です。独自 backend は `IPerfMeterMemorySnapshotBackend` を実装します。オプション assembly は Unity Memory Profiler backend を提供します。
+
+`PerfMeterMemorySnapshotOptions` の既定値は managed/native object flags、最低 1 GiB の空き容量、300 秒の cooldown です。`RequestMemorySnapshot` は既定で manual capture を行い、`Started`、`AlreadyActive`、`RejectedOverlap`、`Cooldown`、`Unavailable`、`InsufficientDiskSpace`、`InvalidRequest`、`Failed` などの明示的な結果を返します。read API は runtime を起動せず、有効な request は起動します。
+
+`ConfigureMemorySnapshotTriggers` で system-memory threshold と bounded leak-growth heuristic を明示的に opt-in できます。`GetMemorySnapshotTriggers()` の既定値は disabled です。trigger による request にも manual request と同じ single-flight、cooldown、空き容量、capture-flag の guard が適用されます。

@@ -130,3 +130,12 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}` は cache 済み state の read であり、runtime の起動や discovery は行いません。
+
+## オプションのメモリスナップショット workflow
+
+1. Unity `6000.4+` を使い、Package Manager から `com.unity.memoryprofiler` `1.1.0+` を install します。オプションの `SGG.PerfMeter.MemoryProfiler` assembly が backend を自動登録します。この package がない場合、core integration は unavailable のままです。
+2. Play Mode で `PerformanceMeter.GetMemorySnapshotCapabilities()` または `perfmeter.memory.snapshot.capabilities` を読み、backend と必要な capture flags を確認します。
+3. `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))` で manual snapshot を request するか、`ConfigureMemorySnapshotTriggers(...)` で system-memory threshold または bounded leak-growth window を明示的に有効化します。
+4. `GetMemorySnapshotStatus()` または `perfmeter.memory.snapshot.status` を読み、snapshot と correlated bundle が terminal state になるまで待ちます。完成した evidence は `PerformanceMeter.ExportCaptureBundle(captureId)` または `perfmeter.capture.export` で export します。
+
+memory-only evidence は既存の capture-bundle API により `Temp/PerfMeter/CaptureBundles` の下へ出力されます。bundle は requested tool として `MemoryProfiler` を記録し、メモリの provenance と `.snap` の streaming SHA-256 を含みますが、external GPU artifact は含みません。owned source は `Temp/PerfMeter/MemorySnapshots` の下にあり、成功した export で一度だけ消費されます。

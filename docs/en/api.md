@@ -203,3 +203,31 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Overdraw diagnostics are explicit diagnostic modes and can add GPU work. In HDRP these APIs safely report unsupported state for overdraw and heatmap instead of promising HDRP heatmap output.
+
+## Optional Memory Snapshots
+
+Memory snapshots are an optional integration. On Unity `6000.4+`, `com.unity.memoryprofiler` `1.1.0+` enables the separate `SGG.PerfMeter.MemoryProfiler` assembly, which auto-registers the `MemoryProfiler` backend. The core assembly has no hard dependency.
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+The public surface is `RegisterMemorySnapshotBackend(...)`, `UnregisterMemorySnapshotBackend(...)`, `GetMemorySnapshotCapabilities()`, `GetMemorySnapshotStatus()`, `RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`, `ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)`, and `GetMemorySnapshotTriggers()`. A custom backend implements `IPerfMeterMemorySnapshotBackend`; the optional assembly supplies the Unity Memory Profiler backend.
+
+`PerfMeterMemorySnapshotOptions` defaults to managed/native object flags, 1 GiB minimum free disk, and a 300-second cooldown. `RequestMemorySnapshot` is manual by default and returns explicit results such as `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest`, or `Failed`. Reads do not start the runtime; a valid request does.
+
+`ConfigureMemorySnapshotTriggers` enables the opt-in system-memory threshold and bounded leak-growth heuristic. `GetMemorySnapshotTriggers()` is disabled by default. Triggered requests use the same single-flight, cooldown, free-space, and capture-flag guards as manual requests.

@@ -65,3 +65,23 @@ perfmeter.alerts.latest {}
 ```
 
 仅在有边界的 URP diagnostic windows 中使用 `OverdrawDiagnostic`，因为 numerical overdraw 和 heatmap rendering 会增加额外 GPU work。HDRP 会将 overdraw/heatmap 报告为 unsupported，但其他 diagnostics 仍可用。
+
+## 内存快照 commands
+
+| Command | 用途和主要输入 |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | 使用 `capture_id`、可选 capture-flag boolean、`minimum_free_disk_mb` 和 `cooldown_seconds` 请求 manual snapshot。 |
+| `perfmeter.memory.snapshot.status` | 在不启动 runtime 且不暴露临时 source path 的情况下读取 snapshot 与 correlated bundle state。 |
+| `perfmeter.memory.snapshot.capabilities` | 读取 backend provenance、支持的 flags、512 MiB snapshot limit 和 owned temporary root。 |
+| `perfmeter.memory.snapshot.triggers.configure` | 显式 enable/disable system-memory threshold 与 bounded leak-growth trigger、frame window、flags、free-space guard 和 cooldown。 |
+
+request 和 trigger configuration command 需要 Play Mode。automation 默认关闭。典型顺序如下：
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+等待 bundle 进入 export-ready 后，使用现有的 `perfmeter.capture.export` command。memory-only bundle 使用 `requested_tool: MemoryProfiler`，包含 `memory-snapshot.json` 和 manifest provenance，不会创建 external GPU artifact。成功的 export 是 one-shot，并删除 owned staging source。

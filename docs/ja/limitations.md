@@ -49,3 +49,12 @@ overlay には 2 つの UI Toolkit backend path があります。Unity `6000.4`
 ## Validation Status
 
 現在の validation には automated EditMode coverage、Unity `6000.4.10f1` での HDRP smoke validation、以前の Android S23 Vulkan/GLES smoke validation が含まれます。データを release-signoff evidence として扱う前に、より広い player-build と device coverage を行うと有用です。
+
+## オプションのメモリスナップショット: 制限とプライバシー
+
+- Unity `6000.4+` で `com.unity.memoryprofiler` `1.1.0+` がない場合、この機能は利用できません。core package はこの dependency を install も要求もしません。
+- 既定で有効なのは manual capture だけです。system-memory threshold と bounded leak-growth trigger は opt-in であり、各 request に single-flight/overlap、cooldown、最低空き容量、backend、capture-flag の guard が適用されます。
+- owned `.snap` staging は `Temp/PerfMeter/MemorySnapshots` にあり、512 MiB に制限されます。memory-only evidence は `Temp/PerfMeter/CaptureBundles` に export され、bundle retention の total quota は 2 GiB です。成功した export は one-shot で staging source を削除しますが、cleanup warning が明示される場合があります。
+- snapshot には process の機密メモリが含まれる可能性があります。共有前に保護し、内容を確認してください。bundle は `contains_sensitive_memory`、backend/flag provenance、`memory-snapshot.json`、SHA-256 metadata を記録し、external GPU artifact は作成しません。
+- OS による file lock 中の削除と、portable managed reparse-point race への保護は best-effort です。安全でない path や所有外の path は reject され、cleanup failure は warning として残ります。
+- evidence には memory EditMode `9/9`、capture-bundle EditMode `14/14`、PlayMode threshold `1/1`、`com.unity.memoryprofiler@1.1.12` による optional compile、Unity `6000.4.12f1` full EditMode `182/182` と full PlayMode `14/14` が含まれます。release-player または device behavior の主張ではありません。

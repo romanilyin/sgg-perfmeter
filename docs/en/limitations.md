@@ -50,3 +50,12 @@ The overlay is allocation-conscious and throttled, but changed numeric values an
 ## Validation Status
 
 Current validation includes automated EditMode coverage, HDRP smoke validation in Unity `6000.4.10f1`, and previous Android S23 Vulkan/GLES smoke validation. Broader player-build and device coverage is still useful before treating data as release-signoff evidence.
+
+## Optional Memory Snapshots: Limits And Privacy
+
+- The feature is unavailable without `com.unity.memoryprofiler` `1.1.0+` on Unity `6000.4+`; the core package does not install or require that dependency.
+- Manual capture is the only default. System-memory threshold and bounded leak-growth triggers are opt-in, and every request is subject to single-flight/overlap, cooldown, minimum-free-space, backend, and capture-flag guards.
+- Owned `.snap` staging is under `Temp/PerfMeter/MemorySnapshots` and is limited to 512 MiB. Memory-only evidence is exported below `Temp/PerfMeter/CaptureBundles`; bundle retention has a total 2 GiB quota. A successful export is one-shot and removes the staging source, subject to explicit cleanup warnings.
+- Memory snapshots can contain sensitive process memory. Protect and review them before sharing. The bundle records `contains_sensitive_memory`, backend/flag provenance, `memory-snapshot.json`, and SHA-256 metadata; it does not create an external GPU artifact.
+- OS-locked deletion and portable managed reparse-point race protections are best-effort. Unsafe or unowned paths are rejected, and cleanup failures remain visible as warnings rather than being silently ignored.
+- Evidence includes memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, optional compilation with `com.unity.memoryprofiler@1.1.12`, and Unity `6000.4.12f1` full EditMode `182/182` plus full PlayMode `14/14`. This is not a release-player or device-behavior claim.
