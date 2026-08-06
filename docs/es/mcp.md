@@ -14,6 +14,7 @@ El objetivo es salida JSON estructurada para agentes en lugar de parsing de scre
 | --- | --- |
 | `perfmeter.setup.status` | Leer estado de setup. |
 | `perfmeter.setup.run` | Ejecutar acciones de setup recomendadas. |
+| `perfmeter.compatibility.status` | Leer por separado la compatibilidad de import, core runtime e integración de render activa. |
 | `perfmeter.runtime.status` | Leer estado runtime. |
 | `perfmeter.runtime.ensure` | Iniciar runtime si hace falta. |
 | `perfmeter.runtime.stop` | Detener runtime. |

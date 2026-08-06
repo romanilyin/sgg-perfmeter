@@ -15,7 +15,19 @@ namespace SGG.PerfMeter.Editor.Mcp
 	{
 		public static string SetupStatus()
 		{
-			return "{\"status_report\":" + JsonString(PerfMeterSetupActions.GetStatusReport()) + "}";
+			StringBuilder builder = new StringBuilder(1536);
+			builder.Append("{\"compatibility\":");
+			AppendCompatibilityStatus(builder, PerfMeterSetupActions.GetCompatibilityStatus());
+			builder.Append(",\"status_report\":").Append(JsonString(PerfMeterSetupActions.GetStatusReport()));
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		public static string CompatibilityStatus()
+		{
+			StringBuilder builder = new StringBuilder(1024);
+			AppendCompatibilityStatus(builder, PerfMeterSetupActions.GetCompatibilityStatus());
+			return builder.ToString();
 		}
 
 		public static string SetupRun()
@@ -464,6 +476,24 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static void AppendCompatibilityStatus(StringBuilder builder, PerfMeterCompatibilityStatus status)
+		{
+			builder.Append("{\"import_compatible\":").Append(JsonBool(status.ImportCompatible));
+			builder.Append(",\"core_runtime_compatible\":").Append(JsonBool(status.CoreRuntimeCompatible));
+			builder.Append(",\"render_integration_compatible\":").Append(JsonBool(status.RenderIntegrationCompatible));
+			builder.Append(",\"current_unity_version\":").Append(JsonString(status.CurrentUnityVersion));
+			builder.Append(",\"current_pipeline_kind\":").Append(JsonString(status.CurrentPipelineKind.ToString()));
+			builder.Append(",\"current_pipeline_package_name\":").Append(JsonString(status.CurrentPipelinePackageName));
+			builder.Append(",\"current_pipeline_package_version\":").Append(JsonString(status.CurrentPipelinePackageVersion));
+			builder.Append(",\"import_unity_version_floor\":").Append(JsonString(status.ImportUnityVersionFloor));
+			builder.Append(",\"core_runtime_unity_version_floor\":").Append(JsonString(status.CoreRuntimeUnityVersionFloor));
+			builder.Append(",\"render_integration_pipeline_package_version_floor\":").Append(JsonString(status.RenderIntegrationPipelinePackageVersionFloor));
+			builder.Append(",\"import_reason\":").Append(JsonString(status.ImportReason));
+			builder.Append(",\"core_runtime_reason\":").Append(JsonString(status.CoreRuntimeReason));
+			builder.Append(",\"render_integration_reason\":").Append(JsonString(status.RenderIntegrationReason));
+			builder.Append('}');
 		}
 
 		private static string CaptureExportJson(PerfMeterCaptureBundleExportResult result)

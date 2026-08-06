@@ -14,6 +14,7 @@ L'obiettivo e un output JSON strutturato per agent, invece di parsing di screens
 | --- | --- |
 | `perfmeter.setup.status` | Legge lo stato del setup. |
 | `perfmeter.setup.run` | Esegue le azioni di setup consigliate. |
+| `perfmeter.compatibility.status` | Legge separatamente la compatibilita import, core runtime e render integration attiva. |
 | `perfmeter.runtime.status` | Legge lo stato runtime. |
 | `perfmeter.runtime.ensure` | Avvia il runtime se necessario. |
 | `perfmeter.runtime.stop` | Ferma il runtime. |

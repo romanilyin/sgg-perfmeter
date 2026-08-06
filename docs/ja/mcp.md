@@ -14,6 +14,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | --- | --- |
 | `perfmeter.setup.status` | setup status を読み取ります。 |
 | `perfmeter.setup.run` | recommended setup actions を実行します。 |
+| `perfmeter.compatibility.status` | import、core runtime、active render integration の compatibility を個別に読み取ります。 |
 | `perfmeter.runtime.status` | runtime status を読み取ります。 |
 | `perfmeter.runtime.ensure` | 必要に応じて runtime を開始します。 |
 | `perfmeter.runtime.stop` | runtime を停止します。 |

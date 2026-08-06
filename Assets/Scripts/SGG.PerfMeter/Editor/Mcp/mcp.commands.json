@@ -19,6 +19,22 @@
       }
     },
     {
+      "id": "perfmeter.compatibility.status",
+      "title": "PerfMeter compatibility status",
+      "description": "Read separate import, core runtime, and active render integration compatibility with declared version floors and reasons.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CompatibilityStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "compatibility", "setup"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.setup.run",
       "title": "PerfMeter recommended setup",
       "description": "Run the recommended SGG PerfMeter project setup actions.",

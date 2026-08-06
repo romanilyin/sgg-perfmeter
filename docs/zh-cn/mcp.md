@@ -14,6 +14,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | --- | --- |
 | `perfmeter.setup.status` | 读取 setup status。 |
 | `perfmeter.setup.run` | 运行 recommended setup actions。 |
+| `perfmeter.compatibility.status` | 分别读取 import、core runtime 和 active render integration compatibility。 |
 | `perfmeter.runtime.status` | 读取 runtime status。 |
 | `perfmeter.runtime.ensure` | 在需要时启动 runtime。 |
 | `perfmeter.runtime.stop` | 停止 runtime。 |

@@ -140,6 +140,10 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled`의 기본값은 `true`이며 structured alert의 `Debug.Log` 출력만 제어합니다. `false`로 설정해도 `AlertFired` callback, 최신 alert와 alert history, overlay warning, Editor warning log, session은 비활성화되지 않습니다. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)`는 Editor warning log를 독립적으로 제어합니다.
 
+## Editor Compatibility Status
+
+Editor API `PerfMeterSetupActions.GetCompatibilityStatus()`는 `PerfMeterCompatibilityStatus`를 반환하며 Unity `2022.3` package floor의 `ImportCompatible`, supported runtime Unity `6000.4+`의 `CoreRuntimeCompatible`, available adapter가 있는 active URP/HDRP `17.4+`의 `RenderIntegrationCompatible`를 분리합니다. 각 결과에는 reason이 있습니다. render compatibility는 renderer assets 설정 완료를 뜻하지 않으므로 configuration readiness에는 setup status를 사용합니다.
+
 ## External GPU Capture Coordinator
 
 ```csharp

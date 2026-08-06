@@ -14,6 +14,7 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | --- | --- |
 | `perfmeter.setup.status` | Lire l'etat de configuration. |
 | `perfmeter.setup.run` | Executer les actions de configuration recommandees. |
+| `perfmeter.compatibility.status` | Lire separement les compatibilites import, core runtime et render integration active. |
 | `perfmeter.runtime.status` | Lire l'etat runtime. |
 | `perfmeter.runtime.ensure` | Demarrer le runtime si necessaire. |
 | `perfmeter.runtime.stop` | Arreter le runtime. |

@@ -140,6 +140,19 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` is `true` by default and controls only the structured alert `Debug.Log` output. Setting it to `false` does not disable `AlertFired` callbacks, latest alerts or alert history, overlay warnings, Editor warning logs, or sessions. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controls Editor warning logs independently.
 
+## Editor Compatibility Status
+
+```csharp
+using SGG.PerfMeter.Editor.Setup;
+
+PerfMeterCompatibilityStatus compatibility = PerfMeterSetupActions.GetCompatibilityStatus();
+bool canImport = compatibility.ImportCompatible;
+bool canRunCore = compatibility.CoreRuntimeCompatible;
+bool canUseRenderIntegration = compatibility.RenderIntegrationCompatible;
+```
+
+This Editor-only snapshot keeps the package import floor (`2022.3`), supported core runtime floor (`6000.4`), and active URP/HDRP render integration (`17.4+` plus the corresponding adapter) separate. Each field has an explicit reason. Render compatibility is capability, not renderer/configuration readiness; use setup status for installation state.
+
 ## External GPU Capture Coordinator
 
 ```csharp

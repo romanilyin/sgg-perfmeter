@@ -140,6 +140,10 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` のデフォルトは `true` で、構造化 alert の `Debug.Log` 出力だけを制御します。`false` にしても `AlertFired` callback、最新の alerts と alert history、overlay warnings、Editor warning logs、sessions は無効になりません。`PerformanceMeter.SetEditorWarningLogsEnabled(bool)` は Editor warning logs を独立して制御します。
 
+## Editor Compatibility Status
+
+Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` は `PerfMeterCompatibilityStatus` を返し、Unity `2022.3` package floor の `ImportCompatible`、supported runtime Unity `6000.4+` の `CoreRuntimeCompatible`、available adapter を持つ active URP/HDRP `17.4+` の `RenderIntegrationCompatible` を分離します。各結果には reason があります。render compatibility は renderer assets の設定完了を意味しないため、configuration readiness には setup status を使用します。
+
 ## External GPU Capture Coordinator
 
 ```csharp

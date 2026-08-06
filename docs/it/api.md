@@ -140,6 +140,10 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` e `true` per impostazione predefinita e controlla solo l'output `Debug.Log` degli alert strutturati. Il valore `false` non disabilita i callback `AlertFired`, gli alert recenti o la cronologia degli alert, gli avvisi dell'overlay, i log di avviso Editor o le sessioni. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controlla i log di avviso Editor in modo indipendente.
 
+## Editor Compatibility Status
+
+L'API Editor `PerfMeterSetupActions.GetCompatibilityStatus()` restituisce `PerfMeterCompatibilityStatus` e separa `ImportCompatible` per il floor Unity `2022.3`, `CoreRuntimeCompatible` per il runtime supportato Unity `6000.4+` e `RenderIntegrationCompatible` per URP/HDRP attivo `17.4+` con adapter disponibile. Ogni risultato include una reason. La compatibilita render non implica che i renderer assets siano configurati; usa setup status per la configuration readiness.
+
 ## External GPU Capture Coordinator
 
 ```csharp

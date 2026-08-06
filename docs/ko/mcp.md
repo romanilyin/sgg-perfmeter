@@ -14,6 +14,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | --- | --- |
 | `perfmeter.setup.status` | setup status를 읽습니다. |
 | `perfmeter.setup.run` | 권장 setup action을 실행합니다. |
+| `perfmeter.compatibility.status` | import, core runtime, active render integration compatibility를 각각 읽습니다. |
 | `perfmeter.runtime.status` | runtime status를 읽습니다. |
 | `perfmeter.runtime.ensure` | 필요한 경우 runtime을 시작합니다. |
 | `perfmeter.runtime.stop` | runtime을 중지합니다. |

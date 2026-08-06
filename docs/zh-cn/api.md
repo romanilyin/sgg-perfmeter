@@ -140,6 +140,10 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` 默认值为 `true`，只控制 structured alert 的 `Debug.Log` 输出。设置为 `false` 不会禁用 `AlertFired` callbacks、latest alerts 或 alert history、overlay warnings、Editor warning logs 或 sessions。`PerformanceMeter.SetEditorWarningLogsEnabled(bool)` 独立控制 Editor warning logs。
 
+## Editor Compatibility Status
+
+Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` 返回 `PerfMeterCompatibilityStatus`，分别报告 Unity `2022.3` package floor 的 `ImportCompatible`、supported runtime Unity `6000.4+` 的 `CoreRuntimeCompatible`，以及具备 available adapter 的 active URP/HDRP `17.4+` `RenderIntegrationCompatible`。每个结果都有 reason。render compatibility 不表示 renderer assets 已完成配置；configuration readiness 请使用 setup status。
+
 ## External GPU Capture Coordinator
 
 ```csharp

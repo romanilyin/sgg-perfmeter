@@ -14,6 +14,7 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | --- | --- |
 | `perfmeter.setup.status` | Read setup status. |
 | `perfmeter.setup.run` | Run recommended setup actions. |
+| `perfmeter.compatibility.status` | Read separate import, core runtime, and active render-integration compatibility. |
 | `perfmeter.runtime.status` | Read runtime status. |
 | `perfmeter.runtime.ensure` | Start runtime if needed. |
 | `perfmeter.runtime.stop` | Stop runtime. |
@@ -41,6 +42,8 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.capture.cancel` | Cancel the matching active capture. |
 | `perfmeter.capture.export` | Atomically export a ready bundle under the project-local bundle root. |
 | `perfmeter.capture.capabilities` | Read bundle schema, quota, retention, screenshot, and provenance capabilities. |
+
+`perfmeter.compatibility.status` is read-only and does not start runtime. It reports `import_compatible`, `core_runtime_compatible`, and `render_integration_compatible` independently, with current/floor versions and a reason for each result. `perfmeter.setup.status` includes the same structured `compatibility` object while retaining its existing human-readable `status_report`; setup/configuration readiness remains separate.
 
 ## Runtime Self-Overhead Payload
 

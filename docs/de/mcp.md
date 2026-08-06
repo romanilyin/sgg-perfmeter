@@ -14,6 +14,7 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | --- | --- |
 | `perfmeter.setup.status` | Setup-Status lesen. |
 | `perfmeter.setup.run` | Empfohlene Setup-Aktionen ausfuehren. |
+| `perfmeter.compatibility.status` | Separate Import-, Core-Runtime- und aktive Render-Integration-Kompatibilitaet lesen. |
 | `perfmeter.runtime.status` | Runtime-Status lesen. |
 | `perfmeter.runtime.ensure` | Runtime starten, falls noetig. |
 | `perfmeter.runtime.stop` | Runtime stoppen. |
