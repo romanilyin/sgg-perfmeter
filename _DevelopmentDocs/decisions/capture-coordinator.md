@@ -1,6 +1,6 @@
 # Capture Coordinator Decision
 
-Status: implemented for `PM-CAP-001`; unreleased.
+Status: implemented for `PM-CAP-001`; released `2026.8.6-2`.
 
 ## Decision
 

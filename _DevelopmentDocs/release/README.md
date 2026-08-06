@@ -2,20 +2,20 @@
 
 Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация и GitHub Release выполняются только в запланированный release pass.
 
-## Current Candidate
+## Current Release
 
-- Current release candidate: `2026.8.6-2`
-- Current published release: `2026.8.6-1`
-- Previous published release: `2026.8.5-2`
+- Current published release: `2026.8.6-2`
+- Previous published release: `2026.8.6-1`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.6-1
-- Last published npm: `com.sungeargames.perfmeter@2026.8.6-1` through Trusted Publishing OIDC with verified SLSA provenance
-- Candidate npm publish: planned for `com.sungeargames.perfmeter@2026.8.6-2` through Trusted Publishing OIDC with SLSA provenance
-- npm dist-tag: `latest` -> `2026.8.6-1`
-- npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31084894892
-- npm SHA-1: `0274ab33642b2399d9f4fa8505ec0bb004bf404e`
-- Public npm and Git UPM install pins remain at `2026.8.6-1` until candidate publication is verified.
+- GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.6-2
+- Git tag `2026.8.6-2` points to main merge commit `7bd89a1f444baacd09d07f506e7c397b83e49b3a`
+- npm publish: `com.sungeargames.perfmeter@2026.8.6-2` published through Trusted Publishing OIDC with verified SLSA provenance v1
+- npm dist-tag: `latest` -> `2026.8.6-2`
+- npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31116464324 (completed successfully and published npm)
+- npm SHA-1: `db4f0aed9f2c71735069ff003fd1f6cd638798ba`
+- npm integrity: `sha512-Q0IUnyOgd0Jum3+CmL+d9cHvSidMZB+fMoinukgqbgQ4JeXemKYgsrJK27Q5AelkvlDAdqaUeg3mgvSsnJkMOQ==`
+- Public npm and Git UPM install pins are updated to `2026.8.6-2` after verified GitHub and npm publication.
 - Package: `com.sungeargames.perfmeter`
 - Unity validation target: `6000.5.6f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration

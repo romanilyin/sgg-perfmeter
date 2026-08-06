@@ -1,6 +1,6 @@
 # Compatibility Status Decision
 
-Status: implemented for `PM-COMP-001`; unreleased.
+Status: implemented for `PM-COMP-001`; released `2026.8.6-2`.
 
 ## Decision
 
