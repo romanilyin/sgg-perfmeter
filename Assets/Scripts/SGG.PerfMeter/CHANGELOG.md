@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.8.6-1
+
+- Added cached Profiler metric capabilities with exact/alias provenance and explicit sample availability.
+- Added Unity Profiler markers and counters for PerfMeter collection, providers, captures, exports, timing, and state.
+- Added fixed-window CPU/allocation self-overhead diagnostics and per-component budgets through the runtime API and MCP status.
+- Kept self-overhead diagnostic-only: existing CPU/GPU metrics are not adjusted, and GPU self-attribution remains unavailable.
+
 ## 2026.8.5-2
 
 - Added an independent runtime toggle for structured alert logs.

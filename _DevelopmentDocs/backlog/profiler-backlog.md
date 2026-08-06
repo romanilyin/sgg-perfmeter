@@ -1,10 +1,10 @@
 # Profiler Backlog
 
-Полезные идеи, которые еще не являются реализованным release scope.
+Здесь зафиксированы реализованные observability scopes и связанные идеи, которые еще не входят в release scope.
 
 ## PM-OBS-002 Unity Profiler Instrumentation
 
-Текущий статус: реализовано на `feature/profilers`, не выпущено отдельно.
+Текущий статус: resolved, unreleased `2026.8.6-1`.
 
 Реализованный scope:
 
@@ -19,7 +19,7 @@
 
 ## PM-OBS-003 Self-Observability And Overhead Budgets
 
-Текущий статус: реализовано на `feature/profilers`, не выпущено отдельно.
+Текущий статус: resolved, unreleased `2026.8.6-1`.
 
 Реализованный scope:
 

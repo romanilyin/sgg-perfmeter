@@ -2,19 +2,20 @@
 
 Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация и GitHub Release выполняются только в запланированный release pass.
 
-## Current Release
+## Current Candidate
 
+- Current release candidate: `2026.8.6-1`
 - Current published release: `2026.8.5-2`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- npm publish: `com.sungeargames.perfmeter@2026.8.5-2`, Trusted Publishing OIDC with SLSA provenance
+- npm publish: planned for `com.sungeargames.perfmeter@2026.8.6-1` through Trusted Publishing OIDC with SLSA provenance
 - Package: `com.sungeargames.perfmeter`
 - Unity validation target: `6000.5.6f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-08-05
+- Release work date: 2026-08-06
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Current release notes/checklist: `_DevelopmentDocs/release/2026.8.5-2-ux-0-release.md`.
+Current release notes/checklist: `_DevelopmentDocs/release/2026.8.6-1-profilers-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
