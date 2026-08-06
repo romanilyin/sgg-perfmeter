@@ -45,7 +45,7 @@ SGG PerfMeter detecte les goulets d'etranglement des frames, compare les changem
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.5-2"
+    "com.sungeargames.perfmeter": "2026.8.6-1"
   }
 }
 ```

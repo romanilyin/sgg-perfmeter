@@ -2,13 +2,17 @@
 
 Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация и GitHub Release выполняются только в запланированный release pass.
 
-## Current Candidate
+## Current Release
 
-- Current release candidate: `2026.8.6-1`
-- Current published release: `2026.8.5-2`
+- Current published release: `2026.8.6-1`
+- Previous published release: `2026.8.5-2`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- npm publish: planned for `com.sungeargames.perfmeter@2026.8.6-1` through Trusted Publishing OIDC with SLSA provenance
+- GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.6-1
+- npm publish: `com.sungeargames.perfmeter@2026.8.6-1` published through Trusted Publishing OIDC with verified SLSA provenance
+- npm dist-tag: `latest` -> `2026.8.6-1`
+- npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31084894892
+- npm SHA-1: `0274ab33642b2399d9f4fa8505ec0bb004bf404e`
 - Package: `com.sungeargames.perfmeter`
 - Unity validation target: `6000.5.6f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
