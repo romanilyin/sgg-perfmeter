@@ -1,6 +1,6 @@
 # Capture Bundle Decision
 
-Status: implemented for `PM-CAP-002`; unreleased.
+Status: implemented for `PM-CAP-002`; released `2026.8.6-2`.
 
 ## Decision
 

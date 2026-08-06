@@ -1,6 +1,6 @@
 # Platform Telemetry Decision
 
-Status: implemented for `PM-PLAT-001`; unreleased.
+Status: implemented for `PM-PLAT-001`; released `2026.8.6-2`.
 
 ## Context
 
