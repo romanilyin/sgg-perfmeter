@@ -140,6 +140,30 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` e `true` por padrao e controla apenas a saida `Debug.Log` de alertas estruturados. O valor `false` nao desativa callbacks `AlertFired`, alertas recentes ou historico de alertas, avisos do overlay, logs de aviso do Editor nem sessoes. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controla os logs de aviso do Editor de forma independente.
 
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(options);
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+O coordinator permite uma unica solicitacao ativa e avanca deterministicamente por `PreRoll`, `Capturing`, `PostRoll` e `Completed`. Repetir o mesmo ID ativo e idempotente; um ID ativo diferente e rejeitado por sobreposicao. `Canceled`, `Unavailable` e `Error` sao estados terminais explicitos.
+
+O backend integrado envolve o `ExternalGPUProfiler` experimental da Unity somente no Editor ou em um Development Build, somente quando uma ferramenta externa esta conectada e somente para combinacoes de plataforma/API desktop suportadas. As combinacoes suportadas sao `RenderDoc` no desktop Windows/Linux com Direct3D 11, Direct3D 12 ou Vulkan e `PIX` no desktop Windows com Direct3D 12. Selecione `RenderDoc` ou `Pix` explicitamente, pois a Unity nao expoe a identidade da ferramenta conectada. `Status.Tool` e somente a ferramenta solicitada, nao a identidade verificada da ferramenta conectada. `Completed` confirma somente o wrapper lifecycle da Unity; nao verifica nem retorna um artefato externo `.rdc`/`.wpix` ou seu path. Os testes automatizados usam um fake backend; a confirmacao da ferramenta externa real e do artefato continua sendo um release gate. Capture bundles, artifact provenance e MCP capture control permanecem como trabalho futuro separado.
+
+Os valores padrao de `PerfMeterCaptureOptions` sao `captureFrames: 1`, `preRollFrames: 0` e `postRollFrames: 0`. Um `RequestCapture` valido inicia o runtime automaticamente. `CancelCapture()` sem ID cancela a solicitacao ativa atualmente reportada; passar um ID protege contra cancelar uma solicitacao mais nova.
+
 ## Custom Metrics
 
 ```csharp

@@ -52,6 +52,21 @@ PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 
 Las advertencias del Editor se limitan con cooldowns y pueden desactivarse mediante configuración JSON o controles runtime. Los logs de alertas estructuradas y las advertencias del Editor son independientes: `PerformanceMeter.SetStructuredLogsEnabled(false)` suprime únicamente la salida `Debug.Log` de alertas estructuradas, mientras `PerformanceMeter.SetEditorWarningLogsEnabled(false)` controla por separado los logs de advertencia del Editor. Los callbacks, alerts/history, warnings del overlay y sessions siguen activos.
 
+## External GPU Capture
+
+Usa el capture coordinator para una solicitud acotada de RenderDoc o PIX cuando la herramienta ya está conectada:
+
+```csharp
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30));
+
+PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
+```
+
+El coordinator admite una sola solicitud activa y avanza de forma determinista por `PreRoll`, `Capturing`, `PostRoll` y `Completed`. La misma ID activa es idempotente; una ID diferente se rechaza como solapamiento. El pre-roll y el post-roll cuentan frames de Unity; solo `Capturing` abre el alert capture scope e invoca el `ExternalGPUProfiler` experimental de Unity. Los gates obligatorios son Editor o Development Build y una herramienta conectada. `RenderDoc` está permitido en escritorio Windows/Linux con Direct3D 11, Direct3D 12 o Vulkan; `PIX` está permitido en escritorio Windows con Direct3D 12.
+
+`Completed` significa que terminó únicamente el wrapper lifecycle protegido. Unity no expone la identidad de la herramienta conectada ni un path de artefacto autoritativo; `Status.Tool` es solo la herramienta solicitada, no la identidad verificada de la herramienta conectada. Verifica el artefacto `.rdc`/`.wpix` en la herramienta externa. Los tests automatizados usan un fake backend; la confirmación con una herramienta real sigue siendo un release gate. La orquestación MCP, los capture bundles y los artefactos correlacionados quedan como trabajo futuro separado.
+
 ## Diagnósticos De Overdraw
 
 El overdraw numérico es opt-in y acotado.
@@ -89,8 +104,8 @@ Las custom metrics se exponen mediante lecturas de API, exportación JSON de ses
 
 La instrumentación es interna y solo es visible al perfilar el Editor, un Development Build u otro build con Profiler habilitado. En los Release players sin Profiler, estos markers/counters son no-op y no generan datos de instrumentación; los schemas de public API, status, MCP y export no cambian.
 
-- Los markers cubren collect/frame timing (`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), providers (`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture (`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`) y export JSON/CSV (`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`). `SGG.PerfMeter.Thermal.Sample` es un hook interno reservado para providers.
-- Los counters cubren tiempos de frame CPU/GPU (`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`) como gauges de fin de frame en nanosegundos. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive` y `SGG.PerfMeter.Thermal.Available` codifican disponibilidad/activo como `0`/`1`; `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState` y `SGG.PerfMeter.Capture.OverdrawState` usan códigos de enum; `SGG.PerfMeter.Provider.CustomMetricCount` es un recuento. Los counters usan la categoría `Scripts` y `FlushOnEndOfFrame`.
+- Los markers cubren collect/frame timing (`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), providers (`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture (`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`, `SGG.PerfMeter.Capture.Coordinator`) y export JSON/CSV (`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`). `SGG.PerfMeter.Thermal.Sample` es un hook interno reservado para providers.
+- Los counters cubren tiempos de frame CPU/GPU (`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`) como gauges de fin de frame en nanosegundos. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive` y `SGG.PerfMeter.Thermal.Available` codifican disponibilidad/activo como `0`/`1`; `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState`, `SGG.PerfMeter.Capture.OverdrawState` y `SGG.PerfMeter.Capture.State` usan códigos de enum; `SGG.PerfMeter.Provider.CustomMetricCount` es un recuento. Los counters usan la categoría `Scripts` y `FlushOnEndOfFrame`.
 - No se emite ningún sample térmico sintético; `SGG.PerfMeter.Thermal.Available` permanece en `0`/unavailable hasta que un provider de plataforma real proporcione datos.
 
 ## Self-Observability Y Budgets De Overhead

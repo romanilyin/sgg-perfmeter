@@ -20,6 +20,14 @@ SGG PerfMeter 设计为低开销 runtime diagnostics layer。对于深度 captur
 
 Profiler counters 会因 platform、Unity version、render pipeline settings 和 graphics API 而异。使用 `AvailableCounters`、`UnavailableCounters` 和 warnings，不要假定每个 counter 在所有地方都存在。
 
+## External GPU Capture
+
+- Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。相同的 active ID 是 idempotent，不同的 active ID 会作为 overlap 被 reject。
+- Backend 仅在 Editor 或 Development Builds、external tool 已 attach 时使用 Unity 的 experimental `ExternalGPUProfiler`。`RenderDoc` 限定为 Windows/Linux desktop 的 Direct3D 11、Direct3D 12 或 Vulkan；`PIX` 限定为 Windows desktop 的 Direct3D 12。
+- `Completed` 只确认 Unity wrapper lifecycle，不证明 external `.rdc`/`.wpix` artifact 存在，也不提供 artifact path。
+- Automated tests 使用 fake backend。Real external tool 和 artifact 的确认仍是 release gate。
+- Capture bundles、artifact provenance 和 MCP capture control 不属于本 coordinator，属于独立的 future work。
+
 ## Overdraw Cost And Support
 
 Numerical overdraw 和 visual heatmap 属于 diagnostic modes。它们会增加 rendering work，应在有边界的窗口内使用，不应作为稳定运行的 gameplay UI 长期开启。

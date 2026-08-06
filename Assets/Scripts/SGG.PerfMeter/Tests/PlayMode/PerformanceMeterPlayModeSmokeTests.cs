@@ -350,5 +350,140 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				Assert.That(PerformanceMeter.GetStatus().OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Canceled));
 			}
 		}
+
+		[UnityTest]
+		public IEnumerator CaptureCoordinatorTransitionsAcrossFramesAndCleansUpOnStop()
+		{
+			PerformanceMeter.EnsureRunning();
+			PlayModeFakeCaptureBackend backend = new PlayModeFakeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendForTests(backend);
+
+			PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("playmode-capture", PerfMeterCaptureTool.RenderDoc, 2, 1, 1));
+			Assert.That(result, Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.PreRoll));
+
+			yield return null;
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Capturing));
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.EqualTo("playmode-capture"));
+			Assert.That(PerfMeterRuntime.Instance.LastAlertClassification, Is.Not.EqualTo(PerfMeterAlertClassification.Capture));
+			yield return null;
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Capturing));
+			Assert.That(PerfMeterRuntime.Instance.LastAlertClassification, Is.EqualTo(PerfMeterAlertClassification.Capture));
+			yield return null;
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.PostRoll));
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.Empty);
+			Assert.That(PerfMeterRuntime.Instance.LastAlertClassification, Is.EqualTo(PerfMeterAlertClassification.Capture));
+			yield return null;
+
+			PerfMeterCaptureStatusSnapshot completed = PerformanceMeter.GetCaptureStatus();
+			Assert.That(completed.State, Is.EqualTo(PerfMeterCaptureState.Completed));
+			Assert.That(completed.CompletedPreRollFrames, Is.EqualTo(1));
+			Assert.That(completed.CompletedCaptureFrames, Is.EqualTo(2));
+			Assert.That(completed.CompletedPostRollFrames, Is.EqualTo(1));
+			Assert.That(backend.BeginCount, Is.EqualTo(1));
+			Assert.That(backend.EndCount, Is.EqualTo(1));
+
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("zero-roll", PerfMeterCaptureTool.RenderDoc)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Capturing));
+			yield return null;
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Completed));
+			Assert.That(PerfMeterRuntime.Instance.LastAlertClassification, Is.EqualTo(PerfMeterAlertClassification.Capture));
+			Assert.That(backend.BeginCount, Is.EqualTo(2));
+			Assert.That(backend.EndCount, Is.EqualTo(2));
+
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("disable-cleanup", PerfMeterCaptureTool.RenderDoc, 10)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			GameObject runtimeObject = GameObject.Find(RuntimeObjectName);
+			backend.EndFailuresRemaining = 1;
+			runtimeObject.SetActive(false);
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(backend.EndCount, Is.EqualTo(3));
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.Empty);
+
+			runtimeObject.SetActive(true);
+			yield return null;
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Idle));
+			Assert.That(backend.EndCount, Is.EqualTo(4));
+
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("stop-cleanup", PerfMeterCaptureTool.RenderDoc, 10)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.EqualTo("stop-cleanup"));
+			PerformanceMeter.SetOverlayVisible(false);
+			backend.EndFailuresRemaining = 2;
+			PerformanceMeter.Stop();
+
+			Assert.That(backend.EndCount, Is.EqualTo(5));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
+			Assert.That(GameObject.Find(RuntimeObjectName), Is.Not.Null);
+			PerformanceMeter.SetOverlayVisible(true);
+			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
+			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
+			Assert.That(PerformanceMeter.CancelCapture("stop-cleanup"), Is.True);
+			Assert.That(backend.EndCount, Is.EqualTo(7));
+			PerformanceMeter.Stop();
+
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.Empty);
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Idle));
+			Assert.That(PerfMeterProfilerInstrumentation.CaptureState, Is.EqualTo((int)PerfMeterCaptureState.Idle));
+		}
+
+		[UnityTest]
+		public IEnumerator DestroyedRuntimeRetainsFailedCaptureCleanupOwnerForRetry()
+		{
+			PerformanceMeter.EnsureRunning();
+			PlayModeFakeCaptureBackend backend = new PlayModeFakeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendForTests(backend);
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("destroyed-capture", PerfMeterCaptureTool.RenderDoc, 10)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			backend.EndFailuresRemaining = 2;
+			GameObject runtimeObject = GameObject.Find(RuntimeObjectName);
+			Assert.That(runtimeObject, Is.Not.Null);
+			Object.Destroy(runtimeObject);
+			yield return null;
+
+			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.Empty);
+			Assert.That(PerformanceMeter.CancelCapture(), Is.True);
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Canceled));
+
+			PerformanceMeter.EnsureRunning();
+			yield return null;
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Idle));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Running));
+		}
+
+		private sealed class PlayModeFakeCaptureBackend : IPerfMeterCaptureBackend
+		{
+			internal int BeginCount { get; private set; }
+			internal int EndCount { get; private set; }
+			internal int EndFailuresRemaining { get; set; }
+
+			public PerfMeterCaptureBackendCapability GetCapability(PerfMeterCaptureTool tool)
+			{
+				return new PerfMeterCaptureBackendCapability(PerfMeterAvailability.Available, string.Empty);
+			}
+
+			public bool TryBegin(PerfMeterCaptureTool tool, out string error)
+			{
+				BeginCount++;
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryEnd(out string error)
+			{
+				EndCount++;
+				if (EndFailuresRemaining > 0)
+				{
+					EndFailuresRemaining--;
+					error = "transient end failure";
+					return false;
+				}
+
+				error = string.Empty;
+				return true;
+			}
+		}
 	}
 }

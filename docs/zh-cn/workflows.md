@@ -52,6 +52,21 @@ PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 
 Editor warnings 会受 cooldowns 限流，并可通过 JSON settings 或 runtime controls 禁用。Structured alert logs 与 Editor warnings 相互独立：`PerformanceMeter.SetStructuredLogsEnabled(false)` 只抑制 structured alert 的 `Debug.Log` 输出，而 `PerformanceMeter.SetEditorWarningLogsEnabled(false)` 单独控制 Editor warning logs。Callbacks、alert/history、overlay warnings 和 sessions 仍保持 active。
 
+## External GPU Capture
+
+当 tool 已经 attach 时，使用 capture coordinator 发起有边界的 RenderDoc 或 PIX request：
+
+```csharp
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30));
+
+PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
+```
+
+Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。相同的 active ID 是 idempotent，不同的 ID 会作为 overlap 被 reject。Pre-roll 和 post-roll 统计 Unity frames；只有 `Capturing` 会打开 alert capture scope 并调用 Unity 的 experimental `ExternalGPUProfiler`。Editor 或 Development Build 以及 attached tool 是 mandatory gates。`RenderDoc` 支持 Windows/Linux desktop 的 Direct3D 11、Direct3D 12 或 Vulkan；`PIX` 支持 Windows desktop 的 Direct3D 12。
+
+`Completed` 仅表示 guarded Unity wrapper lifecycle 已结束。Unity 不会暴露 attached tool identity 或 authoritative artifact path，因此 `Status.Tool` 只表示 requested tool，并不是 verified attached-tool identity。应在 external tool 中验证 `.rdc`/`.wpix` artifact。Automated tests 使用 fake backend；real tool 的确认仍是 release gate。MCP orchestration、capture bundles 和 correlated artifacts 属于独立的 future work。
+
 ## Overdraw Diagnostics
 
 Numerical overdraw 需要显式启用且有边界。
@@ -89,8 +104,8 @@ Custom metrics 会通过 API reads、session JSON export、MCP latest metrics �
 
 此 instrumentation 属于 internal scope，仅在 profiling Editor、Development Build 或其他 profiler-enabled build 时可在 Unity Profiler 中查看。没有 Profiler 的 Release player 中，这些 marker/counter 是 no-op，不会生成 instrumentation data；public API、status、MCP 和 export schema 不变。
 
-- Marker 覆盖 collection/frame timing（`SGG.PerfMeter.Collect`、`SGG.PerfMeter.Collect.FrameTiming`）、providers（`SGG.PerfMeter.Provider.CustomMetrics`、`SGG.PerfMeter.Provider.CpuCore`、`SGG.PerfMeter.Provider.DeviceSnapshot`、`SGG.PerfMeter.Provider.CameraSnapshot`）、bottleneck/capture（`SGG.PerfMeter.Bottleneck.Classify`、`SGG.PerfMeter.Capture.Session`、`SGG.PerfMeter.Capture.AlertScope`）以及 JSON/CSV export（`SGG.PerfMeter.Export.Json`、`SGG.PerfMeter.Export.Csv`）。`SGG.PerfMeter.Thermal.Sample` 是 reserved internal provider hook。
-- Counter 覆盖 CPU/GPU frame time（`SGG.PerfMeter.CPU.FrameTime`、`SGG.PerfMeter.CPU.MainThreadTime`、`SGG.PerfMeter.CPU.RenderThreadTime`、`SGG.PerfMeter.CPU.PresentWaitTime`、`SGG.PerfMeter.GPU.FrameTime`），作为 nanoseconds 的 end-of-frame gauge。`SGG.PerfMeter.CPU.FrameTimingAvailable`、`SGG.PerfMeter.GPU.FrameTimingAvailable`、`SGG.PerfMeter.Capture.AlertScopeActive` 和 `SGG.PerfMeter.Thermal.Available` 用 `0`/`1` 编码 availability/active；`SGG.PerfMeter.Bottleneck.Kind`、`SGG.PerfMeter.Capture.SessionState` 和 `SGG.PerfMeter.Capture.OverdrawState` 使用 enum code；`SGG.PerfMeter.Provider.CustomMetricCount` 是 count。Counter 使用 `Scripts` category 和 `FlushOnEndOfFrame`。
+- Marker 覆盖 collection/frame timing（`SGG.PerfMeter.Collect`、`SGG.PerfMeter.Collect.FrameTiming`）、providers（`SGG.PerfMeter.Provider.CustomMetrics`、`SGG.PerfMeter.Provider.CpuCore`、`SGG.PerfMeter.Provider.DeviceSnapshot`、`SGG.PerfMeter.Provider.CameraSnapshot`）、bottleneck/capture（`SGG.PerfMeter.Bottleneck.Classify`、`SGG.PerfMeter.Capture.Session`、`SGG.PerfMeter.Capture.AlertScope`、`SGG.PerfMeter.Capture.Coordinator`）以及 JSON/CSV export（`SGG.PerfMeter.Export.Json`、`SGG.PerfMeter.Export.Csv`）。`SGG.PerfMeter.Thermal.Sample` 是 reserved internal provider hook。
+- Counter 覆盖 CPU/GPU frame time（`SGG.PerfMeter.CPU.FrameTime`、`SGG.PerfMeter.CPU.MainThreadTime`、`SGG.PerfMeter.CPU.RenderThreadTime`、`SGG.PerfMeter.CPU.PresentWaitTime`、`SGG.PerfMeter.GPU.FrameTime`），作为 nanoseconds 的 end-of-frame gauge。`SGG.PerfMeter.CPU.FrameTimingAvailable`、`SGG.PerfMeter.GPU.FrameTimingAvailable`、`SGG.PerfMeter.Capture.AlertScopeActive` 和 `SGG.PerfMeter.Thermal.Available` 用 `0`/`1` 编码 availability/active；`SGG.PerfMeter.Bottleneck.Kind`、`SGG.PerfMeter.Capture.SessionState`、`SGG.PerfMeter.Capture.OverdrawState` 和 `SGG.PerfMeter.Capture.State` 使用 enum code；`SGG.PerfMeter.Provider.CustomMetricCount` 是 count。Counter 使用 `Scripts` category 和 `FlushOnEndOfFrame`。
 - 不会生成 synthetic thermal sample；`SGG.PerfMeter.Thermal.Available` 在真实 platform provider 提供 data 前保持 `0`/unavailable。
 
 ## Self-Observability And Overhead Budgets

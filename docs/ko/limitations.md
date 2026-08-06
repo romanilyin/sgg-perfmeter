@@ -20,6 +20,14 @@ SGG PerfMeter는 low-overhead runtime diagnostics layer로 설계되었습니다
 
 Profiler counter는 platform, Unity version, render pipeline settings, graphics API에 따라 달라집니다. 모든 counter가 어디서나 존재한다고 가정하지 말고 `AvailableCounters`, `UnavailableCounters`, warnings를 사용합니다.
 
+## External GPU Capture
+
+- Coordinator는 active request 하나를 허용하며 `PreRoll`, `Capturing`, `PostRoll`, `Completed`를 deterministic하게 진행합니다. 같은 active ID는 idempotent이고 다른 active ID는 overlap으로 reject됩니다.
+- Backend는 Unity의 experimental `ExternalGPUProfiler`를 Editor 또는 Development Builds에서 external tool이 이미 attach된 경우에만 사용합니다. `RenderDoc`은 Windows/Linux desktop의 Direct3D 11, Direct3D 12, Vulkan으로 제한되고 `PIX`는 Windows desktop의 Direct3D 12로 제한됩니다.
+- `Completed`는 Unity wrapper lifecycle만 확인합니다. external `.rdc`/`.wpix` artifact가 존재한다는 증거가 아니며 artifact path도 제공하지 않습니다.
+- Automated tests는 fake backend를 사용합니다. Real external tool 및 artifact 확인은 release gate로 남습니다.
+- Capture bundles, artifact provenance, MCP capture control은 이 coordinator의 범위가 아니며 별도의 future work입니다.
+
 ## Overdraw 비용 및 지원
 
 Numerical overdraw와 visual heatmap은 diagnostic mode입니다. rendering work를 추가하므로 steady-state gameplay UI로 계속 켜 두지 말고 bounded window에서 사용해야 합니다.

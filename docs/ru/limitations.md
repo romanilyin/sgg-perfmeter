@@ -20,6 +20,14 @@ SGG PerfMeter - слой runtime-диагностики с низкими нак
 
 Profiler counters зависят от платформы, версии Unity, настроек render pipeline и graphics API. Используйте `AvailableCounters`, `UnavailableCounters` и warnings, а не предполагайте, что каждый счетчик существует везде.
 
+## External GPU Capture
+
+- Coordinator допускает один активный запрос и детерминированно проходит `PreRoll`, `Capturing`, `PostRoll` и `Completed`. Тот же active ID идемпотентен, другой active ID отклоняется как пересечение.
+- Backend использует экспериментальный `ExternalGPUProfiler` Unity только в Editor или Development Builds, когда external tool уже подключена. `RenderDoc` ограничен desktop Windows/Linux с Direct3D 11, Direct3D 12 или Vulkan; `PIX` ограничен desktop Windows с Direct3D 12.
+- `Completed` подтверждает только wrapper lifecycle Unity. Он не доказывает наличие внешнего `.rdc`/`.wpix` artifact и не предоставляет artifact path.
+- Automated tests используют fake backend. Проверка настоящей external tool и artifact остается release gate.
+- Capture bundles, artifact provenance и MCP capture control не входят в этот coordinator и остаются отдельной future work.
+
 ## Стоимость и поддержка overdraw
 
 Числовой overdraw и визуальная heatmap - диагностические режимы. Они добавляют работу рендера и должны использоваться в ограниченных окнах, а не как постоянный игровой UI.

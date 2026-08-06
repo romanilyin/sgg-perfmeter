@@ -15,6 +15,7 @@ SGG PerfMeter detecte les goulets d'etranglement des frames, compare les changem
 - Voir le contexte des goulets d'etranglement directement pendant le jeu.
 - Basculer entre presets, graphes, barres de metriques, dispositions compactes et lignes de metriques personnalisees.
 - Enregistrer des sessions de profilage reproductibles avec warm-up, contexte de scene, resume des pires frames et export JSON/CSV.
+- Coordonner une requete RenderDoc/PIX explicite et bornee avec des etats deterministes de pre-roll, capture et post-roll lorsque le profiler GPU externe est deja attache; cette coordination est limitee a l'Editor/Development Build et ne revendique aucun path d'artefact faisant autorite.
 - Utiliser des alertes, logs structures, callbacks et cooldowns d'avertissements Editor sans surveiller l'overlay en continu.
 - Fournir aux outils et agents des donnees structurees pour les comparaisons, tests A/B et recherches de points chauds.
 

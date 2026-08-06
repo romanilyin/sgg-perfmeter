@@ -140,6 +140,30 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` 默认值为 `true`，只控制 structured alert 的 `Debug.Log` 输出。设置为 `false` 不会禁用 `AlertFired` callbacks、latest alerts 或 alert history、overlay warnings、Editor warning logs 或 sessions。`PerformanceMeter.SetEditorWarningLogsEnabled(bool)` 独立控制 Editor warning logs。
 
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(options);
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。重复相同的 active ID 是 idempotent；不同的 active ID 会因 overlap 被 reject。`Canceled`、`Unavailable` 和 `Error` 是明确的 terminal state。
+
+内置 backend 仅在 Editor 或 Development Build、external tool 已 attach 且 desktop platform/API 组合受支持时 wrap Unity 的 experimental `ExternalGPUProfiler`。支持的组合是 Windows/Linux desktop 上使用 Direct3D 11、Direct3D 12 或 Vulkan 的 `RenderDoc`，以及 Windows desktop 上使用 Direct3D 12 的 `PIX`。由于 Unity 不会暴露 attached tool identity，请显式选择 `RenderDoc` 或 `Pix`。`Status.Tool` 仅表示 requested tool，不是 verified attached-tool identity。`Completed` 只确认 Unity wrapper lifecycle，不验证或返回 external `.rdc`/`.wpix` artifact，也不返回 artifact path。Automated tests 使用 fake backend；real external tool 和 artifact 的确认仍是 release gate。Capture bundles、artifact provenance 和 MCP capture control 属于独立的 future scope。
+
+`PerfMeterCaptureOptions` 的默认值是 `captureFrames: 1`、`preRollFrames: 0` 和 `postRollFrames: 0`。有效的 `RequestCapture` 会自动启动 runtime。不带 ID 的 `CancelCapture()` 会取消当前报告的 active request；传入 ID 可以防止误取消更新的 request。
+
 ## Custom Metrics
 
 ```csharp

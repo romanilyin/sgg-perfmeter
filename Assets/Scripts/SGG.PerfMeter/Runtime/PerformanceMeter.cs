@@ -89,12 +89,47 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetAlertHistory() : default;
 		}
 
+		public static PerfMeterCaptureStatusSnapshot GetCaptureStatus()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.CaptureStatus : PerfMeterRuntime.PendingCaptureStatus;
+		}
+
+		public static PerfMeterCaptureRequestResult RequestCapture(PerfMeterCaptureOptions options)
+		{
+			if (string.IsNullOrEmpty(options.CaptureId) || options.Tool == PerfMeterCaptureTool.Unknown)
+			{
+				return PerfMeterCaptureRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterCaptureRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.RequestCapture(options) : PerfMeterCaptureRequestResult.Unavailable;
+		}
+
+		public static bool CancelCapture(string captureId = null)
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			PerfMeterCaptureStatusSnapshot status = runtime != null ? runtime.CaptureStatus : PerfMeterRuntime.PendingCaptureStatus;
+			string effectiveCaptureId = string.IsNullOrEmpty(captureId) ? status.CaptureId : captureId;
+			if (string.IsNullOrEmpty(effectiveCaptureId))
+			{
+				return false;
+			}
+
+			return runtime != null ? runtime.CancelCapture(effectiveCaptureId) : PerfMeterRuntime.CancelPendingCapture(effectiveCaptureId);
+		}
+
 		public static string ActiveAlertCaptureId
 		{
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.ActiveAlertCaptureId : string.Empty;
+				return runtime != null ? runtime.ActiveAlertCaptureId : PerfMeterRuntime.PendingAlertCaptureId;
 			}
 		}
 
@@ -105,7 +140,11 @@ namespace SGG.PerfMeter
 				throw new System.ArgumentException("Capture id must not be empty.", nameof(captureId));
 			}
 
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return false;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null && runtime.BeginAlertCapture(captureId);
 		}
@@ -210,7 +249,11 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -234,7 +277,11 @@ namespace SGG.PerfMeter
 
 		public static void StartSession(PerfMeterSessionOptions options)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -285,7 +332,11 @@ namespace SGG.PerfMeter
 			int normalizedFrameCount = frameCount <= 0
 				? settings.OverdrawDefaultFrameCount
 				: Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount);
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -313,7 +364,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverdrawHeatmapVisible(bool visible)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -431,7 +486,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayVisible(bool visible)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -441,7 +500,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayCorner(PerfMeterOverlayCorner corner)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -451,7 +514,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayMode(PerfMeterOverlayMode mode)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -461,7 +528,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayPreset(PerfMeterOverlayPreset preset)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -471,7 +542,11 @@ namespace SGG.PerfMeter
 
 		public static void ApplyVisualOverlayPreset(string presetId, PerfMeterOverlayPresetJson preset)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -481,7 +556,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayTheme(PerfMeterOverlayTheme theme)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -491,7 +570,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayLayout(PerfMeterOverlayLayout layout)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -501,7 +584,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayFontFamily(PerfMeterOverlayFontFamily fontFamily)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -511,7 +598,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayModules(PerfMeterOverlayModule modules)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -521,7 +612,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -531,7 +626,11 @@ namespace SGG.PerfMeter
 
 		public static void SetTargetFps(PerfMeterTargetFps targetFps)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -541,7 +640,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayUpdateOptions(float refreshIntervalSeconds, int graphHistoryLength)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -551,7 +654,11 @@ namespace SGG.PerfMeter
 
 		public static void SetEditorWarningLogsEnabled(bool enabled)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -561,7 +668,11 @@ namespace SGG.PerfMeter
 
 		public static void SetStructuredLogsEnabled(bool enabled)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{

@@ -15,6 +15,7 @@ SGG PerfMeter detecta cuellos de botella de frames, compara cambios de rendimien
 - Ver contexto de cuellos de botella directamente durante el juego.
 - Cambiar entre presets, gráficos, barras de métricas, layouts compactos y filas de métricas personalizadas.
 - Grabar sesiones de profiling reproducibles con warm-up, alcance por escena, resumen de peores frames y exportación JSON/CSV.
+- Coordinar una solicitud explícita y acotada de RenderDoc/PIX con estados deterministas de pre-roll, captura y post-roll cuando ya hay un profiler GPU externo conectado; la coordinación está limitada a Editor/Development Build y no afirma un path de artefacto autoritativo.
 - Usar alertas, logs estructurados, callbacks y cooldowns de advertencias del Editor sin vigilar el overlay de forma constante.
 - Entregar datos estructurados a herramientas y agentes para comparaciones, pruebas A/B y búsqueda de hotspots.
 

@@ -140,6 +140,30 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 Свойство `StructuredLogsEnabled` по умолчанию равно `true` и управляет только структурированным alert `Debug.Log`. Значение `false` не отключает callback `AlertFired`, последние alerts и историю оповещений, предупреждения оверлея, логи предупреждений Editor или сессии. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` независимо управляет логами предупреждений Editor.
 
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(options);
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+Coordinator допускает только один активный запрос и детерминированно проходит состояния `PreRoll`, `Capturing`, `PostRoll` и `Completed`. Повтор того же активного ID идемпотентен; другой активный ID отклоняется как пересечение. `Canceled`, `Unavailable` и `Error` — явные конечные состояния.
+
+Встроенный backend оборачивает экспериментальный `ExternalGPUProfiler` Unity только в Editor или Development Build, только если внешняя tool уже подключена, и только для поддерживаемых desktop-комбинаций platform/API. Поддерживаются `RenderDoc` на desktop Windows/Linux с Direct3D 11, Direct3D 12 или Vulkan и `PIX` на desktop Windows с Direct3D 12. Выбирайте `RenderDoc` или `Pix` явно, потому что Unity не раскрывает identity подключенной tool. `Status.Tool` — это только запрошенная tool, а не проверенная identity подключенной tool. `Completed` подтверждает только wrapper lifecycle Unity; он не проверяет и не возвращает внешний `.rdc`/`.wpix` artifact или artifact path. Automated tests используют fake backend; подтверждение настоящей external tool и artifact остается release gate. Capture bundles, artifact provenance и MCP capture control остаются отдельным future scope.
+
+Значения по умолчанию `PerfMeterCaptureOptions`: `captureFrames: 1`, `preRollFrames: 0` и `postRollFrames: 0`. Валидный `RequestCapture` автоматически запускает runtime. `CancelCapture()` без ID отменяет текущий отображаемый активный запрос; передача ID защищает от отмены более нового запроса.
+
 ## Пользовательские метрики
 
 ```csharp

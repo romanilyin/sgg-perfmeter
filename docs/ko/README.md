@@ -24,6 +24,7 @@ SGG PerfMeter는 프레임 병목을 식별하고, 성능 변화를 비교하고
 - 사용 가능한 경우 FrameTimingManager CPU/GPU timing: CPU frame, main thread, render thread, present wait, GPU frame time.
 - 사용 가능한 경우 ProfilerRecorder render counter: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, uploads, memory, GPU memory.
 - GPU, CPU main, CPU render, present/VSync, balanced, unknown 병목 분류.
+- external GPU profiler가 이미 attach된 경우 명시적이고 bounded한 RenderDoc/PIX request를 deterministic한 pre-roll, capture, post-roll state와 함께 조정합니다. 이 guarded coordination은 Editor/Development Build로 제한되며 authoritative artifact path를 주장하지 않습니다.
 - URP Render Graph를 통한 opt-in overdraw measurement 및 visual overdraw heatmap. HDRP overdraw/heatmap은 unsupported이며 core diagnostics는 계속 사용할 수 있습니다.
 - code 및 MCP automation용 device, URP/HDRP camera, render integration, status, metrics, alerts, sessions, custom metrics snapshot.
 

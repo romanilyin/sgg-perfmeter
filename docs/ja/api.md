@@ -140,6 +140,30 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` のデフォルトは `true` で、構造化 alert の `Debug.Log` 出力だけを制御します。`false` にしても `AlertFired` callback、最新の alerts と alert history、overlay warnings、Editor warning logs、sessions は無効になりません。`PerformanceMeter.SetEditorWarningLogsEnabled(bool)` は Editor warning logs を独立して制御します。
 
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(options);
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+coordinator は active request を 1 件だけ許可し、`PreRoll`、`Capturing`、`PostRoll`、`Completed` を deterministic に進みます。同じ active ID の再実行は idempotent で、異なる active ID は overlap として reject されます。`Canceled`、`Unavailable`、`Error` は明示的な terminal state です。
+
+組み込み backend は Unity の experimental な `ExternalGPUProfiler` を、Editor または Development Build で、external tool が attach 済みの場合に限り、対応する desktop platform/API の組み合わせで wrap します。対応する組み合わせは、Windows/Linux desktop の Direct3D 11、Direct3D 12、Vulkan 上の `RenderDoc` と、Windows desktop の Direct3D 12 上の `PIX` です。Unity は attach された tool の identity を公開しないため、`RenderDoc` または `Pix` を明示的に選択してください。`Status.Tool` は requested tool だけを示し、attached tool の verified identity ではありません。`Completed` は Unity wrapper lifecycle の完了だけを確認し、external `.rdc`/`.wpix` artifact や artifact path の存在を検証・返却しません。automated tests は fake backend を使用し、real external tool と artifact の確認は release gate のままです。Capture bundles、artifact provenance、MCP capture control は別の future scope です。
+
+`PerfMeterCaptureOptions` の default は `captureFrames: 1`、`preRollFrames: 0`、`postRollFrames: 0` です。有効な `RequestCapture` は runtime を自動的に開始します。ID なしの `CancelCapture()` は現在報告されている active request を対象にし、ID を渡すと新しい request を誤って cancel することを防げます。
+
 ## Custom Metrics
 
 ```csharp

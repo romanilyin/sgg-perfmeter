@@ -15,6 +15,7 @@ SGG PerfMeter erkennt Frame-Bottlenecks, vergleicht Performance-Aenderungen, zei
 - Bottleneck-Kontext direkt waehrend des Spiels sehen.
 - Zwischen Presets, Graphen, Metrikleisten, kompakten Layouts und Custom-Metric-Zeilen wechseln.
 - Reproduzierbare Profiling-Sessions mit Warm-up, Szenenbezug, Worst-Frame-Zusammenfassung und JSON/CSV-Export aufzeichnen.
+- Eine explizite, begrenzte RenderDoc/PIX-Anfrage mit deterministischen Pre-Roll-, Capture- und Post-Roll-Zustaenden koordinieren, wenn ein externer GPU-Profiler bereits angehaengt ist; die guarded Koordination ist auf Editor/Development Build begrenzt und beansprucht keinen autoritativen Artefaktpfad.
 - Alerts, strukturierte Logs, Callbacks und Editor-Warnungs-Cooldowns nutzen, ohne den Overlay dauerhaft beobachten zu muessen.
 - Tools und Agents strukturierte Daten fuer Vergleiche, A/B-Tests und Hotspot-Suche geben.
 

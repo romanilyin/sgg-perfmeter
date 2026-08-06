@@ -35,6 +35,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PerfMeterProfilerInstrumentation.BottleneckMarkerName,
 				PerfMeterProfilerInstrumentation.SessionCaptureMarkerName,
 				PerfMeterProfilerInstrumentation.AlertCaptureMarkerName,
+				PerfMeterProfilerInstrumentation.CaptureCoordinatorMarkerName,
 				PerfMeterProfilerInstrumentation.ExportJsonMarkerName,
 				PerfMeterProfilerInstrumentation.ExportCsvMarkerName,
 				PerfMeterProfilerInstrumentation.ThermalSampleMarkerName,
@@ -50,6 +51,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PerfMeterProfilerInstrumentation.SessionStateCounterName,
 				PerfMeterProfilerInstrumentation.AlertScopeActiveCounterName,
 				PerfMeterProfilerInstrumentation.OverdrawStateCounterName,
+				PerfMeterProfilerInstrumentation.CaptureStateCounterName,
 				PerfMeterProfilerInstrumentation.ThermalAvailableCounterName
 			};
 
@@ -84,6 +86,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterProfilerInstrumentation.RecordSessionState(PerfMeterSessionState.Recording);
 			PerfMeterProfilerInstrumentation.RecordAlertScopeActive(true);
 			PerfMeterProfilerInstrumentation.RecordOverdrawState(PerfMeterOverdrawMeasurementState.Measuring);
+			PerfMeterProfilerInstrumentation.RecordCaptureState(PerfMeterCaptureState.Capturing);
 			PerfMeterProfilerInstrumentation.RecordThermalAvailability(true);
 
 			Assert.That(PerfMeterProfilerInstrumentation.CpuFrameTimingAvailable, Is.EqualTo(1));
@@ -98,6 +101,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Recording));
 			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.EqualTo(1));
 			Assert.That(PerfMeterProfilerInstrumentation.OverdrawState, Is.EqualTo((int)PerfMeterOverdrawMeasurementState.Measuring));
+			Assert.That(PerfMeterProfilerInstrumentation.CaptureState, Is.EqualTo((int)PerfMeterCaptureState.Capturing));
 			Assert.That(PerfMeterProfilerInstrumentation.ThermalAvailable, Is.EqualTo(1));
 		}
 
@@ -108,6 +112,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterProfilerInstrumentation.RecordSessionState(PerfMeterSessionState.Stopped);
 			PerfMeterProfilerInstrumentation.RecordAlertScopeActive(true);
 			PerfMeterProfilerInstrumentation.RecordOverdrawState(PerfMeterOverdrawMeasurementState.Completed);
+			PerfMeterProfilerInstrumentation.RecordCaptureState(PerfMeterCaptureState.Completed);
 			PerfMeterProfilerInstrumentation.RecordThermalAvailability(true);
 
 			PerfMeterProfilerInstrumentation.Reset();
@@ -121,6 +126,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Idle));
 			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.Zero);
 			Assert.That(PerfMeterProfilerInstrumentation.OverdrawState, Is.EqualTo((int)PerfMeterOverdrawMeasurementState.Off));
+			Assert.That(PerfMeterProfilerInstrumentation.CaptureState, Is.EqualTo((int)PerfMeterCaptureState.Idle));
 			Assert.That(PerfMeterProfilerInstrumentation.ThermalAvailable, Is.Zero);
 		}
 

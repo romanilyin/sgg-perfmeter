@@ -15,6 +15,7 @@ SGG PerfMeter identifica i colli di bottiglia dei frame, confronta le variazioni
 - Mostra il contesto dei colli di bottiglia direttamente durante il gioco.
 - Permette di passare tra preset, grafici, barre metriche, layout compatti e righe di metriche personalizzate.
 - Registra sessioni di profiling riproducibili con warm-up, ambito scena, riepilogo dei frame peggiori ed esportazione JSON/CSV.
+- Coordina una richiesta RenderDoc/PIX esplicita e limitata con stati deterministici di pre-roll, capture e post-roll quando un profiler GPU esterno e gia collegato; la coordinazione e limitata a Editor/Development Build e non dichiara alcun path autorevole dell'artefatto.
 - Usa alert, log strutturati, callback e cooldown degli avvisi Editor senza dover osservare sempre l'overlay.
 - Fornisce a strumenti e agent dati strutturati per confronti, test A/B e ricerca degli hotspot.
 

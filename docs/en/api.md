@@ -140,6 +140,30 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` is `true` by default and controls only the structured alert `Debug.Log` output. Setting it to `false` does not disable `AlertFired` callbacks, latest alerts or alert history, overlay warnings, Editor warning logs, or sessions. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controls Editor warning logs independently.
 
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(options);
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+The coordinator allows one active request and advances deterministically through `PreRoll`, `Capturing`, `PostRoll`, and `Completed`. Repeating an active ID is idempotent; a different active ID is rejected as overlap. `Canceled`, `Unavailable`, and `Error` are explicit terminal states.
+
+The built-in backend wraps Unity's experimental `ExternalGPUProfiler` only in the Editor or a Development Build, only when an external tool is attached, and only for supported desktop platform/API combinations. Select `RenderDoc` or `Pix` explicitly because Unity does not expose the attached tool identity; `Status.Tool` is the requested tool, not verified attached-tool identity. `Completed` confirms only the Unity wrapper lifecycle; it does not verify or return an external `.rdc`/`.wpix` artifact. Capture bundles, artifact provenance, and MCP capture control are separate future scope.
+
+`PerfMeterCaptureOptions` defaults to one capture frame with no pre-roll or post-roll. `RequestCapture` starts the runtime when the request is valid. `CancelCapture()` without an ID cancels the currently reported active request; passing an ID protects against canceling a newer request.
+
 ## Custom Metrics
 
 ```csharp
