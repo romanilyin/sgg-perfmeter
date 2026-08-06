@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.8.6-2
+
+- Added an opt-in external GPU capture coordinator with deterministic pre/capture/post-roll states, overlap protection, explicit capability failures, fake-backend coverage, and a guarded Unity `ExternalGPUProfiler` backend for attached RenderDoc/PIX tools in Editor or Development Builds.
+- Added atomic versioned correlated capture bundles with separately classified baseline/capture samples, bounded alert correlation, context snapshots, optional runtime screenshots, project-local quota/retention/redaction policy, SHA-256 manifests, truthful external-artifact provenance, and MCP request/status/cancel/export/capabilities commands.
+- Added explicit additive Editor compatibility status and structured MCP output for the declared import floor, supported core runtime floor, and active URP/HDRP render-integration compatibility.
+- Added the optional `SGG.PerfMeter.AdaptivePerformance` provider for thermal state and temperature trends, CPU/GPU performance levels, provider provenance, alerts, and session/capture samples without a core `com.unity.adaptiveperformance` dependency; unavailable states remain explicit.
+
 ## 2026.8.6-1
 
 - Added cached Profiler metric capabilities with exact/alias provenance and explicit sample availability.
