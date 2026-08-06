@@ -11,6 +11,8 @@ SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmete
 
 Package metadata keeps Unity `2022.3` as an import-safety floor for import and compile checks. The current supported runtime target is Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
 
+These are separate compatibility levels. `ImportCompatible` does not imply supported runtime behavior. `CoreRuntimeCompatible` requires Unity `6000.4+` but no specific pipeline. `RenderIntegrationCompatible` additionally requires the active URP/HDRP package `17.4+` and its PerfMeter adapter assembly. Query them through the Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` or MCP `perfmeter.compatibility.status`; renderer installation and project setup are reported separately.
+
 ## npm Scoped Registry Install
 
 Add the npm registry as a Unity Package Manager scoped registry in your Unity project's `Packages/manifest.json`:

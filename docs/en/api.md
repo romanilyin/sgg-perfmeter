@@ -140,6 +140,49 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` is `true` by default and controls only the structured alert `Debug.Log` output. Setting it to `false` does not disable `AlertFired` callbacks, latest alerts or alert history, overlay warnings, Editor warning logs, or sessions. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controls Editor warning logs independently.
 
+## Editor Compatibility Status
+
+```csharp
+using SGG.PerfMeter.Editor.Setup;
+
+PerfMeterCompatibilityStatus compatibility = PerfMeterSetupActions.GetCompatibilityStatus();
+bool canImport = compatibility.ImportCompatible;
+bool canRunCore = compatibility.CoreRuntimeCompatible;
+bool canUseRenderIntegration = compatibility.RenderIntegrationCompatible;
+```
+
+This Editor-only snapshot keeps the package import floor (`2022.3`), supported core runtime floor (`6000.4`), and active URP/HDRP render integration (`17.4+` plus the corresponding adapter) separate. Each field has an explicit reason. Render compatibility is capability, not renderer/configuration readiness; use setup status for installation state.
+
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+    options,
+    new PerfMeterCaptureBundleOptions(includeScreenshot: true));
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+The coordinator allows one active request and advances deterministically through `PreRoll`, `Capturing`, `PostRoll`, and `Completed`. Repeating an active ID is idempotent; a different active ID is rejected as overlap. `Canceled`, `Unavailable`, and `Error` are explicit terminal states.
+
+The built-in backend wraps Unity's experimental `ExternalGPUProfiler` only in the Editor or a Development Build, only when an external tool is attached, and only for supported desktop platform/API combinations. Select `RenderDoc` or `Pix` explicitly because Unity does not expose the attached tool identity; `Status.Tool` is the requested tool, not verified attached-tool identity. `Completed` confirms only the Unity wrapper lifecycle; it does not verify or return an external `.rdc`/`.wpix` artifact.
+
+`PerfMeterCaptureOptions` defaults to one capture frame with no pre-roll or post-roll. `RequestCapture` starts the runtime when the request is valid. `CancelCapture()` without an ID cancels the currently reported active request; passing an ID protects against canceling a newer request.
+
+The bundle overload keeps capture samples separate from baseline session evidence and can include an opt-in runtime screenshot. Once `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` is true, call `PerformanceMeter.ExportCaptureBundle(captureId)`. Export creates an atomic versioned directory under `Temp/PerfMeter/CaptureBundles` with manifest hashes, session/baseline/capture samples, capture alerts, context, optional screenshot, and external-artifact metadata.
+
+A caller-supplied project-local `.rdc` or `.wpix` path can be copied and hashed as an observed artifact, but Unity cannot authenticate its tool identity or association. It is never marked authoritative; `requireAuthoritativeExternalArtifact: true` fails explicitly. Absolute paths, traversal, reparse points, oversized data, and external files outside the project are rejected. Use `PerformanceMeter.GetCaptureCapabilities()` to inspect current schema, quota, retention, and screenshot limits.
+
 ## Custom Metrics
 
 ```csharp

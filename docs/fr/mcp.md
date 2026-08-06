@@ -14,6 +14,7 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | --- | --- |
 | `perfmeter.setup.status` | Lire l'etat de configuration. |
 | `perfmeter.setup.run` | Executer les actions de configuration recommandees. |
+| `perfmeter.compatibility.status` | Lire separement les compatibilites import, core runtime et render integration active. |
 | `perfmeter.runtime.status` | Lire l'etat runtime. |
 | `perfmeter.runtime.ensure` | Demarrer le runtime si necessaire. |
 | `perfmeter.runtime.stop` | Arreter le runtime. |
@@ -36,6 +37,11 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | `perfmeter.session.stop` | Arreter l'enregistrement et renvoyer le resume. |
 | `perfmeter.session.summary` | Lire le resume de session courant. |
 | `perfmeter.session.export` | Exporter la session courante en JSON ou CSV local au projet. |
+| `perfmeter.capture.request` | Demander une capture GPU externe bornee et un bundle correle. |
+| `perfmeter.capture.status` | Lire l'etat de la capture et du bundle. |
+| `perfmeter.capture.cancel` | Annuler la capture active correspondante. |
+| `perfmeter.capture.export` | Exporter atomiquement un bundle pret sous la racine locale du projet. |
+| `perfmeter.capture.capabilities` | Lire les capacites de schema, quota, retention, screenshot et provenance. |
 
 ## Self-Overhead Dans Le Status Runtime
 

@@ -263,7 +263,10 @@ namespace SGG.PerfMeter
 		SystemUsedMemoryBytes = 8,
 		GcReservedMemoryBytes = 9,
 		DrawCalls = 10,
-		SetPassCalls = 11
+		SetPassCalls = 11,
+		ThermalWarningLevel = 12,
+		TemperatureLevel = 13,
+		TemperatureTrend = 14
 	}
 
 	public enum PerfMeterComparison
@@ -998,12 +1001,24 @@ namespace SGG.PerfMeter
 		}
 
 		public PerfMeterSessionSampleSnapshot(int collectionFrame, double collectionTimeSeconds, string sceneName, PerfMeterMetricsSnapshot metrics, PerfMeterCustomMetricSnapshot[] customMetrics)
+			: this(collectionFrame, collectionTimeSeconds, sceneName, metrics, customMetrics, PerfMeterPlatformTelemetrySnapshot.Unavailable())
+		{
+		}
+
+		public PerfMeterSessionSampleSnapshot(
+			int collectionFrame,
+			double collectionTimeSeconds,
+			string sceneName,
+			PerfMeterMetricsSnapshot metrics,
+			PerfMeterCustomMetricSnapshot[] customMetrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry)
 		{
 			CollectionFrame = collectionFrame;
 			CollectionTimeSeconds = collectionTimeSeconds;
 			SceneName = sceneName ?? string.Empty;
 			Metrics = metrics;
 			CustomMetrics = customMetrics ?? System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+			PlatformTelemetry = platformTelemetry;
 		}
 
 		public int CollectionFrame { get; }
@@ -1011,6 +1026,7 @@ namespace SGG.PerfMeter
 		public string SceneName { get; }
 		public PerfMeterMetricsSnapshot Metrics { get; }
 		public PerfMeterCustomMetricSnapshot[] CustomMetrics { get; }
+		public PerfMeterPlatformTelemetrySnapshot PlatformTelemetry { get; }
 	}
 
 	public readonly struct PerfMeterSessionWorstFrameSnapshot

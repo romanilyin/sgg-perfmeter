@@ -20,6 +20,15 @@ SGG PerfMeter is designed as a low-overhead runtime diagnostics layer, not a dee
 
 Profiler counters vary by platform, Unity version, render pipeline settings, and graphics API. Use `AvailableCounters`, `UnavailableCounters`, and warnings instead of assuming every counter exists everywhere.
 
+## External GPU Capture
+
+- The coordinator uses Unity's experimental `ExternalGPUProfiler`; it does not ship, inject, launch, or identify RenderDoc or PIX.
+- Capture is available only in the Editor or Development Builds when the requested external profiler is already attached.
+- RenderDoc support is limited to Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan. PIX support is limited to Windows desktop with Direct3D 12.
+- One capture request can be active at a time. Heavy capture is always explicit and opt-in.
+- `Completed` confirms the Unity begin/end wrapper lifecycle only. It does not prove that an external `.rdc`/`.wpix` artifact exists and does not provide an artifact path.
+- Automated tests use a fake backend. Correlated bundles and MCP capture control are available, but a caller-supplied `.rdc`/`.wpix` remains only an observed, hashed artifact because Unity cannot authenticate the attached tool or artifact association. Real external-tool confirmation remains a release-candidate gate.
+
 ## Overdraw Cost And Support
 
 Numerical overdraw and visual heatmap are diagnostic modes. They add rendering work and should be used in bounded windows, not left on as steady-state gameplay UI.

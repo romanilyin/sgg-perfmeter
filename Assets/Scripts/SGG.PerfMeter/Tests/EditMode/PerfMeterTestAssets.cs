@@ -16,5 +16,21 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(asset, Is.Not.Null, "mcp.commands.json must be available from package or embedded Assets path.");
 			return asset.text;
 		}
+
+		internal static string ReadPackageJson()
+		{
+			TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(PackageRoot + "/package.json")
+				?? AssetDatabase.LoadAssetAtPath<TextAsset>(EmbeddedRoot + "/package.json");
+			Assert.That(asset, Is.Not.Null, "package.json must be available from package or embedded Assets path.");
+			return asset.text;
+		}
+
+		internal static string ReadAdaptivePerformanceAsmdef()
+		{
+			TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(PackageRoot + "/Runtime/AdaptivePerformance/SGG.PerfMeter.AdaptivePerformance.asmdef")
+				?? AssetDatabase.LoadAssetAtPath<TextAsset>(EmbeddedRoot + "/Runtime/AdaptivePerformance/SGG.PerfMeter.AdaptivePerformance.asmdef");
+			Assert.That(asset, Is.Not.Null, "Adaptive Performance asmdef must be available from package or embedded Assets path.");
+			return asset.text;
+		}
 	}
 }

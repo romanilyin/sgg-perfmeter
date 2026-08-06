@@ -6,7 +6,9 @@ namespace SGG.PerfMeter
 {
 	internal sealed class PerfMeterAlertEngine
 	{
+		private const int MaxFiredEvents = 256;
 		private readonly List<PerfMeterAlertSnapshot> _latestAlerts = new List<PerfMeterAlertSnapshot>(16);
+		private readonly List<PerfMeterAlertSnapshot> _firedEvents = new List<PerfMeterAlertSnapshot>(MaxFiredEvents);
 		private readonly RuleState[] _states;
 		private readonly PerfMeterRule[] _rules;
 		private PerfMeterAlertSnapshot _latestAlert;
@@ -24,6 +26,7 @@ namespace SGG.PerfMeter
 		private double _historyStartTimeSeconds;
 		private string _historyStartedUtc;
 		private PerfMeterAlertHistoryResetReason _historyResetReason;
+		private bool _firedEventsTruncated;
 
 		internal PerfMeterAlertEngine()
 			: this(CreateDefaultRules(PerfMeterTargetFps.Fps60, PerfMeterSettingsStore.Defaults))
@@ -72,13 +75,23 @@ namespace SGG.PerfMeter
 
 		internal void Evaluate(PerfMeterMetricsSnapshot metrics, double timeSeconds, PerfMeterAlertClassification classification, string captureId)
 		{
+			Evaluate(metrics, PerfMeterPlatformTelemetrySnapshot.Unavailable(), timeSeconds, classification, captureId);
+		}
+
+		internal void Evaluate(
+			PerfMeterMetricsSnapshot metrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry,
+			double timeSeconds,
+			PerfMeterAlertClassification classification,
+			string captureId)
+		{
 			_latestAlerts.Clear();
 			for (int index = 0; index < _rules.Length; index++)
 			{
 				PerfMeterRule rule = _rules[index];
 				RuleState state = _states[index];
-				double value = GetMetricValue(rule.Metric, metrics);
-				bool matched = IsMetricAvailable(rule.Metric, metrics) && Compare(value, rule.Comparison, rule.Threshold);
+				double value = GetMetricValue(rule.Metric, metrics, platformTelemetry);
+				bool matched = IsMetricAvailable(rule.Metric, metrics, platformTelemetry) && Compare(value, rule.Comparison, rule.Threshold);
 				state.ConsecutiveFrames = matched ? state.ConsecutiveFrames + 1 : 0;
 
 				if (matched && state.ConsecutiveFrames >= rule.ConsecutiveFrames)
@@ -97,6 +110,33 @@ namespace SGG.PerfMeter
 			return _latestAlerts.ToArray();
 		}
 
+		internal PerfMeterAlertSnapshot[] GetFiredCaptureEvents(string captureId, out bool truncated)
+		{
+			truncated = _firedEventsTruncated;
+			if (string.IsNullOrEmpty(captureId) || _firedEvents.Count == 0)
+			{
+				return Array.Empty<PerfMeterAlertSnapshot>();
+			}
+
+			List<PerfMeterAlertSnapshot> matches = new List<PerfMeterAlertSnapshot>();
+			for (int i = 0; i < _firedEvents.Count; i++)
+			{
+				PerfMeterAlertSnapshot alert = _firedEvents[i];
+				if (string.Equals(alert.CaptureId, captureId, StringComparison.Ordinal))
+				{
+					matches.Add(alert);
+				}
+			}
+
+			return matches.ToArray();
+		}
+
+		internal void BeginCaptureEventCollection()
+		{
+			_firedEvents.Clear();
+			_firedEventsTruncated = false;
+		}
+
 		internal void Clear()
 		{
 			ResetHistory(-1, 0d, PerfMeterAlertHistoryResetReason.ExplicitClear);
@@ -110,6 +150,8 @@ namespace SGG.PerfMeter
 			_steadyStateFiredCount = 0;
 			_lifecycleFiredCount = 0;
 			_captureFiredCount = 0;
+			_firedEvents.Clear();
+			_firedEventsTruncated = false;
 			_historyIntervalId = Guid.NewGuid().ToString("N");
 			_historyStartCollectionFrame = collectionFrame;
 			_historyStartTimeSeconds = timeSeconds;
@@ -131,7 +173,8 @@ namespace SGG.PerfMeter
 				new PerfMeterRule("gpu.frame.over_budget", PerfMeterMetric.GpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
 				new PerfMeterRule("fps.below_target", PerfMeterMetric.AverageFps, PerfMeterComparison.LessThan, (int)targetFps, settings.AlertFpsConsecutiveFrames),
 				new PerfMeterRule("gpu.timing.unavailable", PerfMeterMetric.GpuFrameTimeAvailable, PerfMeterComparison.LessThan, 0.5d, settings.AlertGpuTimingUnavailableConsecutiveFrames),
-				new PerfMeterRule("overdraw.ratio.high", PerfMeterMetric.OverdrawRatio, PerfMeterComparison.GreaterThan, settings.AlertOverdrawRatioThreshold, settings.AlertOverdrawConsecutiveFrames)
+				new PerfMeterRule("overdraw.ratio.high", PerfMeterMetric.OverdrawRatio, PerfMeterComparison.GreaterThan, settings.AlertOverdrawRatioThreshold, settings.AlertOverdrawConsecutiveFrames),
+				new PerfMeterRule("thermal.throttling", PerfMeterMetric.ThermalWarningLevel, PerfMeterComparison.GreaterThanOrEqual, (int)PerfMeterThermalWarningLevel.ThrottlingImminent, 1, 10f)
 			};
 		}
 
@@ -192,6 +235,13 @@ namespace SGG.PerfMeter
 
 			if (actionFired)
 			{
+				if (_firedEvents.Count >= MaxFiredEvents)
+				{
+					_firedEvents.RemoveAt(0);
+					_firedEventsTruncated = true;
+				}
+
+				_firedEvents.Add(alert);
 				_firedAlertCount++;
 				switch (alert.Classification)
 				{
@@ -220,7 +270,7 @@ namespace SGG.PerfMeter
 			return new PerfMeterAlertSnapshot(rule.Id, rule.Metric, rule.Comparison, rule.Threshold, value, frame, timeSeconds, consecutiveFrames, active, message, classification, captureId);
 		}
 
-		private static double GetMetricValue(PerfMeterMetric metric, PerfMeterMetricsSnapshot metrics)
+		private static double GetMetricValue(PerfMeterMetric metric, PerfMeterMetricsSnapshot metrics, PerfMeterPlatformTelemetrySnapshot platformTelemetry)
 		{
 			switch (metric)
 			{
@@ -248,12 +298,18 @@ namespace SGG.PerfMeter
 					return metrics.DrawCalls;
 				case PerfMeterMetric.SetPassCalls:
 					return metrics.SetPassCalls;
+				case PerfMeterMetric.ThermalWarningLevel:
+					return (int)platformTelemetry.ThermalWarningLevel;
+				case PerfMeterMetric.TemperatureLevel:
+					return platformTelemetry.TemperatureLevel;
+				case PerfMeterMetric.TemperatureTrend:
+					return platformTelemetry.TemperatureTrend;
 				default:
 					return 0d;
 			}
 		}
 
-		private static bool IsMetricAvailable(PerfMeterMetric metric, PerfMeterMetricsSnapshot metrics)
+		private static bool IsMetricAvailable(PerfMeterMetric metric, PerfMeterMetricsSnapshot metrics, PerfMeterPlatformTelemetrySnapshot platformTelemetry)
 		{
 			if (metric == PerfMeterMetric.GpuFrameTimeMs)
 			{
@@ -268,6 +324,21 @@ namespace SGG.PerfMeter
 			if (metric == PerfMeterMetric.OverdrawRatio)
 			{
 				return metrics.OverdrawState == PerfMeterOverdrawMeasurementState.Completed && metrics.OverdrawRatio > 0d;
+			}
+
+			if (metric == PerfMeterMetric.ThermalWarningLevel)
+			{
+				return platformTelemetry.IsAvailable && platformTelemetry.ThermalWarningLevelAvailable;
+			}
+
+			if (metric == PerfMeterMetric.TemperatureLevel)
+			{
+				return platformTelemetry.IsAvailable && platformTelemetry.TemperatureLevelAvailable;
+			}
+
+			if (metric == PerfMeterMetric.TemperatureTrend)
+			{
+				return platformTelemetry.IsAvailable && platformTelemetry.TemperatureTrendAvailable;
 			}
 
 			return true;

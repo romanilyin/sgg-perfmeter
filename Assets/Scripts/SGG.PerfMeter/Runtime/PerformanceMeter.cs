@@ -30,6 +30,22 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetLatestCustomMetrics() : PerfMeterCustomMetricRegistry.Collect();
 		}
 
+		public static void RegisterPlatformTelemetryProvider(IPerfMeterPlatformTelemetryProvider provider)
+		{
+			PerfMeterPlatformTelemetryRegistry.Register(provider);
+		}
+
+		public static void UnregisterPlatformTelemetryProvider(IPerfMeterPlatformTelemetryProvider provider)
+		{
+			PerfMeterPlatformTelemetryRegistry.Unregister(provider);
+		}
+
+		public static PerfMeterPlatformTelemetrySnapshot GetPlatformTelemetry()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.LatestPlatformTelemetry : PerfMeterPlatformTelemetryRegistry.Collect();
+		}
+
 		public static PerfMeterCpuCoreLoadSnapshot[] GetCpuCoreLoads()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -89,12 +105,110 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetAlertHistory() : default;
 		}
 
+		public static PerfMeterCaptureStatusSnapshot GetCaptureStatus()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.CaptureStatus : PerfMeterRuntime.PendingCaptureStatus;
+		}
+
+		public static PerfMeterCaptureRequestResult RequestCapture(PerfMeterCaptureOptions options)
+		{
+			if (!IsValidCaptureOptions(options))
+			{
+				return PerfMeterCaptureRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterCaptureRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.RequestCapture(options) : PerfMeterCaptureRequestResult.Unavailable;
+		}
+
+		public static PerfMeterCaptureRequestResult RequestCapture(PerfMeterCaptureOptions options, PerfMeterCaptureBundleOptions bundleOptions)
+		{
+			if (!IsValidCaptureOptions(options))
+			{
+				return PerfMeterCaptureRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterCaptureRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.RequestCapture(options, bundleOptions) : PerfMeterCaptureRequestResult.Unavailable;
+		}
+
+		public static PerfMeterCaptureBundleStatusSnapshot GetCaptureBundleStatus(string captureId = null)
+		{
+			return PerfMeterRuntime.CaptureBundleStatus(captureId);
+		}
+
+		public static PerfMeterCaptureCapabilitiesSnapshot GetCaptureCapabilities()
+		{
+			return PerfMeterRuntime.CaptureCapabilities;
+		}
+
+		public static PerfMeterCaptureBundleExportResult ExportCaptureBundle(
+			string captureId,
+			string path = null,
+			string externalArtifactPath = null,
+			bool requireAuthoritativeExternalArtifact = false)
+		{
+			if (string.IsNullOrEmpty(captureId))
+			{
+				return new PerfMeterCaptureBundleExportResult(false, PerfMeterCaptureBundleExportStatus.NotFound, string.Empty, "capture_id_required", PerfMeterCaptureBundleStatusSnapshot.None);
+			}
+
+			return PerfMeterRuntime.ExportCaptureBundle(captureId, path, externalArtifactPath, requireAuthoritativeExternalArtifact);
+		}
+
+		private static bool IsValidCaptureOptions(PerfMeterCaptureOptions options)
+		{
+			if (string.IsNullOrWhiteSpace(options.CaptureId) ||
+				options.CaptureId.Length > 128 ||
+				options.Tool == PerfMeterCaptureTool.Unknown ||
+				options.CaptureFrames > 120 ||
+				options.PreRollFrames > 600 ||
+				options.PostRollFrames > 600)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < options.CaptureId.Length; i++)
+			{
+				if (char.IsControl(options.CaptureId[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public static bool CancelCapture(string captureId = null)
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			PerfMeterCaptureStatusSnapshot status = runtime != null ? runtime.CaptureStatus : PerfMeterRuntime.PendingCaptureStatus;
+			string effectiveCaptureId = string.IsNullOrEmpty(captureId) ? status.CaptureId : captureId;
+			if (string.IsNullOrEmpty(effectiveCaptureId))
+			{
+				return false;
+			}
+
+			return runtime != null ? runtime.CancelCapture(effectiveCaptureId) : PerfMeterRuntime.CancelPendingCapture(effectiveCaptureId);
+		}
+
 		public static string ActiveAlertCaptureId
 		{
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.ActiveAlertCaptureId : string.Empty;
+				return runtime != null ? runtime.ActiveAlertCaptureId : PerfMeterRuntime.PendingAlertCaptureId;
 			}
 		}
 
@@ -105,7 +219,11 @@ namespace SGG.PerfMeter
 				throw new System.ArgumentException("Capture id must not be empty.", nameof(captureId));
 			}
 
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return false;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null && runtime.BeginAlertCapture(captureId);
 		}
@@ -210,7 +328,11 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -234,7 +356,11 @@ namespace SGG.PerfMeter
 
 		public static void StartSession(PerfMeterSessionOptions options)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -285,7 +411,11 @@ namespace SGG.PerfMeter
 			int normalizedFrameCount = frameCount <= 0
 				? settings.OverdrawDefaultFrameCount
 				: Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount);
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -313,7 +443,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverdrawHeatmapVisible(bool visible)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -431,7 +565,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayVisible(bool visible)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -441,7 +579,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayCorner(PerfMeterOverlayCorner corner)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -451,7 +593,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayMode(PerfMeterOverlayMode mode)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -461,7 +607,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayPreset(PerfMeterOverlayPreset preset)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -471,7 +621,11 @@ namespace SGG.PerfMeter
 
 		public static void ApplyVisualOverlayPreset(string presetId, PerfMeterOverlayPresetJson preset)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -481,7 +635,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayTheme(PerfMeterOverlayTheme theme)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -491,7 +649,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayLayout(PerfMeterOverlayLayout layout)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -501,7 +663,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayFontFamily(PerfMeterOverlayFontFamily fontFamily)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -511,7 +677,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayModules(PerfMeterOverlayModule modules)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -521,7 +691,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayModuleVisible(PerfMeterOverlayModule module, bool visible)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -531,7 +705,11 @@ namespace SGG.PerfMeter
 
 		public static void SetTargetFps(PerfMeterTargetFps targetFps)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -541,7 +719,11 @@ namespace SGG.PerfMeter
 
 		public static void SetOverlayUpdateOptions(float refreshIntervalSeconds, int graphHistoryLength)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -551,7 +733,11 @@ namespace SGG.PerfMeter
 
 		public static void SetEditorWarningLogsEnabled(bool enabled)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{
@@ -561,7 +747,11 @@ namespace SGG.PerfMeter
 
 		public static void SetStructuredLogsEnabled(bool enabled)
 		{
-			PerfMeterRuntime.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return;
+			}
+
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			if (runtime != null)
 			{

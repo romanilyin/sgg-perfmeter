@@ -52,6 +52,21 @@ PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 
 Editor warning은 cooldown으로 throttled되며 JSON settings 또는 runtime control을 통해 비활성화할 수 있습니다. Structured alert log와 Editor warning은 서로 독립적입니다. `PerformanceMeter.SetStructuredLogsEnabled(false)`는 structured alert의 `Debug.Log` 출력만 억제하고, `PerformanceMeter.SetEditorWarningLogsEnabled(false)`는 Editor warning log를 별도로 제어합니다. callback, alert/history, overlay warning, session은 계속 활성 상태입니다.
 
+## External GPU Capture
+
+tool이 이미 attach된 경우 제한된 RenderDoc 또는 PIX request에는 capture coordinator를 사용합니다.
+
+```csharp
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30));
+
+PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
+```
+
+Coordinator는 active request 하나만 소유하며 `PreRoll`, `Capturing`, `PostRoll`, `Completed`를 deterministic하게 진행합니다. 같은 active ID는 idempotent이고 다른 ID는 overlap으로 reject됩니다. Pre-roll과 post-roll은 Unity frame을 세며, `Capturing`만 alert capture scope를 열고 Unity의 experimental `ExternalGPUProfiler`를 invoke합니다. Editor 또는 Development Build이고 attached tool이 있어야 하는 gate가 필수입니다. `RenderDoc`은 Windows/Linux desktop의 Direct3D 11, Direct3D 12, Vulkan에서 허용되고, `PIX`는 Windows desktop의 Direct3D 12에서 허용됩니다.
+
+`Completed`는 guarded Unity wrapper lifecycle이 끝났다는 의미뿐입니다. Unity는 attached tool identity나 authoritative artifact path를 노출하지 않으므로 `Status.Tool`은 요청한 tool만 나타냅니다. `PerfMeterCaptureBundleOptions` overload는 baseline/capture samples를 분리하고 project-local bundle을 atomic export합니다. external artifact는 observed일 뿐 authoritative하지 않습니다. automation에는 `perfmeter.capture.request/status/cancel/export/capabilities`를 사용합니다.
+
 ## Overdraw Diagnostics
 
 numerical overdraw는 opt-in이며 범위가 제한됩니다.
@@ -89,8 +104,8 @@ Custom metrics는 API reads, session JSON export, MCP latest metrics, 그리고 
 
 이 instrumentation은 internal이며 Editor, Development Build 또는 다른 profiler-enabled build를 profiling할 때만 Unity Profiler에 표시됩니다. Profiler가 없는 Release player에서는 marker/counter가 no-op이고 instrumentation data를 생성하지 않습니다. public API, status, MCP, export schema는 변경되지 않습니다.
 
-- Marker는 collection/frame timing(`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), provider(`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture(`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`), JSON/CSV export(`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`) 범위를 기록합니다. `SGG.PerfMeter.Thermal.Sample`은 reserved internal provider hook입니다.
-- Counter는 CPU/GPU frame time(`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`)을 nanoseconds 단위의 end-of-frame gauge로 기록합니다. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive`, `SGG.PerfMeter.Thermal.Available`은 availability/active를 `0`/`1`로 인코딩하고, `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState`, `SGG.PerfMeter.Capture.OverdrawState`는 enum code를 사용하며, `SGG.PerfMeter.Provider.CustomMetricCount`는 count입니다. Counter는 `Scripts` category와 `FlushOnEndOfFrame`을 사용합니다.
+- Marker는 collection/frame timing(`SGG.PerfMeter.Collect`, `SGG.PerfMeter.Collect.FrameTiming`), provider(`SGG.PerfMeter.Provider.CustomMetrics`, `SGG.PerfMeter.Provider.CpuCore`, `SGG.PerfMeter.Provider.DeviceSnapshot`, `SGG.PerfMeter.Provider.CameraSnapshot`), bottleneck/capture(`SGG.PerfMeter.Bottleneck.Classify`, `SGG.PerfMeter.Capture.Session`, `SGG.PerfMeter.Capture.AlertScope`, `SGG.PerfMeter.Capture.Coordinator`), JSON/CSV export(`SGG.PerfMeter.Export.Json`, `SGG.PerfMeter.Export.Csv`) 범위를 기록합니다. `SGG.PerfMeter.Thermal.Sample`은 reserved internal provider hook입니다.
+- Counter는 CPU/GPU frame time(`SGG.PerfMeter.CPU.FrameTime`, `SGG.PerfMeter.CPU.MainThreadTime`, `SGG.PerfMeter.CPU.RenderThreadTime`, `SGG.PerfMeter.CPU.PresentWaitTime`, `SGG.PerfMeter.GPU.FrameTime`)을 nanoseconds 단위의 end-of-frame gauge로 기록합니다. `SGG.PerfMeter.CPU.FrameTimingAvailable`, `SGG.PerfMeter.GPU.FrameTimingAvailable`, `SGG.PerfMeter.Capture.AlertScopeActive`, `SGG.PerfMeter.Thermal.Available`은 availability/active를 `0`/`1`로 인코딩하고, `SGG.PerfMeter.Bottleneck.Kind`, `SGG.PerfMeter.Capture.SessionState`, `SGG.PerfMeter.Capture.OverdrawState`, `SGG.PerfMeter.Capture.State`는 enum code를 사용하며, `SGG.PerfMeter.Provider.CustomMetricCount`는 count입니다. Counter는 `Scripts` category와 `FlushOnEndOfFrame`을 사용합니다.
 - synthetic thermal sample은 생성되지 않습니다. `SGG.PerfMeter.Thermal.Available`은 `0`/unavailable 상태로 real platform provider가 data를 공급할 때까지 사용할 수 없습니다.
 
 ## Self-Observability And Overhead Budgets

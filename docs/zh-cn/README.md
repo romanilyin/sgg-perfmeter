@@ -24,8 +24,18 @@ SGG PerfMeter 可识别帧瓶颈、对比性能变化、记录可复现的会话
 - FrameTimingManager CPU/GPU timing：CPU frame、main thread、render thread、present wait，以及可用时的 GPU frame time。
 - ProfilerRecorder render counters：draw calls、SetPass、batches、vertices、SRP Batcher、BRG/GRD、uploads、memory，以及可用时的 GPU memory。
 - GPU、CPU main、CPU render、present/VSync、balanced 或 unknown 的瓶颈分类。
+- 当 external GPU profiler 已 attach 时，协调一个明确且 bounded 的 RenderDoc/PIX request，并使用 deterministic 的 pre-roll、capture、post-roll state；这种 guarded coordination 仅限 Editor/Development Build，且不宣称 authoritative artifact path。
 - 通过 URP Render Graph 显式启用的 overdraw measurement 和 visual overdraw heatmap；HDRP overdraw/heatmap unsupported，但 core diagnostics 仍可用。
 - 面向代码和 MCP automation 的 device、URP/HDRP camera、render integration、status、metrics、alerts、sessions 和 custom metrics snapshots。
+
+## 可选平台遥测
+
+PerfMeter 可以通过一个 provider 可选地收集 thermal 和 Adaptive Performance 信号。core assembly 不包含对 `com.unity.adaptiveperformance` 的 hard dependency；当 `com.unity.adaptiveperformance` 为 `5.1.0+` 时，可为 Unity `6000.4+` 启用可选的 `SGG.PerfMeter.AdaptivePerformance` assembly。
+
+- **Provider API**：`PerformanceMeter.RegisterPlatformTelemetryProvider(...)`、`UnregisterPlatformTelemetryProvider(...)` 和 `GetPlatformTelemetry()` 最多管理一个 active provider，并返回不可变的 `PerfMeterPlatformTelemetrySnapshot`，其中包含 provider ID/version、sample/change time、thermal warning、temperature level/trend、CPU/GPU performance level、adaptive bottleneck 以及每个字段的 availability。注册不同的第二个 provider 会被拒绝。
+- **采集与导出**：runtime 对每个已采集 frame 的 provider 采样一次。session JSON/CSV 和 capture samples 会保留 snapshot 及 provider provenance。MCP command `perfmeter.platform.telemetry` 提供当前 structured snapshot。
+- **Profiler 与 alerts**：`SGG.PerfMeter.Thermal.Sample` 和 `SGG.PerfMeter.Thermal.Available` 提供 thermal collection marker 与 availability counter。默认 `thermal.throttling` alert 在 imminent 或 active throttling level 可用时使用 `ThermalWarningLevel` metric。
+- **Unavailable 状态是明确的**：不支持的 provider 和字段保持 unavailable；JSON 将不可用数值序列化为 `null`，CSV 使用空字段，并通过 availability flags 区分 fake zero。真实 Adaptive Performance package 和 target device validation 仍属于 release matrix/release-candidate gate；本文档不宣称已经获得 device result。
 
 ## 快速开始
 

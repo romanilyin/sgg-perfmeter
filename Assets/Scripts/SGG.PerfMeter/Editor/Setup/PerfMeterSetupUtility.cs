@@ -11,8 +11,13 @@ namespace SGG.PerfMeter.Editor.Setup
 	internal static class PerfMeterSetupUtility
 	{
 		internal const string UnsupportedCompatibilityMessage = "SGG PerfMeter officially supports Unity 6000.4+ with URP 17.4+ or HDRP 17.4+. Older Unity/SRP versions are import-safe only; runtime render integrations are unsupported and bug reports for older versions are not accepted.";
+		internal const string ImportUnityVersionFloor = "2022.3";
+		internal const string CoreRuntimeUnityVersionFloor = "6000.4";
+		internal const string RenderIntegrationPipelinePackageVersionFloor = "17.4";
 
 		private const string DefaultPackageAssetPath = "Assets/Scripts/SGG.PerfMeter";
+		private const string UniversalRenderPipelinePackageName = "com.unity.render-pipelines.universal";
+		private const string HighDefinitionRenderPipelinePackageName = "com.unity.render-pipelines.high-definition";
 		private const string UniversalRenderPipelineAssetFullName = "UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset";
 		private const string ScriptableRendererDataFullName = "UnityEngine.Rendering.Universal.ScriptableRendererData";
 		private const string PerfMeterRenderGraphFeatureFullName = "SGG.PerfMeter.PerfMeterRenderGraphFeature";
@@ -26,11 +31,7 @@ namespace SGG.PerfMeter.Editor.Setup
 		{
 			get
 			{
-			#if UNITY_6000_4_OR_NEWER
-				return true;
-			#else
-				return false;
-			#endif
+				return PerfMeterCompatibilityEvaluator.IsAtLeast(Application.unityVersion, CoreRuntimeUnityVersionFloor);
 			}
 		}
 
@@ -76,13 +77,34 @@ public static class PerfMeterBootstrap
 			}
 		}
 
+		internal static PerfMeterCompatibilityStatus GetCompatibilityStatus()
+		{
+			return GetCompatibilityStatus(PerfMeterRenderPipelineDetector.CreateSnapshot());
+		}
+
+		private static PerfMeterCompatibilityStatus GetCompatibilityStatus(PerfMeterRenderPipelineSnapshot renderPipeline)
+		{
+			GetRegisteredPipelinePackage(renderPipeline.Kind, out string packageName, out string packageVersion);
+			bool adapterAvailable = renderPipeline.Kind == PerfMeterRenderPipelineKind.Universal
+				? IsRenderGraphFeatureAvailable
+				: renderPipeline.Kind == PerfMeterRenderPipelineKind.HighDefinition && IsHdrpCustomPassAvailable;
+			return PerfMeterCompatibilityEvaluator.Evaluate(
+				Application.unityVersion,
+				renderPipeline.Kind,
+				packageName,
+				packageVersion,
+				adapterAvailable);
+		}
+
 		internal static PerfMeterSetupStatus GetStatus()
 		{
 			PerfMeterRenderPipelineSnapshot renderPipeline = PerfMeterRenderPipelineDetector.CreateSnapshot();
+			PerfMeterCompatibilityStatus compatibilityStatus = GetCompatibilityStatus(renderPipeline);
 			PerfMeterSetupStatus status = new PerfMeterSetupStatus
 			{
 				FrameTimingStatsEnabled = PlayerSettings.enableFrameTimingStats,
-				OfficialUnityVersionSupported = IsOfficialUnityVersionSupported,
+				CompatibilityStatus = compatibilityStatus,
+				OfficialUnityVersionSupported = compatibilityStatus.CoreRuntimeCompatible,
 				RenderGraphFeatureAvailable = IsRenderGraphFeatureAvailable,
 				HdrpCustomPassAvailable = IsHdrpCustomPassAvailable,
 				ActiveRenderPipeline = renderPipeline.Kind,
@@ -99,6 +121,49 @@ public static class PerfMeterBootstrap
 			}
 
 			return status;
+		}
+
+		private static void GetRegisteredPipelinePackage(PerfMeterRenderPipelineKind pipelineKind, out string packageName, out string packageVersion)
+		{
+			string expectedPackageName = GetExpectedPipelinePackageName(pipelineKind);
+			packageName = string.Empty;
+			packageVersion = string.Empty;
+			if (string.IsNullOrEmpty(expectedPackageName))
+			{
+				return;
+			}
+
+			UnityEditor.PackageManager.PackageInfo[] packages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages();
+			if (packages == null)
+			{
+				return;
+			}
+
+			for (int i = 0; i < packages.Length; i++)
+			{
+				UnityEditor.PackageManager.PackageInfo packageInfo = packages[i];
+				if (packageInfo != null && string.Equals(packageInfo.name, expectedPackageName, StringComparison.OrdinalIgnoreCase))
+				{
+					packageName = packageInfo.name ?? expectedPackageName;
+					packageVersion = packageInfo.version ?? string.Empty;
+					return;
+				}
+			}
+		}
+
+		private static string GetExpectedPipelinePackageName(PerfMeterRenderPipelineKind pipelineKind)
+		{
+			if (pipelineKind == PerfMeterRenderPipelineKind.Universal)
+			{
+				return UniversalRenderPipelinePackageName;
+			}
+
+			if (pipelineKind == PerfMeterRenderPipelineKind.HighDefinition)
+			{
+				return HighDefinitionRenderPipelinePackageName;
+			}
+
+			return string.Empty;
 		}
 
 		internal static PerfMeterSettingsSnapshot LoadSettingsSnapshot()
@@ -616,9 +681,258 @@ public static class PerfMeterBootstrap
 			return false;
 		}
 
+		internal static class PerfMeterCompatibilityEvaluator
+		{
+			internal static PerfMeterCompatibilityStatus Evaluate(
+				string unityVersion,
+				PerfMeterRenderPipelineKind pipelineKind,
+				string pipelinePackageName,
+				string pipelinePackageVersion,
+				bool adapterAvailable)
+			{
+				string currentUnityVersion = unityVersion ?? string.Empty;
+				string currentPipelinePackageName = pipelinePackageName ?? string.Empty;
+				string currentPipelinePackageVersion = pipelinePackageVersion ?? string.Empty;
+				bool unityVersionParsed = TryParseMajorMinor(currentUnityVersion, out _, out _);
+				bool importCompatible = unityVersionParsed && IsAtLeast(currentUnityVersion, ImportUnityVersionFloor);
+				bool coreRuntimeCompatible = unityVersionParsed && IsAtLeast(currentUnityVersion, CoreRuntimeUnityVersionFloor);
+
+				string importReason = GetUnityReason(
+					currentUnityVersion,
+					unityVersionParsed,
+					importCompatible,
+					ImportUnityVersionFloor,
+					"Import compatibility requires Unity 2022.3+.");
+				string coreRuntimeReason = GetUnityReason(
+					currentUnityVersion,
+					unityVersionParsed,
+					coreRuntimeCompatible,
+					CoreRuntimeUnityVersionFloor,
+					"Core runtime compatibility requires Unity 6000.4+ and does not require URP or HDRP.");
+				if (coreRuntimeCompatible)
+				{
+					coreRuntimeReason += " Core runtime does not require URP or HDRP.";
+				}
+				bool renderIntegrationCompatible = false;
+				string renderIntegrationReason;
+
+				if (!coreRuntimeCompatible)
+				{
+					renderIntegrationReason = "Render integration requires core runtime compatibility on Unity 6000.4+.";
+				}
+				else if (pipelineKind == PerfMeterRenderPipelineKind.BuiltIn)
+				{
+					renderIntegrationReason = "Built-in Render Pipeline is unsupported; use URP or HDRP for render integration.";
+				}
+				else if (pipelineKind != PerfMeterRenderPipelineKind.Universal && pipelineKind != PerfMeterRenderPipelineKind.HighDefinition)
+				{
+					renderIntegrationReason = "The active render pipeline is unknown; use URP or HDRP for render integration.";
+				}
+				else
+				{
+					string expectedPackageName = pipelineKind == PerfMeterRenderPipelineKind.Universal
+						? UniversalRenderPipelinePackageName
+						: HighDefinitionRenderPipelinePackageName;
+					string pipelineDisplayName = pipelineKind == PerfMeterRenderPipelineKind.Universal ? "URP" : "HDRP";
+					bool packageNameMatches = string.Equals(currentPipelinePackageName, expectedPackageName, StringComparison.OrdinalIgnoreCase);
+					bool packageVersionParsed = TryParseMajorMinor(currentPipelinePackageVersion, out _, out _);
+					bool packageVersionCompatible = packageVersionParsed && IsAtLeast(currentPipelinePackageVersion, RenderIntegrationPipelinePackageVersionFloor);
+
+					if (!packageNameMatches)
+					{
+						renderIntegrationReason = pipelineDisplayName + " requires registered package " + expectedPackageName + "; current package metadata is unavailable or names a different package.";
+					}
+					else if (!packageVersionParsed)
+					{
+						renderIntegrationReason = pipelineDisplayName + " package version '" + currentPipelinePackageVersion + "' is malformed; " + expectedPackageName + " 17.4+ is required.";
+					}
+					else if (!packageVersionCompatible)
+					{
+						renderIntegrationReason = pipelineDisplayName + " package version " + currentPipelinePackageVersion + " is below the required " + RenderIntegrationPipelinePackageVersionFloor + "+ floor; update " + expectedPackageName + ".";
+					}
+					else if (!adapterAvailable)
+					{
+						renderIntegrationReason = "PerfMeter " + pipelineDisplayName + " adapter assembly is unavailable; reimport the package with " + pipelineDisplayName + " " + RenderIntegrationPipelinePackageVersionFloor + "+ installed.";
+					}
+					else
+					{
+						renderIntegrationCompatible = true;
+						renderIntegrationReason = pipelineDisplayName + " " + RenderIntegrationPipelinePackageVersionFloor + "+ is active and the corresponding PerfMeter adapter assembly is available.";
+					}
+				}
+
+				return new PerfMeterCompatibilityStatus(
+					currentUnityVersion,
+					pipelineKind,
+					currentPipelinePackageName,
+					currentPipelinePackageVersion,
+					importCompatible,
+					coreRuntimeCompatible,
+					renderIntegrationCompatible,
+					importReason,
+					coreRuntimeReason,
+					renderIntegrationReason);
+			}
+
+			internal static bool IsAtLeast(string version, string floor)
+			{
+				if (!TryParseMajorMinor(version, out int major, out int minor) ||
+					!TryParseMajorMinor(floor, out int floorMajor, out int floorMinor))
+				{
+					return false;
+				}
+
+				return IsAtLeast(major, minor, floorMajor, floorMinor);
+			}
+
+			internal static bool TryParseMajorMinor(string version, out int major, out int minor)
+			{
+				major = 0;
+				minor = 0;
+				if (string.IsNullOrEmpty(version))
+				{
+					return false;
+				}
+
+				string value = version.Trim();
+				if (value.Length == 0)
+				{
+					return false;
+				}
+
+				int index = 0;
+				if (!TryReadNumber(value, ref index, out major) || index >= value.Length || value[index] != '.')
+				{
+					return false;
+				}
+
+				index++;
+				if (!TryReadNumber(value, ref index, out minor))
+				{
+					return false;
+				}
+
+				if (index == value.Length)
+				{
+					return true;
+				}
+
+				if (value[index] == '.')
+				{
+					index++;
+					if (!TryReadNumber(value, ref index, out int _))
+					{
+						return false;
+					}
+
+					if (index == value.Length)
+					{
+						return true;
+					}
+
+					if (value[index] == '.')
+					{
+						return false;
+					}
+				}
+				else if (value[index] != '-' && value[index] != '+' && !IsAsciiLetter(value[index]))
+				{
+					return false;
+				}
+
+				if (index == value.Length)
+				{
+					return false;
+				}
+
+				return IsValidVersionSuffix(value, index);
+			}
+
+			private static bool IsValidVersionSuffix(string value, int index)
+			{
+				char previous = '\0';
+				for (; index < value.Length; index++)
+				{
+					char character = value[index];
+					if (!IsAsciiLetterOrDigit(character) && character != '.' && character != '-' && character != '+')
+					{
+						return false;
+					}
+
+					if ((character == '.' || character == '-' || character == '+') &&
+						(index == value.Length - 1 || previous == '.' || previous == '-' || previous == '+'))
+					{
+						return false;
+					}
+
+					previous = character;
+				}
+
+				return true;
+			}
+
+			private static string GetUnityReason(string version, bool parsed, bool compatible, string floor, string requirement)
+			{
+				if (!parsed)
+				{
+					return "Unity version '" + version + "' is malformed; " + requirement;
+				}
+
+				return compatible
+					? "Unity " + version + " meets the " + floor + "+ floor."
+					: "Unity " + version + " is below the " + floor + "+ floor; " + requirement;
+			}
+
+			private static bool TryReadNumber(string value, ref int index, out int number)
+			{
+				number = 0;
+				int start = index;
+				long parsed = 0;
+				while (index < value.Length && IsAsciiDigit(value[index]))
+				{
+					parsed = parsed * 10 + (value[index] - '0');
+					if (parsed > int.MaxValue)
+					{
+						return false;
+					}
+
+					index++;
+				}
+
+				if (index == start)
+				{
+					return false;
+				}
+
+				number = (int)parsed;
+				return true;
+			}
+
+			private static bool IsAtLeast(int major, int minor, int floorMajor, int floorMinor)
+			{
+				return major > floorMajor || major == floorMajor && minor >= floorMinor;
+			}
+
+			private static bool IsAsciiDigit(char character)
+			{
+				return character >= '0' && character <= '9';
+			}
+
+			private static bool IsAsciiLetter(char character)
+			{
+				return character >= 'A' && character <= 'Z' || character >= 'a' && character <= 'z';
+			}
+
+			private static bool IsAsciiLetterOrDigit(char character)
+			{
+				return IsAsciiDigit(character) || IsAsciiLetter(character);
+			}
+		}
+
 		internal sealed class PerfMeterSetupStatus
 		{
 			internal bool FrameTimingStatsEnabled;
+			internal PerfMeterCompatibilityStatus CompatibilityStatus;
 			internal bool OfficialUnityVersionSupported;
 			internal bool RenderGraphFeatureAvailable;
 			internal bool HdrpCustomPassAvailable;

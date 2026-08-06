@@ -140,6 +140,36 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 `StructuredLogsEnabled` e `true` per impostazione predefinita e controlla solo l'output `Debug.Log` degli alert strutturati. Il valore `false` non disabilita i callback `AlertFired`, gli alert recenti o la cronologia degli alert, gli avvisi dell'overlay, i log di avviso Editor o le sessioni. `PerformanceMeter.SetEditorWarningLogsEnabled(bool)` controlla i log di avviso Editor in modo indipendente.
 
+## Editor Compatibility Status
+
+L'API Editor `PerfMeterSetupActions.GetCompatibilityStatus()` restituisce `PerfMeterCompatibilityStatus` e separa `ImportCompatible` per il floor Unity `2022.3`, `CoreRuntimeCompatible` per il runtime supportato Unity `6000.4+` e `RenderIntegrationCompatible` per URP/HDRP attivo `17.4+` con adapter disponibile. Ogni risultato include una reason. La compatibilita render non implica che i renderer assets siano configurati; usa setup status per la configuration readiness.
+
+## External GPU Capture Coordinator
+
+```csharp
+PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+    "renderdoc-spike-01",
+    PerfMeterCaptureTool.RenderDoc,
+    captureFrames: 1,
+    preRollFrames: 30,
+    postRollFrames: 30);
+
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(options);
+PerfMeterCaptureStatusSnapshot capture = PerformanceMeter.GetCaptureStatus();
+if (capture.IsActive && userRequestedCancellation)
+{
+    PerformanceMeter.CancelCapture(capture.CaptureId);
+}
+```
+
+Il coordinator consente una sola richiesta attiva e avanza in modo deterministico attraverso `PreRoll`, `Capturing`, `PostRoll` e `Completed`. Ripetere lo stesso ID attivo e idempotente; un ID attivo diverso viene rifiutato per sovrapposizione. `Canceled`, `Unavailable` ed `Error` sono stati terminali espliciti.
+
+Il backend integrato avvolge l'`ExternalGPUProfiler` sperimentale di Unity solo nell'Editor o in un Development Build, solo quando uno strumento esterno e gia collegato e solo per combinazioni desktop di piattaforma/API supportate. Le combinazioni supportate sono `RenderDoc` su desktop Windows/Linux con Direct3D 11, Direct3D 12 o Vulkan e `PIX` su desktop Windows con Direct3D 12. Seleziona esplicitamente `RenderDoc` o `Pix`, perche Unity non espone l'identita dello strumento collegato. `Status.Tool` e solo lo strumento richiesto, non l'identita verificata dello strumento collegato. `Completed` conferma solo il wrapper lifecycle di Unity; non verifica ne restituisce un artefatto esterno `.rdc`/`.wpix` o il relativo path. I test automatizzati usano un fake backend; la conferma dello strumento esterno reale e dell'artefatto resta un release gate.
+
+I valori predefiniti di `PerfMeterCaptureOptions` sono `captureFrames: 1`, `preRollFrames: 0` e `postRollFrames: 0`. Un `RequestCapture` valido avvia automaticamente il runtime. `CancelCapture()` senza ID annulla la richiesta attiva attualmente riportata; passare un ID protegge dall'annullamento di una richiesta piu recente.
+
+L'overload con `PerfMeterCaptureBundleOptions` separa i capture samples dalla baseline session e puo includere uno screenshot opt-in. Quando `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady`, `PerformanceMeter.ExportCaptureBundle(captureId)` crea atomicamente un bundle versionato sotto `Temp/PerfMeter/CaptureBundles` con manifest SHA-256, samples, alerts, contesto, screenshot opzionale e metadata dell'artefatto esterno. Un `.rdc`/`.wpix` locale al progetto e solo un artefatto osservato, mai autoritativo; traversal, reparse points e file esterni al progetto vengono rifiutati.
+
 ## Custom Metrics
 
 ```csharp

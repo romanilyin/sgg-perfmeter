@@ -14,6 +14,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | --- | --- |
 | `perfmeter.setup.status` | setup status를 읽습니다. |
 | `perfmeter.setup.run` | 권장 setup action을 실행합니다. |
+| `perfmeter.compatibility.status` | import, core runtime, active render integration compatibility를 각각 읽습니다. |
 | `perfmeter.runtime.status` | runtime status를 읽습니다. |
 | `perfmeter.runtime.ensure` | 필요한 경우 runtime을 시작합니다. |
 | `perfmeter.runtime.stop` | runtime을 중지합니다. |
@@ -36,6 +37,11 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.stop` | recording을 중지하고 summary를 반환합니다. |
 | `perfmeter.session.summary` | current session summary를 읽습니다. |
 | `perfmeter.session.export` | current session을 project-local JSON 또는 CSV로 export합니다. |
+| `perfmeter.capture.request` | bounded external GPU capture와 correlated bundle을 request합니다. |
+| `perfmeter.capture.status` | capture와 bundle state를 읽습니다. |
+| `perfmeter.capture.cancel` | 일치하는 active capture를 cancel합니다. |
+| `perfmeter.capture.export` | ready bundle을 project-local root 아래에 atomic export합니다. |
+| `perfmeter.capture.capabilities` | schema, quota, retention, screenshot, provenance capabilities를 읽습니다. |
 
 ## Runtime Self-Overhead Payload
 

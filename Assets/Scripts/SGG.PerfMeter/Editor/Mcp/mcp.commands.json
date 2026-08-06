@@ -19,6 +19,22 @@
       }
     },
     {
+      "id": "perfmeter.compatibility.status",
+      "title": "PerfMeter compatibility status",
+      "description": "Read separate import, core runtime, and active render integration compatibility with declared version floors and reasons.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CompatibilityStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "compatibility", "setup"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.setup.run",
       "title": "PerfMeter recommended setup",
       "description": "Run the recommended SGG PerfMeter project setup actions.",
@@ -51,8 +67,8 @@
         "additionalProperties": false
       }
     },
-    {
-      "id": "perfmeter.runtime.ensure",
+	{
+	  "id": "perfmeter.runtime.ensure",
       "title": "Start PerfMeter runtime",
       "description": "Ensure SGG PerfMeter runtime is running.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RuntimeEnsure",
@@ -128,6 +144,22 @@
       "idempotency": "safe",
       "timeout_ms": 10000,
       "tags": ["perfmeter", "metrics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.platform.telemetry",
+      "title": "PerfMeter platform telemetry",
+      "description": "Read optional thermal, temperature trend, CPU/GPU performance level, and adaptive bottleneck telemetry with per-field availability.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.PlatformTelemetry",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "platform", "thermal", "telemetry"],
       "capability": "perfmeter",
       "schema": {
         "type": "object",
@@ -218,6 +250,106 @@
         "properties": {
           "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 }
         },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.request",
+      "title": "Request PerfMeter external GPU capture",
+      "description": "Request one bounded RenderDoc or PIX capture with correlated baseline/capture samples and optional runtime screenshot. Requires Play Mode and an already attached supported external tool.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureRequest",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture", "bundle"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "tool": { "type": "string", "enum": ["RenderDoc", "Pix"] },
+          "capture_frames": { "type": "integer", "minimum": 1, "maximum": 120 },
+          "pre_roll_frames": { "type": "integer", "minimum": 0, "maximum": 600 },
+          "post_roll_frames": { "type": "integer", "minimum": 0, "maximum": 600 },
+          "include_screenshot": { "type": "boolean" }
+        },
+        "required": ["capture_id", "tool"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.status",
+      "title": "Read PerfMeter capture status",
+      "description": "Read external capture and correlated bundle state without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture", "bundle"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.cancel",
+      "title": "Cancel PerfMeter external GPU capture",
+      "description": "Cancel the matching capture and retry owned backend cleanup when necessary.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureCancel",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "required": ["capture_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.export",
+      "title": "Export PerfMeter capture bundle",
+      "description": "Atomically export a completed correlated capture bundle under Temp/PerfMeter/CaptureBundles. Existing destinations are never overwritten.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureExport",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 30000,
+      "tags": ["perfmeter", "capture", "bundle", "export"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "path": { "type": "string" },
+          "external_artifact_path": { "type": "string" },
+          "require_authoritative_external_artifact": { "type": "boolean" }
+        },
+        "required": ["capture_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.capabilities",
+      "title": "Read PerfMeter capture capabilities",
+      "description": "Read capture tool/platform gates, bundle limits, retention, screenshot support, and external-artifact authority policy without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureCapabilities",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture", "capabilities"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       }
     },

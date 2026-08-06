@@ -30,13 +30,13 @@
 | `PM-LOG-001` StructuredLog toggle | P0 | resolved, released `2026.8.5-2` | Независимый public toggle отключает только structured info `Debug.Log`, сохраняя callbacks, alerts/history, overlay warnings, EditorWarning и sessions. | - |
 | `PM-UI-001` Stable numeric geometry | P1 | resolved, released `2026.8.5-2`, [GitHub #2](https://github.com/romanilyin/sgg-perfmeter/issues/2) | Prefix/value/unit cells, worst-case widths, numeric monospace role, bounded `FpsOnly` fallback, wrapping widgets and geometry tests. | - |
 | `PM-UI-002` Owned versioned panel host | P1 | resolved, released `2026.8.5-2`, [GitHub #1](https://github.com/romanilyin/sgg-perfmeter/issues/1) | Owned `UIDocument` host on Unity 6000.4 and `PanelRenderer` on 6000.5+ preserve foreign UI trees/settings and remove only the PerfMeter container. | `PM-UI-001` |
-| `PM-CAP-001` Capture coordinator | P2 | planned | Ввести единый capture domain/state machine, fake backend, overlap guard и pre/post-roll. Изолировать experimental Unity `ExternalGPUProfiler`: только Editor/Development builds, attached external tool и поддерживаемые platform/API combinations. | P1 stabilization |
-| `PM-CAP-002` Correlated artifact bundle | P2 | planned | Атомарно связывать manifest, session/samples, alerts, device/camera/render context, screenshot и authoritative external-capture metadata; добавить MCP request/status/cancel/export/capabilities. | `PM-CAP-001` |
-| `PM-COMP-001` Compatibility status and matrix | P2 | planned | Явно различать `ImportCompatible`, `CoreRuntimeCompatible` и `RenderIntegrationCompatible`; проверять заявленный import floor отдельно от Unity 6000.4+ runtime support. | P1 stabilization |
+| `PM-CAP-001` Capture coordinator | P2 | implemented, unreleased | Единый capture domain/state machine, fake backend, overlap guard и deterministic pre/capture/post-roll. Experimental Unity `ExternalGPUProfiler` изолирован для Editor/Development builds, attached external tool и явных RenderDoc/PIX platform/API combinations; completion не заявляет authoritative artifact path. | P1 stabilization |
+| `PM-CAP-002` Correlated artifact bundle | P2 | implemented, unreleased | Versioned atomic bundle связывает отдельно классифицированные baseline/capture samples, alerts, device/camera/render context, optional screenshot и truthful external-artifact observation; project-local quota/retention/redaction policy и MCP request/status/cancel/export/capabilities не заявляют authority без tool-authenticated provenance. | `PM-CAP-001` |
+| `PM-COMP-001` Compatibility status and matrix | P2 | implemented, unreleased | Additive Editor snapshot и structured MCP отдельно сообщают `ImportCompatible` для declared Unity `2022.3` floor, `CoreRuntimeCompatible` для supported Unity `6000.4+` и active URP/HDRP `17.4+` `RenderIntegrationCompatible`; configuration readiness остается отдельной. | P1 stabilization |
 | `PM-OBS-001` Dynamic Profiler metric catalog | P2 | resolved, released `2026.8.6-1` | Discover/cache recorder descriptors only at runtime startup and explicit refresh/reconfigure; resolve semantic metrics through exact names and aliases; publish additive API/MCP capability provenance and distinguish unavailable/no-sample/sampled while keeping existing numeric metrics as compatibility values. | P1 stabilization |
 | `PM-OBS-002` Profiler instrumentation | P2 | resolved, released `2026.8.6-1` | Internal Scripts-category end-of-frame gauge markers/counters for collection, providers, snapshots, bottleneck, capture/export, CPU/GPU timing, thermal hook and state codes; no public schema changes or overhead subtraction. | `PM-OBS-001` |
 | `PM-OBS-003` Self-observability and overhead budgets | P2 | resolved, released `2026.8.6-1` | Fixed 120-frame CPU callback windows для collector, custom providers, CPU-core provider, overlay и URP/HDRP integration; additive API/status/MCP snapshots и per-invocation allocation/performance budgets. GPU attribution остается `Unavailable`, основные CPU/GPU-метрики не корректируются. | `PM-UI-002`, `PM-OBS-002` |
-| `PM-PLAT-001` Adaptive Performance telemetry | P2 | planned | Optional provider для thermal/power trends, CPU/GPU performance levels, alerts и session columns с provider provenance. | capability/provider seams, `PM-CAP-002` |
+| `PM-PLAT-001` Adaptive Performance telemetry | P2 | implemented, unreleased | Optional `SGG.PerfMeter.AdaptivePerformance` provider для thermal state/temperature trends, CPU/GPU performance levels, alerts и session/capture samples с provider provenance; core package не получает hard dependency на `com.unity.adaptiveperformance`, а assembly активируется через version define для `5.1.0+` и явно сохраняет unavailable states. | capability/provider seams, `PM-CAP-002` |
 | `PM-MEM-001` Memory snapshot trigger | P3 | planned | Optional Memory Profiler backend для manual/threshold/leak capture с cooldown, free-space guard, capture flags и bundle manifest. | `PM-CAP-001`, `PM-CAP-002` |
 | `PM-GFX-001` PSO and shader-stutter diagnostics | P3 | planned | Коррелировать shader/graphics-pipeline creation markers, graphics API и optional `GraphicsStateCollection` trace/prewarm workflow. | `PM-OBS-001`, `PM-CAP-001` |
 | `PM-REN-001` Render integration context | P3 | planned | Расширить camera/SRP/pass/GRD/VRS context и перейти к integration-neutral snapshot API через additive compatibility facade. Добавлять Editor navigation только при наличии стабильного public Unity API. | `PM-OBS-001` |
@@ -56,6 +56,14 @@
 
 `PM-OBS-001`, `PM-OBS-002` и `PM-OBS-003` выпущены в `2026.8.6-1`; Git tag, normal GitHub Release и npm package опубликованы.
 
+`PM-CAP-001` реализован в feature-ветке; Unity `6000.5.6f1` EditMode `136/136` и PlayMode `12/12` прошли. Полный Unity/URP/HDRP/platform matrix остается обязательным release-candidate gate.
+
+`PM-CAP-002` реализован в feature-ветке; Unity `6000.5.6f1` targeted bundle/MCP EditMode `13/13`, targeted capture PlayMode `8/8`, full EditMode `149/149` и full PlayMode `12/12` прошли. Полный Unity/URP/HDRP/platform matrix и real RenderDoc/PIX artifact smoke остаются release-candidate gates.
+
+`PM-COMP-001` реализован в feature-ветке; Unity `6000.5.6f1` targeted compatibility EditMode `16/16` и full EditMode `165/165` прошли. Import-only Unity `2022.3`/`6000.3` и supported Unity `6000.4` URP/HDRP проверки остаются release-candidate matrix gates.
+
+`PM-PLAT-001` реализован в feature-ветке; optional Adaptive Performance assembly/provider, provider provenance, per-field availability, thermal alert, profiler hook/counter и session/capture telemetry preservation входят в unreleased implementation. Optional assembly успешно скомпилирована на Unity `6000.5.6f1` с `com.unity.adaptiveperformance@5.1.6`; проверка thermal/performance behavior на реальном целевом устройстве остается release-candidate matrix gate.
+
 ## Release Sequence
 
 | Phase | Scope | Exit Gate |
@@ -72,6 +80,7 @@
 - Compile/runtime matrix: latest Unity 6000.4 and 6000.5 patches; import-only checks for the declared import floor and Unity 6000.3.
 - URP 17.4 and HDRP 17.4; Windows D3D11/D3D12, Linux Vulkan, macOS/iOS Metal, Android Vulkan and explicit GLES degraded mode as applicable.
 - Fake backends are mandatory in automated tests; real RenderDoc/PIX/platform-tool smokes are release-candidate gates.
+- Adaptive Performance `5.1+` package integration and real target-device thermal/performance validation remain release-candidate gates; fake providers and contract tests do not replace them.
 - Capture samples are classified separately from normal baseline samples; capture overhead must not silently contaminate normal performance evidence.
 - Steady-state collector and hidden overlay target `0 B/frame`; dynamic discovery runs only at startup/reconfigure and export stays outside frame-critical paths.
 - Bundles enforce project-local path validation, atomic commit, disk quota/retention and redaction of sensitive paths, screenshots and device metadata.

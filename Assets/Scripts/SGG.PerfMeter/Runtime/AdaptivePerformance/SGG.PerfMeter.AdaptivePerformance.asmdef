@@ -1,0 +1,26 @@
+{
+    "name": "SGG.PerfMeter.AdaptivePerformance",
+    "rootNamespace": "SGG.PerfMeter",
+    "references": [
+        "SGG.PerfMeter",
+        "Unity.AdaptivePerformance"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_6000_4_OR_NEWER",
+        "SGG_PERFMETER_ADAPTIVE_PERFORMANCE_5_1_OR_NEWER"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.adaptiveperformance",
+            "expression": "5.1.0",
+            "define": "SGG_PERFMETER_ADAPTIVE_PERFORMANCE_5_1_OR_NEWER"
+        }
+    ],
+    "noEngineReferences": false
+}

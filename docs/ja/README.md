@@ -25,6 +25,7 @@ SGG PerfMeter は、フレームが CPU、GPU、レンダースレッド、prese
 - **Runtime overlay**: live inspection 用の visual presets、compact layouts、graphs、metric bars、custom metric rows。
 - **Public C# API**: status、metrics、device、camera、Render Graph、alerts、sessions、custom metrics の immutable snapshots。
 - **Session recording**: warm-up、scene scope、worst frames、device/camera metadata、JSON/CSV export を持つ bounded captures。
+- **External GPU capture**: external GPU profiler が attach 済みの場合に、明示的で bounded な RenderDoc/PIX request を deterministic な pre-roll、capture、post-roll state とともに調整します。guarded coordination は Editor/Development Build に限られ、authoritative artifact path は主張しません。
 - **Alerts**: structured logs、callbacks、Editor warning cooldowns、latest-alert snapshots。
 - **Agent layer**: MCP command metadata により、agents が project inspection、run comparison、A/B test、hotspot search を構造化データで実行できます。
 
@@ -36,6 +37,15 @@ SGG PerfMeter は、フレームが CPU、GPU、レンダースレッド、prese
 - GPU、CPU main thread、CPU render thread、present/VSync、balanced、unknown frames の bottleneck classification。
 - URP Render Graph 経由の opt-in numerical overdraw measurement と visual overdraw heatmap。HDRP overdraw/heatmap は unsupported ですが、core diagnostics は利用できます。
 - code と MCP automation 向けの device、URP/HDRP camera、render integration、status、metrics、alerts、session、custom metric snapshots。
+
+## オプションのプラットフォームテレメトリ
+
+PerfMeter は、1 つの provider を通じて thermal と Adaptive Performance のシグナルをオプションで収集できます。core assembly は `com.unity.adaptiveperformance` への hard dependency を持ちません。オプションの `SGG.PerfMeter.AdaptivePerformance` assembly は、`com.unity.adaptiveperformance` が `5.1.0+` の場合に Unity `6000.4+` 向けとして有効になります。
+
+- **Provider API**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`、`UnregisterPlatformTelemetryProvider(...)`、`GetPlatformTelemetry()` は最大 1 つの active provider を扱い、provider ID/version、sample/change time、thermal warning、temperature level/trend、CPU/GPU performance level、adaptive bottleneck、field ごとの availability を持つ immutable な `PerfMeterPlatformTelemetrySnapshot` を返します。異なる 2 つ目の provider の登録は拒否されます。
+- **収集と export**: runtime は収集した各 frame につき provider を 1 回 sample します。session の JSON/CSV と capture samples には snapshot と provider provenance が保持されます。MCP command `perfmeter.platform.telemetry` から現在の structured snapshot を取得できます。
+- **Profiler と alerts**: `SGG.PerfMeter.Thermal.Sample` と `SGG.PerfMeter.Thermal.Available` は thermal collection marker と availability counter を公開します。default alert `thermal.throttling` は imminent または active throttling level が available な場合に `ThermalWarningLevel` metric を使用します。
+- **Unavailable は明示されます**: unsupported な provider と field は unavailable のままです。JSON では unavailable な数値を `null`、CSV では空欄として serialise し、availability flag で fake zero と区別します。実際の Adaptive Performance package と target device の validation は release matrix/release-candidate gate のままであり、この README は device result を実施済みとは主張しません。
 
 ## クイックスタート
 

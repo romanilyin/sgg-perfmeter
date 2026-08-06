@@ -16,6 +16,7 @@ namespace SGG.PerfMeter
 		internal const string BottleneckMarkerName = "SGG.PerfMeter.Bottleneck.Classify";
 		internal const string SessionCaptureMarkerName = "SGG.PerfMeter.Capture.Session";
 		internal const string AlertCaptureMarkerName = "SGG.PerfMeter.Capture.AlertScope";
+		internal const string CaptureCoordinatorMarkerName = "SGG.PerfMeter.Capture.Coordinator";
 		internal const string ExportJsonMarkerName = "SGG.PerfMeter.Export.Json";
 		internal const string ExportCsvMarkerName = "SGG.PerfMeter.Export.Csv";
 		internal const string ThermalSampleMarkerName = "SGG.PerfMeter.Thermal.Sample";
@@ -32,6 +33,7 @@ namespace SGG.PerfMeter
 		internal const string SessionStateCounterName = "SGG.PerfMeter.Capture.SessionState";
 		internal const string AlertScopeActiveCounterName = "SGG.PerfMeter.Capture.AlertScopeActive";
 		internal const string OverdrawStateCounterName = "SGG.PerfMeter.Capture.OverdrawState";
+		internal const string CaptureStateCounterName = "SGG.PerfMeter.Capture.State";
 		internal const string ThermalAvailableCounterName = "SGG.PerfMeter.Thermal.Available";
 
 		internal static readonly ProfilerMarker CollectMarker = new ProfilerMarker(CollectMarkerName);
@@ -43,6 +45,7 @@ namespace SGG.PerfMeter
 		internal static readonly ProfilerMarker BottleneckMarker = new ProfilerMarker(BottleneckMarkerName);
 		internal static readonly ProfilerMarker SessionCaptureMarker = new ProfilerMarker(SessionCaptureMarkerName);
 		internal static readonly ProfilerMarker AlertCaptureMarker = new ProfilerMarker(AlertCaptureMarkerName);
+		internal static readonly ProfilerMarker CaptureCoordinatorMarker = new ProfilerMarker(CaptureCoordinatorMarkerName);
 		internal static readonly ProfilerMarker ExportJsonMarker = new ProfilerMarker(ExportJsonMarkerName);
 		internal static readonly ProfilerMarker ExportCsvMarker = new ProfilerMarker(ExportCsvMarkerName);
 		internal static readonly ProfilerMarker ThermalSampleMarker = new ProfilerMarker(ThermalSampleMarkerName);
@@ -60,6 +63,7 @@ namespace SGG.PerfMeter
 		private static readonly PerfMeterProfilerCounterInt SessionStateCounter = CreateCountCounter(SessionStateCounterName);
 		private static readonly PerfMeterProfilerCounterInt AlertScopeActiveCounter = CreateCountCounter(AlertScopeActiveCounterName);
 		private static readonly PerfMeterProfilerCounterInt OverdrawStateCounter = CreateCountCounter(OverdrawStateCounterName);
+		private static readonly PerfMeterProfilerCounterInt CaptureStateCounter = CreateCountCounter(CaptureStateCounterName);
 		private static readonly PerfMeterProfilerCounterInt ThermalAvailableCounter = CreateCountCounter(ThermalAvailableCounterName);
 
 		internal static long CpuFrameTimeNanoseconds => CpuFrameTimeCounter.Value;
@@ -74,6 +78,7 @@ namespace SGG.PerfMeter
 		internal static int SessionState => SessionStateCounter.Value;
 		internal static int AlertScopeActive => AlertScopeActiveCounter.Value;
 		internal static int OverdrawState => OverdrawStateCounter.Value;
+		internal static int CaptureState => CaptureStateCounter.Value;
 		internal static int ThermalAvailable => ThermalAvailableCounter.Value;
 
 		internal static void RecordFrameTimings(
@@ -125,6 +130,11 @@ namespace SGG.PerfMeter
 			OverdrawStateCounter.Value = (int)state;
 		}
 
+		internal static void RecordCaptureState(PerfMeterCaptureState state)
+		{
+			CaptureStateCounter.Value = (int)state;
+		}
+
 		internal static void RecordThermalAvailability(bool available)
 		{
 			using (ThermalSampleMarker.Auto())
@@ -140,6 +150,7 @@ namespace SGG.PerfMeter
 			RecordSessionState(PerfMeterSessionState.Idle);
 			RecordAlertScopeActive(false);
 			RecordOverdrawState(PerfMeterOverdrawMeasurementState.Off);
+			RecordCaptureState(PerfMeterCaptureState.Idle);
 			ThermalAvailableCounter.Value = 0;
 		}
 

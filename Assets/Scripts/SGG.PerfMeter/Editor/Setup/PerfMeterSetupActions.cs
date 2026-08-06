@@ -11,6 +11,11 @@ namespace SGG.PerfMeter.Editor.Setup
 	{
 		public static string InitializationSnippet => PerfMeterSetupUtility.InitializationSnippet;
 
+		public static PerfMeterCompatibilityStatus GetCompatibilityStatus()
+		{
+			return PerfMeterSetupUtility.GetCompatibilityStatus();
+		}
+
 		public static PerfMeterSetupActionResult EnableFrameTimingStats()
 		{
 			return ToPublicResult(PerfMeterSetupUtility.EnableFrameTimingStats());
@@ -75,6 +80,36 @@ namespace SGG.PerfMeter.Editor.Setup
 			builder.Append("Compatibility: ");
 			builder.Append(status.CompatibilityMessage);
 			builder.Append('\n');
+			builder.Append("Import compatibility: ");
+			builder.Append(status.CompatibilityStatus.ImportCompatible ? "Compatible" : "Incompatible");
+			builder.Append(" - ");
+			builder.Append(status.CompatibilityStatus.ImportReason);
+			builder.Append('\n');
+			builder.Append("Core runtime compatibility: ");
+			builder.Append(status.CompatibilityStatus.CoreRuntimeCompatible ? "Compatible" : "Incompatible");
+			builder.Append(" - ");
+			builder.Append(status.CompatibilityStatus.CoreRuntimeReason);
+			builder.Append('\n');
+			builder.Append("Render integration compatibility: ");
+			builder.Append(status.CompatibilityStatus.RenderIntegrationCompatible ? "Compatible" : "Incompatible");
+			builder.Append(" - ");
+			builder.Append(status.CompatibilityStatus.RenderIntegrationReason);
+			builder.Append('\n');
+			builder.Append("Compatibility environment: Unity ");
+			builder.Append(status.CompatibilityStatus.CurrentUnityVersion);
+			builder.Append(", pipeline ");
+			builder.Append(status.CompatibilityStatus.CurrentPipelineKind);
+			builder.Append(", package ");
+			builder.Append(string.IsNullOrEmpty(status.CompatibilityStatus.CurrentPipelinePackageName)
+				? "Not found"
+				: status.CompatibilityStatus.CurrentPipelinePackageName + " " + status.CompatibilityStatus.CurrentPipelinePackageVersion);
+			builder.Append(" (floors: import Unity ");
+			builder.Append(status.CompatibilityStatus.ImportUnityVersionFloor);
+			builder.Append(", core Unity ");
+			builder.Append(status.CompatibilityStatus.CoreRuntimeUnityVersionFloor);
+			builder.Append(", render package ");
+			builder.Append(status.CompatibilityStatus.RenderIntegrationPipelinePackageVersionFloor);
+			builder.Append(")\n");
 			builder.Append("Frame Timing Stats: ");
 			builder.Append(status.FrameTimingStatsEnabled ? "Enabled" : "Disabled");
 			builder.Append('\n');
@@ -136,6 +171,62 @@ namespace SGG.PerfMeter.Editor.Setup
 		{
 			return result.Success ? PerfMeterSetupActionResult.Ok(result.Message) : PerfMeterSetupActionResult.Fail(result.Message);
 		}
+	}
+
+	public readonly struct PerfMeterCompatibilityStatus
+	{
+		internal PerfMeterCompatibilityStatus(
+			string currentUnityVersion,
+			PerfMeterRenderPipelineKind currentPipelineKind,
+			string currentPipelinePackageName,
+			string currentPipelinePackageVersion,
+			bool importCompatible,
+			bool coreRuntimeCompatible,
+			bool renderIntegrationCompatible,
+			string importReason,
+			string coreRuntimeReason,
+			string renderIntegrationReason)
+		{
+			CurrentUnityVersion = currentUnityVersion ?? string.Empty;
+			CurrentPipelineKind = currentPipelineKind;
+			CurrentPipelinePackageName = currentPipelinePackageName ?? string.Empty;
+			CurrentPipelinePackageVersion = currentPipelinePackageVersion ?? string.Empty;
+			ImportUnityVersionFloor = PerfMeterSetupUtility.ImportUnityVersionFloor;
+			CoreRuntimeUnityVersionFloor = PerfMeterSetupUtility.CoreRuntimeUnityVersionFloor;
+			RenderIntegrationPipelinePackageVersionFloor = PerfMeterSetupUtility.RenderIntegrationPipelinePackageVersionFloor;
+			ImportCompatible = importCompatible;
+			CoreRuntimeCompatible = coreRuntimeCompatible;
+			RenderIntegrationCompatible = renderIntegrationCompatible;
+			ImportReason = importReason ?? string.Empty;
+			CoreRuntimeReason = coreRuntimeReason ?? string.Empty;
+			RenderIntegrationReason = renderIntegrationReason ?? string.Empty;
+		}
+
+		public bool ImportCompatible { get; }
+
+		public bool CoreRuntimeCompatible { get; }
+
+		public bool RenderIntegrationCompatible { get; }
+
+		public string CurrentUnityVersion { get; }
+
+		public PerfMeterRenderPipelineKind CurrentPipelineKind { get; }
+
+		public string CurrentPipelinePackageName { get; }
+
+		public string CurrentPipelinePackageVersion { get; }
+
+		public string ImportUnityVersionFloor { get; }
+
+		public string CoreRuntimeUnityVersionFloor { get; }
+
+		public string RenderIntegrationPipelinePackageVersionFloor { get; }
+
+		public string ImportReason { get; }
+
+		public string CoreRuntimeReason { get; }
+
+		public string RenderIntegrationReason { get; }
 	}
 
 	public readonly struct PerfMeterSetupActionResult

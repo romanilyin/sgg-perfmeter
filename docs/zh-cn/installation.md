@@ -11,6 +11,8 @@ SGG PerfMeter 作为名为 `com.sungeargames.perfmeter` 的 Unity package 分发
 
 Package metadata 仍将 Unity `2022.3` 保留为 import-safety floor，用于导入和编译检查。当前受支持的运行时目标是 Unity `6000.4+` 搭配 URP `17.4+` Render Graph 或 HDRP `17.4+` Custom Pass integration。
 
+这些是独立的 compatibility level：`ImportCompatible` 不承诺 supported runtime behavior；`CoreRuntimeCompatible` 要求 Unity `6000.4+`，但不要求特定 pipeline；`RenderIntegrationCompatible` 还要求 active URP/HDRP `17.4+` 和 PerfMeter adapter。通过 `PerfMeterSetupActions.GetCompatibilityStatus()` 或 MCP `perfmeter.compatibility.status` 查询；configuration readiness 单独报告。
+
 ## npm Scoped Registry Install
 
 在 Unity project 的 `Packages/manifest.json` 中将 npm registry 添加为 Unity Package Manager scoped registry：

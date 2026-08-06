@@ -100,7 +100,7 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(1024 + safeSamples.Length * 512);
-			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters");
+			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters,platform_telemetry_available,platform_telemetry_provider,platform_telemetry_provider_version,thermal_warning_level,temperature_level,temperature_trend,cpu_performance_level,gpu_performance_level,adaptive_bottleneck,telemetry_last_change_time_seconds");
 			builder.AppendLine();
 			for (int i = 0; i < safeSamples.Length; i++)
 			{
@@ -108,6 +108,28 @@ namespace SGG.PerfMeter
 				builder.AppendLine();
 			}
 
+			return builder.ToString();
+		}
+
+		internal static string BuildCaptureSamplesJson(string captureId, PerfMeterSessionSampleSnapshot[] samples)
+		{
+			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
+			StringBuilder builder = new StringBuilder(256 + safeSamples.Length * 768);
+			builder.Append("{\"schema\":\"sgg.perfmeter.capture-samples\",\"schema_version\":1");
+			builder.Append(",\"capture_id\":").Append(JsonString(captureId));
+			builder.Append(",\"sample_count\":").Append(safeSamples.Length);
+			builder.Append(",\"samples\":[");
+			for (int i = 0; i < safeSamples.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				AppendSample(builder, safeSamples[i]);
+			}
+
+			builder.Append("]}");
 			return builder.ToString();
 		}
 
@@ -340,7 +362,7 @@ namespace SGG.PerfMeter
 			builder.Append('}');
 		}
 
-		private static void AppendSettings(StringBuilder builder, PerfMeterSettingsSnapshot settings)
+		internal static void AppendSettings(StringBuilder builder, PerfMeterSettingsSnapshot settings)
 		{
 			builder.Append('{');
 			builder.Append("\"enabled\":").Append(JsonBool(settings.Enabled));
@@ -388,6 +410,7 @@ namespace SGG.PerfMeter
 			builder.Append(",\"scene\":").Append(JsonString(sample.SceneName));
 			AppendMetrics(builder, metrics);
 			AppendCustomMetrics(builder, sample.CustomMetrics);
+			AppendPlatformTelemetry(builder, sample.PlatformTelemetry);
 			builder.Append('}');
 		}
 
@@ -432,6 +455,30 @@ namespace SGG.PerfMeter
 			builder.Append(",\"value\":").Append(JsonNumber(metric.Value));
 			builder.Append(",\"available\":").Append(JsonBool(metric.Available));
 			builder.Append(",\"warning\":").Append(JsonString(metric.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendPlatformTelemetry(StringBuilder builder, PerfMeterPlatformTelemetrySnapshot telemetry)
+		{
+			builder.Append(",\"platform_telemetry\":{");
+			builder.Append("\"availability\":").Append(JsonString(telemetry.Availability.ToString()));
+			builder.Append(",\"provider_id\":").Append(JsonString(telemetry.ProviderId));
+			builder.Append(",\"provider_version\":").Append(JsonString(telemetry.ProviderVersion));
+			builder.Append(",\"sample_time_seconds\":").Append(JsonNumber(telemetry.SampleTimeSeconds));
+			builder.Append(",\"last_change_time_seconds\":").Append(JsonNumber(telemetry.LastChangeTimeSeconds));
+			builder.Append(",\"thermal_warning_level_available\":").Append(JsonBool(telemetry.ThermalWarningLevelAvailable));
+			builder.Append(",\"thermal_warning_level\":").Append(telemetry.ThermalWarningLevelAvailable ? JsonString(telemetry.ThermalWarningLevel.ToString()) : "null");
+			builder.Append(",\"temperature_level_available\":").Append(JsonBool(telemetry.TemperatureLevelAvailable));
+			builder.Append(",\"temperature_level\":").Append(telemetry.TemperatureLevelAvailable ? JsonNumber(telemetry.TemperatureLevel) : "null");
+			builder.Append(",\"temperature_trend_available\":").Append(JsonBool(telemetry.TemperatureTrendAvailable));
+			builder.Append(",\"temperature_trend\":").Append(telemetry.TemperatureTrendAvailable ? JsonNumber(telemetry.TemperatureTrend) : "null");
+			builder.Append(",\"cpu_performance_level_available\":").Append(JsonBool(telemetry.CpuPerformanceLevelAvailable));
+			builder.Append(",\"cpu_performance_level\":").Append(telemetry.CpuPerformanceLevelAvailable ? telemetry.CpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : "null");
+			builder.Append(",\"gpu_performance_level_available\":").Append(JsonBool(telemetry.GpuPerformanceLevelAvailable));
+			builder.Append(",\"gpu_performance_level\":").Append(telemetry.GpuPerformanceLevelAvailable ? telemetry.GpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : "null");
+			builder.Append(",\"performance_bottleneck_available\":").Append(JsonBool(telemetry.PerformanceBottleneckAvailable));
+			builder.Append(",\"performance_bottleneck\":").Append(telemetry.PerformanceBottleneckAvailable ? JsonString(telemetry.PerformanceBottleneck.ToString()) : "null");
+			builder.Append(",\"warning\":").Append(JsonString(telemetry.Warning));
 			builder.Append('}');
 		}
 
@@ -504,7 +551,18 @@ namespace SGG.PerfMeter
 			builder.Append(summary.PauseCount).Append(',');
 			builder.Append(JsonNumber(summary.FocusPausedDurationSeconds)).Append(',');
 			AppendCsv(builder, status.AvailableCounters.ToString()).Append(',');
-			AppendCsv(builder, status.UnavailableCounters.ToString());
+			AppendCsv(builder, status.UnavailableCounters.ToString()).Append(',');
+			PerfMeterPlatformTelemetrySnapshot telemetry = sample.PlatformTelemetry;
+			builder.Append(telemetry.IsAvailable ? "true" : "false").Append(',');
+			AppendCsv(builder, telemetry.ProviderId).Append(',');
+			AppendCsv(builder, telemetry.ProviderVersion).Append(',');
+			AppendCsv(builder, telemetry.ThermalWarningLevelAvailable ? telemetry.ThermalWarningLevel.ToString() : string.Empty).Append(',');
+			builder.Append(telemetry.TemperatureLevelAvailable ? JsonNumber(telemetry.TemperatureLevel) : string.Empty).Append(',');
+			builder.Append(telemetry.TemperatureTrendAvailable ? JsonNumber(telemetry.TemperatureTrend) : string.Empty).Append(',');
+			builder.Append(telemetry.CpuPerformanceLevelAvailable ? telemetry.CpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : string.Empty).Append(',');
+			builder.Append(telemetry.GpuPerformanceLevelAvailable ? telemetry.GpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : string.Empty).Append(',');
+			AppendCsv(builder, telemetry.PerformanceBottleneckAvailable ? telemetry.PerformanceBottleneck.ToString() : string.Empty).Append(',');
+			builder.Append(telemetry.IsAvailable ? JsonNumber(telemetry.LastChangeTimeSeconds) : string.Empty);
 		}
 
 		private static void AppendVector3(StringBuilder builder, string name, float x, float y, float z)

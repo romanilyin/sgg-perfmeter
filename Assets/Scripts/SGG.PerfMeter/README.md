@@ -4,7 +4,7 @@
 
 Package name: `com.sungeargames.perfmeter`
 
-SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, URP overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, URP Render Graph diagnostics, HDRP Custom Pass diagnostics, and MCP command metadata.
+SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, guarded external GPU capture coordination, URP overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, URP Render Graph diagnostics, HDRP Custom Pass diagnostics, and MCP command metadata.
 
 The main user documentation lives in the repository-level GitHub docs:
 

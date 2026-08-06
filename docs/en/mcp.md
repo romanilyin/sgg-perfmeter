@@ -14,6 +14,7 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | --- | --- |
 | `perfmeter.setup.status` | Read setup status. |
 | `perfmeter.setup.run` | Run recommended setup actions. |
+| `perfmeter.compatibility.status` | Read separate import, core runtime, and active render-integration compatibility. |
 | `perfmeter.runtime.status` | Read runtime status. |
 | `perfmeter.runtime.ensure` | Start runtime if needed. |
 | `perfmeter.runtime.stop` | Stop runtime. |
@@ -36,6 +37,13 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.session.stop` | Stop recording and return summary. |
 | `perfmeter.session.summary` | Read current session summary. |
 | `perfmeter.session.export` | Export current session to project-local JSON or CSV. |
+| `perfmeter.capture.request` | Request a bounded external GPU capture and correlated bundle. |
+| `perfmeter.capture.status` | Read capture and bundle state. |
+| `perfmeter.capture.cancel` | Cancel the matching active capture. |
+| `perfmeter.capture.export` | Atomically export a ready bundle under the project-local bundle root. |
+| `perfmeter.capture.capabilities` | Read bundle schema, quota, retention, screenshot, and provenance capabilities. |
+
+`perfmeter.compatibility.status` is read-only and does not start runtime. It reports `import_compatible`, `core_runtime_compatible`, and `render_integration_compatible` independently, with current/floor versions and a reason for each result. `perfmeter.setup.status` includes the same structured `compatibility` object while retaining its existing human-readable `status_report`; setup/configuration readiness remains separate.
 
 ## Runtime Self-Overhead Payload
 
@@ -61,3 +69,5 @@ perfmeter.alerts.latest {}
 Use `OverdrawDiagnostic` only for bounded URP diagnostic windows because numerical overdraw and heatmap rendering add extra GPU work. HDRP reports overdraw and heatmap as unsupported while the rest of the diagnostics stay available.
 
 `perfmeter.alerts.latest` reports the alert-history interval and reset reason, classified lifecycle/steady-state/capture counters, and the latest fired alert. PerfMeter does not infer captures from slow frames; wrap an external capture with matching `perfmeter.alerts.capture.begin/end` calls when capture attribution is required.
+
+For a correlated capture, use `perfmeter.capture.request`, poll `perfmeter.capture.status` to a terminal bundle state, then call `perfmeter.capture.export`. Export paths and optional external artifact paths must be relative and project-local. An observed `.rdc`/`.wpix` copy is hashed but never reported as authoritative because Unity cannot authenticate the attached tool or artifact association; `require_authoritative_external_artifact` therefore fails explicitly.

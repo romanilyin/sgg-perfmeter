@@ -52,6 +52,21 @@ PerfMeterAlertSnapshot[] latestAlerts = PerformanceMeter.GetLatestAlerts();
 
 Editor warnings は cooldown で throttled され、JSON settings または runtime controls で無効化できます。structured alert logs と Editor warnings は独立しています。`PerformanceMeter.SetStructuredLogsEnabled(false)` は structured alert の `Debug.Log` 出力だけを抑制し、`PerformanceMeter.SetEditorWarningLogsEnabled(false)` は Editor warning logs を別に制御します。callbacks、alert/history、overlay warnings、sessions は有効なままです。
 
+## External GPU Capture
+
+tool がすでに attach されている場合、限定的な RenderDoc または PIX request には capture coordinator を使用します。
+
+```csharp
+PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30));
+
+PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
+```
+
+coordinator は 1 つの active request だけを所有し、`PreRoll`、`Capturing`、`PostRoll`、`Completed` を deterministic に進みます。同じ active ID は idempotent で、異なる ID は overlap として reject されます。pre-roll と post-roll は Unity frames を数え、`Capturing` だけが alert capture scope を開いて Unity の experimental な `ExternalGPUProfiler` を invoke します。Editor または Development Build であることと attached tool があることは必須 gate です。`RenderDoc` は Windows/Linux desktop の Direct3D 11、Direct3D 12、Vulkan で、`PIX` は Windows desktop の Direct3D 12 で使用できます。
+
+`Completed` は guarded Unity wrapper lifecycle が終了したことだけを示します。Unity API は attached tool の identity や authoritative artifact path を公開しないため、`Status.Tool` は requested tool だけを示します。`PerfMeterCaptureBundleOptions` overload は baseline/capture samples を分離して project-local bundle を atomic export します。external artifact は observed であり authoritative ではありません。automation には `perfmeter.capture.request/status/cancel/export/capabilities` を使用します。
+
 ## Overdraw Diagnostics
 
 numerical overdraw は opt-in で bounded です。
@@ -89,8 +104,8 @@ Custom metrics は API reads、session JSON export、MCP latest metrics、`Custo
 
 この instrumentation は internal であり、Editor、Development Build、または別の profiler-enabled build を profiling している場合だけ Unity Profiler に表示されます。Profiler を有効にしていない Release player では、これらの marker/counter は no-op で instrumentation data を生成しません。public API、status、MCP、export schema は変更しません。
 
-- Marker は collection/frame timing（`SGG.PerfMeter.Collect`、`SGG.PerfMeter.Collect.FrameTiming`）、providers（`SGG.PerfMeter.Provider.CustomMetrics`、`SGG.PerfMeter.Provider.CpuCore`、`SGG.PerfMeter.Provider.DeviceSnapshot`、`SGG.PerfMeter.Provider.CameraSnapshot`）、bottleneck/capture（`SGG.PerfMeter.Bottleneck.Classify`、`SGG.PerfMeter.Capture.Session`、`SGG.PerfMeter.Capture.AlertScope`）、JSON/CSV export（`SGG.PerfMeter.Export.Json`、`SGG.PerfMeter.Export.Csv`）を計測します。`SGG.PerfMeter.Thermal.Sample` は reserved internal provider hook です。
-- Counter は CPU/GPU frame time（`SGG.PerfMeter.CPU.FrameTime`、`SGG.PerfMeter.CPU.MainThreadTime`、`SGG.PerfMeter.CPU.RenderThreadTime`、`SGG.PerfMeter.CPU.PresentWaitTime`、`SGG.PerfMeter.GPU.FrameTime`）を nanoseconds の end-of-frame gauge として記録します。`SGG.PerfMeter.CPU.FrameTimingAvailable`、`SGG.PerfMeter.GPU.FrameTimingAvailable`、`SGG.PerfMeter.Capture.AlertScopeActive`、`SGG.PerfMeter.Thermal.Available` は availability/active を `0`/`1` で表し、`SGG.PerfMeter.Bottleneck.Kind`、`SGG.PerfMeter.Capture.SessionState`、`SGG.PerfMeter.Capture.OverdrawState` は enum code、`SGG.PerfMeter.Provider.CustomMetricCount` は count です。Counter は `Scripts` category と `FlushOnEndOfFrame` を使用します。
+- Marker は collection/frame timing（`SGG.PerfMeter.Collect`、`SGG.PerfMeter.Collect.FrameTiming`）、providers（`SGG.PerfMeter.Provider.CustomMetrics`、`SGG.PerfMeter.Provider.CpuCore`、`SGG.PerfMeter.Provider.DeviceSnapshot`、`SGG.PerfMeter.Provider.CameraSnapshot`）、bottleneck/capture（`SGG.PerfMeter.Bottleneck.Classify`、`SGG.PerfMeter.Capture.Session`、`SGG.PerfMeter.Capture.AlertScope`、`SGG.PerfMeter.Capture.Coordinator`）、JSON/CSV export（`SGG.PerfMeter.Export.Json`、`SGG.PerfMeter.Export.Csv`）を計測します。`SGG.PerfMeter.Thermal.Sample` は reserved internal provider hook です。
+- Counter は CPU/GPU frame time（`SGG.PerfMeter.CPU.FrameTime`、`SGG.PerfMeter.CPU.MainThreadTime`、`SGG.PerfMeter.CPU.RenderThreadTime`、`SGG.PerfMeter.CPU.PresentWaitTime`、`SGG.PerfMeter.GPU.FrameTime`）を nanoseconds の end-of-frame gauge として記録します。`SGG.PerfMeter.CPU.FrameTimingAvailable`、`SGG.PerfMeter.GPU.FrameTimingAvailable`、`SGG.PerfMeter.Capture.AlertScopeActive`、`SGG.PerfMeter.Thermal.Available` は availability/active を `0`/`1` で表し、`SGG.PerfMeter.Bottleneck.Kind`、`SGG.PerfMeter.Capture.SessionState`、`SGG.PerfMeter.Capture.OverdrawState`、`SGG.PerfMeter.Capture.State` は enum code、`SGG.PerfMeter.Provider.CustomMetricCount` は count です。Counter は `Scripts` category と `FlushOnEndOfFrame` を使用します。
 - synthetic thermal sample は生成されません。`SGG.PerfMeter.Thermal.Available` は `0`/unavailable のままで、real platform provider が data を供給するまで利用できません。
 
 ## Self-Observability And Overhead Budgets

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added an opt-in external GPU capture coordinator with deterministic pre/capture/post-roll states, overlap protection, explicit capability failures, fake-backend coverage, and a guarded Unity `ExternalGPUProfiler` backend for attached RenderDoc/PIX tools in Editor or Development Builds.
+- Added atomic versioned capture bundles with separately classified baseline/capture samples, bounded alert correlation, context snapshots, optional runtime screenshots, project-local quota/retention/redaction policy, SHA-256 manifests, truthful external-artifact provenance, and MCP request/status/cancel/export/capabilities commands.
+- Added explicit Editor compatibility status that independently reports the declared import floor, supported core runtime floor, and active URP/HDRP render-integration compatibility through setup API/reporting and structured MCP output.
+
 ## 2026.8.6-1
 
 - Added a startup-cached dynamic Profiler metric catalog with exact/alias resolution provenance and explicit unavailable/no-sample/sampled states.

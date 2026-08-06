@@ -59,6 +59,8 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - See frame bottleneck context while the game is running.
 - Switch between visual presets, graphs, metric bars, compact layouts, and custom metric rows for different debugging situations.
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
+- Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
+- Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
 - Give tools and agents structured data for comparisons, A/B tests, and hotspot search instead of relying on screenshots or Console scraping.
 
@@ -66,9 +68,10 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
 - **Public C# API**: immutable snapshots for status, metrics, device, camera, Render Graph, alerts, sessions, and custom metrics.
+- **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools with atomic correlated bundles and truthful artifact provenance.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
-- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, and search for hotspots through structured data.
+- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, search for hotspots, and request/status/cancel/export captures through structured data.
 
 ## What It Measures
 
@@ -78,6 +81,15 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Bottleneck classification for GPU, CPU main thread, CPU render thread, present/VSync, balanced, or unknown frames.
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
+
+## Optional Platform Telemetry
+
+PerfMeter can collect optional thermal and Adaptive Performance signals through one provider. The core assembly has no hard `com.unity.adaptiveperformance` dependency; the optional `SGG.PerfMeter.AdaptivePerformance` assembly is enabled for Unity `6000.4+` when `com.unity.adaptiveperformance` is `5.1.0+`.
+
+- **Provider API**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`, `UnregisterPlatformTelemetryProvider(...)`, and `GetPlatformTelemetry()` allow at most one active provider and return the immutable `PerfMeterPlatformTelemetrySnapshot` with provider ID/version, sample/change timestamps, thermal warning, temperature level/trend, CPU/GPU performance levels, adaptive bottleneck, and per-field availability. A different second provider is rejected.
+- **Collection and exports**: the runtime samples the provider once per collected frame. Session JSON/CSV and capture samples preserve the snapshot and provider provenance. MCP command `perfmeter.platform.telemetry` exposes the current structured snapshot.
+- **Profiler and alerts**: `SGG.PerfMeter.Thermal.Sample` and `SGG.PerfMeter.Thermal.Available` expose the thermal collection marker and availability counter. The default `thermal.throttling` alert uses the `ThermalWarningLevel` metric when an imminent or active throttling level is available.
+- **Unavailable is explicit**: unsupported providers and fields stay unavailable; JSON serializes unavailable numeric values as `null` and CSV uses empty fields, with availability flags instead of fake zero readings. Real Adaptive Performance package and target-device validation remain release-matrix/release-candidate gates; no device result is implied here.
 
 ## Quick Start
 
@@ -134,6 +146,8 @@ Use [Comparison](./docs/en/comparison.md) as product and architecture context ra
 - Vulkan is preferred on Android when GPU timing matters.
 
 Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. Some features may not work in versions before `6000.4`.
+
+In the Editor, `PerfMeterSetupActions.GetCompatibilityStatus()` reports `ImportCompatible`, `CoreRuntimeCompatible`, and `RenderIntegrationCompatible` independently with the detected Unity/SRP versions and explicit reasons. The same structured state is available through `perfmeter.compatibility.status` and inside `perfmeter.setup.status`; render compatibility does not imply that renderer assets are already configured.
 
 ## License
 

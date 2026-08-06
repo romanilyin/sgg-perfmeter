@@ -15,6 +15,7 @@ SGG PerfMeter detecte les goulets d'etranglement des frames, compare les changem
 - Voir le contexte des goulets d'etranglement directement pendant le jeu.
 - Basculer entre presets, graphes, barres de metriques, dispositions compactes et lignes de metriques personnalisees.
 - Enregistrer des sessions de profilage reproductibles avec warm-up, contexte de scene, resume des pires frames et export JSON/CSV.
+- Coordonner une requete RenderDoc/PIX explicite et bornee avec des etats deterministes de pre-roll, capture et post-roll lorsque le profiler GPU externe est deja attache; cette coordination est limitee a l'Editor/Development Build et ne revendique aucun path d'artefact faisant autorite.
 - Utiliser des alertes, logs structures, callbacks et cooldowns d'avertissements Editor sans surveiller l'overlay en continu.
 - Fournir aux outils et agents des donnees structurees pour les comparaisons, tests A/B et recherches de points chauds.
 
@@ -26,6 +27,15 @@ SGG PerfMeter detecte les goulets d'etranglement des frames, compare les changem
 - Classification de goulet d'etranglement pour GPU, CPU main, CPU render, present/VSync, balanced ou unknown.
 - Mesure d'overdraw opt-in et overdraw heatmap visuelle via URP Render Graph; en HDRP overdraw/heatmap ne sont pas pris en charge, mais les core diagnostics restent disponibles.
 - Snapshots device, URP/HDRP camera, render integration, status, metrics, alerts, sessions et custom metrics pour le code et l'automatisation MCP.
+
+## Telemetrie de plateforme optionnelle
+
+PerfMeter peut collecter des signaux thermiques et Adaptive Performance optionnels via un provider. L'assembly core n'a aucune dependance forte a `com.unity.adaptiveperformance`; l'assembly optionnelle `SGG.PerfMeter.AdaptivePerformance` s'active pour Unity `6000.4+` lorsque `com.unity.adaptiveperformance` est en version `5.1.0+`.
+
+- **API du provider**: `PerformanceMeter.RegisterPlatformTelemetryProvider(...)`, `UnregisterPlatformTelemetryProvider(...)` et `GetPlatformTelemetry()` gerent au plus un provider actif et renvoient le `PerfMeterPlatformTelemetrySnapshot` immuable avec l'ID/version du provider, les temps de sample/changement, l'alerte thermique, le niveau/tendance de temperature, les niveaux de performance CPU/GPU, le bottleneck adaptatif et la disponibilite de chaque champ. Un second provider different est refuse.
+- **Collecte et exports**: le runtime echantillonne le provider une fois par frame collectee. Le JSON/CSV de session et les capture samples preservent le snapshot et la provenance du provider. La commande MCP `perfmeter.platform.telemetry` expose le snapshot structure actuel.
+- **Profiler et alertes**: `SGG.PerfMeter.Thermal.Sample` et `SGG.PerfMeter.Thermal.Available` exposent le marker de collecte thermique et le counter de disponibilite. L'alerte par defaut `thermal.throttling` utilise la metrique `ThermalWarningLevel` lorsqu'un niveau de throttling imminent ou actif est disponible.
+- **L'indisponibilite est explicite**: les providers et champs non pris en charge restent unavailable; le JSON serialise les valeurs numeriques indisponibles en `null` et le CSV utilise des champs vides, avec des flags de disponibilite plutot que des zeros artificiels. La validation du package Adaptive Performance reel et des appareils cibles reste un gate de la release matrix/release candidate; ce README ne revendique aucun resultat sur appareil.
 
 ## Demarrage Rapide
 

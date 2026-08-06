@@ -14,6 +14,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | --- | --- |
 | `perfmeter.setup.status` | setup status を読み取ります。 |
 | `perfmeter.setup.run` | recommended setup actions を実行します。 |
+| `perfmeter.compatibility.status` | import、core runtime、active render integration の compatibility を個別に読み取ります。 |
 | `perfmeter.runtime.status` | runtime status を読み取ります。 |
 | `perfmeter.runtime.ensure` | 必要に応じて runtime を開始します。 |
 | `perfmeter.runtime.stop` | runtime を停止します。 |
@@ -36,6 +37,11 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.stop` | recording を停止して summary を返します。 |
 | `perfmeter.session.summary` | current session summary を読み取ります。 |
 | `perfmeter.session.export` | current session を project-local JSON または CSV に export します。 |
+| `perfmeter.capture.request` | bounded external GPU capture と correlated bundle を request します。 |
+| `perfmeter.capture.status` | capture と bundle の state を読み取ります。 |
+| `perfmeter.capture.cancel` | 一致する active capture を cancel します。 |
+| `perfmeter.capture.export` | ready bundle を project-local root に atomic export します。 |
+| `perfmeter.capture.capabilities` | schema、quota、retention、screenshot、provenance capabilities を読み取ります。 |
 
 ## Runtime Self-Overhead Payload
 
