@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.8.6-1
+
+- Added a startup-cached dynamic Profiler metric catalog with exact/alias resolution provenance and explicit unavailable/no-sample/sampled states.
+- Added dependency-free Unity Profiler markers and end-of-frame counters for collection, providers, snapshots, bottleneck classification, captures, exports, timing availability, and runtime state.
+- Added fixed 120-frame self-overhead CPU/allocation windows and per-invocation budgets for collector, custom providers, CPU-core sampling, overlay refresh, URP Render Graph, and HDRP Custom Pass callbacks.
+- Published additive self-overhead diagnostics through `PerformanceMeter.GetSelfOverhead()`, `PerfMeterStatusSnapshot.SelfOverhead`, and `perfmeter.runtime.status` without subtracting from existing CPU/GPU metrics.
+- Preserved the existing public `PerfMeterStatusSnapshot` constructor signature and added deterministic sparse-window, allocation, lifecycle, API, MCP, URP, and HDRP coverage.
+- Updated localized API, MCP, and workflow documentation in all supported languages.
+
 ## 2026.8.5-2
 
 - Added independent `StructuredLogsEnabled` and `SetStructuredLogsEnabled(bool)` runtime controls without changing callbacks, alert history, overlay warnings, Editor warnings, or sessions.
