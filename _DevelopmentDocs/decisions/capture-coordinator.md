@@ -28,10 +28,7 @@ Automated tests use the internal backend/scope seams. Real RenderDoc/PIX attachm
 - `PerformanceMeter.CancelCapture(...)` validates ownership by capture ID and retries failed cleanup when possible.
 - `SGG.PerfMeter.Capture.Coordinator` and `SGG.PerfMeter.Capture.State` expose internal Profiler instrumentation without changing session schemas.
 
-## Deferred To PM-CAP-002
+## Implemented By PM-CAP-002
 
-- Bundle manifests and atomic artifact export.
-- Session/sample/screenshot/device/camera/render-context correlation.
-- Authoritative external artifact provenance and path validation.
-- MCP capture request/status/cancel/export/capabilities commands.
-- Native RenderDoc or PIX SDK integration.
+- Bundle manifests, atomic artifact export, correlated samples/context/screenshots, truthful provenance, path validation, and MCP capture control are defined in [`capture-bundles.md`](capture-bundles.md).
+- Native RenderDoc or PIX SDK integration remains separate future work.

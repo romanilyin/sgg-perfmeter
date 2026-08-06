@@ -6,7 +6,9 @@ namespace SGG.PerfMeter
 {
 	internal sealed class PerfMeterAlertEngine
 	{
+		private const int MaxFiredEvents = 256;
 		private readonly List<PerfMeterAlertSnapshot> _latestAlerts = new List<PerfMeterAlertSnapshot>(16);
+		private readonly List<PerfMeterAlertSnapshot> _firedEvents = new List<PerfMeterAlertSnapshot>(MaxFiredEvents);
 		private readonly RuleState[] _states;
 		private readonly PerfMeterRule[] _rules;
 		private PerfMeterAlertSnapshot _latestAlert;
@@ -24,6 +26,7 @@ namespace SGG.PerfMeter
 		private double _historyStartTimeSeconds;
 		private string _historyStartedUtc;
 		private PerfMeterAlertHistoryResetReason _historyResetReason;
+		private bool _firedEventsTruncated;
 
 		internal PerfMeterAlertEngine()
 			: this(CreateDefaultRules(PerfMeterTargetFps.Fps60, PerfMeterSettingsStore.Defaults))
@@ -97,6 +100,33 @@ namespace SGG.PerfMeter
 			return _latestAlerts.ToArray();
 		}
 
+		internal PerfMeterAlertSnapshot[] GetFiredCaptureEvents(string captureId, out bool truncated)
+		{
+			truncated = _firedEventsTruncated;
+			if (string.IsNullOrEmpty(captureId) || _firedEvents.Count == 0)
+			{
+				return Array.Empty<PerfMeterAlertSnapshot>();
+			}
+
+			List<PerfMeterAlertSnapshot> matches = new List<PerfMeterAlertSnapshot>();
+			for (int i = 0; i < _firedEvents.Count; i++)
+			{
+				PerfMeterAlertSnapshot alert = _firedEvents[i];
+				if (string.Equals(alert.CaptureId, captureId, StringComparison.Ordinal))
+				{
+					matches.Add(alert);
+				}
+			}
+
+			return matches.ToArray();
+		}
+
+		internal void BeginCaptureEventCollection()
+		{
+			_firedEvents.Clear();
+			_firedEventsTruncated = false;
+		}
+
 		internal void Clear()
 		{
 			ResetHistory(-1, 0d, PerfMeterAlertHistoryResetReason.ExplicitClear);
@@ -110,6 +140,8 @@ namespace SGG.PerfMeter
 			_steadyStateFiredCount = 0;
 			_lifecycleFiredCount = 0;
 			_captureFiredCount = 0;
+			_firedEvents.Clear();
+			_firedEventsTruncated = false;
 			_historyIntervalId = Guid.NewGuid().ToString("N");
 			_historyStartCollectionFrame = collectionFrame;
 			_historyStartTimeSeconds = timeSeconds;
@@ -192,6 +224,13 @@ namespace SGG.PerfMeter
 
 			if (actionFired)
 			{
+				if (_firedEvents.Count >= MaxFiredEvents)
+				{
+					_firedEvents.RemoveAt(0);
+					_firedEventsTruncated = true;
+				}
+
+				_firedEvents.Add(alert);
 				_firedAlertCount++;
 				switch (alert.Classification)
 				{

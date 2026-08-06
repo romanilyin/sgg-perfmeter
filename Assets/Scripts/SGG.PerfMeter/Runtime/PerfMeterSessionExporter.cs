@@ -111,6 +111,28 @@ namespace SGG.PerfMeter
 			return builder.ToString();
 		}
 
+		internal static string BuildCaptureSamplesJson(string captureId, PerfMeterSessionSampleSnapshot[] samples)
+		{
+			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
+			StringBuilder builder = new StringBuilder(256 + safeSamples.Length * 768);
+			builder.Append("{\"schema\":\"sgg.perfmeter.capture-samples\",\"schema_version\":1");
+			builder.Append(",\"capture_id\":").Append(JsonString(captureId));
+			builder.Append(",\"sample_count\":").Append(safeSamples.Length);
+			builder.Append(",\"samples\":[");
+			for (int i = 0; i < safeSamples.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				AppendSample(builder, safeSamples[i]);
+			}
+
+			builder.Append("]}");
+			return builder.ToString();
+		}
+
 		private static PerfMeterSessionExportResult Export(string path, string content, bool overwriteExisting)
 		{
 			if (string.IsNullOrWhiteSpace(path))
@@ -340,7 +362,7 @@ namespace SGG.PerfMeter
 			builder.Append('}');
 		}
 
-		private static void AppendSettings(StringBuilder builder, PerfMeterSettingsSnapshot settings)
+		internal static void AppendSettings(StringBuilder builder, PerfMeterSettingsSnapshot settings)
 		{
 			builder.Append('{');
 			builder.Append("\"enabled\":").Append(JsonBool(settings.Enabled));

@@ -17,12 +17,14 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		public void SetUp()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
 
 		[TearDown]
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
 
 		[UnityTest]
@@ -357,8 +359,11 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerformanceMeter.EnsureRunning();
 			PlayModeFakeCaptureBackend backend = new PlayModeFakeCaptureBackend();
 			PerfMeterRuntime.Instance.SetCaptureBackendForTests(backend);
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.001f, 64));
 
-			PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("playmode-capture", PerfMeterCaptureTool.RenderDoc, 2, 1, 1));
+			PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+				new PerfMeterCaptureOptions("playmode-capture", PerfMeterCaptureTool.RenderDoc, 2, 1, 1),
+				new PerfMeterCaptureBundleOptions());
 			Assert.That(result, Is.EqualTo(PerfMeterCaptureRequestResult.Started));
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.PreRoll));
 
@@ -382,14 +387,29 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(completed.CompletedPostRollFrames, Is.EqualTo(1));
 			Assert.That(backend.BeginCount, Is.EqualTo(1));
 			Assert.That(backend.EndCount, Is.EqualTo(1));
+			PerfMeterCaptureBundleStatusSnapshot completedBundle = PerformanceMeter.GetCaptureBundleStatus("playmode-capture");
+			Assert.That(completedBundle.State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(completedBundle.CaptureSampleCount, Is.EqualTo(2));
+			Assert.That(completedBundle.BaselineSampleCount, Is.GreaterThanOrEqualTo(1));
+			Assert.That(PerformanceMeter.GetSessionSummary().SampleCount, Is.EqualTo(completedBundle.BaselineSampleCount));
 
-			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("zero-roll", PerfMeterCaptureTool.RenderDoc)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(PerformanceMeter.RequestCapture(
+				new PerfMeterCaptureOptions("zero-roll", PerfMeterCaptureTool.RenderDoc),
+				new PerfMeterCaptureBundleOptions(includeScreenshot: true)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Capturing));
 			yield return null;
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Completed));
 			Assert.That(PerfMeterRuntime.Instance.LastAlertClassification, Is.EqualTo(PerfMeterAlertClassification.Capture));
 			Assert.That(backend.BeginCount, Is.EqualTo(2));
 			Assert.That(backend.EndCount, Is.EqualTo(2));
+			for (int frame = 0; frame < 4 && PerformanceMeter.GetCaptureBundleStatus("zero-roll").State == PerfMeterCaptureBundleState.PendingScreenshot; frame++)
+			{
+				yield return null;
+			}
+
+			PerfMeterCaptureBundleStatusSnapshot screenshotBundle = PerformanceMeter.GetCaptureBundleStatus("zero-roll");
+			Assert.That(screenshotBundle.State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(screenshotBundle.ScreenshotState, Is.Not.EqualTo(PerfMeterCaptureScreenshotState.Pending));
 
 			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("disable-cleanup", PerfMeterCaptureTool.RenderDoc, 10)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
 			GameObject runtimeObject = GameObject.Find(RuntimeObjectName);

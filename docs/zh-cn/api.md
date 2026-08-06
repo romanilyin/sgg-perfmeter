@@ -160,9 +160,11 @@ if (capture.IsActive && userRequestedCancellation)
 
 Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。重复相同的 active ID 是 idempotent；不同的 active ID 会因 overlap 被 reject。`Canceled`、`Unavailable` 和 `Error` 是明确的 terminal state。
 
-内置 backend 仅在 Editor 或 Development Build、external tool 已 attach 且 desktop platform/API 组合受支持时 wrap Unity 的 experimental `ExternalGPUProfiler`。支持的组合是 Windows/Linux desktop 上使用 Direct3D 11、Direct3D 12 或 Vulkan 的 `RenderDoc`，以及 Windows desktop 上使用 Direct3D 12 的 `PIX`。由于 Unity 不会暴露 attached tool identity，请显式选择 `RenderDoc` 或 `Pix`。`Status.Tool` 仅表示 requested tool，不是 verified attached-tool identity。`Completed` 只确认 Unity wrapper lifecycle，不验证或返回 external `.rdc`/`.wpix` artifact，也不返回 artifact path。Automated tests 使用 fake backend；real external tool 和 artifact 的确认仍是 release gate。Capture bundles、artifact provenance 和 MCP capture control 属于独立的 future scope。
+内置 backend 仅在 Editor 或 Development Build、external tool 已 attach 且 desktop platform/API 组合受支持时 wrap Unity 的 experimental `ExternalGPUProfiler`。支持的组合是 Windows/Linux desktop 上使用 Direct3D 11、Direct3D 12 或 Vulkan 的 `RenderDoc`，以及 Windows desktop 上使用 Direct3D 12 的 `PIX`。由于 Unity 不会暴露 attached tool identity，请显式选择 `RenderDoc` 或 `Pix`。`Status.Tool` 仅表示 requested tool，不是 verified attached-tool identity。`Completed` 只确认 Unity wrapper lifecycle，不验证或返回 external `.rdc`/`.wpix` artifact，也不返回 artifact path。Automated tests 使用 fake backend；real external tool 和 artifact 的确认仍是 release gate。
 
 `PerfMeterCaptureOptions` 的默认值是 `captureFrames: 1`、`preRollFrames: 0` 和 `postRollFrames: 0`。有效的 `RequestCapture` 会自动启动 runtime。不带 ID 的 `CancelCapture()` 会取消当前报告的 active request；传入 ID 可以防止误取消更新的 request。
+
+`PerfMeterCaptureBundleOptions` overload 会将 capture samples 与 baseline session 分离，并可包含 opt-in screenshot。当 `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` 后，`PerformanceMeter.ExportCaptureBundle(captureId)` 会在 `Temp/PerfMeter/CaptureBundles` 下原子创建 versioned bundle，其中包含 SHA-256 manifest、samples、alerts、context、optional screenshot 和 external artifact metadata。project-local `.rdc`/`.wpix` 仅是 observed artifact，绝不标记为 authoritative；traversal、reparse point 和项目外文件会被拒绝。
 
 ## Custom Metrics
 

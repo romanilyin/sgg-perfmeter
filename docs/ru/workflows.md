@@ -65,7 +65,7 @@ PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 
 Coordinator поддерживает только один активный запрос и детерминированно проходит `PreRoll`, `Capturing`, `PostRoll` и `Completed`. Повтор того же active ID идемпотентен, а другой ID отклоняется как пересечение. Pre-roll и post-roll считают кадры Unity; только `Capturing` открывает alert capture scope и вызывает экспериментальный `ExternalGPUProfiler` Unity. Обязательны Editor или Development Build и подключенная tool. `RenderDoc` разрешен на desktop Windows/Linux с Direct3D 11, Direct3D 12 или Vulkan; `PIX` разрешен на desktop Windows с Direct3D 12.
 
-`Completed` означает только завершение защищенного wrapper lifecycle. Unity не раскрывает identity подключенной tool или authoritative artifact path; `Status.Tool` показывает только запрошенную tool, а не проверенную identity подключенной tool. Проверяйте `.rdc`/`.wpix` artifact во внешней tool. Automated tests используют fake backend; проверка настоящей tool остается release gate. MCP orchestration, capture bundles и correlated artifacts остаются отдельной future work.
+`Completed` означает только завершение защищенного wrapper lifecycle. Unity не раскрывает identity подключенной tool или authoritative artifact path; `Status.Tool` показывает только запрошенную tool, а не проверенную identity подключенной tool. Проверяйте `.rdc`/`.wpix` artifact во внешней tool. Overload с `PerfMeterCaptureBundleOptions` отдельно хранит baseline/capture samples и атомарно экспортирует project-local bundle; external artifact остается только observed, не authoritative. Для автоматизации используйте `perfmeter.capture.request/status/cancel/export/capabilities`.
 
 ## Диагностика overdraw
 

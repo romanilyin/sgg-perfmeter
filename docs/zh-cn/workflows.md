@@ -65,7 +65,7 @@ PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 
 Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。相同的 active ID 是 idempotent，不同的 ID 会作为 overlap 被 reject。Pre-roll 和 post-roll 统计 Unity frames；只有 `Capturing` 会打开 alert capture scope 并调用 Unity 的 experimental `ExternalGPUProfiler`。Editor 或 Development Build 以及 attached tool 是 mandatory gates。`RenderDoc` 支持 Windows/Linux desktop 的 Direct3D 11、Direct3D 12 或 Vulkan；`PIX` 支持 Windows desktop 的 Direct3D 12。
 
-`Completed` 仅表示 guarded Unity wrapper lifecycle 已结束。Unity 不会暴露 attached tool identity 或 authoritative artifact path，因此 `Status.Tool` 只表示 requested tool，并不是 verified attached-tool identity。应在 external tool 中验证 `.rdc`/`.wpix` artifact。Automated tests 使用 fake backend；real tool 的确认仍是 release gate。MCP orchestration、capture bundles 和 correlated artifacts 属于独立的 future work。
+`Completed` 仅表示 guarded Unity wrapper lifecycle 已结束。Unity 不会暴露 attached tool identity 或 authoritative artifact path，因此 `Status.Tool` 只表示 requested tool。`PerfMeterCaptureBundleOptions` overload 会分离 baseline/capture samples，并原子导出 project-local bundle；external artifact 仅为 observed，不是 authoritative。自动化使用 `perfmeter.capture.request/status/cancel/export/capabilities`。
 
 ## Overdraw Diagnostics
 

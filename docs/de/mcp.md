@@ -36,6 +36,11 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | `perfmeter.session.stop` | Aufzeichnung stoppen und summary zurueckgeben. |
 | `perfmeter.session.summary` | Aktuelle Session-summary lesen. |
 | `perfmeter.session.export` | Aktuelle Session als projektlokales JSON oder CSV exportieren. |
+| `perfmeter.capture.request` | Begrenzten externen GPU-Capture mit korreliertem Bundle anfordern. |
+| `perfmeter.capture.status` | Capture- und Bundle-Status lesen. |
+| `perfmeter.capture.cancel` | Passenden aktiven Capture abbrechen. |
+| `perfmeter.capture.export` | Bereites Bundle atomar unter dem projektlokalen Bundle-Root exportieren. |
+| `perfmeter.capture.capabilities` | Schema-, Quota-, Retention-, Screenshot- und Provenance-Capabilities lesen. |
 
 ## Self-Overhead Im Runtime-Status
 

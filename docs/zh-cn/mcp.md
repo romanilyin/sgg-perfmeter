@@ -36,6 +36,11 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.stop` | 停止 recording 并返回 summary。 |
 | `perfmeter.session.summary` | 读取当前 session summary。 |
 | `perfmeter.session.export` | 将当前 session 导出到项目本地 JSON 或 CSV。 |
+| `perfmeter.capture.request` | 请求有边界的 external GPU capture 和 correlated bundle。 |
+| `perfmeter.capture.status` | 读取 capture 和 bundle state。 |
+| `perfmeter.capture.cancel` | 取消匹配的 active capture。 |
+| `perfmeter.capture.export` | 将 ready bundle 原子导出到 project-local bundle root。 |
+| `perfmeter.capture.capabilities` | 读取 schema、quota、retention、screenshot 和 provenance capabilities。 |
 
 ## Runtime Self-Overhead Payload
 

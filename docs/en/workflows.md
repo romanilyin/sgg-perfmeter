@@ -61,14 +61,18 @@ Use the capture coordinator for a bounded RenderDoc or PIX request when the tool
 
 ```csharp
 PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
-    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30));
+    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30),
+    new PerfMeterCaptureBundleOptions(includeScreenshot: true));
 
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
+PerfMeterCaptureBundleStatusSnapshot bundle = PerformanceMeter.GetCaptureBundleStatus("gpu-spike");
 ```
 
 Only one request can own the coordinator. Pre-roll and post-roll count Unity frames; only `Capturing` opens the alert capture scope and invokes Unity's experimental `ExternalGPUProfiler`. RenderDoc is allowed on Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan. PIX is allowed on Windows desktop with Direct3D 12. The Editor/Development Build and attached-tool gates are mandatory.
 
-`Completed` means the guarded begin/end lifecycle finished. Unity does not expose the attached tool identity or authoritative artifact path through this API, so `Status.Tool` is only the requested tool and the `.rdc`/`.wpix` artifact must be verified in the external tool. MCP orchestration and correlated artifact bundles remain separate future work.
+`Completed` means the guarded begin/end lifecycle finished. Unity does not expose the attached tool identity or authoritative artifact path through this API, so `Status.Tool` is only the requested tool and the `.rdc`/`.wpix` artifact must be verified in the external tool.
+
+The bundle overload excludes capture frames from normal baseline session evidence and correlates both sample sets with capture alerts and context. When `bundle.IsExportReady`, `PerformanceMeter.ExportCaptureBundle("gpu-spike")` atomically creates a project-local versioned bundle under `Temp/PerfMeter/CaptureBundles`. Screenshots are opt-in and explicitly unavailable in batch mode or outside Play Mode. A caller-supplied external artifact is only an observed, hashed copy; it is not authoritative because Unity cannot authenticate its source or capture association. Equivalent MCP commands are `perfmeter.capture.request/status/cancel/export/capabilities`.
 
 ## Overdraw Diagnostics
 

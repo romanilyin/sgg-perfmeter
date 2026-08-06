@@ -160,9 +160,11 @@ if (capture.IsActive && userRequestedCancellation)
 
 Coordinator는 active request 하나만 허용하며 `PreRoll`, `Capturing`, `PostRoll`, `Completed`를 deterministic하게 진행합니다. 같은 active ID를 반복하면 idempotent이고, 다른 active ID는 overlap으로 reject됩니다. `Canceled`, `Unavailable`, `Error`는 명시적인 terminal state입니다.
 
-내장 backend는 Unity의 experimental `ExternalGPUProfiler`를 Editor 또는 Development Build에서, external tool이 attach된 경우에만, 지원되는 desktop platform/API 조합에 대해 wrap합니다. 지원 조합은 Windows/Linux desktop의 Direct3D 11, Direct3D 12 또는 Vulkan에서 `RenderDoc`, Windows desktop의 Direct3D 12에서 `PIX`입니다. Unity는 attached tool identity를 노출하지 않으므로 `RenderDoc` 또는 `Pix`를 명시적으로 선택해야 합니다. `Status.Tool`은 요청한 tool만 나타내며 attached tool의 verified identity가 아닙니다. `Completed`는 Unity wrapper lifecycle만 확인하며 external `.rdc`/`.wpix` artifact 또는 artifact path를 검증하거나 반환하지 않습니다. Automated tests는 fake backend를 사용하고, real external tool 및 artifact 확인은 release gate로 남습니다. Capture bundles, artifact provenance 및 MCP capture control은 별도의 future scope입니다.
+내장 backend는 Unity의 experimental `ExternalGPUProfiler`를 Editor 또는 Development Build에서, external tool이 attach된 경우에만, 지원되는 desktop platform/API 조합에 대해 wrap합니다. 지원 조합은 Windows/Linux desktop의 Direct3D 11, Direct3D 12 또는 Vulkan에서 `RenderDoc`, Windows desktop의 Direct3D 12에서 `PIX`입니다. Unity는 attached tool identity를 노출하지 않으므로 `RenderDoc` 또는 `Pix`를 명시적으로 선택해야 합니다. `Status.Tool`은 요청한 tool만 나타내며 attached tool의 verified identity가 아닙니다. `Completed`는 Unity wrapper lifecycle만 확인하며 external `.rdc`/`.wpix` artifact 또는 artifact path를 검증하거나 반환하지 않습니다. Automated tests는 fake backend를 사용하고, real external tool 및 artifact 확인은 release gate로 남습니다.
 
 `PerfMeterCaptureOptions`의 기본값은 `captureFrames: 1`, `preRollFrames: 0`, `postRollFrames: 0`입니다. 유효한 `RequestCapture`는 runtime을 자동으로 시작합니다. ID 없이 `CancelCapture()`를 호출하면 현재 보고된 active request를 취소하며, ID를 전달하면 더 새로운 request를 취소하지 않도록 ownership을 보호합니다.
+
+`PerfMeterCaptureBundleOptions` overload는 capture samples를 baseline session과 분리하고 opt-in screenshot을 포함할 수 있습니다. `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` 이후 `PerformanceMeter.ExportCaptureBundle(captureId)`는 `Temp/PerfMeter/CaptureBundles` 아래에 SHA-256 manifest, samples, alerts, context, optional screenshot, external artifact metadata가 있는 versioned bundle을 atomic하게 생성합니다. project-local `.rdc`/`.wpix`는 observed artifact일 뿐 authoritative하지 않습니다. traversal, reparse point, project 외부 file은 reject됩니다.
 
 ## Custom Metrics
 

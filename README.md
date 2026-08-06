@@ -60,6 +60,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Switch between visual presets, graphs, metric bars, compact layouts, and custom metric rows for different debugging situations.
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
+- Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
 - Give tools and agents structured data for comparisons, A/B tests, and hotspot search instead of relying on screenshots or Console scraping.
 
@@ -67,10 +68,10 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
 - **Public C# API**: immutable snapshots for status, metrics, device, camera, Render Graph, alerts, sessions, and custom metrics.
-- **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools without claiming an authoritative artifact path.
+- **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools with atomic correlated bundles and truthful artifact provenance.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
-- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, and search for hotspots through structured data.
+- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, search for hotspots, and request/status/cancel/export captures through structured data.
 
 ## What It Measures
 

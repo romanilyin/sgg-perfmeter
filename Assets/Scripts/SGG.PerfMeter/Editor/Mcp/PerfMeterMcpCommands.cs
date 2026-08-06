@@ -119,6 +119,79 @@ namespace SGG.PerfMeter.Editor.Mcp
 				+ "}";
 		}
 
+		public static string CaptureRequest(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			PerfMeterCaptureTool tool = ParseCaptureTool(RequireString(argsJson, "tool"));
+			int captureFrames = RequireRange(ExtractInt(argsJson, "capture_frames", 1), 1, 120, "capture_frames");
+			int preRollFrames = RequireRange(ExtractInt(argsJson, "pre_roll_frames", 0), 0, 600, "pre_roll_frames");
+			int postRollFrames = RequireRange(ExtractInt(argsJson, "post_roll_frames", 0), 0, 600, "post_roll_frames");
+			bool includeScreenshot = TryExtractBool(argsJson, "include_screenshot", out bool screenshot) && screenshot;
+			PerfMeterCaptureRequestResult result = RuntimePerformanceMeter.RequestCapture(
+				new PerfMeterCaptureOptions(captureId, tool, captureFrames, preRollFrames, postRollFrames),
+				new PerfMeterCaptureBundleOptions(includeScreenshot));
+			return CaptureCommandJson(result.ToString(), RuntimePerformanceMeter.GetCaptureStatus(), RuntimePerformanceMeter.GetCaptureBundleStatus(captureId));
+		}
+
+		public static string CaptureStatus(string argsJson)
+		{
+			TryExtractString(argsJson, "capture_id", out string captureId);
+			PerfMeterCaptureStatusSnapshot capture = RuntimePerformanceMeter.GetCaptureStatus();
+			PerfMeterCaptureBundleStatusSnapshot bundle = RuntimePerformanceMeter.GetCaptureBundleStatus(captureId);
+			if (!string.IsNullOrEmpty(captureId) && !string.Equals(capture.CaptureId, captureId, StringComparison.Ordinal))
+			{
+				return CaptureCommandJson(bundle.State == PerfMeterCaptureBundleState.None ? "not_found" : "status", PerfMeterCaptureStatusSnapshot.NotRunning, bundle);
+			}
+
+			return CaptureCommandJson("status", capture, bundle);
+		}
+
+		public static string CaptureCancel(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			bool canceled = RuntimePerformanceMeter.CancelCapture(captureId);
+			PerfMeterCaptureStatusSnapshot capture = RuntimePerformanceMeter.GetCaptureStatus();
+			if (!string.Equals(capture.CaptureId, captureId, StringComparison.Ordinal))
+			{
+				capture = PerfMeterCaptureStatusSnapshot.NotRunning;
+			}
+
+			return CaptureCommandJson(canceled ? "canceled" : "not_canceled", capture, RuntimePerformanceMeter.GetCaptureBundleStatus(captureId));
+		}
+
+		public static string CaptureExport(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			TryExtractString(argsJson, "path", out string path);
+			TryExtractString(argsJson, "external_artifact_path", out string externalArtifactPath);
+			bool requireAuthority = TryExtractBool(argsJson, "require_authoritative_external_artifact", out bool required) && required;
+			PerfMeterCaptureBundleExportResult result = RuntimePerformanceMeter.ExportCaptureBundle(captureId, path, externalArtifactPath, requireAuthority);
+			return CaptureExportJson(result);
+		}
+
+		public static string CaptureCapabilities()
+		{
+			PerfMeterCaptureCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetCaptureCapabilities();
+			StringBuilder builder = new StringBuilder(768);
+			builder.Append("{\"renderdoc_supported\":").Append(JsonBool(capabilities.RenderDocSupported));
+			builder.Append(",\"pix_supported\":").Append(JsonBool(capabilities.PixSupported));
+			builder.Append(",\"screenshot_supported\":").Append(JsonBool(capabilities.ScreenshotSupported));
+			builder.Append(",\"max_capture_frames\":").Append(capabilities.MaxCaptureFrames);
+			builder.Append(",\"max_roll_frames\":").Append(capabilities.MaxRollFrames);
+			builder.Append(",\"max_bundle_bytes\":").Append(capabilities.MaxBundleBytes);
+			builder.Append(",\"max_screenshot_bytes\":").Append(capabilities.MaxScreenshotBytes);
+			builder.Append(",\"total_quota_bytes\":").Append(capabilities.TotalQuotaBytes);
+			builder.Append(",\"max_committed_bundles\":").Append(capabilities.MaxCommittedBundles);
+			builder.Append(",\"retention_days\":").Append(capabilities.RetentionDays);
+			builder.Append(",\"bundle_root\":").Append(JsonString(capabilities.BundleRoot));
+			builder.Append(",\"tool_identity\":\"unknown\"");
+			builder.Append(",\"tool_version\":\"unknown\"");
+			builder.Append(",\"external_artifact_authority\":\"unavailable_without_native_provider\"");
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		public static string DeviceInfo()
 		{
 			return DeviceInfoJson(RuntimePerformanceMeter.GetDeviceInfo());
@@ -377,6 +450,69 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"message\":").Append(JsonString(alert.Message));
 			builder.Append(",\"classification\":").Append(JsonString(alert.Classification.ToString()));
 			builder.Append(",\"capture_id\":").Append(JsonString(alert.CaptureId));
+			builder.Append('}');
+		}
+
+		private static string CaptureCommandJson(string result, PerfMeterCaptureStatusSnapshot capture, PerfMeterCaptureBundleStatusSnapshot bundle)
+		{
+			StringBuilder builder = new StringBuilder(1024);
+			builder.Append("{\"result\":").Append(JsonString(result));
+			builder.Append(",\"capture\":");
+			AppendCaptureStatus(builder, capture);
+			builder.Append(",\"bundle\":");
+			AppendCaptureBundleStatus(builder, bundle);
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static string CaptureExportJson(PerfMeterCaptureBundleExportResult result)
+		{
+			StringBuilder builder = new StringBuilder(768);
+			builder.Append("{\"success\":").Append(JsonBool(result.Success));
+			builder.Append(",\"status\":").Append(JsonString(result.Status.ToString()));
+			builder.Append(",\"relative_path\":").Append(JsonString(result.RelativePath));
+			builder.Append(",\"error\":").Append(JsonString(result.Error));
+			builder.Append(",\"bundle\":");
+			AppendCaptureBundleStatus(builder, result.Bundle);
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		private static void AppendCaptureStatus(StringBuilder builder, PerfMeterCaptureStatusSnapshot status)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
+			builder.Append(",\"capture_id\":").Append(JsonString(status.CaptureId));
+			builder.Append(",\"requested_tool\":").Append(JsonString(status.Tool.ToString()));
+			builder.Append(",\"requested_pre_roll_frames\":").Append(status.RequestedPreRollFrames);
+			builder.Append(",\"requested_capture_frames\":").Append(status.RequestedCaptureFrames);
+			builder.Append(",\"requested_post_roll_frames\":").Append(status.RequestedPostRollFrames);
+			builder.Append(",\"completed_pre_roll_frames\":").Append(status.CompletedPreRollFrames);
+			builder.Append(",\"completed_capture_frames\":").Append(status.CompletedCaptureFrames);
+			builder.Append(",\"completed_post_roll_frames\":").Append(status.CompletedPostRollFrames);
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendCaptureBundleStatus(StringBuilder builder, PerfMeterCaptureBundleStatusSnapshot status)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
+			builder.Append(",\"bundle_id\":").Append(JsonString(status.BundleId));
+			builder.Append(",\"capture_id\":").Append(JsonString(status.CaptureId));
+			builder.Append(",\"capture_state\":").Append(JsonString(status.CaptureState.ToString()));
+			builder.Append(",\"requested_tool\":").Append(JsonString(status.RequestedTool.ToString()));
+			builder.Append(",\"baseline_sample_count\":").Append(status.BaselineSampleCount);
+			builder.Append(",\"capture_sample_count\":").Append(status.CaptureSampleCount);
+			builder.Append(",\"dropped_capture_sample_count\":").Append(status.DroppedCaptureSampleCount);
+			builder.Append(",\"alert_event_count\":").Append(status.AlertEventCount);
+			builder.Append(",\"alert_events_truncated\":").Append(JsonBool(status.AlertEventsTruncated));
+			builder.Append(",\"screenshot_state\":").Append(JsonString(status.ScreenshotState.ToString()));
+			builder.Append(",\"external_artifact_state\":").Append(JsonString(status.ExternalArtifactState.ToString()));
+			builder.Append(",\"committed_relative_path\":").Append(JsonString(status.CommittedRelativePath));
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
 			builder.Append('}');
 		}
 
@@ -1143,6 +1279,32 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument mode must be Stopped, Background, Overlay, or OverdrawDiagnostic");
+		}
+
+		private static PerfMeterCaptureTool ParseCaptureTool(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (string.Equals(normalized, "RenderDoc", StringComparison.OrdinalIgnoreCase))
+			{
+				return PerfMeterCaptureTool.RenderDoc;
+			}
+
+			if (string.Equals(normalized, "Pix", StringComparison.OrdinalIgnoreCase))
+			{
+				return PerfMeterCaptureTool.Pix;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument tool must be RenderDoc or Pix");
+		}
+
+		private static int RequireRange(int value, int minimum, int maximum, string property)
+		{
+			if (value < minimum || value > maximum)
+			{
+				throw new InvalidOperationException("schema_validation_failed\nArgument " + property + " must be between " + minimum + " and " + maximum);
+			}
+
+			return value;
 		}
 
 		private static PerfMeterOverlayModule ParseOverlayModules(string[] values)

@@ -27,7 +27,7 @@ Profiler counters vary by platform, Unity version, render pipeline settings, and
 - RenderDoc support is limited to Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan. PIX support is limited to Windows desktop with Direct3D 12.
 - One capture request can be active at a time. Heavy capture is always explicit and opt-in.
 - `Completed` confirms the Unity begin/end wrapper lifecycle only. It does not prove that an external `.rdc`/`.wpix` artifact exists and does not provide an artifact path.
-- Automated tests use a fake backend. Real external-tool and artifact confirmation remains a release-candidate gate; MCP orchestration and correlated artifact bundles are separate future work.
+- Automated tests use a fake backend. Correlated bundles and MCP capture control are available, but a caller-supplied `.rdc`/`.wpix` remains only an observed, hashed artifact because Unity cannot authenticate the attached tool or artifact association. Real external-tool confirmation remains a release-candidate gate.
 
 ## Overdraw Cost And Support
 

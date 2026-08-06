@@ -160,9 +160,11 @@ if (capture.IsActive && userRequestedCancellation)
 
 coordinator は active request を 1 件だけ許可し、`PreRoll`、`Capturing`、`PostRoll`、`Completed` を deterministic に進みます。同じ active ID の再実行は idempotent で、異なる active ID は overlap として reject されます。`Canceled`、`Unavailable`、`Error` は明示的な terminal state です。
 
-組み込み backend は Unity の experimental な `ExternalGPUProfiler` を、Editor または Development Build で、external tool が attach 済みの場合に限り、対応する desktop platform/API の組み合わせで wrap します。対応する組み合わせは、Windows/Linux desktop の Direct3D 11、Direct3D 12、Vulkan 上の `RenderDoc` と、Windows desktop の Direct3D 12 上の `PIX` です。Unity は attach された tool の identity を公開しないため、`RenderDoc` または `Pix` を明示的に選択してください。`Status.Tool` は requested tool だけを示し、attached tool の verified identity ではありません。`Completed` は Unity wrapper lifecycle の完了だけを確認し、external `.rdc`/`.wpix` artifact や artifact path の存在を検証・返却しません。automated tests は fake backend を使用し、real external tool と artifact の確認は release gate のままです。Capture bundles、artifact provenance、MCP capture control は別の future scope です。
+組み込み backend は Unity の experimental な `ExternalGPUProfiler` を、Editor または Development Build で、external tool が attach 済みの場合に限り、対応する desktop platform/API の組み合わせで wrap します。対応する組み合わせは、Windows/Linux desktop の Direct3D 11、Direct3D 12、Vulkan 上の `RenderDoc` と、Windows desktop の Direct3D 12 上の `PIX` です。Unity は attach された tool の identity を公開しないため、`RenderDoc` または `Pix` を明示的に選択してください。`Status.Tool` は requested tool だけを示し、attached tool の verified identity ではありません。`Completed` は Unity wrapper lifecycle の完了だけを確認し、external `.rdc`/`.wpix` artifact や artifact path の存在を検証・返却しません。automated tests は fake backend を使用し、real external tool と artifact の確認は release gate のままです。
 
 `PerfMeterCaptureOptions` の default は `captureFrames: 1`、`preRollFrames: 0`、`postRollFrames: 0` です。有効な `RequestCapture` は runtime を自動的に開始します。ID なしの `CancelCapture()` は現在報告されている active request を対象にし、ID を渡すと新しい request を誤って cancel することを防げます。
+
+`PerfMeterCaptureBundleOptions` overload は capture samples を baseline session から分離し、opt-in screenshot を含められます。`PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` の後、`PerformanceMeter.ExportCaptureBundle(captureId)` は `Temp/PerfMeter/CaptureBundles` に SHA-256 manifest、samples、alerts、context、optional screenshot、external artifact metadata を持つ versioned bundle を atomic に作成します。project-local `.rdc`/`.wpix` は observed artifact にすぎず authoritative ではありません。traversal、reparse point、project 外の file は reject されます。
 
 ## Custom Metrics
 

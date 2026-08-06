@@ -65,7 +65,7 @@ PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 
 Coordinator는 active request 하나만 소유하며 `PreRoll`, `Capturing`, `PostRoll`, `Completed`를 deterministic하게 진행합니다. 같은 active ID는 idempotent이고 다른 ID는 overlap으로 reject됩니다. Pre-roll과 post-roll은 Unity frame을 세며, `Capturing`만 alert capture scope를 열고 Unity의 experimental `ExternalGPUProfiler`를 invoke합니다. Editor 또는 Development Build이고 attached tool이 있어야 하는 gate가 필수입니다. `RenderDoc`은 Windows/Linux desktop의 Direct3D 11, Direct3D 12, Vulkan에서 허용되고, `PIX`는 Windows desktop의 Direct3D 12에서 허용됩니다.
 
-`Completed`는 guarded Unity wrapper lifecycle이 끝났다는 의미뿐입니다. Unity는 attached tool identity나 authoritative artifact path를 노출하지 않으므로 `Status.Tool`은 요청한 tool만 나타내며 attached tool의 verified identity가 아닙니다. External tool에서 `.rdc`/`.wpix` artifact를 확인해야 합니다. Automated tests는 fake backend를 사용하며 real tool 확인은 release gate입니다. MCP orchestration, capture bundles, correlated artifacts는 별도의 future work입니다.
+`Completed`는 guarded Unity wrapper lifecycle이 끝났다는 의미뿐입니다. Unity는 attached tool identity나 authoritative artifact path를 노출하지 않으므로 `Status.Tool`은 요청한 tool만 나타냅니다. `PerfMeterCaptureBundleOptions` overload는 baseline/capture samples를 분리하고 project-local bundle을 atomic export합니다. external artifact는 observed일 뿐 authoritative하지 않습니다. automation에는 `perfmeter.capture.request/status/cancel/export/capabilities`를 사용합니다.
 
 ## Overdraw Diagnostics
 

@@ -31,7 +31,7 @@
 | `PM-UI-001` Stable numeric geometry | P1 | resolved, released `2026.8.5-2`, [GitHub #2](https://github.com/romanilyin/sgg-perfmeter/issues/2) | Prefix/value/unit cells, worst-case widths, numeric monospace role, bounded `FpsOnly` fallback, wrapping widgets and geometry tests. | - |
 | `PM-UI-002` Owned versioned panel host | P1 | resolved, released `2026.8.5-2`, [GitHub #1](https://github.com/romanilyin/sgg-perfmeter/issues/1) | Owned `UIDocument` host on Unity 6000.4 and `PanelRenderer` on 6000.5+ preserve foreign UI trees/settings and remove only the PerfMeter container. | `PM-UI-001` |
 | `PM-CAP-001` Capture coordinator | P2 | implemented, unreleased | Единый capture domain/state machine, fake backend, overlap guard и deterministic pre/capture/post-roll. Experimental Unity `ExternalGPUProfiler` изолирован для Editor/Development builds, attached external tool и явных RenderDoc/PIX platform/API combinations; completion не заявляет authoritative artifact path. | P1 stabilization |
-| `PM-CAP-002` Correlated artifact bundle | P2 | planned | Атомарно связывать manifest, session/samples, alerts, device/camera/render context, screenshot и authoritative external-capture metadata; добавить MCP request/status/cancel/export/capabilities. | `PM-CAP-001` |
+| `PM-CAP-002` Correlated artifact bundle | P2 | implemented, unreleased | Versioned atomic bundle связывает отдельно классифицированные baseline/capture samples, alerts, device/camera/render context, optional screenshot и truthful external-artifact observation; project-local quota/retention/redaction policy и MCP request/status/cancel/export/capabilities не заявляют authority без tool-authenticated provenance. | `PM-CAP-001` |
 | `PM-COMP-001` Compatibility status and matrix | P2 | planned | Явно различать `ImportCompatible`, `CoreRuntimeCompatible` и `RenderIntegrationCompatible`; проверять заявленный import floor отдельно от Unity 6000.4+ runtime support. | P1 stabilization |
 | `PM-OBS-001` Dynamic Profiler metric catalog | P2 | resolved, released `2026.8.6-1` | Discover/cache recorder descriptors only at runtime startup and explicit refresh/reconfigure; resolve semantic metrics through exact names and aliases; publish additive API/MCP capability provenance and distinguish unavailable/no-sample/sampled while keeping existing numeric metrics as compatibility values. | P1 stabilization |
 | `PM-OBS-002` Profiler instrumentation | P2 | resolved, released `2026.8.6-1` | Internal Scripts-category end-of-frame gauge markers/counters for collection, providers, snapshots, bottleneck, capture/export, CPU/GPU timing, thermal hook and state codes; no public schema changes or overhead subtraction. | `PM-OBS-001` |
@@ -57,6 +57,8 @@
 `PM-OBS-001`, `PM-OBS-002` и `PM-OBS-003` выпущены в `2026.8.6-1`; Git tag, normal GitHub Release и npm package опубликованы.
 
 `PM-CAP-001` реализован в feature-ветке; Unity `6000.5.6f1` EditMode `136/136` и PlayMode `12/12` прошли. Полный Unity/URP/HDRP/platform matrix остается обязательным release-candidate gate.
+
+`PM-CAP-002` реализован в feature-ветке; Unity `6000.5.6f1` targeted bundle/MCP EditMode `13/13`, targeted capture PlayMode `8/8`, full EditMode `149/149` и full PlayMode `12/12` прошли. Полный Unity/URP/HDRP/platform matrix и real RenderDoc/PIX artifact smoke остаются release-candidate gates.
 
 ## Release Sequence
 

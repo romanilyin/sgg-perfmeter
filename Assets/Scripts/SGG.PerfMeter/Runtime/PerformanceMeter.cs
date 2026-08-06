@@ -97,7 +97,7 @@ namespace SGG.PerfMeter
 
 		public static PerfMeterCaptureRequestResult RequestCapture(PerfMeterCaptureOptions options)
 		{
-			if (string.IsNullOrEmpty(options.CaptureId) || options.Tool == PerfMeterCaptureTool.Unknown)
+			if (!IsValidCaptureOptions(options))
 			{
 				return PerfMeterCaptureRequestResult.InvalidRequest;
 			}
@@ -109,6 +109,69 @@ namespace SGG.PerfMeter
 
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null ? runtime.RequestCapture(options) : PerfMeterCaptureRequestResult.Unavailable;
+		}
+
+		public static PerfMeterCaptureRequestResult RequestCapture(PerfMeterCaptureOptions options, PerfMeterCaptureBundleOptions bundleOptions)
+		{
+			if (!IsValidCaptureOptions(options))
+			{
+				return PerfMeterCaptureRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterCaptureRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.RequestCapture(options, bundleOptions) : PerfMeterCaptureRequestResult.Unavailable;
+		}
+
+		public static PerfMeterCaptureBundleStatusSnapshot GetCaptureBundleStatus(string captureId = null)
+		{
+			return PerfMeterRuntime.CaptureBundleStatus(captureId);
+		}
+
+		public static PerfMeterCaptureCapabilitiesSnapshot GetCaptureCapabilities()
+		{
+			return PerfMeterRuntime.CaptureCapabilities;
+		}
+
+		public static PerfMeterCaptureBundleExportResult ExportCaptureBundle(
+			string captureId,
+			string path = null,
+			string externalArtifactPath = null,
+			bool requireAuthoritativeExternalArtifact = false)
+		{
+			if (string.IsNullOrEmpty(captureId))
+			{
+				return new PerfMeterCaptureBundleExportResult(false, PerfMeterCaptureBundleExportStatus.NotFound, string.Empty, "capture_id_required", PerfMeterCaptureBundleStatusSnapshot.None);
+			}
+
+			return PerfMeterRuntime.ExportCaptureBundle(captureId, path, externalArtifactPath, requireAuthoritativeExternalArtifact);
+		}
+
+		private static bool IsValidCaptureOptions(PerfMeterCaptureOptions options)
+		{
+			if (string.IsNullOrWhiteSpace(options.CaptureId) ||
+				options.CaptureId.Length > 128 ||
+				options.Tool == PerfMeterCaptureTool.Unknown ||
+				options.CaptureFrames > 120 ||
+				options.PreRollFrames > 600 ||
+				options.PostRollFrames > 600)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < options.CaptureId.Length; i++)
+			{
+				if (char.IsControl(options.CaptureId[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 
 		public static bool CancelCapture(string captureId = null)

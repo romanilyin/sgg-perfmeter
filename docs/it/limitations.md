@@ -26,7 +26,7 @@ I profiler counter variano per piattaforma, versione Unity, impostazioni render 
 - Il backend usa l'`ExternalGPUProfiler` sperimentale di Unity solo nell'Editor o nei Development Builds, quando uno strumento esterno e gia collegato. `RenderDoc` e limitato al desktop Windows/Linux con Direct3D 11, Direct3D 12 o Vulkan; `PIX` e limitato al desktop Windows con Direct3D 12.
 - `Completed` conferma solo il wrapper lifecycle di Unity. Non dimostra che esista un artefatto esterno `.rdc`/`.wpix` e non fornisce un path dell'artefatto.
 - I test automatizzati usano un fake backend. La conferma dello strumento esterno reale e dell'artefatto resta un release gate.
-- Capture bundles, artifact provenance e MCP capture control non fanno parte di questo coordinator e restano lavoro futuro separato.
+- Correlated bundles e MCP capture control sono disponibili, ma un `.rdc`/`.wpix` fornito resta solo un artefatto osservato e con hash: Unity non puo autenticare lo strumento collegato o l'associazione con il capture. La verifica con uno strumento reale resta un release-candidate gate.
 
 ## Costo E Supporto Overdraw
 

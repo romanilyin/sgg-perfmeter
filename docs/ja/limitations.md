@@ -26,7 +26,7 @@ Profiler counters は platform、Unity version、render pipeline settings、grap
 - backend は Unity の experimental な `ExternalGPUProfiler` を Editor または Development Builds で、external tool が attach 済みの場合だけ使用します。`RenderDoc` は Windows/Linux desktop の Direct3D 11、Direct3D 12、Vulkan に限定され、`PIX` は Windows desktop の Direct3D 12 に限定されます。
 - `Completed` は Unity wrapper lifecycle だけを確認します。external `.rdc`/`.wpix` artifact の存在を証明せず、artifact path も提供しません。
 - automated tests は fake backend を使用します。real external tool と artifact の確認は release gate です。
-- Capture bundles、artifact provenance、MCP capture control はこの coordinator の対象外で、別の future work です。
+- Correlated bundles と MCP capture control は利用できますが、指定された `.rdc`/`.wpix` は observed/hashed artifact にすぎません。Unity は attached tool や capture association を認証できないため、real external tool の確認は release-candidate gate のままです。
 
 ## Overdraw Cost And Support
 

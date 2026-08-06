@@ -65,7 +65,7 @@ PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 
 O coordinator permite apenas uma solicitacao ativa e avanca deterministicamente por `PreRoll`, `Capturing`, `PostRoll` e `Completed`. O mesmo ID ativo e idempotente; um ID diferente e rejeitado como sobreposicao. Pre-roll e post-roll contam frames da Unity; somente `Capturing` abre o alert capture scope e invoca o `ExternalGPUProfiler` experimental da Unity. Os gates obrigatorios sao Editor ou Development Build e uma ferramenta conectada. `RenderDoc` e permitido no desktop Windows/Linux com Direct3D 11, Direct3D 12 ou Vulkan; `PIX` e permitido no desktop Windows com Direct3D 12.
 
-`Completed` significa somente que o wrapper lifecycle protegido terminou. A Unity nao expoe a identidade da ferramenta conectada nem um path autoritativo do artefato; `Status.Tool` e somente a ferramenta solicitada, nao a identidade verificada da ferramenta conectada. Verifique o artefato `.rdc`/`.wpix` na ferramenta externa. Os testes automatizados usam um fake backend; a confirmacao com uma ferramenta real continua sendo um release gate. A orquestracao MCP, os capture bundles e os artefatos correlacionados permanecem como trabalho futuro separado.
+`Completed` significa somente que o wrapper lifecycle protegido terminou. A Unity nao expoe a identidade da ferramenta conectada nem um path autoritativo do artefato; `Status.Tool` e somente a ferramenta solicitada. O overload com `PerfMeterCaptureBundleOptions` separa samples baseline/capture e exporta atomicamente um bundle local ao projeto; um artefato externo permanece observed, nao authoritative. Para automacao use `perfmeter.capture.request/status/cancel/export/capabilities`.
 
 ## Diagnosticos De Overdraw
 
