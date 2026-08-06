@@ -113,6 +113,70 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.MemorySnapshotTriggers : PerfMeterMemorySnapshotTriggerOptions.Disabled;
 		}
 
+		public static void RegisterGraphicsStateCollectionBackend(IPerfMeterGraphicsStateCollectionBackend backend)
+		{
+			PerfMeterGraphicsStateCollectionBackendRegistry.Register(backend);
+		}
+
+		public static void UnregisterGraphicsStateCollectionBackend(IPerfMeterGraphicsStateCollectionBackend backend)
+		{
+			PerfMeterGraphicsStateCollectionBackendRegistry.Unregister(backend);
+		}
+
+		public static PerfMeterGraphicsStateCollectionCapabilitiesSnapshot GetGraphicsStateCollectionCapabilities()
+		{
+			return PerfMeterGraphicsStateCollectionBackendRegistry.GetCapabilities();
+		}
+
+		public static PerfMeterGraphicsStateCollectionStatusSnapshot GetGraphicsStateCollectionStatus()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GraphicsStateCollectionStatus : PerfMeterRuntime.PendingGraphicsStateCollectionStatus;
+		}
+
+		public static PerfMeterGraphicsStateCollectionRequestResult RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions options)
+		{
+			if (!PerfMeterGraphicsStateCollectionCoordinator.IsValidTraceOptions(options))
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.RequestGraphicsStateTrace(options) : PerfMeterGraphicsStateCollectionRequestResult.Unavailable;
+		}
+
+		public static PerfMeterGraphicsStateCollectionRequestResult PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions options)
+		{
+			if (!PerfMeterGraphicsStateCollectionCoordinator.IsValidPrewarmOptions(options))
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.InvalidRequest;
+			}
+
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.Unavailable;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.PrewarmGraphicsStateCollection(options) : PerfMeterGraphicsStateCollectionRequestResult.Unavailable;
+		}
+
+		public static bool CancelGraphicsStateTrace(string captureId)
+		{
+			if (string.IsNullOrEmpty(captureId))
+			{
+				return false;
+			}
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.CancelGraphicsStateTrace(captureId);
+		}
+
 		private static bool IsValidMemorySnapshotTriggerOptions(PerfMeterMemorySnapshotTriggerOptions options)
 		{
 			if (!options.Enabled)
@@ -147,6 +211,12 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null ? runtime.LatestMetrics : PerfMeterMetricsSnapshot.Stopped;
+		}
+
+		public static PerfMeterGraphicsDiagnosticsSnapshot GetGraphicsDiagnostics()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GraphicsDiagnostics : PerfMeterGraphicsDiagnosticsSnapshot.NotRunning;
 		}
 
 		public static PerfMeterProfilerMetricCatalogSnapshot GetProfilerMetricCatalog()

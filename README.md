@@ -62,6 +62,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
 - Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
 - Optionally capture sensitive memory snapshots through the separate Memory Profiler integration and correlate them with the existing evidence-bundle surface.
+- Inspect dynamic shader GPU-program and graphics-pipeline creation markers with their discovered units and provenance, then correlate an optional GraphicsStateCollection trace with session samples.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
 - Give tools and agents structured data for comparisons, A/B tests, and hotspot search instead of relying on screenshots or Console scraping.
 
@@ -81,6 +82,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - ProfilerRecorder render counters: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, upload bytes, memory, and GPU memory when available.
 - Bottleneck classification for GPU, CPU main thread, CPU render thread, present/VSync, balanced, or unknown frames.
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
+- Dynamic `ProfilerRecorder` shader GPU-program and graphics-pipeline creation markers when Unity exposes them; values keep their discovered units and are not assumed to be shader or PSO counts.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 
 ## Optional Platform Telemetry
@@ -101,6 +103,14 @@ Memory snapshots are an opt-in extension, not a core-package dependency. On Unit
 - A `.snap` source is owned under `Temp/PerfMeter/MemorySnapshots`, limited to 512 MiB, and copied with a streaming SHA-256 into the bundle. The total bundle retention quota is 2 GiB. Treat snapshots as sensitive process-memory data and protect/review them before sharing.
 
 See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](./docs/en/workflows.md), and [Limitations](./docs/en/limitations.md) pages for the optional integration details.
+
+## Optional Graphics-State Diagnostics
+
+`PerformanceMeter.GetGraphicsDiagnostics()` reports dynamic shader GPU-program and graphics-pipeline creation markers, their exact/alias recorder provenance, discovered units and data types, and graphics API context. Values are raw recorder values; availability is explicit and can change by Unity version, platform, and runtime catalog refresh.
+
+The optional `SGG.PerfMeter.GraphicsStateCollection` assembly supports a bounded trace and synchronous prewarm workflow on Unity `6000.4+`. Start and keep a PerfMeter session recording through the trace; `StopSession()` cancels an active trace. The owned `.graphicsstate` artifact is written below `Temp/PerfMeter/GraphicsStateCollections`, limited to 64 MiB, and correlated session samples carry `graphics_state_trace_id`. Cache-miss evidence is not supported by the Unity backend.
+
+See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](./docs/en/workflows.md), and [Limitations](./docs/en/limitations.md) pages for the graphics diagnostics and trace workflow.
 
 ## Quick Start
 

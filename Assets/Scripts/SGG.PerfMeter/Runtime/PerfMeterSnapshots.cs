@@ -446,7 +446,9 @@ namespace SGG.PerfMeter
 		GcReservedMemory = 1 << 8,
 		SrpBatcherInstances = 1 << 9,
 		GpuMemory = 1 << 10,
-		CpuCoreLoad = 1 << 11
+		CpuCoreLoad = 1 << 11,
+		ShaderGpuProgramCreation = 1 << 12,
+		GraphicsPipelineCreation = 1 << 13
 	}
 
 	public enum PerfMeterProfilerMetricSemantic
@@ -461,7 +463,9 @@ namespace SGG.PerfMeter
 		IndexBufferUploadInFrameBytes = 7,
 		SystemUsedMemory = 8,
 		GcReservedMemory = 9,
-		GpuMemory = 10
+		GpuMemory = 10,
+		ShaderGpuProgramCreation = 11,
+		GraphicsPipelineCreation = 12
 	}
 
 	public enum PerfMeterProfilerMetricSampleState
@@ -550,6 +554,90 @@ namespace SGG.PerfMeter
 		public int DiscoveryCount { get; }
 		public PerfMeterProfilerMetricCapabilitySnapshot[] Capabilities { get; }
 		public string LastError { get; }
+	}
+
+	public readonly struct PerfMeterGraphicsDiagnosticsSnapshot
+	{
+		public PerfMeterGraphicsDiagnosticsSnapshot(
+			PerfMeterAvailability availability,
+			int collectionFrame,
+			int profilerMetricCatalogRevision,
+			GraphicsDeviceType graphicsDeviceType,
+			string graphicsDeviceName,
+			string graphicsDeviceVendor,
+			string graphicsDeviceVersion,
+			PerfMeterAvailability parallelPsoCreationAvailability,
+			bool supportsParallelPsoCreation,
+			long shaderGpuProgramCreationValue,
+			long graphicsPipelineCreationValue,
+			PerfMeterProfilerMetricCapabilitySnapshot shaderGpuProgramCreationCapability,
+			PerfMeterProfilerMetricCapabilitySnapshot graphicsPipelineCreationCapability,
+			string warning)
+		{
+			Availability = availability;
+			CollectionFrame = collectionFrame;
+			ProfilerMetricCatalogRevision = Mathf.Max(0, profilerMetricCatalogRevision);
+			GraphicsDeviceType = graphicsDeviceType;
+			GraphicsDeviceName = graphicsDeviceName ?? string.Empty;
+			GraphicsDeviceVendor = graphicsDeviceVendor ?? string.Empty;
+			GraphicsDeviceVersion = graphicsDeviceVersion ?? string.Empty;
+			ParallelPsoCreationAvailability = parallelPsoCreationAvailability;
+			SupportsParallelPsoCreation = supportsParallelPsoCreation;
+			ShaderGpuProgramCreationValue = System.Math.Max(0L, shaderGpuProgramCreationValue);
+			GraphicsPipelineCreationValue = System.Math.Max(0L, graphicsPipelineCreationValue);
+			ShaderGpuProgramCreationCapability = NormalizeGraphicsCapability(shaderGpuProgramCreationCapability, PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation);
+			GraphicsPipelineCreationCapability = NormalizeGraphicsCapability(graphicsPipelineCreationCapability, PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation);
+			Warning = warning ?? string.Empty;
+		}
+
+		public static PerfMeterGraphicsDiagnosticsSnapshot NotRunning => new PerfMeterGraphicsDiagnosticsSnapshot(
+			PerfMeterAvailability.Unknown,
+			-1,
+			0,
+			GraphicsDeviceType.Null,
+			string.Empty,
+			string.Empty,
+			string.Empty,
+			PerfMeterAvailability.Unknown,
+			false,
+			0L,
+			0L,
+			default,
+			default,
+			"Graphics diagnostics are not running.");
+
+		public PerfMeterAvailability Availability { get; }
+		public int CollectionFrame { get; }
+		public int ProfilerMetricCatalogRevision { get; }
+		public GraphicsDeviceType GraphicsDeviceType { get; }
+		public string GraphicsDeviceName { get; }
+		public string GraphicsDeviceVendor { get; }
+		public string GraphicsDeviceVersion { get; }
+		public PerfMeterAvailability ParallelPsoCreationAvailability { get; }
+		public bool SupportsParallelPsoCreation { get; }
+		public long ShaderGpuProgramCreationValue { get; }
+		public long GraphicsPipelineCreationValue { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot ShaderGpuProgramCreationCapability { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot GraphicsPipelineCreationCapability { get; }
+
+		private static PerfMeterProfilerMetricCapabilitySnapshot NormalizeGraphicsCapability(
+			PerfMeterProfilerMetricCapabilitySnapshot capability,
+			PerfMeterProfilerMetricSemantic semantic)
+		{
+			return capability.Semantic == semantic
+				? capability
+				: new PerfMeterProfilerMetricCapabilitySnapshot(
+					semantic,
+					PerfMeterProfilerMetricSampleState.Unavailable,
+					PerfMeterProfilerMetricResolution.None,
+					string.Empty,
+					string.Empty,
+					string.Empty,
+					string.Empty,
+					0,
+					0);
+		}
+		public string Warning { get; }
 	}
 
 	public enum PerfMeterSelfOverheadState
@@ -1012,6 +1100,18 @@ namespace SGG.PerfMeter
 			PerfMeterMetricsSnapshot metrics,
 			PerfMeterCustomMetricSnapshot[] customMetrics,
 			PerfMeterPlatformTelemetrySnapshot platformTelemetry)
+			: this(collectionFrame, collectionTimeSeconds, sceneName, metrics, customMetrics, platformTelemetry, string.Empty)
+		{
+		}
+
+		public PerfMeterSessionSampleSnapshot(
+			int collectionFrame,
+			double collectionTimeSeconds,
+			string sceneName,
+			PerfMeterMetricsSnapshot metrics,
+			PerfMeterCustomMetricSnapshot[] customMetrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry,
+			string graphicsStateTraceId = "")
 		{
 			CollectionFrame = collectionFrame;
 			CollectionTimeSeconds = collectionTimeSeconds;
@@ -1019,6 +1119,7 @@ namespace SGG.PerfMeter
 			Metrics = metrics;
 			CustomMetrics = customMetrics ?? System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 			PlatformTelemetry = platformTelemetry;
+			GraphicsStateTraceId = graphicsStateTraceId ?? string.Empty;
 		}
 
 		public int CollectionFrame { get; }
@@ -1027,6 +1128,7 @@ namespace SGG.PerfMeter
 		public PerfMeterMetricsSnapshot Metrics { get; }
 		public PerfMeterCustomMetricSnapshot[] CustomMetrics { get; }
 		public PerfMeterPlatformTelemetrySnapshot PlatformTelemetry { get; }
+		public string GraphicsStateTraceId { get; }
 	}
 
 	public readonly struct PerfMeterSessionWorstFrameSnapshot
@@ -1390,6 +1492,85 @@ namespace SGG.PerfMeter
 			double pointOnePercentLowFps = 0d,
 			int frameSpikeCount = 0,
 			int severeFrameSpikeCount = 0)
+			: this(
+				state,
+				availability,
+				collectionFrame,
+				bottleneck,
+				frameBudgetMs,
+				gpuFrameTimeAvailable,
+				cpuFrameTimeMs,
+				cpuMainThreadFrameTimeMs,
+				cpuRenderThreadFrameTimeMs,
+				cpuMainThreadPresentWaitTimeMs,
+				gpuFrameTimeMs,
+				drawCalls,
+				setPassCalls,
+				batches,
+				vertices,
+				brgDrawCalls,
+				brgInstances,
+				indexBufferUploadInFrameBytes,
+				systemUsedMemoryBytes,
+				gcReservedMemoryBytes,
+				gpuMemoryBytes,
+				overdrawRatio,
+				overdrawState,
+				overdrawProgress,
+				srpBatcherInstances,
+				frameSampleCount,
+				gpuValidSampleCount,
+				averageFps,
+				onePercentLowFps,
+				pointOnePercentLowFps,
+				frameSpikeCount,
+				severeFrameSpikeCount,
+				0L,
+				0L,
+				0,
+				default,
+				default)
+		{
+		}
+
+		public PerfMeterMetricsSnapshot(
+			PerfMeterRuntimeState state,
+			PerfMeterAvailability availability,
+			int collectionFrame,
+			PerfMeterBottleneck bottleneck,
+			double frameBudgetMs,
+			bool gpuFrameTimeAvailable,
+			double cpuFrameTimeMs,
+			double cpuMainThreadFrameTimeMs,
+			double cpuRenderThreadFrameTimeMs,
+			double cpuMainThreadPresentWaitTimeMs,
+			double gpuFrameTimeMs,
+			int drawCalls,
+			int setPassCalls,
+			int batches,
+			int vertices,
+			int brgDrawCalls,
+			int brgInstances,
+			long indexBufferUploadInFrameBytes,
+			long systemUsedMemoryBytes,
+			long gcReservedMemoryBytes,
+			long gpuMemoryBytes,
+			double overdrawRatio,
+			PerfMeterOverdrawMeasurementState overdrawState,
+			float overdrawProgress,
+			int srpBatcherInstances,
+			int frameSampleCount,
+			int gpuValidSampleCount,
+			double averageFps,
+			double onePercentLowFps,
+			double pointOnePercentLowFps,
+			int frameSpikeCount,
+			int severeFrameSpikeCount,
+			long shaderGpuProgramCreationValue,
+			long graphicsPipelineCreationValue,
+			int profilerMetricCatalogRevision,
+			PerfMeterProfilerMetricCapabilitySnapshot shaderGpuProgramCreationCapability,
+			PerfMeterProfilerMetricCapabilitySnapshot graphicsPipelineCreationCapability)
 		{
 			State = state;
 			Availability = availability;
@@ -1423,6 +1604,11 @@ namespace SGG.PerfMeter
 			PointOnePercentLowFps = pointOnePercentLowFps;
 			FrameSpikeCount = frameSpikeCount;
 			SevereFrameSpikeCount = severeFrameSpikeCount;
+			ShaderGpuProgramCreationValue = System.Math.Max(0L, shaderGpuProgramCreationValue);
+			GraphicsPipelineCreationValue = System.Math.Max(0L, graphicsPipelineCreationValue);
+			ProfilerMetricCatalogRevision = Mathf.Max(0, profilerMetricCatalogRevision);
+			ShaderGpuProgramCreationCapability = NormalizeProfilerCapability(shaderGpuProgramCreationCapability, PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation);
+			GraphicsPipelineCreationCapability = NormalizeProfilerCapability(graphicsPipelineCreationCapability, PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation);
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -1457,6 +1643,20 @@ namespace SGG.PerfMeter
 		public double PointOnePercentLowFps { get; }
 		public int FrameSpikeCount { get; }
 		public int SevereFrameSpikeCount { get; }
+		public long ShaderGpuProgramCreationValue { get; }
+		public long GraphicsPipelineCreationValue { get; }
+		public int ProfilerMetricCatalogRevision { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot ShaderGpuProgramCreationCapability { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot GraphicsPipelineCreationCapability { get; }
+
+		private static PerfMeterProfilerMetricCapabilitySnapshot NormalizeProfilerCapability(
+			PerfMeterProfilerMetricCapabilitySnapshot capability,
+			PerfMeterProfilerMetricSemantic semantic)
+		{
+			return capability.Semantic == semantic
+				? capability
+				: new PerfMeterProfilerMetricCapabilitySnapshot(semantic, PerfMeterProfilerMetricSampleState.Unavailable, PerfMeterProfilerMetricResolution.None, string.Empty, string.Empty, string.Empty, string.Empty, 0, 0);
+		}
 	}
 
 	public readonly struct PerfMeterDisplaySnapshot

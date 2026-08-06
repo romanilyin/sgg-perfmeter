@@ -8,7 +8,7 @@ namespace SGG.PerfMeter
 {
 	internal sealed class PerfMeterProfilerMetricCatalog
 	{
-		private const int SemanticCount = 11;
+		private const int SemanticCount = 13;
 
 		private static readonly RecorderDefinition[] Definitions =
 		{
@@ -33,7 +33,9 @@ namespace SGG.PerfMeter
 			new RecorderDefinition(PerfMeterProfilerMetricSemantic.IndexBufferUploadInFrameBytes, PerfMeterCounterAvailability.IndexBufferUploadInFrameBytes, ProfilerCategory.Render, "Index Buffer Upload In Frame Bytes", "Index Buffer Upload Bytes", "Index Buffer Upload In Frame"),
 			new RecorderDefinition(PerfMeterProfilerMetricSemantic.SystemUsedMemory, PerfMeterCounterAvailability.SystemUsedMemory, ProfilerCategory.Memory, "System Used Memory"),
 			new RecorderDefinition(PerfMeterProfilerMetricSemantic.GcReservedMemory, PerfMeterCounterAvailability.GcReservedMemory, ProfilerCategory.Memory, "GC Reserved Memory"),
-			new RecorderDefinition(PerfMeterProfilerMetricSemantic.GpuMemory, PerfMeterCounterAvailability.GpuMemory, ProfilerCategory.Memory, "Gfx Used Memory", "GPU Used Memory", "Graphics Used Memory", "GPU Memory")
+			new RecorderDefinition(PerfMeterProfilerMetricSemantic.GpuMemory, PerfMeterCounterAvailability.GpuMemory, ProfilerCategory.Memory, "Gfx Used Memory", "GPU Used Memory", "Graphics Used Memory", "GPU Memory"),
+			new RecorderDefinition(PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation, PerfMeterCounterAvailability.ShaderGpuProgramCreation, ProfilerCategory.Render, "Shader.CreateGPUProgram", "Shader.CreateGPUPrograms", "Shader.CompileGPUProgram", "Shader.DynamicLoadGPUProgram"),
+			new RecorderDefinition(PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation, PerfMeterCounterAvailability.GraphicsPipelineCreation, ProfilerCategory.Render, "CreatePSO.Job")
 		};
 
 		private readonly List<ProfilerRecorderHandle> _availableHandles = new List<ProfilerRecorderHandle>(256);
@@ -53,6 +55,15 @@ namespace SGG.PerfMeter
 		internal PerfMeterCounterAvailability AvailableCounters => _availableCounters;
 		internal PerfMeterCounterAvailability UnavailableCounters => _unavailableCounters;
 		internal string LastError => _lastError;
+		internal int Revision => _revision;
+
+		internal PerfMeterProfilerMetricCapabilitySnapshot GetCapability(PerfMeterProfilerMetricSemantic semantic)
+		{
+			int index = (int)semantic;
+			return index >= 0 && index < _capabilities.Length
+				? _capabilities[index]
+				: new PerfMeterProfilerMetricCapabilitySnapshot(semantic, PerfMeterProfilerMetricSampleState.Unavailable, PerfMeterProfilerMetricResolution.None, string.Empty, string.Empty, string.Empty, string.Empty, 0, 0);
+		}
 
 		internal PerfMeterProfilerMetricCatalog()
 		{
@@ -439,6 +450,10 @@ namespace SGG.PerfMeter
 					return PerfMeterCounterAvailability.GcReservedMemory;
 				case PerfMeterProfilerMetricSemantic.GpuMemory:
 					return PerfMeterCounterAvailability.GpuMemory;
+				case PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation:
+					return PerfMeterCounterAvailability.ShaderGpuProgramCreation;
+				case PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation:
+					return PerfMeterCounterAvailability.GraphicsPipelineCreation;
 				default:
 					return PerfMeterCounterAvailability.None;
 			}

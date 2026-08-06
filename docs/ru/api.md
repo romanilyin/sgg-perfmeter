@@ -218,3 +218,48 @@ if (status.State == PerfMeterMemorySnapshotState.Completed &&
 `PerfMeterMemorySnapshotOptions` по умолчанию выбирает managed/native object flags, требует 1 GiB свободного места и задаёт cooldown 300 секунд. `RequestMemorySnapshot` по умолчанию выполняет ручной захват и возвращает явный результат: `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest` или `Failed`. Read-методы не запускают runtime, а корректный запрос запускает его.
 
 `ConfigureMemorySnapshotTriggers` включает opt-in эвристику порога system memory и ограниченного роста утечки. `GetMemorySnapshotTriggers()` по умолчанию возвращает disabled. Для trigger-запросов действуют те же single-flight, cooldown, free-space и capture-flag guards, что и для ручных запросов.
+
+## Диагностика графики и GraphicsStateCollection
+
+Графическая диагностика добавляет данные к существующим snapshot-ам. `PerformanceMeter.GetGraphicsDiagnostics()` возвращает последние значения маркеров создания shader GPU program и graphics pipeline, контекст graphics API, возможность parallel PSO и revision каталога profiler-метрик.
+
+```csharp
+PerfMeterGraphicsDiagnosticsSnapshot graphics = PerformanceMeter.GetGraphicsDiagnostics();
+PerfMeterProfilerMetricCapabilitySnapshot shader = graphics.ShaderGpuProgramCreationCapability;
+PerfMeterProfilerMetricCapabilitySnapshot pipeline = graphics.GraphicsPipelineCreationCapability;
+
+UnityEngine.Debug.Log($"Shader marker: {graphics.ShaderGpuProgramCreationValue} {shader.Unit} ({shader.SampleState})");
+UnityEngine.Debug.Log($"Pipeline marker: {graphics.GraphicsPipelineCreationValue} {pipeline.Unit} ({pipeline.SampleState})");
+```
+
+Каталог обнаруживает дескрипторы Unity `ProfilerRecorder` при запуске runtime и при явном refresh/reconfigure. Для shader используется exact name `Shader.CreateGPUProgram` и aliases `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram`, `Shader.DynamicLoadGPUProgram`. Для graphics pipeline используется exact name `CreatePSO.Job`. Каждый capability сохраняет `Resolution` (`None`, `Exact` или `Alias`), `ResolvedRecorderNames`, `Category`, обнаруженные `Unit` и `DataType`, `ResolvedComponentCount` и `SampledComponentCount`. `PerfMeterMetricsSnapshot` и session JSON/CSV содержат те же значения маркеров, metadata capability и catalog revision.
+
+Доступность маркеров динамическая. Используйте `SampleState` (`Unavailable`, `AvailableNoSample` или `AvailableSampled`) и metadata capability; нулевое значение не доказывает отсутствие маркера. Значения являются raw-значениями recorder и сохраняют обнаруженную единицу: это не универсальные counts shader или PSO, и PerfMeter не приводит их к общей единице измерения.
+
+Опциональная сборка `SGG.PerfMeter.GraphicsStateCollection` ограничена Unity `6000.4+` и регистрирует Unity backend, если он доступен. В Unity `6000.4` используется `UnityEngine.Experimental.Rendering.GraphicsStateCollection`, а в Unity `6000.5+` — `UnityEngine.Rendering.GraphicsStateCollection`. Core assembly не зависит от этого backend.
+
+```csharp
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.25f, 240));
+
+PerfMeterGraphicsStateCollectionRequestResult request =
+    PerformanceMeter.RequestGraphicsStateTrace(
+        new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", traceFrames: 60));
+
+PerfMeterGraphicsStateCollectionStatusSnapshot status =
+    PerformanceMeter.GetGraphicsStateCollectionStatus();
+if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
+{
+    PerformanceMeter.PrewarmGraphicsStateCollection(
+        new PerfMeterGraphicsStatePrewarmOptions(status.ArtifactRelativePath));
+}
+```
+
+Публичная поверхность state collection: `RegisterGraphicsStateCollectionBackend(...)`, `UnregisterGraphicsStateCollectionBackend(...)`, `GetGraphicsStateCollectionCapabilities()`, `GetGraphicsStateCollectionStatus()`, `RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions)`, `PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions)` и `CancelGraphicsStateTrace(string captureId)`. Пользовательский backend реализует `IPerfMeterGraphicsStateCollectionBackend` и сообщает о trace/prewarm, cache-miss и parallel-PSO capabilities.
+
+`PerfMeterGraphicsStateTraceOptions` требует непустой `CaptureId`, принимает 1–600 trace frames и по умолчанию использует 60 frames и 1 GiB minimum free disk. Trace допустим только при активной записи PerfMeter session. Связанные session samples получают active capture ID в `GraphicsStateTraceId` (`graphics_state_trace_id` в exports). Настройки sampling session управляют плотностью связанных samples, но не меняют число trace frames.
+
+`PerfMeterGraphicsStateCollectionStatusSnapshot` предоставляет `IsBusy` и `HasPendingCleanup`. `IsBusy` остаётся true во время подготовки, trace, завершения trace, prewarm, cleanup или persisted pending cleanup; `HasPendingCleanup` отдельно указывает на owned artifact, ожидающий retry cleanup. Если вызвать `PerformanceMeter.StopSession()` во время активного trace, он отменяет trace, поэтому session должна оставаться recording до завершения trace. После неудачного удаления owned artifact создаётся соседний owned sidecar `.delete-pending`; после domain reload marker восстанавливается и cleanup повторяется. Status остаётся видимым и busy, пока artifact и marker не очищены.
+
+Coordinator разрешает только один graphics-state flight. Повторный active ID возвращает `AlreadyActive`; другой trace или prewarm во время подготовки, trace, завершения, cleanup или другой capture-domain возвращает `RejectedOverlap`. `CancelGraphicsStateTrace` действует только для совпадающего active/preparing ID, отменяет backend и удаляет pending owned artifact. Ошибки cleanup остаются видимыми и могут блокировать замену до повторной очистки.
+
+`PerfMeterGraphicsStatePrewarmOptions` принимает только owned project-relative `.graphicsstate` path и необязательный `MaxStateCount` от 0 до 1 000 000. Prewarm выполняется синхронно, сохраняет artifact и сообщает `CompletedWarmupCount` и `IsWarmedUp`; успешный, но неполный progressive warmup сопровождается warning. `TraceCacheMisses` оставлен для расширяемых backend-ов, но Unity backend не поддерживает cache-miss evidence, поэтому запрос с ним возвращает `Unavailable`.

@@ -356,6 +356,8 @@ namespace SGG.PerfMeter
 			builder.Append(",\"device_model\":").Append(JsonString(device.DeviceModel));
 			builder.Append(",\"graphics_device_type\":").Append(JsonString(device.GraphicsDeviceType.ToString()));
 			builder.Append(",\"graphics_device_name\":").Append(JsonString(device.GraphicsDeviceName));
+			builder.Append(",\"graphics_device_vendor\":").Append(JsonString(device.GraphicsDeviceVendor));
+			builder.Append(",\"graphics_device_version\":").Append(JsonString(device.GraphicsDeviceVersion));
 			builder.Append(",\"render_pipeline\":").Append(JsonString(device.RenderPipeline.ToString()));
 			builder.Append('}');
 			builder.Append(",\"camera\":{");

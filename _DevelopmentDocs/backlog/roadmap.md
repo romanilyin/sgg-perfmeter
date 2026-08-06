@@ -38,7 +38,7 @@
 | `PM-OBS-003` Self-observability and overhead budgets | P2 | resolved, released `2026.8.6-1` | Fixed 120-frame CPU callback windows для collector, custom providers, CPU-core provider, overlay и URP/HDRP integration; additive API/status/MCP snapshots и per-invocation allocation/performance budgets. GPU attribution остается `Unavailable`, основные CPU/GPU-метрики не корректируются. | `PM-UI-002`, `PM-OBS-002` |
 | `PM-PLAT-001` Adaptive Performance telemetry | P2 | resolved, released `2026.8.6-2` | Optional `SGG.PerfMeter.AdaptivePerformance` provider для thermal state/temperature trends, CPU/GPU performance levels, alerts и session/capture samples с provider provenance; core package не получает hard dependency на `com.unity.adaptiveperformance`, а assembly активируется через version define для `5.1.0+` и явно сохраняет unavailable states. | capability/provider seams, `PM-CAP-002` |
 | `PM-MEM-001` Memory snapshot trigger | P3 | implemented, pending release | Optional Memory Profiler backend для manual/threshold/leak capture с cooldown, free-space guard, capture flags и bundle manifest. | `PM-CAP-001`, `PM-CAP-002` |
-| `PM-GFX-001` PSO and shader-stutter diagnostics | P3 | planned | Коррелировать shader/graphics-pipeline creation markers, graphics API и optional `GraphicsStateCollection` trace/prewarm workflow. | `PM-OBS-001`, `PM-CAP-001` |
+| `PM-GFX-001` PSO and shader-stutter diagnostics | P3 | implemented, pending release | Dynamic shader/graphics-pipeline creation marker catalog с exact/alias provenance, graphics API и parallel-PSO capability context, а также optional `GraphicsStateCollection` trace/prewarm workflow с active-session correlation, `IsBusy`/`HasPendingCleanup`, StopSession cancellation, persisted owned-cleanup sidecars и bounded project-local artifact. | `PM-OBS-001`, `PM-CAP-001` |
 | `PM-REN-001` Render integration context | P3 | planned | Расширить camera/SRP/pass/GRD/VRS context и перейти к integration-neutral snapshot API через additive compatibility facade. Добавлять Editor navigation только при наличии стабильного public Unity API. | `PM-OBS-001` |
 | `PM-GRD-001` GPU Resident Drawer telemetry | P3 | planned | Показывать GRD/Forward+/compute support, фактическую активность, effectiveness counters и fallback/degraded reasons. | `PM-OBS-001`, `PM-REN-001` |
 | `PM-CI-001` Profile Analyzer and benchmark CI | P3 | planned | Коррелировать session IDs/custom markers с Profile Analyzer и добавить performance tests, baseline thresholds и CI/JUnit artifacts. | `PM-OBS-002` |
@@ -66,6 +66,8 @@
 
 `PM-MEM-001` реализован, но ожидает release pass: targeted memory EditMode `9/9`, capture-bundle EditMode `14/14`, PlayMode threshold `1/1`, optional assembly compile с реальным `com.unity.memoryprofiler@1.1.12`, а также Unity `6000.4.12f1` full EditMode `182/182` и full PlayMode `14/14` подтверждены. Release-player и device behavior для этой интеграции здесь не заявляются.
 
+`PM-GFX-001` реализован, но ожидает release pass. Unity `6000.4.12f1` compile прошёл; targeted GSC EditMode `25/25`, `PerformanceMeter` API EditMode `47/47`, capture-bundle EditMode `14/14`, PlayMode smoke `12/12`, full post-fix EditMode `208/208` и full post-fix PlayMode `16/16` прошли. Изолированный optional consumer compile на Unity `6000.5.6f1` также прошёл. Full Unity `6000.5` tests, release-player и device behavior остаются release gates и здесь не заявляются.
+
 ## Release Sequence
 
 | Phase | Scope | Exit Gate |
@@ -75,6 +77,7 @@
 | Capture stable | `PM-CAP-002` | Atomic versioned bundle, truthful artifact provenance, session/alert correlation and external-tool smoke matrix. |
 | Observability | `PM-OBS-001` through `PM-OBS-003` | Startup-only discovery, capability dump, custom markers/counters and measured overhead budgets. |
 | Platform telemetry | `PM-PLAT-001`, then selected P3 integrations | Optional assemblies, no core hard dependency, explicit unavailable states and device validation. |
+| Graphics diagnostics | `PM-GFX-001` | Post-fix Unity 6000.4/6000.5 compile and targeted/full EditMode/PlayMode validation, dynamic-marker provenance checks, plus release-player and target-device behavior before release. |
 | Platform capture previews | Selected P4 backends | Experimental feature flags, native lifecycle/IL2CPP tests and tool-specific artifact confirmation. |
 
 ## Required Gates
@@ -84,6 +87,7 @@
 - Fake backends are mandatory in automated tests; real RenderDoc/PIX/platform-tool smokes are release-candidate gates.
 - Adaptive Performance `5.1+` package integration and real target-device thermal/performance validation remain release-candidate gates; fake providers and contract tests do not replace them.
 - Memory Profiler `1.1.0+` real-package integration, release-player behavior, and target-device validation remain the `PM-MEM-001` release gate; targeted tests and the `1.1.12` optional compile check do not replace it.
+- `PM-GFX-001` release gate remains the Unity 6000.4/6000.5 namespace/assembly matrix, full Unity 6000.5 tests, release-player behavior, and target-device checks. The final Unity `6000.4.12f1` evidence above validates the post-fix lifecycle, dynamic marker provenance, active-session correlation, overlap/cancel/prewarm cleanup, and 64 MiB owned-artifact limit, but does not replace those release gates.
 - Capture samples are classified separately from normal baseline samples; capture overhead must not silently contaminate normal performance evidence.
 - Steady-state collector and hidden overlay target `0 B/frame`; dynamic discovery runs only at startup/reconfigure and export stays outside frame-critical paths.
 - Bundles enforce project-local path validation, atomic commit, disk quota/retention and redaction of sensitive paths, screenshots and device metadata.

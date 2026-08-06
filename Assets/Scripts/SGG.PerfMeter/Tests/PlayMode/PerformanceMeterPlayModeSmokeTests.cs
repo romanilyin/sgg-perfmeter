@@ -20,6 +20,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 			PerfMeterPlatformTelemetryRegistry.ClearForTests();
 			PerfMeterMemorySnapshotBackendRegistry.ClearForTests();
+			PerfMeterGraphicsStateCollectionBackendRegistry.ClearForTests();
 		}
 
 		[TearDown]
@@ -29,6 +30,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 			PerfMeterPlatformTelemetryRegistry.ClearForTests();
 			PerfMeterMemorySnapshotBackendRegistry.ClearForTests();
+			PerfMeterGraphicsStateCollectionBackendRegistry.ClearForTests();
 		}
 
 		[UnityTest]
@@ -324,6 +326,88 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator GraphicsStateTraceTicksAcrossFramesBlocksOverlapAndPrewarmsArtifact()
+		{
+			PlayModeFakeGraphicsStateCollectionBackend backend = new PlayModeFakeGraphicsStateCollectionBackend();
+			PerformanceMeter.RegisterGraphicsStateCollectionBackend(backend);
+			string artifactPath = string.Empty;
+			try
+			{
+				PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.001f, 16, false, 0, 0f));
+				PerfMeterRuntime.Instance.SetCaptureBackendForTests(new PlayModeFakeCaptureBackend());
+				Assert.That(
+					PerformanceMeter.RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("graphics-trace", 2, 0L)),
+					Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.Started));
+				Assert.That(
+					PerformanceMeter.RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("overlap", minimumFreeDiskBytes: 0L, cooldownSeconds: 0d)),
+					Is.EqualTo(PerfMeterMemorySnapshotRequestResult.RejectedOverlap));
+				Assert.That(
+					PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("overlap-gpu", PerfMeterCaptureTool.RenderDoc, 1)),
+					Is.EqualTo(PerfMeterCaptureRequestResult.RejectedOverlap));
+				Assert.That(PerformanceMeter.BeginAlertCapture("overlap-alert"), Is.False);
+
+				PerfMeterGraphicsStateCollectionStatusSnapshot completed = PerformanceMeter.GetGraphicsStateCollectionStatus();
+				for (int frame = 0; frame < 6 && completed.State == PerfMeterGraphicsStateCollectionState.Tracing; frame++)
+				{
+					yield return null;
+					completed = PerformanceMeter.GetGraphicsStateCollectionStatus();
+				}
+
+				Assert.That(completed.State, Is.EqualTo(PerfMeterGraphicsStateCollectionState.Completed));
+				Assert.That(completed.CompletedTraceFrames, Is.EqualTo(2));
+				Assert.That(completed.TotalGraphicsStateCount, Is.EqualTo(7));
+				Assert.That(completed.VariantCount, Is.EqualTo(3));
+				Assert.That(completed.ArtifactRelativePath, Does.StartWith(PerfMeterGraphicsStateCollectionStorage.RelativeGraphicsStateCollectionRoot + "/"));
+				artifactPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", completed.ArtifactRelativePath));
+				Assert.That(File.Exists(artifactPath), Is.True);
+				PerformanceMeter.StopSession();
+				PerfMeterSessionSampleSnapshot[] samples = PerformanceMeter.GetSessionSamples();
+				bool correlatedSampleFound = false;
+				for (int i = 0; i < samples.Length; i++)
+				{
+					correlatedSampleFound |= samples[i].GraphicsStateTraceId == "graphics-trace";
+				}
+				Assert.That(correlatedSampleFound, Is.True);
+
+				Assert.That(
+					PerformanceMeter.PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(completed.ArtifactRelativePath)),
+					Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.Completed));
+				PerfMeterGraphicsStateCollectionStatusSnapshot prewarmed = PerformanceMeter.GetGraphicsStateCollectionStatus();
+				Assert.That(prewarmed.State, Is.EqualTo(PerfMeterGraphicsStateCollectionState.Prewarmed));
+				Assert.That(prewarmed.CompletedWarmupCount, Is.EqualTo(7));
+				Assert.That(prewarmed.IsWarmedUp, Is.True);
+				Assert.That(File.Exists(artifactPath), Is.True);
+			}
+			finally
+			{
+				if (!string.IsNullOrEmpty(artifactPath) && File.Exists(artifactPath))
+				{
+					File.Delete(artifactPath);
+				}
+			}
+		}
+
+		[UnityTest]
+		public IEnumerator StoppingSessionCancelsActiveGraphicsStateTrace()
+		{
+			PlayModeFakeGraphicsStateCollectionBackend backend = new PlayModeFakeGraphicsStateCollectionBackend();
+			PerformanceMeter.RegisterGraphicsStateCollectionBackend(backend);
+			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.001f, 16, false, 0, 0f));
+			Assert.That(
+				PerformanceMeter.RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("stop-session-trace", 10, 0L)),
+				Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.Started));
+
+			PerformanceMeter.StopSession();
+			PerfMeterGraphicsStateCollectionStatusSnapshot status = PerformanceMeter.GetGraphicsStateCollectionStatus();
+			Assert.That(status.State, Is.EqualTo(PerfMeterGraphicsStateCollectionState.Canceled));
+			Assert.That(status.IsBusy, Is.False);
+			Assert.That(backend.CancelCount, Is.EqualTo(1));
+
+			yield return null;
+			Assert.That(backend.EndCount, Is.Zero);
+		}
+
+		[UnityTest]
 		public IEnumerator SessionRecorderTracksCurrentSceneScopeAfterSceneSwitch()
 		{
 			Scene originalScene = SceneManager.GetActiveScene();
@@ -357,11 +441,16 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		public IEnumerator ProfilerMetricCatalogDiscoversOnceAcrossFramesAndRefreshesExplicitly()
 		{
 			PerformanceMeter.EnsureRunning();
+			PerfMeterProfilerMetricCatalogSnapshot startupCatalog = PerformanceMeter.GetProfilerMetricCatalog();
+			PerfMeterMetricsSnapshot startupMetrics = PerformanceMeter.GetLatestMetrics();
+			Assert.That(startupMetrics.ProfilerMetricCatalogRevision, Is.EqualTo(startupCatalog.Revision));
+			Assert.That(startupMetrics.ShaderGpuProgramCreationCapability.Semantic, Is.EqualTo(PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation));
+			Assert.That(startupMetrics.GraphicsPipelineCreationCapability.Semantic, Is.EqualTo(PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation));
 			yield return null;
 
 			PerfMeterProfilerMetricCatalogSnapshot initial = PerformanceMeter.GetProfilerMetricCatalog();
 			Assert.That(initial.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.Ready));
-			Assert.That(initial.Capabilities, Has.Length.EqualTo(11));
+			Assert.That(initial.Capabilities, Has.Length.EqualTo(13));
 			Assert.That(initial.DiscoveryCount, Is.GreaterThanOrEqualTo(1));
 			Assert.That(initial.Revision, Is.GreaterThanOrEqualTo(1));
 			initial.Capabilities[0] = default;
@@ -382,7 +471,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(refreshed.State, Is.EqualTo(PerfMeterProfilerMetricCatalogState.Ready));
 			Assert.That(refreshed.DiscoveryCount, Is.EqualTo(initial.DiscoveryCount + 1));
 			Assert.That(refreshed.Revision, Is.EqualTo(initial.Revision + 1));
-			Assert.That(refreshed.Capabilities, Has.Length.EqualTo(11));
+			Assert.That(refreshed.Capabilities, Has.Length.EqualTo(13));
 			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 4));
 			Assert.That(PerformanceMeter.BeginAlertCapture("disable-reenable"), Is.True);
 			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Recording));
@@ -648,6 +737,43 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				completed(new PerfMeterMemorySnapshotBackendResult(true, path, string.Empty));
 				error = string.Empty;
 				return true;
+			}
+		}
+
+		private sealed class PlayModeFakeGraphicsStateCollectionBackend : IPerfMeterGraphicsStateCollectionBackend
+		{
+			public string Id => "fake.graphics.playmode";
+			public string Version => "1.0";
+			public bool SupportsCacheMissTracing => false;
+			public bool SupportsParallelPsoCreation => true;
+			public int EndCount { get; private set; }
+			public int CancelCount { get; private set; }
+
+			public bool TryBeginTrace(out string error)
+			{
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryEndTrace(string outputPath, out PerfMeterGraphicsStateTraceBackendResult result, out string error)
+			{
+				EndCount++;
+				File.WriteAllBytes(outputPath, new byte[] { 1, 2, 3, 5, 8 });
+				result = new PerfMeterGraphicsStateTraceBackendResult(true, 7, 3);
+				error = string.Empty;
+				return true;
+			}
+
+			public void CancelTrace()
+			{
+				CancelCount++;
+			}
+
+			public bool TryPrewarm(string inputPath, int maxStateCount, bool traceCacheMisses, out PerfMeterGraphicsStatePrewarmBackendResult result, out string error)
+			{
+				result = new PerfMeterGraphicsStatePrewarmBackendResult(File.Exists(inputPath), 7, 7, true);
+				error = result.Success ? string.Empty : "artifact missing";
+				return result.Success;
 			}
 		}
 	}

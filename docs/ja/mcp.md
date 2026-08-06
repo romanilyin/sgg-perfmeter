@@ -85,3 +85,33 @@ perfmeter.capture.export {"capture_id":"memory-spike-01"}
 ```
 
 bundle が export-ready になるまで status を読み、その後既存の `perfmeter.capture.export` を使います。memory-only bundle は `requested_tool: MemoryProfiler`、`memory-snapshot.json`、manifest provenance を含み、external GPU artifact を持ちません。成功した export は one-shot で、owned staging source を削除します。
+
+## Graphics diagnostics と GraphicsStateCollection command
+
+次の 6 command が PM-GFX-001 の surface です。
+
+| Command | 目的と主な入力 |
+| --- | --- |
+| `perfmeter.graphics.diagnostics` | 最新の shader GPU-program と graphics-pipeline creation marker value、dynamic capability provenance、catalog revision、graphics API context を読む。入力なし。 |
+| `perfmeter.graphics.state_collection.request` | bounded trace を開始する。Play Mode と active PerfMeter session が必要。`capture_id` は必須、`trace_frames` は 1–600（既定 60）、`minimum_free_disk_mb` の既定値は 1024。 |
+| `perfmeter.graphics.state_collection.status` | availability、state、progress、backend identity、counts、`is_busy`、`has_pending_cleanup`、warning、owned artifact の project-relative path を読む。入力なし。 |
+| `perfmeter.graphics.state_collection.capabilities` | backend provenance、trace/prewarm support、cache-miss と parallel-PSO support、session requirement、600-frame/64 MiB limit、owned artifact root を読む。入力なし。 |
+| `perfmeter.graphics.state_collection.cancel` | 一致する active/preparing trace を cancel し、pending artifact を cleanup する。`capture_id` が必要。 |
+| `perfmeter.graphics.state_collection.prewarm` | Play Mode で owned project-relative artifact を load し、synchronous に prewarm する。`relative_path` は必須、`max_state_count` は 0–1,000,000（既定 0）。 |
+
+`perfmeter.graphics.diagnostics` は `shader_gpu_program_creation_value`、`graphics_pipeline_creation_value` と、各 capability の `sample_state`、`resolution`、`resolved_recorder_names`、`unit`、`data_type`、`resolved_component_count`、`sampled_component_count` を返します。`perfmeter.metrics.latest` と session export も同じ marker metadata を公開します。値は recorder の discovered unit を保持し、shader/PSO count とは限りません。zero を unavailable と判断せず `sample_state` を使ってください。
+
+state response には `result`、`availability`、`state`、`capture_id`、requested/completed trace frames、backend ID/version、`artifact_relative_path`、`artifact_size_bytes`、`total_graphics_state_count`、`variant_count`、`completed_warmup_count`、`is_warmed_up`、`is_busy`、`has_pending_cleanup`、`warning` が含まれます。`is_busy` は preparation、trace、終了、prewarm、cleanup、または persisted cleanup の間 true で、`has_pending_cleanup` は retry 待ちの owned artifact を示します。削除失敗は owned `.delete-pending` sidecar に保存され、domain reload 後に復元・再試行されます。`StopSession` は active trace を cancel するため、完了まで session を active に保つ必要があります。trace は end-of-frame で requested frame を tick した後に terminal state へ進み、batch mode では next-frame fallback を使います。active session に admitted された sample には `capture_id` と同じ `graphics_state_trace_id` が入ります。
+
+trace と prewarm の典型的な順序:
+
+```text
+perfmeter.session.start {"warmup_seconds":0,"sample_interval_seconds":0.25,"max_samples":240}
+perfmeter.graphics.state_collection.capabilities {}
+perfmeter.graphics.state_collection.request {"capture_id":"shader-stutter-01","trace_frames":60}
+perfmeter.graphics.state_collection.status {}
+perfmeter.session.stop {}
+perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/GraphicsStateCollections/.sgg-perfmeter-graphics-...graphicsstate"}
+```
+
+graphics-state flight は一つだけです。同じ active ID は `AlreadyActive`、別の overlapping trace/prewarm は `RejectedOverlap` を返します。cancel は matching active/preparing ID にだけ適用されます。Unity backend の `supports_cache_miss_tracing: false` のため cache-miss evidence は未対応で、MCP prewarm schema にもその input はありません。artifact は PerfMeter が所有し、`Temp/PerfMeter/GraphicsStateCollections` 以下に置かれ、64 MiB に制限されます。

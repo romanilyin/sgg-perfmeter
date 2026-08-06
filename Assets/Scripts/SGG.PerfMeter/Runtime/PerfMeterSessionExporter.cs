@@ -100,7 +100,7 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(1024 + safeSamples.Length * 512);
-			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters,platform_telemetry_available,platform_telemetry_provider,platform_telemetry_provider_version,thermal_warning_level,temperature_level,temperature_trend,cpu_performance_level,gpu_performance_level,adaptive_bottleneck,telemetry_last_change_time_seconds");
+			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters,platform_telemetry_available,platform_telemetry_provider,platform_telemetry_provider_version,thermal_warning_level,temperature_level,temperature_trend,cpu_performance_level,gpu_performance_level,adaptive_bottleneck,telemetry_last_change_time_seconds,graphics_state_trace_id,graphics_profiler_catalog_revision,shader_gpu_program_creation_value,shader_gpu_program_creation_sample_state,shader_gpu_program_creation_resolution,shader_gpu_program_creation_category,shader_gpu_program_creation_recorder_names,shader_gpu_program_creation_unit,shader_gpu_program_creation_data_type,shader_gpu_program_creation_resolved_components,shader_gpu_program_creation_sampled_components,graphics_pipeline_creation_value,graphics_pipeline_creation_sample_state,graphics_pipeline_creation_resolution,graphics_pipeline_creation_category,graphics_pipeline_creation_recorder_names,graphics_pipeline_creation_unit,graphics_pipeline_creation_data_type,graphics_pipeline_creation_resolved_components,graphics_pipeline_creation_sampled_components");
 			builder.AppendLine();
 			for (int i = 0; i < safeSamples.Length; i++)
 			{
@@ -337,6 +337,8 @@ namespace SGG.PerfMeter
 			builder.Append(",\"graphics_device_type\":").Append(JsonString(device.GraphicsDeviceType.ToString()));
 			builder.Append(",\"graphics_device_name\":").Append(JsonString(device.GraphicsDeviceName));
 			builder.Append(",\"graphics_device_vendor\":").Append(JsonString(device.GraphicsDeviceVendor));
+			builder.Append(",\"graphics_device_version\":").Append(JsonString(device.GraphicsDeviceVersion));
+			builder.Append(",\"render_pipeline\":").Append(JsonString(device.RenderPipeline.ToString()));
 			builder.Append(",\"graphics_memory_size_mb\":").Append(device.GraphicsMemorySizeMb);
 			builder.Append(",\"screen_width\":").Append(device.ScreenWidth);
 			builder.Append(",\"screen_height\":").Append(device.ScreenHeight);
@@ -408,6 +410,7 @@ namespace SGG.PerfMeter
 			builder.Append("\"frame\":").Append(sample.CollectionFrame);
 			builder.Append(",\"time_seconds\":").Append(JsonNumber(sample.CollectionTimeSeconds));
 			builder.Append(",\"scene\":").Append(JsonString(sample.SceneName));
+			builder.Append(",\"graphics_state_trace_id\":").Append(JsonString(sample.GraphicsStateTraceId));
 			AppendMetrics(builder, metrics);
 			AppendCustomMetrics(builder, sample.CustomMetrics);
 			AppendPlatformTelemetry(builder, sample.PlatformTelemetry);
@@ -508,6 +511,13 @@ namespace SGG.PerfMeter
 			builder.Append(",\"system_used_memory_bytes\":").Append(metrics.SystemUsedMemoryBytes);
 			builder.Append(",\"gc_reserved_memory_bytes\":").Append(metrics.GcReservedMemoryBytes);
 			builder.Append(",\"gpu_memory_bytes\":").Append(metrics.GpuMemoryBytes);
+			builder.Append(",\"shader_gpu_program_creation_value\":").Append(metrics.ShaderGpuProgramCreationValue);
+			builder.Append(",\"graphics_pipeline_creation_value\":").Append(metrics.GraphicsPipelineCreationValue);
+			builder.Append(",\"graphics_profiler_catalog_revision\":").Append(metrics.ProfilerMetricCatalogRevision);
+			builder.Append(",\"shader_gpu_program_creation\":");
+			AppendGraphicsMetric(builder, metrics.ShaderGpuProgramCreationValue, metrics.ShaderGpuProgramCreationCapability);
+			builder.Append(",\"graphics_pipeline_creation\":");
+			AppendGraphicsMetric(builder, metrics.GraphicsPipelineCreationValue, metrics.GraphicsPipelineCreationCapability);
 			builder.Append(",\"overdraw_state\":").Append(JsonString(metrics.OverdrawState.ToString()));
 			builder.Append(",\"overdraw_progress\":").Append(JsonNumber(metrics.OverdrawProgress));
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(metrics.OverdrawRatio));
@@ -562,7 +572,41 @@ namespace SGG.PerfMeter
 			builder.Append(telemetry.CpuPerformanceLevelAvailable ? telemetry.CpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : string.Empty).Append(',');
 			builder.Append(telemetry.GpuPerformanceLevelAvailable ? telemetry.GpuPerformanceLevel.ToString(CultureInfo.InvariantCulture) : string.Empty).Append(',');
 			AppendCsv(builder, telemetry.PerformanceBottleneckAvailable ? telemetry.PerformanceBottleneck.ToString() : string.Empty).Append(',');
-			builder.Append(telemetry.IsAvailable ? JsonNumber(telemetry.LastChangeTimeSeconds) : string.Empty);
+			builder.Append(telemetry.IsAvailable ? JsonNumber(telemetry.LastChangeTimeSeconds) : string.Empty).Append(',');
+			AppendCsv(builder, sample.GraphicsStateTraceId).Append(',');
+			builder.Append(metrics.ProfilerMetricCatalogRevision).Append(',');
+			builder.Append(metrics.ShaderGpuProgramCreationValue).Append(',');
+			AppendCsv(builder, metrics.ShaderGpuProgramCreationCapability.SampleState.ToString()).Append(',');
+			AppendCsv(builder, metrics.ShaderGpuProgramCreationCapability.Resolution.ToString()).Append(',');
+			AppendCsv(builder, metrics.ShaderGpuProgramCreationCapability.Category).Append(',');
+			AppendCsv(builder, metrics.ShaderGpuProgramCreationCapability.ResolvedRecorderNames).Append(',');
+			AppendCsv(builder, metrics.ShaderGpuProgramCreationCapability.Unit).Append(',');
+			AppendCsv(builder, metrics.ShaderGpuProgramCreationCapability.DataType).Append(',');
+			builder.Append(metrics.ShaderGpuProgramCreationCapability.ResolvedComponentCount).Append(',');
+			builder.Append(metrics.ShaderGpuProgramCreationCapability.SampledComponentCount).Append(',');
+			builder.Append(metrics.GraphicsPipelineCreationValue).Append(',');
+			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.SampleState.ToString()).Append(',');
+			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.Resolution.ToString()).Append(',');
+			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.Category).Append(',');
+			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.ResolvedRecorderNames).Append(',');
+			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.Unit).Append(',');
+			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.DataType).Append(',');
+			builder.Append(metrics.GraphicsPipelineCreationCapability.ResolvedComponentCount).Append(',');
+			builder.Append(metrics.GraphicsPipelineCreationCapability.SampledComponentCount);
+		}
+
+		private static void AppendGraphicsMetric(StringBuilder builder, long value, PerfMeterProfilerMetricCapabilitySnapshot capability)
+		{
+			builder.Append("{\"value\":").Append(value);
+			builder.Append(",\"sample_state\":").Append(JsonString(capability.SampleState.ToString()));
+			builder.Append(",\"resolution\":").Append(JsonString(capability.Resolution.ToString()));
+			builder.Append(",\"category\":").Append(JsonString(capability.Category));
+			builder.Append(",\"resolved_recorder_names\":").Append(JsonString(capability.ResolvedRecorderNames));
+			builder.Append(",\"unit\":").Append(JsonString(capability.Unit));
+			builder.Append(",\"data_type\":").Append(JsonString(capability.DataType));
+			builder.Append(",\"resolved_component_count\":").Append(capability.ResolvedComponentCount);
+			builder.Append(",\"sampled_component_count\":").Append(capability.SampledComponentCount);
+			builder.Append('}');
 		}
 
 		private static void AppendVector3(StringBuilder builder, string name, float x, float y, float z)

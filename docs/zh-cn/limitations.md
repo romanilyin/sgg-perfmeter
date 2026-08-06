@@ -58,3 +58,15 @@ Overlay 会注意 allocation 并进行 throttling，但变化的数值和 graph 
 - snapshot 可能包含敏感的 process memory。分享前请保护并检查内容。bundle 会记录 `contains_sensitive_memory`、backend/flag provenance、`memory-snapshot.json` 和 SHA-256 metadata，但不会创建 external GPU artifact。
 - OS file lock 导致的删除，以及 portable managed 对 reparse-point race 的保护，均为 best-effort。不安全或非 owned path 会被 reject，cleanup failure 会保留为 warning。
 - evidence 包括 memory EditMode `9/9`、capture-bundle EditMode `14/14`、PlayMode threshold `1/1`、使用 `com.unity.memoryprofiler@1.1.12` 的 optional compile，以及 Unity `6000.4.12f1` full EditMode `182/182` 和 full PlayMode `14/14`。这不代表 release-player 或 device behavior 已获验证。
+
+## 图形诊断与 GraphicsStateCollection 的限制
+
+- shader GPU-program creation 和 graphics-pipeline creation marker 是动态的 `ProfilerRecorder` capability。Unity、platform、graphics API 和 catalog refresh 状态都会影响 availability。请使用 `Unavailable`、`AvailableNoSample`、`AvailableSampled` 及 provenance，不要从 numeric 0 推断 availability。
+- marker value 保留 recorder 的 `Unit` 和 `DataType`，并保持 raw value。它们不一定是 shader 或 PSO count，PerfMeter 也不会转换到统一 unit。capability metadata 包含 exact/alias resolution、resolved recorder names、resolved/sampled component count 和 catalog revision。
+- 可选 `SGG.PerfMeter.GraphicsStateCollection` assembly 面向 Unity `6000.4+`。`6000.4` 使用 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`，`6000.5+` 使用 `UnityEngine.Rendering.GraphicsStateCollection`；更早的 Unity 不支持该 integration。
+- trace 需要 active PerfMeter session。普通 Play Mode 在 end-of-frame 后完成 trace frame，batch mode 使用 next-frame fallback。correlated session sample 受 session 的 warm-up、interval 和 max-sample 设置限制。
+- graphics-state flight 只允许一个，包括 preparation、trace finalization、prewarm 和 cleanup。active external GPU capture、memory snapshot、alert-capture 也会导致 overlap rejection。`IsBusy`/`is_busy` 覆盖这些 flight 和 persisted cleanup；`HasPendingCleanup`/`has_pending_cleanup` 专门报告等待 retry 的 owned artifact。matching cancel 是 best-effort，cleanup failure 会保持可见并可能延迟下一次 request。
+- `StopSession()` 会取消 active trace，因此整个 trace 期间都需要 active session。owned artifact 删除失败会创建旁边的 `.delete-pending` sidecar marker；domain reload 后会恢复并重试。artifact 和 marker 清理完成前，warning 与 busy state 会保持可见。
+- prewarm 只接受 owned project-relative artifact，以 synchronous 方式执行并保留 artifact；progressive warmup 可能 incomplete。Unity backend 不支持 cache-miss tracing，因此 request 返回 `Unavailable`，不会暴露 cache-miss evidence。
+- owned `.graphicsstate` artifact 存储在 `Temp/PerfMeter/GraphicsStateCollections` 下，必须是 regular non-empty file，最大 64 MiB。trace 上限为 600 frames，progressive prewarm 上限为 1,000,000 states，同时应用 minimum-free-disk 和 project-local path guard。
+- 最终 evidence：Unity `6000.4.12f1` compile passed；GSC EditMode targeted `25/25`、`PerformanceMeter` API EditMode `47/47`、capture-bundle EditMode `14/14`、PlayMode smoke `12/12`、full post-fix EditMode `208/208`、full post-fix PlayMode `16/16` 均通过。Unity `6000.5.6f1` optional consumer compile 也已 isolated passed。Unity `6000.5` full tests、release-player 和 target-device behavior 仍是 release gate，本文不声称已验证。

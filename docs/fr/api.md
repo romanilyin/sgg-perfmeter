@@ -218,3 +218,48 @@ La surface publique comprend `RegisterMemorySnapshotBackend(...)`, `UnregisterMe
 `PerfMeterMemorySnapshotOptions` utilise par défaut les flags d'objets managed/native, 1 Gio d'espace disque libre minimum et un cooldown de 300 secondes. `RequestMemorySnapshot` est manuel par défaut et renvoie des résultats explicites tels que `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest` ou `Failed`. Les lectures ne démarrent pas le runtime; une requête valide le fait.
 
 `ConfigureMemorySnapshotTriggers` active explicitement l'heuristique de seuil de mémoire système et de croissance de fuite bornée. `GetMemorySnapshotTriggers()` est désactivé par défaut. Les requêtes déclenchées utilisent les mêmes protections single-flight, cooldown, espace libre et capture-flags que les requêtes manuelles.
+
+## Diagnostic graphique et GraphicsStateCollection
+
+Le diagnostic graphique ajoute des données aux snapshots existants. `PerformanceMeter.GetGraphicsDiagnostics()` renvoie les dernières valeurs des marqueurs de création de programmes GPU de shader et de graphics pipeline, avec le contexte de l'API graphique, la capacité PSO parallèle et la révision du catalogue de métriques du profiler.
+
+```csharp
+PerfMeterGraphicsDiagnosticsSnapshot graphics = PerformanceMeter.GetGraphicsDiagnostics();
+PerfMeterProfilerMetricCapabilitySnapshot shader = graphics.ShaderGpuProgramCreationCapability;
+PerfMeterProfilerMetricCapabilitySnapshot pipeline = graphics.GraphicsPipelineCreationCapability;
+
+UnityEngine.Debug.Log($"Shader marker: {graphics.ShaderGpuProgramCreationValue} {shader.Unit} ({shader.SampleState})");
+UnityEngine.Debug.Log($"Pipeline marker: {graphics.GraphicsPipelineCreationValue} {pipeline.Unit} ({pipeline.SampleState})");
+```
+
+Le catalogue découvre les descripteurs `ProfilerRecorder` de Unity au démarrage du runtime et lors d'un refresh/reconfigure explicite. Pour le shader, il utilise le nom exact `Shader.CreateGPUProgram` et les alias `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` et `Shader.DynamicLoadGPUProgram`. Pour le graphics pipeline, il utilise le nom exact `CreatePSO.Job`. Chaque capability conserve `Resolution` (`None`, `Exact` ou `Alias`), `ResolvedRecorderNames`, `Category`, les valeurs découvertes `Unit` et `DataType`, ainsi que `ResolvedComponentCount` et `SampledComponentCount`. `PerfMeterMetricsSnapshot` et les JSON/CSV de session contiennent les mêmes valeurs de marqueurs, métadonnées de capability et révision du catalogue.
+
+La disponibilité des marqueurs est dynamique. Utilisez `SampleState` (`Unavailable`, `AvailableNoSample` ou `AvailableSampled`) et les métadonnées de capability; une valeur nulle ne prouve pas l'absence du marqueur. Les valeurs sont des valeurs brutes du recorder et conservent l'unité découverte: elles ne sont pas universellement des counts de shaders ou de PSO et PerfMeter ne les convertit pas vers une unité commune.
+
+L'assembly optionnelle `SGG.PerfMeter.GraphicsStateCollection` cible Unity `6000.4+` et enregistre le backend Unity lorsqu'il est disponible. Elle utilise `UnityEngine.Experimental.Rendering.GraphicsStateCollection` sous Unity `6000.4` et `UnityEngine.Rendering.GraphicsStateCollection` sous Unity `6000.5+`. L'assembly core reste indépendante de ce backend.
+
+```csharp
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.25f, 240));
+
+PerfMeterGraphicsStateCollectionRequestResult request =
+    PerformanceMeter.RequestGraphicsStateTrace(
+        new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", traceFrames: 60));
+
+PerfMeterGraphicsStateCollectionStatusSnapshot status =
+    PerformanceMeter.GetGraphicsStateCollectionStatus();
+if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
+{
+    PerformanceMeter.PrewarmGraphicsStateCollection(
+        new PerfMeterGraphicsStatePrewarmOptions(status.ArtifactRelativePath));
+}
+```
+
+La surface publique de state collection comprend `RegisterGraphicsStateCollectionBackend(...)`, `UnregisterGraphicsStateCollectionBackend(...)`, `GetGraphicsStateCollectionCapabilities()`, `GetGraphicsStateCollectionStatus()`, `RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions)`, `PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions)` et `CancelGraphicsStateTrace(string captureId)`. Un backend personnalisé implémente `IPerfMeterGraphicsStateCollectionBackend` et indique ses capacités de trace/prewarm, cache-miss et PSO parallèle.
+
+`PerfMeterGraphicsStateTraceOptions` exige un `CaptureId` non vide, accepte 1–600 trace frames et utilise par défaut 60 frames et 1 Gio d'espace libre minimum. Un trace n'est valide que pendant l'enregistrement d'une session PerfMeter. Les samples de session corrélés portent l'ID de capture actif dans `GraphicsStateTraceId` (`graphics_state_trace_id` dans les exports). Les paramètres de sampling de la session contrôlent la densité des samples corrélés, pas le nombre de trace frames demandé.
+
+`PerfMeterGraphicsStateCollectionStatusSnapshot` expose `IsBusy` et `HasPendingCleanup`. `IsBusy` vaut true pendant la préparation, le trace, la fin du trace, le prewarm, le cleanup ou un cleanup en attente persisté; `HasPendingCleanup` identifie précisément un artefact owned qui attend une nouvelle tentative de cleanup. Si `PerformanceMeter.StopSession()` est appelé pendant un trace actif, il annule ce trace; la session doit donc rester en enregistrement jusqu'à la fin du trace. En cas d'échec de suppression, un sidecar owned `.delete-pending` est créé à côté de l'artefact; après un domain reload, le marker est restauré et le cleanup est retenté. Le status reste visible et busy jusqu'à la suppression de l'artefact et du marker.
+
+Le coordinator n'autorise qu'un seul graphics-state flight. Le même ID actif renvoie `AlreadyActive`; un autre trace ou prewarm pendant la préparation, le trace, la finalisation, le cleanup ou un autre domaine de capture renvoie `RejectedOverlap`. `CancelGraphicsStateTrace` ne correspond qu'à l'ID actif ou en préparation, annule le backend et supprime l'artefact owned en attente. Les échecs de cleanup restent visibles et peuvent bloquer le remplacement jusqu'à une nouvelle tentative réussie.
+
+`PerfMeterGraphicsStatePrewarmOptions` accepte uniquement un chemin `.graphicsstate` owned relatif au projet et un `MaxStateCount` optionnel de 0 à 1 000 000. Le prewarm est synchrone, conserve l'artefact et indique `CompletedWarmupCount` et `IsWarmedUp`; un progressive warmup réussi mais incomplet ajoute un warning. `TraceCacheMisses` est présent pour les backends extensibles, mais le backend Unity ne prend pas en charge l'evidence de cache-miss: cette demande renvoie `Unavailable`.

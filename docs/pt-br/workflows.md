@@ -139,3 +139,21 @@ perfmeter.alerts.latest {}
 4. Consulte `GetMemorySnapshotStatus()` ou `perfmeter.memory.snapshot.status` ate o snapshot e seu bundle correlacionado chegarem a um estado terminal. Exporte a evidencia pronta com `PerformanceMeter.ExportCaptureBundle(captureId)` ou `perfmeter.capture.export`.
 
 A evidencia somente de memoria passa pela API existente de capture bundle em `Temp/PerfMeter/CaptureBundles`. O bundle registra `MemoryProfiler` como ferramenta solicitada, inclui proveniencia de memoria e SHA-256 em streaming para o `.snap`, e nao inclui artefato GPU externo. A origem pertencente ao PerfMeter fica em `Temp/PerfMeter/MemorySnapshots`; uma exportacao bem-sucedida a consome uma vez.
+
+## Diagnostico de markers graficos
+
+1. Chame `PerformanceMeter.GetGraphicsDiagnostics()` ou `perfmeter.graphics.diagnostics` para ler os valores mais recentes dos markers e o contexto da graphics API.
+2. Verifique `SampleState`, `Resolution`, `ResolvedRecorderNames`, `Unit`, `DataType`, component counts resolvidos/amostrados e a revisao do catalogo de cada capability. A discovery e dinamica: ocorre no inicio do runtime e durante refresh/reconfigure explicito do catalogo do profiler.
+3. Trate os valores como valores brutos do recorder nas units descobertas. Um marker pode estar unavailable, disponivel sem sample ou sampled; zero numerico nao e um sinal universal de unavailable e o valor nao e garantidamente um count de shader ou PSO.
+
+O shader marker resolve primeiro o nome exato `Shader.CreateGPUProgram` e depois os aliases `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` e `Shader.DynamicLoadGPUProgram`. O pipeline marker resolve exatamente `CreatePSO.Job`. Os mesmos valores e a provenance estao disponiveis em `perfmeter.metrics.latest` e no JSON/CSV de sessao.
+
+## Trace e prewarm de GraphicsStateCollection
+
+1. No Unity `6000.4+`, confirme que o assembly opcional `SGG.PerfMeter.GraphicsStateCollection` esta disponivel. Use o namespace `UnityEngine.Experimental.Rendering.GraphicsStateCollection` no Unity `6000.4` e `UnityEngine.Rendering.GraphicsStateCollection` no Unity `6000.5+`.
+2. Inicie uma sessao PerfMeter antes do trace. Execute `StartSession(...)` e depois `RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", 60))` ou o request MCP correspondente. Sem sessao ativa, o request e rejeitado; a sessao deve continuar gravando ate o trace terminar, e `PerformanceMeter.StopSession()` cancela um trace ativo.
+3. Mantenha o cenario em execucao enquanto o trace limitado avanca. No Play Mode normal, cada trace frame e tickado depois de `WaitForEndOfFrame`; em batch mode, o coordinator usa um fallback no frame seguinte. Samples de sessao admitidos nesse intervalo recebem `GraphicsStateTraceId`/`graphics_state_trace_id`; as configuracoes da sessao determinam quantos samples correlacionados sao mantidos.
+4. Consulte `GetGraphicsStateCollectionStatus()` ou `perfmeter.graphics.state_collection.status` ate `Completed` e, se quiser, pare a sessao. Parar durante o trace ativo o cancela e pode manter `IsBusy`/`is_busy` true enquanto o cleanup owned e tentado novamente. O artifact `.graphicsstate` owned e relativo ao projeto, fica em `Temp/PerfMeter/GraphicsStateCollections` e e limitado a 64 MiB.
+5. Passe o path relativo owned informado para `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` ou para o comando MCP de prewarm. O prewarm e sincrono, preserva o artifact e informa os warmups concluidos e `IsWarmedUp`; um progressive warmup pode terminar com warning explicito de incompleto.
+
+O coordinator de graphics-state permite um unico flight e tambem rejeita overlap com external GPU capture, memory snapshot ou alert-capture ativos. O mesmo trace ID ativo retorna `AlreadyActive`; outro ID retorna `RejectedOverlap`. `CancelGraphicsStateTrace` cancela apenas o trace ativo/em preparacao correspondente e limpa seu artifact pendente. Se um artifact owned nao puder ser excluido, `HasPendingCleanup`/`has_pending_cleanup` permanece true, um sidecar adjacente `.delete-pending` e mantido e restaurado/tentado novamente apos um domain reload; `IsBusy`/`is_busy` e o warning permanecem visiveis ate o sucesso. O backend do Unity nao suporta cache-miss tracing, portanto nao existe evidencia de cache-miss.

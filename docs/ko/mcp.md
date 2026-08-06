@@ -85,3 +85,33 @@ perfmeter.capture.export {"capture_id":"memory-spike-01"}
 ```
 
 bundle이 export-ready가 될 때까지 status를 확인한 후 기존 `perfmeter.capture.export` command를 사용합니다. memory-only bundle은 `requested_tool: MemoryProfiler`, `memory-snapshot.json`, manifest provenance를 포함하고 external GPU artifact는 만들지 않습니다. 성공한 export는 one-shot이며 owned staging source를 삭제합니다.
+
+## 그래픽 진단 및 GraphicsStateCollection command
+
+다음 6개 command가 PM-GFX-001 surface를 제공합니다.
+
+| Command | 목적 및 주요 입력 |
+| --- | --- |
+| `perfmeter.graphics.diagnostics` | 최신 shader GPU-program 및 graphics-pipeline creation marker value, dynamic capability provenance, catalog revision, graphics API context를 읽습니다. 입력 없음. |
+| `perfmeter.graphics.state_collection.request` | bounded trace를 시작합니다. Play Mode와 active PerfMeter session이 필요하며 `capture_id`는 필수, `trace_frames`는 1–600(기본 60), `minimum_free_disk_mb` 기본값은 1024입니다. |
+| `perfmeter.graphics.state_collection.status` | availability, state, progress, backend identity, counts, `is_busy`, `has_pending_cleanup`, warning, owned artifact의 project-relative path를 읽습니다. 입력 없음. |
+| `perfmeter.graphics.state_collection.capabilities` | backend provenance, trace/prewarm support, cache-miss 및 parallel-PSO support, session requirement, 600-frame/64 MiB limit, owned artifact root를 읽습니다. 입력 없음. |
+| `perfmeter.graphics.state_collection.cancel` | 일치하는 active/preparing trace를 cancel하고 pending artifact를 cleanup합니다. `capture_id` 필요. |
+| `perfmeter.graphics.state_collection.prewarm` | Play Mode에서 owned project-relative artifact를 load하고 synchronous prewarm합니다. `relative_path` 필수, `max_state_count`는 0–1,000,000(기본 0)입니다. |
+
+`perfmeter.graphics.diagnostics`는 `shader_gpu_program_creation_value`, `graphics_pipeline_creation_value`와 각 capability의 `sample_state`, `resolution`, `resolved_recorder_names`, `unit`, `data_type`, `resolved_component_count`, `sampled_component_count`를 반환합니다. `perfmeter.metrics.latest`와 session export도 동일한 marker metadata를 노출합니다. 값은 discovered recorder unit을 유지하며 항상 shader/PSO count인 것은 아닙니다. 0을 unavailable로 해석하지 말고 `sample_state`를 사용하십시오.
+
+state response에는 `result`, `availability`, `state`, `capture_id`, requested/completed trace frames, backend ID/version, `artifact_relative_path`, `artifact_size_bytes`, `total_graphics_state_count`, `variant_count`, `completed_warmup_count`, `is_warmed_up`, `is_busy`, `has_pending_cleanup`, `warning`이 포함됩니다. `is_busy`는 preparation, trace, 종료, prewarm, cleanup 또는 persisted cleanup 동안 true이고 `has_pending_cleanup`은 retry 대기 중인 owned artifact를 나타냅니다. 삭제 실패는 owned `.delete-pending` sidecar에 저장되고 domain reload 후 복원·재시도됩니다. `StopSession`은 active trace를 cancel하므로 완료될 때까지 session을 active로 유지해야 합니다. trace는 end-of-frame에서 requested frame을 tick한 뒤 terminal state가 되며 batch mode에서는 next-frame fallback을 사용합니다. active session이 admitted한 sample에는 `capture_id`와 같은 `graphics_state_trace_id`가 들어갑니다.
+
+trace 및 prewarm의 일반적인 순서:
+
+```text
+perfmeter.session.start {"warmup_seconds":0,"sample_interval_seconds":0.25,"max_samples":240}
+perfmeter.graphics.state_collection.capabilities {}
+perfmeter.graphics.state_collection.request {"capture_id":"shader-stutter-01","trace_frames":60}
+perfmeter.graphics.state_collection.status {}
+perfmeter.session.stop {}
+perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/GraphicsStateCollections/.sgg-perfmeter-graphics-...graphicsstate"}
+```
+
+graphics-state flight는 하나만 허용됩니다. 동일한 active ID는 `AlreadyActive`, 다른 overlapping trace/prewarm은 `RejectedOverlap`을 반환합니다. cancel은 matching active/preparing ID에만 적용됩니다. Unity backend는 `supports_cache_miss_tracing: false`를 보고하므로 cache-miss evidence는 지원되지 않으며 MCP prewarm schema에도 해당 input이 없습니다. artifact는 PerfMeter 소유이고 `Temp/PerfMeter/GraphicsStateCollections` 아래에 저장되며 64 MiB로 제한됩니다.

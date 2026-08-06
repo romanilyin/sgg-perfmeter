@@ -85,3 +85,33 @@ perfmeter.capture.export {"capture_id":"memory-spike-01"}
 ```
 
 Attendi che il bundle sia pronto per l'export, quindi usa il comando esistente `perfmeter.capture.export`. Un bundle solo memoria usa `requested_tool: MemoryProfiler`, include `memory-snapshot.json` e la provenienza nel manifest e non produce alcun artefatto GPU esterno. Un export riuscito è monouso e rimuove la sorgente di staging posseduta.
+
+## Comandi di diagnostica grafica e GraphicsStateCollection
+
+I sei comandi seguenti formano la superficie PM-GFX-001:
+
+| Comando | Scopo e input principali |
+| --- | --- |
+| `perfmeter.graphics.diagnostics` | Leggere gli ultimi valori dei marker di creazione dei programmi GPU shader e delle graphics pipeline, la provenance dinamica delle capability, la revisione del catalogo e il contesto della graphics API. Nessun input. |
+| `perfmeter.graphics.state_collection.request` | Avviare un trace limitato. Richiede Play Mode e una sessione PerfMeter attiva; `capture_id` e obbligatorio, `trace_frames` e 1–600 (default 60) e `minimum_free_disk_mb` ha default 1024. |
+| `perfmeter.graphics.state_collection.status` | Leggere availability, state, avanzamento, identita del backend, counts, `is_busy`, `has_pending_cleanup`, warnings e il path relativo al progetto dell'artefatto owned. Nessun input. |
+| `perfmeter.graphics.state_collection.capabilities` | Leggere provenance del backend, supporto trace/prewarm, supporto cache-miss e PSO paralleli, requisito di sessione, limiti di 600 frames/64 MiB e root degli artefatti owned. Nessun input. |
+| `perfmeter.graphics.state_collection.cancel` | Annullare il trace attivo o in preparazione corrispondente e pulire l'artefatto in attesa. Richiede `capture_id`. |
+| `perfmeter.graphics.state_collection.prewarm` | Caricare ed eseguire sincronicamente il prewarm di un artefatto owned relativo al progetto in Play Mode. `relative_path` e obbligatorio; `max_state_count` e 0–1.000.000, default 0. |
+
+`perfmeter.graphics.diagnostics` restituisce `shader_gpu_program_creation_value` e `graphics_pipeline_creation_value`, oltre a `sample_state`, `resolution`, `resolved_recorder_names`, `unit`, `data_type`, `resolved_component_count` e `sampled_component_count` per ogni capability. `perfmeter.metrics.latest` e gli export di sessione espongono gli stessi metadata dei marker. I valori mantengono l'unita scoperta del recorder e non sono universalmente conteggi di shader o PSO; usa `sample_state` invece di interpretare zero come unavailable.
+
+La risposta di state include `result`, `availability`, `state`, `capture_id`, trace frames richiesti/completati, ID/versione del backend, `artifact_relative_path`, `artifact_size_bytes`, `total_graphics_state_count`, `variant_count`, `completed_warmup_count`, `is_warmed_up`, `is_busy`, `has_pending_cleanup` e `warning`. `is_busy` resta true durante preparazione, trace, conclusione, prewarm, cleanup o cleanup persistente; `has_pending_cleanup` indica un artefatto owned in attesa di retry. Una cancellazione fallita viene persistita con un sidecar owned `.delete-pending`, ripristinato e ritentato dopo un domain reload. `StopSession` annulla un trace attivo, quindi la sessione deve restare attiva fino al completamento. Il trace raggiunge lo stato terminale dopo il tick dei frames richiesti a fine frame; in batch mode usa un fallback al frame successivo. I sample ammessi da una sessione attiva contengono `graphics_state_trace_id` uguale a `capture_id`.
+
+Sequenza tipica di trace e prewarm:
+
+```text
+perfmeter.session.start {"warmup_seconds":0,"sample_interval_seconds":0.25,"max_samples":240}
+perfmeter.graphics.state_collection.capabilities {}
+perfmeter.graphics.state_collection.request {"capture_id":"shader-stutter-01","trace_frames":60}
+perfmeter.graphics.state_collection.status {}
+perfmeter.session.stop {}
+perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/GraphicsStateCollections/.sgg-perfmeter-graphics-...graphicsstate"}
+```
+
+E ammesso un solo graphics-state flight. Un ID attivo ripetuto restituisce `AlreadyActive`; un altro trace/prewarm in overlap restituisce `RejectedOverlap`. Cancel corrisponde solo all'ID attivo/in preparazione. Il backend Unity indica `supports_cache_miss_tracing: false`: l'evidence di cache-miss non e supportata e lo schema MCP del prewarm non espone questo input. Gli artefatti appartengono a PerfMeter, si trovano sotto `Temp/PerfMeter/GraphicsStateCollections` e sono limitati a 64 MiB.

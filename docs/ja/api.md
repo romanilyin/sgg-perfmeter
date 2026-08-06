@@ -218,3 +218,48 @@ if (status.State == PerfMeterMemorySnapshotState.Completed &&
 `PerfMeterMemorySnapshotOptions` の既定値は managed/native object flags、最低 1 GiB の空き容量、300 秒の cooldown です。`RequestMemorySnapshot` は既定で manual capture を行い、`Started`、`AlreadyActive`、`RejectedOverlap`、`Cooldown`、`Unavailable`、`InsufficientDiskSpace`、`InvalidRequest`、`Failed` などの明示的な結果を返します。read API は runtime を起動せず、有効な request は起動します。
 
 `ConfigureMemorySnapshotTriggers` で system-memory threshold と bounded leak-growth heuristic を明示的に opt-in できます。`GetMemorySnapshotTriggers()` の既定値は disabled です。trigger による request にも manual request と同じ single-flight、cooldown、空き容量、capture-flag の guard が適用されます。
+
+## グラフィックス診断と GraphicsStateCollection
+
+Graphics diagnostics は既存の snapshot に情報を追加します。`PerformanceMeter.GetGraphicsDiagnostics()` は shader GPU-program creation と graphics-pipeline creation marker の最新値、graphics API context、parallel PSO capability、profiler metric catalog revision を返します。
+
+```csharp
+PerfMeterGraphicsDiagnosticsSnapshot graphics = PerformanceMeter.GetGraphicsDiagnostics();
+PerfMeterProfilerMetricCapabilitySnapshot shader = graphics.ShaderGpuProgramCreationCapability;
+PerfMeterProfilerMetricCapabilitySnapshot pipeline = graphics.GraphicsPipelineCreationCapability;
+
+UnityEngine.Debug.Log($"Shader marker: {graphics.ShaderGpuProgramCreationValue} {shader.Unit} ({shader.SampleState})");
+UnityEngine.Debug.Log($"Pipeline marker: {graphics.GraphicsPipelineCreationValue} {pipeline.Unit} ({pipeline.SampleState})");
+```
+
+catalog は runtime start 時と明示的な refresh/reconfigure 時に Unity `ProfilerRecorder` descriptor を discovery します。shader semantic は exact name `Shader.CreateGPUProgram` と aliases `Shader.CreateGPUPrograms`、`Shader.CompileGPUProgram`、`Shader.DynamicLoadGPUProgram` を使用します。graphics-pipeline semantic は exact name `CreatePSO.Job` を使用します。各 capability には `Resolution`（`None`、`Exact`、`Alias`）、`ResolvedRecorderNames`、`Category`、検出された `Unit`、`DataType`、`ResolvedComponentCount`、`SampledComponentCount` が保持されます。`PerfMeterMetricsSnapshot` と session JSON/CSV にも同じ marker value、capability metadata、catalog revision が含まれます。
+
+marker availability は動的です。`SampleState`（`Unavailable`、`AvailableNoSample`、`AvailableSampled`）と capability metadata を使って判断してください。値が zero でも marker がないとは限りません。値は recorder の raw value で、検出された unit を保持します。shader count や PSO count とは限らず、共通 unit への変換も行いません。
+
+optional の `SGG.PerfMeter.GraphicsStateCollection` assembly は Unity `6000.4+` を対象とし、利用可能な場合に Unity backend を登録します。Unity `6000.4` では `UnityEngine.Experimental.Rendering.GraphicsStateCollection`、Unity `6000.5+` では `UnityEngine.Rendering.GraphicsStateCollection` を使用します。core assembly はこの backend に依存しません。
+
+```csharp
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.25f, 240));
+
+PerfMeterGraphicsStateCollectionRequestResult request =
+    PerformanceMeter.RequestGraphicsStateTrace(
+        new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", traceFrames: 60));
+
+PerfMeterGraphicsStateCollectionStatusSnapshot status =
+    PerformanceMeter.GetGraphicsStateCollectionStatus();
+if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
+{
+    PerformanceMeter.PrewarmGraphicsStateCollection(
+        new PerfMeterGraphicsStatePrewarmOptions(status.ArtifactRelativePath));
+}
+```
+
+public state-collection API は `RegisterGraphicsStateCollectionBackend(...)`、`UnregisterGraphicsStateCollectionBackend(...)`、`GetGraphicsStateCollectionCapabilities()`、`GetGraphicsStateCollectionStatus()`、`RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions)`、`PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions)`、`CancelGraphicsStateTrace(string captureId)` です。custom backend は `IPerfMeterGraphicsStateCollectionBackend` を実装し、trace/prewarm、cache-miss、parallel-PSO capability を報告します。
+
+`PerfMeterGraphicsStateTraceOptions` には空でない `CaptureId` が必要で、1–600 trace frames を受け付けます。既定値は 60 frames と最低 1 GiB の free disk です。trace は PerfMeter session が recording 中の場合だけ有効です。correlated session sample には active capture ID が `GraphicsStateTraceId`（export では `graphics_state_trace_id`）として入り、session の sampling 設定は trace frame 数ではなく correlated sample の密度を決めます。
+
+`PerfMeterGraphicsStateCollectionStatusSnapshot` は `IsBusy` と `HasPendingCleanup` を公開します。`IsBusy` は preparation、trace、trace の終了、prewarm、cleanup、または persisted pending cleanup の間 true です。`HasPendingCleanup` は cleanup retry を待つ owned artifact を明示します。active trace 中に `PerformanceMeter.StopSession()` を呼ぶと trace は cancel されるため、trace 完了まで session は recording を続ける必要があります。owned artifact の削除に失敗すると、隣接する owned `.delete-pending` sidecar marker が作られ、domain reload 後に復元されて cleanup が再試行されます。artifact と marker が消えるまで status は visible かつ busy のままです。
+
+coordinator は一度に一つの graphics-state flight だけを許可します。同じ active ID は `AlreadyActive`、準備中・trace 中・終了中・cleanup 中、または別の capture domain で別の trace/prewarm を行うと `RejectedOverlap` です。`CancelGraphicsStateTrace` は一致する active/preparing ID だけを対象にし、backend を cancel して pending owned artifact を削除します。cleanup failure は表示され、再試行が成功するまで置き換えを妨げる場合があります。
+
+`PerfMeterGraphicsStatePrewarmOptions` は owned project-relative `.graphicsstate` path と、0–1,000,000 の任意の `MaxStateCount` を受け付けます。prewarm は synchronous に実行され、artifact を保持し、`CompletedWarmupCount` と `IsWarmedUp` を報告します。successful でも incomplete な progressive warmup には warning が付きます。`TraceCacheMisses` は拡張 backend のために存在しますが、Unity backend は cache-miss evidence をサポートしないため、指定すると `Unavailable` になります。

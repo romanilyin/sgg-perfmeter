@@ -85,3 +85,33 @@ perfmeter.capture.export {"capture_id":"memory-spike-01"}
 ```
 
 等待 bundle 进入 export-ready 后，使用现有的 `perfmeter.capture.export` command。memory-only bundle 使用 `requested_tool: MemoryProfiler`，包含 `memory-snapshot.json` 和 manifest provenance，不会创建 external GPU artifact。成功的 export 是 one-shot，并删除 owned staging source。
+
+## 图形诊断与 GraphicsStateCollection commands
+
+下面 6 个 command 构成 PM-GFX-001 surface：
+
+| Command | 用途和主要输入 |
+| --- | --- |
+| `perfmeter.graphics.diagnostics` | 读取最新的 shader GPU-program 和 graphics-pipeline creation marker value、dynamic capability provenance、catalog revision、graphics API context。无输入。 |
+| `perfmeter.graphics.state_collection.request` | 启动 bounded trace。需要 Play Mode 和 active PerfMeter session；`capture_id` 必填，`trace_frames` 为 1–600（默认 60），`minimum_free_disk_mb` 默认 1024。 |
+| `perfmeter.graphics.state_collection.status` | 读取 availability、state、progress、backend identity、counts、`is_busy`、`has_pending_cleanup`、warning 以及 owned artifact 的 project-relative path。无输入。 |
+| `perfmeter.graphics.state_collection.capabilities` | 读取 backend provenance、trace/prewarm support、cache-miss 与 parallel-PSO support、session requirement、600-frame/64 MiB limit 和 owned artifact root。无输入。 |
+| `perfmeter.graphics.state_collection.cancel` | 取消匹配的 active/preparing trace，并清理 pending artifact。需要 `capture_id`。 |
+| `perfmeter.graphics.state_collection.prewarm` | 在 Play Mode 中加载并同步 prewarm 一个 owned project-relative artifact。`relative_path` 必填；`max_state_count` 为 0–1,000,000，默认 0。 |
+
+`perfmeter.graphics.diagnostics` 返回 `shader_gpu_program_creation_value`、`graphics_pipeline_creation_value` 以及每个 capability 的 `sample_state`、`resolution`、`resolved_recorder_names`、`unit`、`data_type`、`resolved_component_count`、`sampled_component_count`。`perfmeter.metrics.latest` 和 session export 也暴露相同的 marker metadata。值保留 discovered recorder unit，并不一定是 shader/PSO count；请使用 `sample_state`，不要把 0 解释为 unavailable。
+
+state response 包含 `result`、`availability`、`state`、`capture_id`、requested/completed trace frames、backend ID/version、`artifact_relative_path`、`artifact_size_bytes`、`total_graphics_state_count`、`variant_count`、`completed_warmup_count`、`is_warmed_up`、`is_busy`、`has_pending_cleanup` 和 `warning`。`is_busy` 在 preparation、trace、结束、prewarm、cleanup 或 persisted cleanup 期间保持 true；`has_pending_cleanup` 表示等待 retry 的 owned artifact。删除失败会通过 owned `.delete-pending` sidecar 持久化，并在 domain reload 后恢复和重试。`StopSession` 会取消 active trace，因此 session 必须保持 active 到完成。trace 在 end-of-frame tick 完请求的 frames 后进入 terminal state；batch mode 使用 next-frame fallback。active session 接纳的 sample 会带有等于 `capture_id` 的 `graphics_state_trace_id`。
+
+典型的 trace 与 prewarm 顺序：
+
+```text
+perfmeter.session.start {"warmup_seconds":0,"sample_interval_seconds":0.25,"max_samples":240}
+perfmeter.graphics.state_collection.capabilities {}
+perfmeter.graphics.state_collection.request {"capture_id":"shader-stutter-01","trace_frames":60}
+perfmeter.graphics.state_collection.status {}
+perfmeter.session.stop {}
+perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/GraphicsStateCollections/.sgg-perfmeter-graphics-...graphicsstate"}
+```
+
+只允许一个 graphics-state flight。重复的 active ID 返回 `AlreadyActive`；其他 overlapping trace/prewarm 返回 `RejectedOverlap`。cancel 只匹配 active/preparing ID。Unity backend 报告 `supports_cache_miss_tracing: false`，因此 cache-miss evidence 不受支持，MCP prewarm schema 也不提供该 input。artifact 由 PerfMeter owned，位于 `Temp/PerfMeter/GraphicsStateCollections` 下，最大 64 MiB。

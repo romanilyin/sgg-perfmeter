@@ -231,3 +231,48 @@ The public surface is `RegisterMemorySnapshotBackend(...)`, `UnregisterMemorySna
 `PerfMeterMemorySnapshotOptions` defaults to managed/native object flags, 1 GiB minimum free disk, and a 300-second cooldown. `RequestMemorySnapshot` is manual by default and returns explicit results such as `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest`, or `Failed`. Reads do not start the runtime; a valid request does.
 
 `ConfigureMemorySnapshotTriggers` enables the opt-in system-memory threshold and bounded leak-growth heuristic. `GetMemorySnapshotTriggers()` is disabled by default. Triggered requests use the same single-flight, cooldown, free-space, and capture-flag guards as manual requests.
+
+## Graphics Diagnostics And State Collections
+
+Graphics diagnostics are additive. `PerformanceMeter.GetGraphicsDiagnostics()` returns the latest shader GPU-program and graphics-pipeline creation marker values together with graphics API context, parallel-PSO capability, and the profiler catalog revision.
+
+```csharp
+PerfMeterGraphicsDiagnosticsSnapshot graphics = PerformanceMeter.GetGraphicsDiagnostics();
+PerfMeterProfilerMetricCapabilitySnapshot shader = graphics.ShaderGpuProgramCreationCapability;
+PerfMeterProfilerMetricCapabilitySnapshot pipeline = graphics.GraphicsPipelineCreationCapability;
+
+UnityEngine.Debug.Log($"Shader marker: {graphics.ShaderGpuProgramCreationValue} {shader.Unit} ({shader.SampleState})");
+UnityEngine.Debug.Log($"Pipeline marker: {graphics.GraphicsPipelineCreationValue} {pipeline.Unit} ({pipeline.SampleState})");
+```
+
+The catalog discovers Unity `ProfilerRecorder` descriptors at runtime startup and on explicit refresh/reconfigure. The shader semantic uses exact name `Shader.CreateGPUProgram` and aliases `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram`, and `Shader.DynamicLoadGPUProgram`. The graphics-pipeline semantic uses exact name `CreatePSO.Job`. Each capability preserves `Resolution` (`None`, `Exact`, or `Alias`), `ResolvedRecorderNames`, `Category`, discovered `Unit`, `DataType`, `ResolvedComponentCount`, and `SampledComponentCount`. `PerfMeterMetricsSnapshot` and session JSON/CSV carry the same marker values, capability metadata, and catalog revision.
+
+Marker availability is dynamic. Use `SampleState` (`Unavailable`, `AvailableNoSample`, or `AvailableSampled`) and the capability metadata instead of treating a zero value as proof that a marker is absent. Values are raw recorder values and retain the discovered unit; they are not universally shader or PSO counts and are not converted to a common unit.
+
+The optional `SGG.PerfMeter.GraphicsStateCollection` assembly is constrained to Unity `6000.4+` and registers the Unity backend when available. It uses `UnityEngine.Experimental.Rendering.GraphicsStateCollection` on Unity `6000.4` and `UnityEngine.Rendering.GraphicsStateCollection` on Unity `6000.5+`. The core assembly remains independent of that backend.
+
+```csharp
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.25f, 240));
+
+PerfMeterGraphicsStateCollectionRequestResult request =
+    PerformanceMeter.RequestGraphicsStateTrace(
+        new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", traceFrames: 60));
+
+PerfMeterGraphicsStateCollectionStatusSnapshot status =
+    PerformanceMeter.GetGraphicsStateCollectionStatus();
+if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
+{
+    PerformanceMeter.PrewarmGraphicsStateCollection(
+        new PerfMeterGraphicsStatePrewarmOptions(status.ArtifactRelativePath));
+}
+```
+
+The public state-collection surface is `RegisterGraphicsStateCollectionBackend(...)`, `UnregisterGraphicsStateCollectionBackend(...)`, `GetGraphicsStateCollectionCapabilities()`, `GetGraphicsStateCollectionStatus()`, `RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions)`, `PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions)`, and `CancelGraphicsStateTrace(string captureId)`. A custom backend implements `IPerfMeterGraphicsStateCollectionBackend` and reports trace/prewarm, cache-miss, and parallel-PSO capabilities.
+
+`PerfMeterGraphicsStateTraceOptions` requires a non-empty `CaptureId`, accepts 1–600 trace frames, and defaults to 60 frames and 1 GiB minimum free disk. A trace is valid only while a PerfMeter session is recording. Correlated session samples carry the active capture ID as `GraphicsStateTraceId` (`graphics_state_trace_id` in exports). Session sampling settings control the density of correlated samples; they do not change the requested trace-frame count.
+
+`PerfMeterGraphicsStateCollectionStatusSnapshot` exposes `IsBusy` and `HasPendingCleanup`. `IsBusy` is true during preparation, tracing, trace ending, prewarm, cleanup, or a persisted pending cleanup; `HasPendingCleanup` specifically identifies an owned artifact waiting for cleanup retry. If `PerformanceMeter.StopSession()` is called while a trace is active, it cancels that trace, so the session must remain recording until trace completion. A failed owned-artifact deletion creates an adjacent owned `.delete-pending` sidecar marker; the marker is restored after domain reload and cleanup is retried. The status remains visible and busy until the artifact and marker are cleared.
+
+The coordinator permits one graphics-state flight at a time. The same active ID returns `AlreadyActive`; another trace or a prewarm during preparation, tracing, ending, cleanup, or another capture domain returns `RejectedOverlap`. `CancelGraphicsStateTrace` only matches the active or preparing ID, cancels the backend, and removes the pending owned artifact. Cleanup failures stay visible and can block a replacement until cleanup is retried.
+
+`PerfMeterGraphicsStatePrewarmOptions` accepts an owned project-relative `.graphicsstate` path and an optional `MaxStateCount` from 0 to 1,000,000. Prewarm is synchronous, preserves the artifact, and reports `CompletedWarmupCount` and `IsWarmedUp`; a successful but incomplete progressive warmup includes a warning. `TraceCacheMisses` is present for backend extensibility, but the Unity backend does not support cache-miss evidence, so requesting it returns `Unavailable`.
