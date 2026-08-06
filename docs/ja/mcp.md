@@ -20,6 +20,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.reset_stats` | rolling stats、alert counters、active session counters をリセットします。 |
 | `perfmeter.runtime.mode.set` | `Stopped`、`Background`、`Overlay`、`OverdrawDiagnostic` を切り替えます。 |
 | `perfmeter.metrics.latest` | custom metrics を含む latest metrics を読み取ります。 |
+| `perfmeter.profiler.capabilities` | cache 済み Profiler metric capabilities と resolution provenance を、runtime や discovery を開始せずに読み取ります。 |
 | `perfmeter.alerts.latest` | active alerts、counters、Editor warning state を読み取ります。 |
 | `perfmeter.alerts.clear` | active alerts、counters、cooldown state をクリアします。 |
 | `perfmeter.alerts.capture.begin` | 外部 capture の bounded classification を開始します。 |
@@ -36,9 +37,18 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.summary` | current session summary を読み取ります。 |
 | `perfmeter.session.export` | current session を project-local JSON または CSV に export します。 |
 
+## Runtime Self-Overhead Payload
+
+`perfmeter.runtime.status` は additive な `self_overhead` object を含みます。これは別の command ではありません。Top-level keys は `state`、`cpu_timing_available`、`gpu_timing_availability`、`has_budget_violation` です。
+
+Component objects は `collector`、`custom_metric_providers`、`cpu_core_provider`、`overlay`、`urp_render_integration`、`hdrp_render_integration` です。それぞれ `component`、`state`、`window_frame_count`、`invocation_count`、`average_cpu_time_ms`、`max_cpu_time_ms`、`allocated_bytes`、`average_allocated_bytes`、`cpu_budget_ms`、`allocation_budget_bytes`、`cpu_budget_state`、`allocation_budget_state` を含みます。
+
+値は固定 120-frame CPU callback window と invocation 単位の average を表します。GPU attribution は `Unavailable`、inactive render integration は `Unsupported`、呼び出されていない supported component は `NotMeasured` です。Session JSON/CSV schema は変更されず、既存の CPU/GPU metrics も補正されません。
+
 ## Typical Profiling Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

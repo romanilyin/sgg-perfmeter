@@ -240,6 +240,7 @@ namespace SGG.PerfMeter
 
 		private void OnDisable()
 		{
+			PerfMeterSelfObservability.ResetComponent(PerfMeterSelfOverheadComponent.Overlay);
 			UnregisterGeometryCallback();
 			ApplyVisibility();
 		}
@@ -265,6 +266,10 @@ namespace SGG.PerfMeter
 		internal void SetVisible(bool visible)
 		{
 			_isVisible = visible;
+			if (!visible)
+			{
+				PerfMeterSelfObservability.ResetComponent(PerfMeterSelfOverheadComponent.Overlay);
+			}
 			ApplyVisibility();
 
 			if (visible)
@@ -1734,6 +1739,7 @@ namespace SGG.PerfMeter
 			{
 				return;
 			}
+			using PerfMeterSelfObservability.MeasurementScope selfOverheadScope = PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.Overlay);
 
 			_nextRefreshTime = Time.unscaledTime + _refreshIntervalSeconds;
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();

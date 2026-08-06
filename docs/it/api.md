@@ -46,6 +46,37 @@ Gruppi metrici principali:
 
 La disponibilita dei counter e esposta tramite `AvailableCounters`, `UnavailableCounters` e warning.
 
+## Self-Observability E Budget Dell'Overhead
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+La self-observability pubblica misure low-overhead del costo dei callback CPU in finestre fisse di 120 frame. Le medie sono per invocazione. Lo stato complessivo e `NotInitialized`, `Collecting` o `Ready`; lo stato di componente e `NotMeasured`, `Collecting`, `Ready` o `Unsupported`.
+
+I componenti sono `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` e `HdrpRenderIntegration`. Ognuno espone conteggi di frame/invocazioni, millisecondi CPU medi/massimi, allocazioni totali/medie, budget e stati `NotEvaluated`/`WithinBudget`/`Exceeded`.
+
+| Componente | Budget CPU | Budget allocazioni |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+Il self-timing GPU e esplicitamente `Unavailable`. Questi diagnostics non sottraggono ne modificano le metriche CPU/GPU esistenti.
+
+## Catalogo Dinamico Delle Metriche Profiler
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` e `GetProfilerMetricCapabilities()` leggono il catalogo in cache. Lo stato del catalogo e `NotInitialized`, `Ready` o `Error`; ogni capability riporta `Unavailable`, `AvailableNoSample` o `AvailableSampled`, e `Resolution` indica la provenienza `None`, `Exact` o `Alias`. La discovery avviene solo all'avvio del runtime e durante refresh/reconfigure espliciti, non nella raccolta steady-state. I valori numerici esistenti restano valori di compatibilita; usa `SampleState`/`IsAvailable` della capability come segnale autorevole di disponibilita.
+
 ## Snapshot Strutturati
 
 ```csharp

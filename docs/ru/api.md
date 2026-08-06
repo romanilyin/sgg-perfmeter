@@ -46,6 +46,37 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Доступность счетчиков видна через `AvailableCounters`, `UnavailableCounters` и warnings.
 
+## Self-observability и бюджеты overhead
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability публикует low-overhead измерения стоимости CPU callbacks в фиксированных окнах по 120 кадров. Средние значения считаются на один вызов. Общее состояние: `NotInitialized`, `Collecting` или `Ready`; состояние компонента: `NotMeasured`, `Collecting`, `Ready` или `Unsupported`.
+
+Компоненты: `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` и `HdrpRenderIntegration`. Для каждого доступны число кадров и вызовов, среднее/максимальное CPU-время, общий/средний объем allocations, заданные бюджеты и состояния `NotEvaluated`/`WithinBudget`/`Exceeded`.
+
+| Компонент | CPU budget | Allocation budget |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+GPU self-timing явно имеет состояние `Unavailable`. Диагностика не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
+
+## Динамический каталог Profiler-метрик
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` и `GetProfilerMetricCapabilities()` читают кэшированный каталог. Состояние каталога — `NotInitialized`, `Ready` или `Error`; каждая capability сообщает `Unavailable`, `AvailableNoSample` или `AvailableSampled`, а `Resolution` указывает provenance `None`, `Exact` или `Alias`. Discovery выполняется только при старте runtime и в явных путях refresh/reconfigure, но не при steady-state collection. Существующие numeric metrics сохраняют compatibility values; authoritative availability определяется по `SampleState`/`IsAvailable` capability.
+
 ## Структурированные снимки
 
 ```csharp

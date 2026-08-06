@@ -20,6 +20,7 @@ O objetivo e saida JSON estruturada para agents em vez de parsing de screenshots
 | `perfmeter.runtime.reset_stats` | Resetar rolling stats, contadores de alerts e contadores da sessao ativa. |
 | `perfmeter.runtime.mode.set` | Alternar entre `Stopped`, `Background`, `Overlay` ou `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Ler as metricas mais recentes, incluindo custom metrics. |
+| `perfmeter.profiler.capabilities` | Ler capabilities e proveniencia de resolucao das metricas Profiler em cache sem iniciar o runtime ou a discovery. |
 | `perfmeter.alerts.latest` | Ler alerts ativos, contadores e estado de avisos do Editor. |
 | `perfmeter.alerts.clear` | Limpar alerts ativos, contadores e estado de cooldown. |
 | `perfmeter.alerts.capture.begin` | Iniciar a classificacao limitada de uma captura externa. |
@@ -36,9 +37,18 @@ O objetivo e saida JSON estruturada para agents em vez de parsing de screenshots
 | `perfmeter.session.summary` | Ler o resumo atual da sessao. |
 | `perfmeter.session.export` | Exportar a sessao atual para JSON ou CSV local ao projeto. |
 
+## Self-Overhead No Status Runtime
+
+`perfmeter.runtime.status` inclui o objeto aditivo `self_overhead`; nao e um comando separado. As chaves principais sao `state`, `cpu_timing_available`, `gpu_timing_availability` e `has_budget_violation`.
+
+Os objetos de componente sao `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` e `hdrp_render_integration`. Cada um contem `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` e `allocation_budget_state`.
+
+Os valores descrevem janelas fixas de 120 frames para callbacks CPU com medias por invocacao. A atribuicao GPU e `Unavailable`; a render integration inativa e `Unsupported`, e um componente suportado sem chamadas e `NotMeasured`. Os schemas JSON/CSV de sessao nao mudam e as metricas CPU/GPU existentes nao sao ajustadas.
+
 ## Execucao Tipica De Profiling
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

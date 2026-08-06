@@ -46,6 +46,37 @@ Groupes de metriques principaux:
 
 La disponibilite des compteurs est exposee par `AvailableCounters`, `UnavailableCounters` et les avertissements.
 
+## Self-Observability Et Budgets D'Overhead
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+La self-observability publie des mesures low-overhead du cout des callbacks CPU dans des fenetres fixes de 120 frames. Les moyennes sont calculees par invocation. L'etat global est `NotInitialized`, `Collecting` ou `Ready`; l'etat d'un composant est `NotMeasured`, `Collecting`, `Ready` ou `Unsupported`.
+
+Les composants sont `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` et `HdrpRenderIntegration`. Chacun expose les nombres de frames/invocations, les millisecondes CPU moyennes/maximales, les allocations totales/moyennes, les budgets et les etats `NotEvaluated`/`WithinBudget`/`Exceeded`.
+
+| Composant | Budget CPU | Budget d'allocation |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+Le self-timing GPU est explicitement `Unavailable`. Ces diagnostics ne soustraient rien aux metriques CPU/GPU existantes et ne les ajustent pas.
+
+## Catalogue Dynamique Des Metriques Profiler
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` et `GetProfilerMetricCapabilities()` lisent le catalogue en cache. L'etat du catalogue est `NotInitialized`, `Ready` ou `Error`; chaque capability indique `Unavailable`, `AvailableNoSample` ou `AvailableSampled`, et `Resolution` donne la provenance `None`, `Exact` ou `Alias`. La discovery s'effectue uniquement au demarrage du runtime et lors d'un refresh/reconfigure explicite, pas pendant la collecte steady-state. Les valeurs numeriques existantes restent des valeurs de compatibilite; utilisez `SampleState`/`IsAvailable` de la capability comme signal d'autorite pour la disponibilite.
+
 ## Snapshots Structures
 
 ```csharp

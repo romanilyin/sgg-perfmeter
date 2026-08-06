@@ -19,6 +19,14 @@ namespace SGG.PerfMeter
 
 		internal static PerfMeterCameraSnapshot CreateSnapshot(PerfMeterCameraSource source, string cameraNameFilter)
 		{
+			using (PerfMeterProfilerInstrumentation.CameraSnapshotMarker.Auto())
+			{
+				return CreateSnapshotCore(source, cameraNameFilter);
+			}
+		}
+
+		private static PerfMeterCameraSnapshot CreateSnapshotCore(PerfMeterCameraSource source, string cameraNameFilter)
+		{
 			Camera camera = ResolveCamera(source, cameraNameFilter, out int gameCameraCount, out PerfMeterCameraSource resolvedSource);
 			if (camera == null)
 			{

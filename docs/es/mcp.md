@@ -20,6 +20,7 @@ El objetivo es salida JSON estructurada para agentes en lugar de parsing de scre
 | `perfmeter.runtime.reset_stats` | Restablecer rolling stats, contadores de alertas y contadores de sesión activa. |
 | `perfmeter.runtime.mode.set` | Cambiar a `Stopped`, `Background`, `Overlay` u `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Leer las métricas más recientes, incluidas custom metrics. |
+| `perfmeter.profiler.capabilities` | Leer las capabilities y la procedencia de resolución de métricas del Profiler en caché sin iniciar el runtime ni discovery. |
 | `perfmeter.alerts.latest` | Leer alertas activas, contadores y estado de advertencias del Editor. |
 | `perfmeter.alerts.clear` | Limpiar alertas activas, contadores y estado de cooldown. |
 | `perfmeter.alerts.capture.begin` | Iniciar la clasificacion acotada de una captura externa. |
@@ -36,9 +37,18 @@ El objetivo es salida JSON estructurada para agentes en lugar de parsing de scre
 | `perfmeter.session.summary` | Leer el resumen de sesión actual. |
 | `perfmeter.session.export` | Exportar la sesión actual a JSON o CSV local del proyecto. |
 
+## Self-Overhead En Runtime Status
+
+`perfmeter.runtime.status` incluye el objeto aditivo `self_overhead`; no es un comando separado. Sus claves superiores son `state`, `cpu_timing_available`, `gpu_timing_availability` y `has_budget_violation`.
+
+Los objetos de componente son `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` y `hdrp_render_integration`. Cada uno contiene `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` y `allocation_budget_state`.
+
+Los valores describen ventanas fijas de 120 frames para callbacks CPU con promedios por invocacion. La atribucion GPU es `Unavailable`; la render integration inactiva es `Unsupported` y un componente compatible sin llamadas es `NotMeasured`. Los schemas JSON/CSV de sesion no cambian y las metricas CPU/GPU existentes no se ajustan.
+
 ## Ejecución Típica De Profiling
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

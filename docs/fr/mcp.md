@@ -20,6 +20,7 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | `perfmeter.runtime.reset_stats` | Reinitialiser les stats roulantes, les compteurs d'alertes et les compteurs de session active. |
 | `perfmeter.runtime.mode.set` | Basculer vers `Stopped`, `Background`, `Overlay` ou `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Lire les dernieres metriques, y compris les metriques personnalisees. |
+| `perfmeter.profiler.capabilities` | Lire les capabilities et la provenance de resolution des metriques Profiler en cache sans demarrer le runtime ni la discovery. |
 | `perfmeter.alerts.latest` | Lire les alertes actives, les compteurs et l'etat des avertissements Editor. |
 | `perfmeter.alerts.clear` | Effacer les alertes actives, les compteurs et l'etat de cooldown. |
 | `perfmeter.alerts.capture.begin` | Demarrer la classification bornee d'une capture externe. |
@@ -36,9 +37,18 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | `perfmeter.session.summary` | Lire le resume de session courant. |
 | `perfmeter.session.export` | Exporter la session courante en JSON ou CSV local au projet. |
 
+## Self-Overhead Dans Le Status Runtime
+
+`perfmeter.runtime.status` inclut l'objet additif `self_overhead`; ce n'est pas une commande separee. Les cles principales sont `state`, `cpu_timing_available`, `gpu_timing_availability` et `has_budget_violation`.
+
+Les objets de composants sont `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` et `hdrp_render_integration`. Chacun contient `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` et `allocation_budget_state`.
+
+Les valeurs decrivent des fenetres fixes de 120 frames pour les callbacks CPU, avec moyennes par invocation. L'attribution GPU est `Unavailable`; une render integration inactive est `Unsupported` et un composant pris en charge sans appel est `NotMeasured`. Les schemas JSON/CSV de session restent inchanges et les metriques CPU/GPU existantes ne sont pas ajustees.
+
 ## Execution De Profilage Typique
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

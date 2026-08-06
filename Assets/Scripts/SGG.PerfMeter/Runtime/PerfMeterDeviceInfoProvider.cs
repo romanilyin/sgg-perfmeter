@@ -11,6 +11,14 @@ namespace SGG.PerfMeter
 
 		internal static PerfMeterDeviceSnapshot CreateSnapshot()
 		{
+			using (PerfMeterProfilerInstrumentation.DeviceSnapshotMarker.Auto())
+			{
+				return CreateSnapshotCore();
+			}
+		}
+
+		private static PerfMeterDeviceSnapshot CreateSnapshotCore()
+		{
 			Resolution currentResolution = Screen.currentResolution;
 			RefreshRate currentRefreshRate = currentResolution.refreshRateRatio;
 			Vector2Int mainWindowPosition = default;

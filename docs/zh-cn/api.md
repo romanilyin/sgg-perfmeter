@@ -46,6 +46,37 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Counter availability 通过 `AvailableCounters`、`UnavailableCounters` 和 warnings 暴露。
 
+## Self-Observability And Overhead Budgets
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability 使用固定 120-frame window，以 low-overhead 方式报告 CPU callback cost。Average 按 invocation 计算。整体 state 为 `NotInitialized`、`Collecting` 或 `Ready`；component state 为 `NotMeasured`、`Collecting`、`Ready` 或 `Unsupported`。
+
+Components 包括 `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Overlay`、`UrpRenderIntegration` 和 `HdrpRenderIntegration`。每个 component 暴露 window/invocation count、average/maximum CPU milliseconds、total/average allocated bytes、budget 以及 `NotEvaluated`/`WithinBudget`/`Exceeded` state。
+
+| Component | CPU budget | Allocation budget |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+GPU self-timing 明确为 `Unavailable`。这些 diagnostics 不会从现有 CPU/GPU metrics 中 subtract overhead，也不会调整其值。
+
+## Dynamic Profiler Metric Catalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` 和 `GetProfilerMetricCapabilities()` 读取缓存的 catalog。Catalog state 为 `NotInitialized`、`Ready` 或 `Error`；每个 capability 报告 `Unavailable`、`AvailableNoSample` 或 `AvailableSampled`，`Resolution` 表示 `None`、`Exact` 或 `Alias` provenance。Discovery 只在 runtime 启动和显式 refresh/reconfigure 时执行，不会在 steady-state collection 中执行。现有 numeric metrics 仍是 compatibility values；availability 应以 capability 的 `SampleState`/`IsAvailable` 作为 authoritative signal。
+
 ## Structured Snapshots
 
 ```csharp

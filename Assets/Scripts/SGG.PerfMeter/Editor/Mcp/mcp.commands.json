@@ -136,6 +136,22 @@
       }
     },
     {
+      "id": "perfmeter.profiler.capabilities",
+      "title": "PerfMeter Profiler metric capabilities",
+      "description": "Read the cached ProfilerRecorder metric catalog, exact or alias resolution provenance, and unavailable/no-sample/sampled states without starting the runtime or performing discovery.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.ProfilerCapabilities",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "profiler", "capabilities"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.alerts.latest",
       "title": "PerfMeter latest alerts",
       "description": "Read active SGG PerfMeter alerts and alert counters.",

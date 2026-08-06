@@ -20,6 +20,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.reset_stats` | 重置 rolling stats、alert counters 和 active session counters。 |
 | `perfmeter.runtime.mode.set` | 切换 `Stopped`、`Background`、`Overlay` 或 `OverdrawDiagnostic`。 |
 | `perfmeter.metrics.latest` | 读取 latest metrics，包括 custom metrics。 |
+| `perfmeter.profiler.capabilities` | 读取缓存的 Profiler metric capabilities 和 provenance，不启动 runtime 或 discovery。 |
 | `perfmeter.alerts.latest` | 读取 active alerts、counters 和 Editor warning state。 |
 | `perfmeter.alerts.clear` | 清除 active alerts、counters 和 cooldown state。 |
 | `perfmeter.alerts.capture.begin` | 开始外部 capture 的 bounded classification。 |
@@ -36,9 +37,18 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.summary` | 读取当前 session summary。 |
 | `perfmeter.session.export` | 将当前 session 导出到项目本地 JSON 或 CSV。 |
 
+## Runtime Self-Overhead Payload
+
+`perfmeter.runtime.status` 包含 additive `self_overhead` object；它不是新 command。Top-level keys 为 `state`、`cpu_timing_available`、`gpu_timing_availability` 和 `has_budget_violation`。
+
+Component objects 为 `collector`、`custom_metric_providers`、`cpu_core_provider`、`overlay`、`urp_render_integration` 和 `hdrp_render_integration`。每个对象包含 `component`、`state`、`window_frame_count`、`invocation_count`、`average_cpu_time_ms`、`max_cpu_time_ms`、`allocated_bytes`、`average_allocated_bytes`、`cpu_budget_ms`、`allocation_budget_bytes`、`cpu_budget_state` 和 `allocation_budget_state`。
+
+这些值描述固定 120-frame CPU callback window，并按 invocation 计算 average。GPU attribution 为 `Unavailable`；inactive render integration 为 `Unsupported`，未调用的 supported component 为 `NotMeasured`。Session JSON/CSV schema 不变，现有 CPU/GPU metrics 也不会调整。
+
 ## 典型 Profiling Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

@@ -54,6 +54,29 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.LatestMetrics : PerfMeterMetricsSnapshot.Stopped;
 		}
 
+		public static PerfMeterProfilerMetricCatalogSnapshot GetProfilerMetricCatalog()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.ProfilerMetricCatalog : PerfMeterProfilerMetricCatalogSnapshot.NotInitialized;
+		}
+
+		public static PerfMeterProfilerMetricCapabilitySnapshot[] GetProfilerMetricCapabilities()
+		{
+			return GetProfilerMetricCatalog().Capabilities;
+		}
+
+		public static bool TryRefreshProfilerMetricCatalog()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.RefreshProfilerMetricCatalog();
+		}
+
+		public static PerfMeterSelfOverheadSnapshot GetSelfOverhead()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.SelfOverhead : PerfMeterSelfOverheadSnapshot.NotInitialized;
+		}
+
 		public static PerfMeterAlertSnapshot[] GetLatestAlerts()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -579,13 +602,20 @@ namespace SGG.PerfMeter
 				throw new System.ArgumentNullException(nameof(provider));
 			}
 
+			bool changed = false;
 			lock (SyncRoot)
 			{
 				if (!Providers.Contains(provider))
 				{
 					Providers.Add(provider);
 					_providerSnapshot = Providers.ToArray();
+					changed = true;
 				}
+			}
+
+			if (changed)
+			{
+				PerfMeterProfilerInstrumentation.RecordCustomMetricCount(0);
 			}
 		}
 
@@ -596,12 +626,19 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			bool changed = false;
 			lock (SyncRoot)
 			{
 				if (Providers.Remove(provider))
 				{
 					_providerSnapshot = Providers.ToArray();
+					changed = true;
 				}
+			}
+
+			if (changed)
+			{
+				PerfMeterProfilerInstrumentation.RecordCustomMetricCount(0);
 			}
 		}
 
@@ -612,9 +649,24 @@ namespace SGG.PerfMeter
 				Providers.Clear();
 				_providerSnapshot = System.Array.Empty<IPerfMeterCustomMetricProvider>();
 			}
+
+			PerfMeterProfilerInstrumentation.RecordCustomMetricCount(0);
 		}
 
 		internal static PerfMeterCustomMetricSnapshot[] Collect()
+		{
+			PerfMeterCustomMetricSnapshot[] metrics;
+			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.CustomMetricProviders))
+			using (PerfMeterProfilerInstrumentation.CustomMetricsMarker.Auto())
+			{
+				metrics = CollectCore();
+			}
+
+			PerfMeterProfilerInstrumentation.RecordCustomMetricCount(metrics.Length);
+			return metrics;
+		}
+
+		private static PerfMeterCustomMetricSnapshot[] CollectCore()
 		{
 			IPerfMeterCustomMetricProvider[] providers;
 			lock (SyncRoot)

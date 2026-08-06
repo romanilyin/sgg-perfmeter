@@ -446,6 +446,258 @@ namespace SGG.PerfMeter
 		CpuCoreLoad = 1 << 11
 	}
 
+	public enum PerfMeterProfilerMetricSemantic
+	{
+		DrawCalls = 0,
+		SetPassCalls = 1,
+		Batches = 2,
+		Vertices = 3,
+		SrpBatcherInstances = 4,
+		BrgDrawCalls = 5,
+		BrgInstances = 6,
+		IndexBufferUploadInFrameBytes = 7,
+		SystemUsedMemory = 8,
+		GcReservedMemory = 9,
+		GpuMemory = 10
+	}
+
+	public enum PerfMeterProfilerMetricSampleState
+	{
+		Unavailable = 0,
+		AvailableNoSample = 1,
+		AvailableSampled = 2
+	}
+
+	public enum PerfMeterProfilerMetricResolution
+	{
+		None = 0,
+		Exact = 1,
+		Alias = 2
+	}
+
+	public enum PerfMeterProfilerMetricCatalogState
+	{
+		NotInitialized = 0,
+		Ready = 1,
+		Error = 2
+	}
+
+	public readonly struct PerfMeterProfilerMetricCapabilitySnapshot
+	{
+		public PerfMeterProfilerMetricCapabilitySnapshot(
+			PerfMeterProfilerMetricSemantic semantic,
+			PerfMeterProfilerMetricSampleState sampleState,
+			PerfMeterProfilerMetricResolution resolution,
+			string category,
+			string resolvedRecorderNames,
+			string unit,
+			string dataType,
+			int resolvedComponentCount,
+			int sampledComponentCount)
+		{
+			Semantic = semantic;
+			SampleState = sampleState;
+			Resolution = resolution;
+			Category = category ?? string.Empty;
+			ResolvedRecorderNames = resolvedRecorderNames ?? string.Empty;
+			Unit = unit ?? string.Empty;
+			DataType = dataType ?? string.Empty;
+			ResolvedComponentCount = Mathf.Max(0, resolvedComponentCount);
+			SampledComponentCount = Mathf.Clamp(sampledComponentCount, 0, ResolvedComponentCount);
+		}
+
+		public bool IsAvailable => SampleState != PerfMeterProfilerMetricSampleState.Unavailable;
+		public PerfMeterProfilerMetricSemantic Semantic { get; }
+		public PerfMeterProfilerMetricSampleState SampleState { get; }
+		public PerfMeterProfilerMetricResolution Resolution { get; }
+		public string Category { get; }
+		public string ResolvedRecorderNames { get; }
+		public string Unit { get; }
+		public string DataType { get; }
+		public int ResolvedComponentCount { get; }
+		public int SampledComponentCount { get; }
+	}
+
+	public readonly struct PerfMeterProfilerMetricCatalogSnapshot
+	{
+		public PerfMeterProfilerMetricCatalogSnapshot(
+			PerfMeterProfilerMetricCatalogState state,
+			int revision,
+			int discoveryCount,
+			PerfMeterProfilerMetricCapabilitySnapshot[] capabilities,
+			string lastError)
+		{
+			State = state;
+			Revision = Mathf.Max(0, revision);
+			DiscoveryCount = Mathf.Max(0, discoveryCount);
+			Capabilities = capabilities ?? System.Array.Empty<PerfMeterProfilerMetricCapabilitySnapshot>();
+			LastError = lastError ?? string.Empty;
+		}
+
+		public static PerfMeterProfilerMetricCatalogSnapshot NotInitialized => new PerfMeterProfilerMetricCatalogSnapshot(
+			PerfMeterProfilerMetricCatalogState.NotInitialized,
+			0,
+			0,
+			System.Array.Empty<PerfMeterProfilerMetricCapabilitySnapshot>(),
+			string.Empty);
+
+		public bool IsReady => State == PerfMeterProfilerMetricCatalogState.Ready;
+		public PerfMeterProfilerMetricCatalogState State { get; }
+		public int Revision { get; }
+		public int DiscoveryCount { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot[] Capabilities { get; }
+		public string LastError { get; }
+	}
+
+	public enum PerfMeterSelfOverheadState
+	{
+		NotInitialized = 0,
+		Collecting = 1,
+		Ready = 2
+	}
+
+	public enum PerfMeterSelfOverheadComponentState
+	{
+		NotMeasured = 0,
+		Collecting = 1,
+		Ready = 2,
+		Unsupported = 3
+	}
+
+	public enum PerfMeterSelfOverheadBudgetState
+	{
+		NotEvaluated = 0,
+		WithinBudget = 1,
+		Exceeded = 2
+	}
+
+	public enum PerfMeterSelfOverheadComponent
+	{
+		Collector = 0,
+		CustomMetricProviders = 1,
+		CpuCoreProvider = 2,
+		Overlay = 3,
+		UrpRenderIntegration = 4,
+		HdrpRenderIntegration = 5
+	}
+
+	public readonly struct PerfMeterSelfOverheadComponentSnapshot
+	{
+		public PerfMeterSelfOverheadComponentSnapshot(
+			PerfMeterSelfOverheadComponent component,
+			PerfMeterSelfOverheadComponentState state,
+			int windowFrameCount,
+			int invocationCount,
+			double averageCpuTimeMs,
+			double maxCpuTimeMs,
+			long allocatedBytes,
+			double averageAllocatedBytes,
+			double cpuBudgetMs,
+			long allocationBudgetBytes,
+			PerfMeterSelfOverheadBudgetState cpuBudgetState,
+			PerfMeterSelfOverheadBudgetState allocationBudgetState)
+		{
+			Component = component;
+			State = state;
+			WindowFrameCount = Mathf.Max(0, windowFrameCount);
+			InvocationCount = Mathf.Max(0, invocationCount);
+			AverageCpuTimeMs = SanitizeNonNegative(averageCpuTimeMs);
+			MaxCpuTimeMs = SanitizeNonNegative(maxCpuTimeMs);
+			AllocatedBytes = System.Math.Max(0L, allocatedBytes);
+			AverageAllocatedBytes = SanitizeNonNegative(averageAllocatedBytes);
+			CpuBudgetMs = SanitizeNonNegative(cpuBudgetMs);
+			AllocationBudgetBytes = System.Math.Max(0L, allocationBudgetBytes);
+			CpuBudgetState = cpuBudgetState;
+			AllocationBudgetState = allocationBudgetState;
+		}
+
+		public bool IsAvailable => State == PerfMeterSelfOverheadComponentState.Collecting || State == PerfMeterSelfOverheadComponentState.Ready;
+		public bool HasBudgetViolation => CpuBudgetState == PerfMeterSelfOverheadBudgetState.Exceeded || AllocationBudgetState == PerfMeterSelfOverheadBudgetState.Exceeded;
+		public PerfMeterSelfOverheadComponent Component { get; }
+		public PerfMeterSelfOverheadComponentState State { get; }
+		public int WindowFrameCount { get; }
+		public int InvocationCount { get; }
+		public double AverageCpuTimeMs { get; }
+		public double MaxCpuTimeMs { get; }
+		public long AllocatedBytes { get; }
+		public double AverageAllocatedBytes { get; }
+		public double CpuBudgetMs { get; }
+		public long AllocationBudgetBytes { get; }
+		public PerfMeterSelfOverheadBudgetState CpuBudgetState { get; }
+		public PerfMeterSelfOverheadBudgetState AllocationBudgetState { get; }
+
+		internal static PerfMeterSelfOverheadComponentSnapshot NotMeasured(PerfMeterSelfOverheadComponent component)
+		{
+			return new PerfMeterSelfOverheadComponentSnapshot(
+				component,
+				PerfMeterSelfOverheadComponentState.NotMeasured,
+				0,
+				0,
+				0d,
+				0d,
+				0L,
+				0d,
+				0d,
+				0L,
+				PerfMeterSelfOverheadBudgetState.NotEvaluated,
+				PerfMeterSelfOverheadBudgetState.NotEvaluated);
+		}
+
+		private static double SanitizeNonNegative(double value)
+		{
+			return double.IsNaN(value) || double.IsInfinity(value) ? 0d : System.Math.Max(0d, value);
+		}
+	}
+
+	public readonly struct PerfMeterSelfOverheadSnapshot
+	{
+		public PerfMeterSelfOverheadSnapshot(
+			PerfMeterSelfOverheadState state,
+			PerfMeterAvailability gpuTimingAvailability,
+			PerfMeterSelfOverheadComponentSnapshot collector,
+			PerfMeterSelfOverheadComponentSnapshot customMetricProviders,
+			PerfMeterSelfOverheadComponentSnapshot cpuCoreProvider,
+			PerfMeterSelfOverheadComponentSnapshot overlay,
+			PerfMeterSelfOverheadComponentSnapshot urpRenderIntegration,
+			PerfMeterSelfOverheadComponentSnapshot hdrpRenderIntegration)
+		{
+			State = state;
+			GpuTimingAvailability = gpuTimingAvailability;
+			Collector = collector;
+			CustomMetricProviders = customMetricProviders;
+			CpuCoreProvider = cpuCoreProvider;
+			Overlay = overlay;
+			UrpRenderIntegration = urpRenderIntegration;
+			HdrpRenderIntegration = hdrpRenderIntegration;
+		}
+
+		public static PerfMeterSelfOverheadSnapshot NotInitialized => new PerfMeterSelfOverheadSnapshot(
+			PerfMeterSelfOverheadState.NotInitialized,
+			PerfMeterAvailability.Unavailable,
+			PerfMeterSelfOverheadComponentSnapshot.NotMeasured(PerfMeterSelfOverheadComponent.Collector),
+			PerfMeterSelfOverheadComponentSnapshot.NotMeasured(PerfMeterSelfOverheadComponent.CustomMetricProviders),
+			PerfMeterSelfOverheadComponentSnapshot.NotMeasured(PerfMeterSelfOverheadComponent.CpuCoreProvider),
+			PerfMeterSelfOverheadComponentSnapshot.NotMeasured(PerfMeterSelfOverheadComponent.Overlay),
+			PerfMeterSelfOverheadComponentSnapshot.NotMeasured(PerfMeterSelfOverheadComponent.UrpRenderIntegration),
+			PerfMeterSelfOverheadComponentSnapshot.NotMeasured(PerfMeterSelfOverheadComponent.HdrpRenderIntegration));
+
+		public bool CpuTimingAvailable => State != PerfMeterSelfOverheadState.NotInitialized;
+		public bool HasBudgetViolation => Collector.HasBudgetViolation ||
+			CustomMetricProviders.HasBudgetViolation ||
+			CpuCoreProvider.HasBudgetViolation ||
+			Overlay.HasBudgetViolation ||
+			UrpRenderIntegration.HasBudgetViolation ||
+			HdrpRenderIntegration.HasBudgetViolation;
+		public PerfMeterSelfOverheadState State { get; }
+		public PerfMeterAvailability GpuTimingAvailability { get; }
+		public PerfMeterSelfOverheadComponentSnapshot Collector { get; }
+		public PerfMeterSelfOverheadComponentSnapshot CustomMetricProviders { get; }
+		public PerfMeterSelfOverheadComponentSnapshot CpuCoreProvider { get; }
+		public PerfMeterSelfOverheadComponentSnapshot Overlay { get; }
+		public PerfMeterSelfOverheadComponentSnapshot UrpRenderIntegration { get; }
+		public PerfMeterSelfOverheadComponentSnapshot HdrpRenderIntegration { get; }
+	}
+
 	public readonly struct PerfMeterStatusSnapshot
 	{
 		public PerfMeterStatusSnapshot(
@@ -486,6 +738,87 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
 			bool editorWarningsEnabled = true,
 			string visualOverlayPresetId = "")
+			: this(
+				state,
+				availability,
+				collectionMode,
+				frameTimingAvailability,
+				graphicsDeviceType,
+				graphicsDeviceName,
+				warning,
+				collectionFrame,
+				lastError,
+				bottleneck,
+				availableCounters,
+				unavailableCounters,
+				overlayVisible,
+				overdrawState,
+				overdrawProgress,
+				overdrawRatio,
+				overdrawHeatmapVisible,
+				overlayCorner,
+				overlayMode,
+				targetFps,
+				overlayPreset,
+				overlayModules,
+				sessionState,
+				sessionRecording,
+				sessionSampleCount,
+				sessionDroppedSampleCount,
+				activeAlertCount,
+				firedAlertCount,
+				latestAlertRuleId,
+				latestAlertMessage,
+				applicationFocused,
+				applicationPaused,
+				overlayTheme,
+				overlayLayout,
+				overlayFontFamily,
+				editorWarningsEnabled,
+				visualOverlayPresetId,
+				PerfMeterSelfOverheadSnapshot.NotInitialized)
+		{
+		}
+
+		internal PerfMeterStatusSnapshot(
+			PerfMeterRuntimeState state,
+			PerfMeterAvailability availability,
+			PerfMeterCollectionMode collectionMode,
+			PerfMeterFrameTimingAvailability frameTimingAvailability,
+			GraphicsDeviceType graphicsDeviceType,
+			string graphicsDeviceName,
+			string warning,
+			int collectionFrame,
+			string lastError,
+			PerfMeterBottleneck bottleneck,
+			PerfMeterCounterAvailability availableCounters,
+			PerfMeterCounterAvailability unavailableCounters,
+			bool overlayVisible,
+			PerfMeterOverdrawMeasurementState overdrawState,
+			float overdrawProgress,
+			double overdrawRatio,
+			bool overdrawHeatmapVisible,
+			PerfMeterOverlayCorner overlayCorner,
+			PerfMeterOverlayMode overlayMode,
+			PerfMeterTargetFps targetFps,
+			PerfMeterOverlayPreset overlayPreset,
+			PerfMeterOverlayModule overlayModules,
+			PerfMeterSessionState sessionState,
+			bool sessionRecording,
+			int sessionSampleCount,
+			int sessionDroppedSampleCount,
+			int activeAlertCount,
+			int firedAlertCount,
+			string latestAlertRuleId,
+			string latestAlertMessage,
+			bool applicationFocused,
+			bool applicationPaused,
+			PerfMeterOverlayTheme overlayTheme,
+			PerfMeterOverlayLayout overlayLayout,
+			PerfMeterOverlayFontFamily overlayFontFamily,
+			bool editorWarningsEnabled,
+			string visualOverlayPresetId,
+			PerfMeterSelfOverheadSnapshot selfOverhead)
 		{
 			State = state;
 			Availability = availability;
@@ -524,6 +857,7 @@ namespace SGG.PerfMeter
 			ApplicationPaused = applicationPaused;
 			EditorWarningsEnabled = editorWarningsEnabled;
 			VisualOverlayPresetId = visualOverlayPresetId ?? string.Empty;
+			SelfOverhead = selfOverhead.State == PerfMeterSelfOverheadState.NotInitialized ? PerfMeterSelfOverheadSnapshot.NotInitialized : selfOverhead;
 		}
 
 		public PerfMeterRuntimeState State { get; }
@@ -563,6 +897,50 @@ namespace SGG.PerfMeter
 		public bool ApplicationPaused { get; }
 		public bool EditorWarningsEnabled { get; }
 		public string VisualOverlayPresetId { get; }
+		public PerfMeterSelfOverheadSnapshot SelfOverhead { get; }
+
+		internal PerfMeterStatusSnapshot WithSelfOverhead(PerfMeterSelfOverheadSnapshot selfOverhead)
+		{
+			return new PerfMeterStatusSnapshot(
+				State,
+				Availability,
+				CollectionMode,
+				FrameTimingAvailability,
+				GraphicsDeviceType,
+				GraphicsDeviceName,
+				Warning,
+				CollectionFrame,
+				LastError,
+				Bottleneck,
+				AvailableCounters,
+				UnavailableCounters,
+				OverlayVisible,
+				OverdrawState,
+				OverdrawProgress,
+				OverdrawRatio,
+				OverdrawHeatmapVisible,
+				OverlayCorner,
+				OverlayMode,
+				TargetFps,
+				OverlayPreset,
+				OverlayModules,
+				SessionState,
+				IsSessionRecording,
+				SessionSampleCount,
+				SessionDroppedSampleCount,
+				ActiveAlertCount,
+				FiredAlertCount,
+				LatestAlertRuleId,
+				LatestAlertMessage,
+				ApplicationFocused,
+				ApplicationPaused,
+				OverlayTheme,
+				OverlayLayout,
+				OverlayFontFamily,
+				EditorWarningsEnabled,
+				VisualOverlayPresetId,
+				selfOverhead);
+		}
 	}
 
 	public readonly struct PerfMeterSessionOptions

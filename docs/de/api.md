@@ -41,6 +41,37 @@ Wichtige Metrikgruppen:
 
 Counter-Verfuegbarkeit wird ueber `AvailableCounters`, `UnavailableCounters` und warnings gemeldet.
 
+## Self-Observability Und Overhead-Budgets
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability meldet CPU-Callback-Kosten mit geringem Overhead in festen 120-Frame-Fenstern. Durchschnittswerte gelten pro Aufruf. Der Gesamtstatus ist `NotInitialized`, `Collecting` oder `Ready`; der Komponentenstatus ist `NotMeasured`, `Collecting`, `Ready` oder `Unsupported`.
+
+Komponenten sind `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` und `HdrpRenderIntegration`. Jede Komponente liefert Fenster-/Aufrufzahlen, durchschnittliche/maximale CPU-Millisekunden, gesamte/durchschnittliche Allokationen, Budgets und die Zustaende `NotEvaluated`/`WithinBudget`/`Exceeded`.
+
+| Komponente | CPU-Budget | Allokationsbudget |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+GPU-Self-Timing ist ausdruecklich `Unavailable`. Diese Diagnose zieht nichts von bestehenden CPU/GPU-Metriken ab und passt sie nicht an.
+
+## Dynamischer Profiler-Metrikkatalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` und `GetProfilerMetricCapabilities()` lesen den gecachten Katalog. Der Katalogstatus ist `NotInitialized`, `Ready` oder `Error`; jede Capability meldet `Unavailable`, `AvailableNoSample` oder `AvailableSampled`, und `Resolution` zeigt die Provenienz `None`, `Exact` oder `Alias`. Discovery laeuft nur beim Runtime-Start und bei explizitem Refresh/Reconfigure, nicht in der Steady-State-Collection. Bestehende numerische Metriken bleiben Compatibility-Werte; `SampleState`/`IsAvailable` der Capability ist das massgebliche Verfuegbarkeitssignal.
+
 ## Strukturierte Snapshots
 
 ```csharp

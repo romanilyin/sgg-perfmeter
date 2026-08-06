@@ -43,6 +43,7 @@ namespace SGG.PerfMeter
 			_options = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(configuredSettings);
 			_samples = new PerfMeterSessionSampleSnapshot[_options.MaxSamples];
 			_state = PerfMeterSessionState.Recording;
+			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_device = device;
 			_camera = camera;
 			_configuredSettings = configuredSettings;
@@ -61,6 +62,7 @@ namespace SGG.PerfMeter
 			}
 
 			_state = PerfMeterSessionState.Stopped;
+			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_stopTimeSeconds = timeSeconds;
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
@@ -68,6 +70,7 @@ namespace SGG.PerfMeter
 		internal void Reset()
 		{
 			_state = PerfMeterSessionState.Idle;
+			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_options = PerfMeterSessionOptions.Default;
 			_samples = System.Array.Empty<PerfMeterSessionSampleSnapshot>();
 			_sampleCount = 0;
@@ -133,6 +136,14 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			using (PerfMeterProfilerInstrumentation.SessionCaptureMarker.Auto())
+			{
+				UpdateRecording(metrics, frame, timeSeconds, customMetrics);
+			}
+		}
+
+		private void UpdateRecording(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricSnapshot[] customMetrics)
+		{
 			if (frame < 0 || frame < _wholeRunStats.LastFrame)
 			{
 				return;

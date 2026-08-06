@@ -85,11 +85,26 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Custom metrics 会通过 API reads、session JSON export、MCP latest metrics 暴露；启用 `CustomMetrics` module 时，overlay 最多显示八行。
 
+## Unity Profiler Instrumentation
+
+此 instrumentation 属于 internal scope，仅在 profiling Editor、Development Build 或其他 profiler-enabled build 时可在 Unity Profiler 中查看。没有 Profiler 的 Release player 中，这些 marker/counter 是 no-op，不会生成 instrumentation data；public API、status、MCP 和 export schema 不变。
+
+- Marker 覆盖 collection/frame timing（`SGG.PerfMeter.Collect`、`SGG.PerfMeter.Collect.FrameTiming`）、providers（`SGG.PerfMeter.Provider.CustomMetrics`、`SGG.PerfMeter.Provider.CpuCore`、`SGG.PerfMeter.Provider.DeviceSnapshot`、`SGG.PerfMeter.Provider.CameraSnapshot`）、bottleneck/capture（`SGG.PerfMeter.Bottleneck.Classify`、`SGG.PerfMeter.Capture.Session`、`SGG.PerfMeter.Capture.AlertScope`）以及 JSON/CSV export（`SGG.PerfMeter.Export.Json`、`SGG.PerfMeter.Export.Csv`）。`SGG.PerfMeter.Thermal.Sample` 是 reserved internal provider hook。
+- Counter 覆盖 CPU/GPU frame time（`SGG.PerfMeter.CPU.FrameTime`、`SGG.PerfMeter.CPU.MainThreadTime`、`SGG.PerfMeter.CPU.RenderThreadTime`、`SGG.PerfMeter.CPU.PresentWaitTime`、`SGG.PerfMeter.GPU.FrameTime`），作为 nanoseconds 的 end-of-frame gauge。`SGG.PerfMeter.CPU.FrameTimingAvailable`、`SGG.PerfMeter.GPU.FrameTimingAvailable`、`SGG.PerfMeter.Capture.AlertScopeActive` 和 `SGG.PerfMeter.Thermal.Available` 用 `0`/`1` 编码 availability/active；`SGG.PerfMeter.Bottleneck.Kind`、`SGG.PerfMeter.Capture.SessionState` 和 `SGG.PerfMeter.Capture.OverdrawState` 使用 enum code；`SGG.PerfMeter.Provider.CustomMetricCount` 是 count。Counter 使用 `Scripts` category 和 `FlushOnEndOfFrame`。
+- 不会生成 synthetic thermal sample；`SGG.PerfMeter.Thermal.Available` 在真实 platform provider 提供 data 前保持 `0`/unavailable。
+
+## Self-Observability And Overhead Budgets
+
+使用 `PerformanceMeter.GetSelfOverhead()` 或 `PerformanceMeter.GetStatus().SelfOverhead` 诊断 collector、custom providers、CPU-core provider、overlay 和 URP/HDRP integration 的 CPU callback cost 与 allocation。测量使用固定 120-frame window、invocation average 和 component-specific CPU/allocation budget。
+
+Inactive render integration 报告 `Unsupported`，未调用的 supported component 报告 `NotMeasured`，GPU self-timing 报告 `Unavailable`。Accounting 仅用于 diagnostics：PerfMeter 不会从现有 CPU/GPU metrics 中 subtract overhead，也不会调整其值。
+
 ## Agent Automation
 
 典型 MCP-driven run：
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}
@@ -98,3 +113,5 @@ perfmeter.session.summary {}
 perfmeter.session.export {"format":"json","path":"Temp/PerfMeter/session.json"}
 perfmeter.alerts.latest {}
 ```
+
+`perfmeter.profiler.capabilities {}` 是缓存读取；不会启动 runtime，也不会执行 discovery。

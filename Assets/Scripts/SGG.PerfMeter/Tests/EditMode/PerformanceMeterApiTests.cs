@@ -327,6 +327,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 2));
 
 			Assert.That(PerformanceMeter.IsSessionRecording, Is.True);
+			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Recording));
 			Assert.That(PerformanceMeter.GetStatus().SessionState, Is.EqualTo(PerfMeterSessionState.Recording));
 			PerfMeterSessionSummarySnapshot recordingSummary = PerformanceMeter.GetSessionSummary();
 			Assert.That(recordingSummary.State, Is.EqualTo(PerfMeterSessionState.Recording));
@@ -337,6 +338,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerformanceMeter.StopSession();
 
 			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
+			Assert.That(PerfMeterProfilerInstrumentation.SessionState, Is.EqualTo((int)PerfMeterSessionState.Stopped));
 			Assert.That(PerformanceMeter.GetStatus().SessionState, Is.EqualTo(PerfMeterSessionState.Stopped));
 			Assert.That(PerformanceMeter.GetSessionSummary().State, Is.EqualTo(PerfMeterSessionState.Stopped));
 		}
@@ -619,8 +621,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metrics[0].Category, Is.EqualTo("gameplay"));
 			Assert.That(metrics[0].Unit, Is.EqualTo("index"));
 			Assert.That(metrics[0].Value, Is.EqualTo(7d));
+			Assert.That(PerfMeterProfilerInstrumentation.CustomMetricCount, Is.EqualTo(1));
 
 			PerformanceMeter.UnregisterCustomMetricProvider(provider);
+			Assert.That(PerfMeterProfilerInstrumentation.CustomMetricCount, Is.Zero);
 			Assert.That(PerformanceMeter.GetCustomMetrics(), Is.Empty);
 		}
 
@@ -1122,10 +1126,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(latestJson, Does.Contain("\"is_playing\""));
 
 			Assert.That(PerfMeterMcpCommands.AlertsCaptureBegin("{\"capture_id\":\"capture-test\"}"), Does.Contain("\"started\":true"));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.EqualTo(1));
 			Assert.That(PerfMeterMcpCommands.AlertsCaptureBegin("{\"capture_id\":\"other-capture\"}"), Does.Contain("\"capture_id\":\"capture-test\""));
 			Assert.That(PerfMeterMcpCommands.AlertsCaptureBegin("{\"capture_id\":\"other-capture\"}"), Does.Contain("\"started\":false"));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.EqualTo(1));
 			Assert.That(PerfMeterMcpCommands.AlertsCaptureEnd("{\"capture_id\":\"other-capture\"}"), Does.Contain("\"capture_scope_active\":true"));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.EqualTo(1));
 			Assert.That(PerfMeterMcpCommands.AlertsCaptureEnd("{\"capture_id\":\"capture-test\"}"), Does.Contain("\"ended\":true"));
+			Assert.That(PerfMeterProfilerInstrumentation.AlertScopeActive, Is.Zero);
 			Assert.That(PerfMeterMcpCommands.AlertsCaptureEnd("{\"capture_id\":\"capture-test\"}"), Does.Contain("\"capture_scope_active\":false"));
 
 			string clearJson = PerfMeterMcpCommands.AlertsClear();

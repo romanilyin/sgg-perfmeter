@@ -46,6 +46,37 @@ Key metric groups:
 
 Counter availability is exposed through `AvailableCounters`, `UnavailableCounters`, and warnings.
 
+## Self-Observability And Overhead Budgets
+
+```csharp
+PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
+PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+```
+
+Self-observability reports low-overhead CPU callback measurements in fixed 120-frame windows. Averages are per invocation. Overall state is `NotInitialized`, `Collecting`, or `Ready`; component state is `NotMeasured`, `Collecting`, `Ready`, or `Unsupported`.
+
+Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, and `HdrpRenderIntegration`. Each component exposes window and invocation counts, average/maximum CPU milliseconds, total/average allocated bytes, configured budgets, and `NotEvaluated`/`WithinBudget`/`Exceeded` budget states.
+
+| Component | CPU budget | Allocation budget |
+| --- | ---: | ---: |
+| Collector | 0.5 ms | 0 B |
+| Custom metric providers | 0.5 ms | 4096 B |
+| CPU core provider | 1.0 ms | 0 B |
+| Overlay | 2.0 ms | 131072 B |
+| URP/HDRP render integration | 0.5 ms | 0 B |
+
+GPU self-timing is explicitly `Unavailable`. These diagnostics do not subtract from or adjust existing CPU/GPU metrics.
+
+## Dynamic Profiler Metric Catalog
+
+```csharp
+PerfMeterProfilerMetricCatalogSnapshot catalog = PerformanceMeter.GetProfilerMetricCatalog();
+PerfMeterProfilerMetricCapabilitySnapshot[] capabilities = PerformanceMeter.GetProfilerMetricCapabilities();
+bool refreshed = PerformanceMeter.TryRefreshProfilerMetricCatalog();
+```
+
+`GetProfilerMetricCatalog()` and `GetProfilerMetricCapabilities()` read the cached catalog. The catalog state is `NotInitialized`, `Ready`, or `Error`; each capability reports `Unavailable`, `AvailableNoSample`, or `AvailableSampled`, with `None`, `Exact`, or `Alias` resolution provenance. Discovery runs only at runtime startup and explicit refresh/reconfigure, not during steady-state collection. Existing numeric metrics remain compatibility values; use capability `SampleState`/`IsAvailable` as the authoritative availability signal.
+
 ## Structured Snapshots
 
 ```csharp

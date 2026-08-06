@@ -52,8 +52,10 @@ namespace SGG.PerfMeter
 		private bool _alertEngineInitialized;
 
 		internal static PerfMeterRuntime Instance => _instance;
-		internal PerfMeterStatusSnapshot Status => _status;
+		internal PerfMeterStatusSnapshot Status => _status.WithSelfOverhead(PerfMeterSelfObservability.GetSnapshot());
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
+		internal PerfMeterProfilerMetricCatalogSnapshot ProfilerMetricCatalog => _collector.GetProfilerMetricCatalog();
+		internal PerfMeterSelfOverheadSnapshot SelfOverhead => PerfMeterSelfObservability.GetSnapshot();
 		internal bool IsOverlayVisible => IsRuntimeOverlaySupported && _overlay != null && _overlay.IsVisible;
 		internal PerfMeterOverlayCorner OverlayCorner => _overlayCorner;
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
@@ -73,10 +75,18 @@ namespace SGG.PerfMeter
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
 		internal static PerfMeterOverdrawMeasurementState OverdrawState => _instance != null ? _instance._overdrawController.State : PerfMeterOverdrawMeasurementState.Off;
 
+		internal bool RefreshProfilerMetricCatalog()
+		{
+			bool refreshed = _collector.RefreshProfilerMetricCatalog();
+			RefreshStatusOverlayState();
+			return refreshed;
+		}
+
 		internal static void EnsureRunning()
 		{
 			if (_instance != null)
 			{
+				PerfMeterSelfObservability.EnsureStarted(PerfMeterRenderPipelineDetector.GetActiveKind());
 				_instance._collector.Start();
 				_instance.EnsureOverlayState();
 				return;
@@ -89,6 +99,7 @@ namespace SGG.PerfMeter
 			{
 				DontDestroyOnLoad(gameObject);
 			}
+			PerfMeterSelfObservability.EnsureStarted(PerfMeterRenderPipelineDetector.GetActiveKind());
 			_instance.SetRunningPlaceholders();
 			_instance.EnsureOverlayState();
 		}
@@ -97,6 +108,8 @@ namespace SGG.PerfMeter
 		{
 			if (_instance == null)
 			{
+				PerfMeterProfilerInstrumentation.Reset();
+				PerfMeterSelfObservability.Stop();
 				return;
 			}
 
@@ -107,12 +120,15 @@ namespace SGG.PerfMeter
 			runtime._cpuCoreSamplingActive = false;
 			runtime._overdrawController.Reset();
 			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+			runtime._alertCaptureId = string.Empty;
 			runtime._alertEngine.Clear();
 			runtime._overdrawHeatmapVisible = false;
 			runtime.DestroyOverlay();
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			runtime._latestCustomMetrics = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+			PerfMeterProfilerInstrumentation.Reset();
+			PerfMeterSelfObservability.Stop();
 			_instance = null;
 
 			if (Application.isPlaying)
@@ -146,6 +162,11 @@ namespace SGG.PerfMeter
 		{
 			if (_instance == this)
 			{
+				PerfMeterSelfObservability.Start(PerfMeterRenderPipelineDetector.GetActiveKind());
+				PerfMeterProfilerInstrumentation.Reset();
+				PerfMeterProfilerInstrumentation.RecordSessionState(_sessionRecorder.State);
+				PerfMeterProfilerInstrumentation.RecordAlertScopeActive(!string.IsNullOrEmpty(_alertCaptureId));
+				PerfMeterProfilerInstrumentation.RecordOverdrawState(_overdrawController.State);
 				_collector.Start();
 				ApplyAlertSettings();
 				SetRunningPlaceholders();
@@ -157,6 +178,7 @@ namespace SGG.PerfMeter
 		{
 			if (TrySkipCollectionForFocusState(out string focusWarning))
 			{
+				PerfMeterProfilerInstrumentation.ResetFrameTimings();
 				_lastCollectorWarning = focusWarning;
 				RefreshRunningStatus(Time.frameCount, PerfMeterFrameTimingAvailability.NotCollected, focusWarning);
 				return;
@@ -235,24 +257,32 @@ namespace SGG.PerfMeter
 
 		internal bool BeginAlertCapture(string captureId)
 		{
-			if (!string.IsNullOrEmpty(_alertCaptureId) && !string.Equals(_alertCaptureId, captureId, System.StringComparison.Ordinal))
+			using (PerfMeterProfilerInstrumentation.AlertCaptureMarker.Auto())
 			{
-				return false;
-			}
+				if (!string.IsNullOrEmpty(_alertCaptureId) && !string.Equals(_alertCaptureId, captureId, System.StringComparison.Ordinal))
+				{
+					return false;
+				}
 
-			_alertCaptureId = captureId;
-			return true;
+				_alertCaptureId = captureId;
+				PerfMeterProfilerInstrumentation.RecordAlertScopeActive(true);
+				return true;
+			}
 		}
 
 		internal bool EndAlertCapture(string captureId)
 		{
-			if (!string.Equals(_alertCaptureId, captureId, System.StringComparison.Ordinal))
+			using (PerfMeterProfilerInstrumentation.AlertCaptureMarker.Auto())
 			{
-				return false;
-			}
+				if (!string.Equals(_alertCaptureId, captureId, System.StringComparison.Ordinal))
+				{
+					return false;
+				}
 
-			_alertCaptureId = string.Empty;
-			return true;
+				_alertCaptureId = string.Empty;
+				PerfMeterProfilerInstrumentation.RecordAlertScopeActive(false);
+				return true;
+			}
 		}
 
 		internal void ClearAlerts()
@@ -735,10 +765,14 @@ namespace SGG.PerfMeter
 				_cpuCoreSampler.Reset();
 				_cpuCoreSamplingActive = false;
 				_overdrawController.Reset();
+				_sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+				_alertCaptureId = string.Empty;
 				_alertEngine.Clear();
 				_overdrawHeatmapVisible = false;
 				_status = CreateStoppedStatus();
 				_latestMetrics = PerfMeterMetricsSnapshot.Stopped;
+				PerfMeterProfilerInstrumentation.Reset();
+				PerfMeterSelfObservability.Stop();
 			}
 		}
 
@@ -779,10 +813,19 @@ namespace SGG.PerfMeter
 				_targetFps,
 				_overlayPreset,
 				_overlayModules,
+				_sessionRecorder.State,
+				_sessionRecorder.IsRecording,
+				_sessionRecorder.SampleCount,
+				_sessionRecorder.DroppedSampleCount,
+				_alertEngine.ActiveAlertCount,
+				_alertEngine.FiredAlertCount,
+				_alertEngine.LatestAlert.RuleId,
+				_alertEngine.LatestAlert.Message,
 				applicationFocused: _applicationFocused,
 				applicationPaused: _applicationPaused,
 				editorWarningsEnabled: _settings.EditorWarningsEnabled,
-				visualOverlayPresetId: _visualOverlayPresetId);
+				visualOverlayPresetId: _visualOverlayPresetId,
+				selfOverhead: PerfMeterSelfObservability.GetSnapshot());
 
 			_latestMetrics = new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -845,7 +888,8 @@ namespace SGG.PerfMeter
 				string.Empty,
 				string.Empty,
 				true,
-				false);
+				false,
+				selfOverhead: PerfMeterSelfOverheadSnapshot.NotInitialized);
 		}
 
 		private static PerfMeterStatusSnapshot CreateStatus(
@@ -882,7 +926,8 @@ namespace SGG.PerfMeter
 			bool applicationFocused = true,
 			bool applicationPaused = false,
 			bool editorWarningsEnabled = true,
-			string visualOverlayPresetId = "")
+			string visualOverlayPresetId = "",
+			PerfMeterSelfOverheadSnapshot selfOverhead = default)
 		{
 			return new PerfMeterStatusSnapshot(
 				state,
@@ -921,11 +966,13 @@ namespace SGG.PerfMeter
 				overlayLayout: PerfMeterSettingsStore.NormalizeOverlayLayout(overlayLayout),
 				overlayFontFamily: PerfMeterSettingsStore.NormalizeOverlayFontFamily(overlayFontFamily),
 				editorWarningsEnabled: editorWarningsEnabled,
-				visualOverlayPresetId: visualOverlayPresetId);
+				visualOverlayPresetId: visualOverlayPresetId,
+				selfOverhead: selfOverhead);
 		}
 
 		private PerfMeterMetricsSnapshot WithOverdrawState(PerfMeterMetricsSnapshot metrics)
 		{
+			PerfMeterProfilerInstrumentation.RecordOverdrawState(_overdrawController.State);
 			return WithRuntimeStats(metrics, new PerfMeterFrameStatsSnapshot(
 				metrics.FrameSampleCount,
 				metrics.GpuValidSampleCount,
@@ -1020,7 +1067,10 @@ namespace SGG.PerfMeter
 
 			if (_focusResumeIgnoreFrames > 0)
 			{
-				FrameTimingManager.CaptureFrameTimings();
+				using (PerfMeterProfilerInstrumentation.FrameTimingMarker.Auto())
+				{
+					FrameTimingManager.CaptureFrameTimings();
+				}
 				_focusResumeIgnoreFrames--;
 				warning = FocusResumeWarmupWarning;
 				return true;
@@ -1066,7 +1116,8 @@ namespace SGG.PerfMeter
 				_applicationFocused,
 				_applicationPaused,
 				_settings.EditorWarningsEnabled,
-				_visualOverlayPresetId);
+				_visualOverlayPresetId,
+				PerfMeterSelfObservability.GetSnapshot());
 		}
 
 		private static string CombineWarnings(string first, string second)
@@ -1159,7 +1210,7 @@ namespace SGG.PerfMeter
 				GetCollectionMode(),
 				_status.FrameTimingAvailability,
 				CombineWarnings(CombineWarnings(_lastCollectorWarning, _overdrawController.Warning), GetCpuCoreWarning()),
-				_status.LastError,
+				_collector.LastError,
 				_status.Bottleneck,
 				GetAvailableCounters(),
 				GetUnavailableCounters(),
@@ -1187,7 +1238,8 @@ namespace SGG.PerfMeter
 				_applicationFocused,
 				_applicationPaused,
 				_settings.EditorWarningsEnabled,
-				_visualOverlayPresetId);
+				_visualOverlayPresetId,
+				PerfMeterSelfObservability.GetSnapshot());
 		}
 
 		private PerfMeterCounterAvailability GetAvailableCounters()

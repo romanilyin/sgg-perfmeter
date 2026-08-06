@@ -20,6 +20,7 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.runtime.reset_stats` | Reset rolling stats, alert counters, and active session counters. |
 | `perfmeter.runtime.mode.set` | Switch `Stopped`, `Background`, `Overlay`, or `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Read latest metrics, including custom metrics. |
+| `perfmeter.profiler.capabilities` | Read cached Profiler metric capabilities and resolution provenance without starting runtime or discovery. |
 | `perfmeter.alerts.latest` | Read active alerts, counters, and Editor warning state. |
 | `perfmeter.alerts.clear` | Clear active alerts, counters, and cooldown state. |
 | `perfmeter.alerts.capture.begin` | Begin a bounded external-capture classification scope. |
@@ -36,9 +37,18 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.session.summary` | Read current session summary. |
 | `perfmeter.session.export` | Export current session to project-local JSON or CSV. |
 
+## Runtime Self-Overhead Payload
+
+`perfmeter.runtime.status` includes the additive `self_overhead` object; this is not a separate command. Top-level keys are `state`, `cpu_timing_available`, `gpu_timing_availability`, and `has_budget_violation`.
+
+Component objects are `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration`, and `hdrp_render_integration`. Each contains `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state`, and `allocation_budget_state`.
+
+Values describe fixed 120-frame CPU callback windows with per-invocation averages. GPU attribution is `Unavailable`; inactive render integration is `Unsupported`, and supported components without calls are `NotMeasured`. Session JSON/CSV schemas are unchanged, and existing CPU/GPU metrics are not adjusted.
+
 ## Typical Profiling Run
 
 ```text
+perfmeter.profiler.capabilities {}
 perfmeter.runtime.mode.set {"mode":"Background"}
 perfmeter.session.start {"warmup_seconds":1,"sample_interval_seconds":0.25,"max_samples":240}
 perfmeter.runtime.mode.set {"mode":"Overlay"}

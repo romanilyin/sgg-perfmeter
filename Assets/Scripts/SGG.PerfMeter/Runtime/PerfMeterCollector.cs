@@ -1,4 +1,3 @@
-using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -13,57 +12,15 @@ namespace SGG.PerfMeter
 		private const string MissingGpuTimingWarning = "GPU frame timing is unavailable. Enable Frame Timing Stats and verify platform GPU timer support.";
 		private const string InvalidFrameTimingWarning = "Ignored invalid FrameTimingManager sample outside the 0-60000 ms sanity range.";
 		private const string MissingCountersWarning = "Some ProfilerRecorder counters are unavailable on this Unity version, platform, or render path.";
+		private const string CollectorStoppedWarning = "PerfMeter collector is not running.";
 
 		private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
-		private readonly PerfMeterCounterAvailability[] _trackedCounters =
-		{
-			PerfMeterCounterAvailability.DrawCalls,
-			PerfMeterCounterAvailability.SetPassCalls,
-			PerfMeterCounterAvailability.Batches,
-			PerfMeterCounterAvailability.Vertices,
-			PerfMeterCounterAvailability.SrpBatcherInstances,
-			PerfMeterCounterAvailability.BrgDrawCalls,
-			PerfMeterCounterAvailability.BrgInstances,
-			PerfMeterCounterAvailability.IndexBufferUploadInFrameBytes,
-			PerfMeterCounterAvailability.SystemUsedMemory,
-			PerfMeterCounterAvailability.GcReservedMemory,
-			PerfMeterCounterAvailability.GpuMemory
-		};
-		private readonly RecorderSlot[] _recorders =
-		{
-			// Unity 6000 exposes draw/batch totals as component counters; matching logical counters are summed when read.
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "Standard Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "Standard Indirect Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "Standard Instanced Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "SRP Batcher Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "BRG Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "BRG Indirect Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "Null Geometry Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.DrawCalls, "Null Geometry Indirect Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.SetPassCalls, "SetPass Calls Count", "SetPass Calls"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.Batches, "Dynamic Batches Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.Batches, "Static Batches Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.Batches, "Instanced Batches Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.Vertices, "Vertices Count", "Vertices"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.SrpBatcherInstances, "SRP Batcher Instances Count", "SRP Batcher Instances"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.BrgDrawCalls, "BRG Draw Calls Count", "Hybrid Renderer (BRG) Draw Calls Count", "BatchRendererGroup Draw Calls Count", "GPU Resident Drawer Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.BrgDrawCalls, "BRG Indirect Draw Calls Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.BrgInstances, "BRG Instances Count", "Hybrid Renderer (BRG) Instances Count", "BatchRendererGroup Instances Count", "GPU Resident Drawer Instances Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.BrgInstances, "BRG Indirect Instances Count"),
-			new RecorderSlot(ProfilerCategory.Render, PerfMeterCounterAvailability.IndexBufferUploadInFrameBytes, "Index Buffer Upload In Frame Bytes", "Index Buffer Upload Bytes", "Index Buffer Upload In Frame"),
-			new RecorderSlot(ProfilerCategory.Memory, PerfMeterCounterAvailability.SystemUsedMemory, "System Used Memory"),
-			new RecorderSlot(ProfilerCategory.Memory, PerfMeterCounterAvailability.GcReservedMemory, "GC Reserved Memory"),
-			new RecorderSlot(ProfilerCategory.Memory, PerfMeterCounterAvailability.GpuMemory, "Gfx Used Memory", "GPU Used Memory", "Graphics Used Memory", "GPU Memory")
-		};
-
-		private PerfMeterCounterAvailability _availableCounters;
-		private PerfMeterCounterAvailability _unavailableCounters;
-		private string _lastError = string.Empty;
+		private readonly PerfMeterProfilerMetricCatalog _profilerMetricCatalog = new PerfMeterProfilerMetricCatalog();
 		private bool _isRunning;
 
-		internal PerfMeterCounterAvailability AvailableCounters => _availableCounters;
-		internal PerfMeterCounterAvailability UnavailableCounters => _unavailableCounters;
-		internal string LastError => _lastError;
+		internal PerfMeterCounterAvailability AvailableCounters => _profilerMetricCatalog.AvailableCounters;
+		internal PerfMeterCounterAvailability UnavailableCounters => _profilerMetricCatalog.UnavailableCounters;
+		internal string LastError => _profilerMetricCatalog.LastError;
 
 		internal void Start()
 		{
@@ -72,40 +29,57 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			_availableCounters = PerfMeterCounterAvailability.None;
-			_unavailableCounters = PerfMeterCounterAvailability.None;
-			_lastError = string.Empty;
-
-			for (int i = 0; i < _recorders.Length; i++)
-			{
-				_recorders[i].Start(ref _lastError);
-			}
-			RefreshCounterAvailability();
-
+			_profilerMetricCatalog.Start();
 			_isRunning = true;
 		}
 
 		internal void Stop()
 		{
-			for (int i = 0; i < _recorders.Length; i++)
-			{
-				_recorders[i].Dispose();
-			}
-
+			_profilerMetricCatalog.Stop();
 			_isRunning = false;
+		}
+
+		internal bool RefreshProfilerMetricCatalog()
+		{
+			return _isRunning && _profilerMetricCatalog.Refresh();
+		}
+
+		internal PerfMeterProfilerMetricCatalogSnapshot GetProfilerMetricCatalog()
+		{
+			return _profilerMetricCatalog.GetSnapshot();
 		}
 
 		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
 		{
+			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.Collector))
+			using (PerfMeterProfilerInstrumentation.CollectMarker.Auto())
+			{
+				return CollectCore(collectionFrame, frameBudgetMs, out frameTimingAvailability, out warning, out frameTimingSampleIgnored);
+			}
+		}
+
+		private PerfMeterMetricsSnapshot CollectCore(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
+		{
 			if (!_isRunning)
 			{
-				Start();
+				PerfMeterProfilerInstrumentation.ResetFrameTimings();
+				frameTimingAvailability = PerfMeterFrameTimingAvailability.NotCollected;
+				warning = CollectorStoppedWarning;
+				frameTimingSampleIgnored = false;
+				return PerfMeterMetricsSnapshot.Stopped;
 			}
+			_profilerMetricCatalog.RefreshSampleStates();
 
-			FrameTimingManager.CaptureFrameTimings();
-			uint timingCount = FrameTimingManager.GetLatestTimings(1, _frameTimings);
-			FrameTiming timing = timingCount > 0 ? _frameTimings[0] : default;
-			bool hasValidCpuFrameTiming = timingCount > 0 && HasValidCpuFrameTiming(timing);
+			uint timingCount;
+			FrameTiming timing;
+			bool hasValidCpuFrameTiming;
+			using (PerfMeterProfilerInstrumentation.FrameTimingMarker.Auto())
+			{
+				FrameTimingManager.CaptureFrameTimings();
+				timingCount = FrameTimingManager.GetLatestTimings(1, _frameTimings);
+				timing = timingCount > 0 ? _frameTimings[0] : default;
+				hasValidCpuFrameTiming = timingCount > 0 && HasValidCpuFrameTiming(timing);
+			}
 			frameTimingSampleIgnored = timingCount > 0 && !hasValidCpuFrameTiming;
 			frameTimingAvailability = hasValidCpuFrameTiming ? PerfMeterFrameTimingAvailability.Available : PerfMeterFrameTimingAvailability.Unavailable;
 
@@ -126,6 +100,15 @@ namespace SGG.PerfMeter
 				cpuMainThreadPresentWaitTimeMs,
 				gpuFrameTimeMs,
 				gpuFrameTimeAvailable);
+			PerfMeterProfilerInstrumentation.RecordFrameTimings(
+				hasValidCpuFrameTiming,
+				cpuFrameTimeMs,
+				cpuMainThreadFrameTimeMs,
+				cpuRenderThreadFrameTimeMs,
+				cpuMainThreadPresentWaitTimeMs,
+				gpuFrameTimeAvailable,
+				gpuFrameTimeMs);
+			PerfMeterProfilerInstrumentation.RecordBottleneck(bottleneck);
 
 			warning = GetWarning(gpuFrameTimeAvailable, frameTimingSampleIgnored || invalidGpuFrameTiming);
 
@@ -163,48 +146,7 @@ namespace SGG.PerfMeter
 
 		private long ReadLongCounter(PerfMeterCounterAvailability counter)
 		{
-			long value = 0L;
-			for (int i = 0; i < _recorders.Length; i++)
-			{
-				if (_recorders[i].Counter == counter)
-				{
-					value += _recorders[i].LastValue;
-				}
-			}
-
-			return value;
-		}
-
-		private void RefreshCounterAvailability()
-		{
-			_availableCounters = PerfMeterCounterAvailability.None;
-			_unavailableCounters = PerfMeterCounterAvailability.None;
-
-			for (int i = 0; i < _trackedCounters.Length; i++)
-			{
-				PerfMeterCounterAvailability counter = _trackedCounters[i];
-				if (HasValidRecorder(counter))
-				{
-					_availableCounters |= counter;
-				}
-				else
-				{
-					_unavailableCounters |= counter;
-				}
-			}
-		}
-
-		private bool HasValidRecorder(PerfMeterCounterAvailability counter)
-		{
-			for (int i = 0; i < _recorders.Length; i++)
-			{
-				if (_recorders[i].Counter == counter && _recorders[i].IsValid)
-				{
-					return true;
-				}
-			}
-
-			return false;
+			return _profilerMetricCatalog.ReadLongCounter(counter);
 		}
 
 		private string GetWarning(bool gpuFrameTimeAvailable, bool invalidFrameTiming)
@@ -224,7 +166,7 @@ namespace SGG.PerfMeter
 				return MissingGpuTimingWarning;
 			}
 
-			return _unavailableCounters != PerfMeterCounterAvailability.None ? MissingCountersWarning : string.Empty;
+			return UnavailableCounters != PerfMeterCounterAvailability.None ? MissingCountersWarning : string.Empty;
 		}
 
 		private static bool UsesOpenGlGpuTiming()
@@ -252,6 +194,30 @@ namespace SGG.PerfMeter
 		}
 
 		internal static PerfMeterBottleneck ClassifyBottleneck(
+			PerfMeterFrameTimingAvailability frameTimingAvailability,
+			double frameBudgetMs,
+			double cpuFrameTimeMs,
+			double cpuMainThreadFrameTimeMs,
+			double cpuRenderThreadFrameTimeMs,
+			double cpuMainThreadPresentWaitTimeMs,
+			double gpuFrameTimeMs,
+			bool gpuFrameTimeAvailable)
+		{
+			using (PerfMeterProfilerInstrumentation.BottleneckMarker.Auto())
+			{
+				return ClassifyBottleneckCore(
+					frameTimingAvailability,
+					frameBudgetMs,
+					cpuFrameTimeMs,
+					cpuMainThreadFrameTimeMs,
+					cpuRenderThreadFrameTimeMs,
+					cpuMainThreadPresentWaitTimeMs,
+					gpuFrameTimeMs,
+					gpuFrameTimeAvailable);
+			}
+		}
+
+		private static PerfMeterBottleneck ClassifyBottleneckCore(
 			PerfMeterFrameTimingAvailability frameTimingAvailability,
 			double frameBudgetMs,
 			double cpuFrameTimeMs,
@@ -313,64 +279,5 @@ namespace SGG.PerfMeter
 			return PerfMeterBottleneck.Balanced;
 		}
 
-		private struct RecorderSlot
-		{
-			private readonly ProfilerCategory _category;
-			private readonly string[] _names;
-			private ProfilerRecorder _recorder;
-
-			internal RecorderSlot(ProfilerCategory category, PerfMeterCounterAvailability counter, params string[] names)
-			{
-				_category = category;
-				_names = names;
-				Counter = counter;
-				_recorder = default;
-			}
-
-			internal PerfMeterCounterAvailability Counter { get; }
-			internal bool IsValid => _recorder.Valid;
-
-			internal long LastValue => _recorder.Valid ? _recorder.LastValue : 0L;
-
-			internal void Start(ref string lastError)
-			{
-				Dispose();
-				string exceptionMessage = string.Empty;
-
-				for (int i = 0; i < _names.Length; i++)
-				{
-					try
-					{
-						_recorder = ProfilerRecorder.StartNew(_category, _names[i], 1);
-						if (_recorder.Valid)
-						{
-							return;
-						}
-
-						Dispose();
-					}
-					catch (System.Exception exception)
-					{
-						exceptionMessage = exception.Message;
-						Dispose();
-					}
-				}
-
-				if (!string.IsNullOrEmpty(exceptionMessage) && !lastError.Contains(exceptionMessage))
-				{
-					lastError = string.IsNullOrEmpty(lastError) ? exceptionMessage : lastError + " " + exceptionMessage;
-				}
-			}
-
-			internal void Dispose()
-			{
-				if (_recorder.Valid)
-				{
-					_recorder.Dispose();
-				}
-
-				_recorder = default;
-			}
-		}
 	}
 }
