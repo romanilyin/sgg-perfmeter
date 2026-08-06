@@ -4,7 +4,7 @@
 
 ## PM-OBS-002 Unity Profiler Instrumentation
 
-Текущий статус: resolved, unreleased `2026.8.6-1`.
+Текущий статус: resolved, released `2026.8.6-1`.
 
 Реализованный scope:
 
@@ -19,7 +19,7 @@
 
 ## PM-OBS-003 Self-Observability And Overhead Budgets
 
-Текущий статус: resolved, unreleased `2026.8.6-1`.
+Текущий статус: resolved, released `2026.8.6-1`.
 
 Реализованный scope:
 
@@ -70,4 +70,4 @@
 
 Текущий статус: вне scope.
 
-Вернуться к задаче только при наличии конкретного XR target. Постоянный 2D overlay остается основным вариантом для текущего release candidate.
+Вернуться к задаче только при наличии конкретного XR target. Постоянный 2D overlay остается основным вариантом для текущего release.

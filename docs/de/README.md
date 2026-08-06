@@ -45,7 +45,7 @@ SGG PerfMeter erkennt Frame-Bottlenecks, vergleicht Performance-Aenderungen, zei
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.5-2"
+    "com.sungeargames.perfmeter": "2026.8.6-1"
   }
 }
 ```
