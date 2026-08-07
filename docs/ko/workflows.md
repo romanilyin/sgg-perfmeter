@@ -152,6 +152,12 @@ shader marker는 exact `Shader.CreateGPUProgram`을 먼저 해석하고 aliases 
 
 Profiler 기록 중 각 session은 순간적인 `SGG.PerfMeter.Session.<sessionId>.Begin` 및 `.End` sample을 생성합니다. `SGG/Perfmeter/Open Profile Analyzer For Session`은 optional Profile Analyzer window를 열고 current session ID를 clipboard에 복사합니다. 이 command는 Profile Analyzer를 설치하거나 Profiler data를 로드하거나 filter를 자동 적용하지 않습니다. 관련 capture를 로드한 뒤 복사된 ID를 검색하십시오.
 
+## 세션 분석 창
+
+`SGG/Perfmeter/Session Analysis`을 열면 Editor 메모리에 있는 current session을 read-only로 확인할 수 있습니다. virtualized tab은 retained sample timeline, 사용 가능한 sample detail을 포함한 authoritative worst frame, derived CPU-main/CPU-render/GPU budget violation, authoritative whole-run/current-scene scope를 표시합니다. CPU-main은 present wait를 제외하며 GPU value와 violation에는 명시적인 GPU timing availability가 필요합니다.
+
+이 window는 `GetSessionSummary()`와 `GetSessionSamples()`만 읽고 runtime을 시작하지 않습니다. 사용할 수 없는 timing은 숫자 0이 아니라 `Unavailable`로 표시됩니다. stopped session은 runtime instance가 존재하는 동안 표시되며 `PerformanceMeter.Stop()`, domain reload 또는 Play Mode 종료 시 메모리 session이 제거될 수 있습니다.
+
 ## GraphicsStateCollection trace 및 prewarm
 
 1. Unity `6000.4+`에서 optional `SGG.PerfMeter.GraphicsStateCollection` assembly가 사용 가능한지 확인합니다. Unity `6000.4`에서는 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`, Unity `6000.5+`에서는 `UnityEngine.Rendering.GraphicsStateCollection` namespace를 사용합니다.

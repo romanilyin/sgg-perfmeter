@@ -47,14 +47,14 @@
 
 ## Session Analysis UI
 
-Текущий статус: session recording/export есть, полноценного analysis UI нет.
+Текущий статус: реализовано для `PM-SESSION-001`, ожидает общий P3/P3.5 release pass.
 
-Будущая работа:
-
-- Timeline с frame time, CPU/GPU, spikes и events.
-- Worst-frame inspector.
-- Краткий список budget violations.
-- Scene-scope summaries в отдельном visual view.
+- Read-only Editor UI Toolkit window читает только текущие `GetSessionSummary()` и `GetSessionSamples()` и не запускает runtime.
+- Virtualized timeline показывает retained samples, timing, cumulative spikes, scene boundaries и graphics-state trace correlation.
+- Worst-frame inspector использует authoritative summary и добавляет детали только при наличии matching retained sample.
+- Derived budget violations используют strict `>`; CPU-main исключает present wait, GPU требует explicit availability.
+- Scene view показывает только authoritative `WholeRun` и `CurrentScene`, не создавая ложные historical durations.
+- Unavailable timing остаётся текстовым `Unavailable`; runtime retention и session/export schemas не меняются.
 
 ## Rendering Debugger Integration
 

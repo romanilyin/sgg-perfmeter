@@ -152,6 +152,12 @@ shader marker は exact `Shader.CreateGPUProgram` を優先し、その後 alias
 
 Profiler 記録中、各 session は瞬間的な `SGG.PerfMeter.Session.<sessionId>.Begin` と `.End` sample を生成します。`SGG/Perfmeter/Open Profile Analyzer For Session` は optional Profile Analyzer window を開き、current session ID を clipboard にコピーします。この command は Profile Analyzer の install、Profiler data の load、filter の自動適用を行いません。対象 capture を読み込んだ後、コピーした ID を検索してください。
 
+## セッション分析ウィンドウ
+
+`SGG/Perfmeter/Session Analysis` を開くと、Editor のメモリにある current session を read-only で確認できます。virtualized tab には retained sample timeline、利用可能な sample detail を含む authoritative worst frame、derived CPU-main/CPU-render/GPU budget violation、authoritative whole-run/current-scene scope が表示されます。CPU-main は present wait を除外し、GPU value と violation には明示的な GPU timing availability が必要です。
+
+この window は `GetSessionSummary()` と `GetSessionSamples()` だけを読み、runtime を開始しません。利用できない timing は数値 0 ではなく `Unavailable` と表示されます。stopped session は runtime instance が存在する間だけ表示され、`PerformanceMeter.Stop()`、domain reload、Play Mode の終了でメモリ上の session が破棄される場合があります。
+
 ## GraphicsStateCollection trace と prewarm
 
 1. Unity `6000.4+` で optional `SGG.PerfMeter.GraphicsStateCollection` assembly が利用可能であることを確認します。Unity `6000.4` では `UnityEngine.Experimental.Rendering.GraphicsStateCollection`、Unity `6000.5+` では `UnityEngine.Rendering.GraphicsStateCollection` namespace を使います。

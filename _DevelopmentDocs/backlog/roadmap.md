@@ -12,6 +12,7 @@
 | P1 | Следующая стабилизационная итерация; закрывает текущий пользовательский дефект или высокий compatibility risk. |
 | P2 | Стратегическая foundation-работа с высокой продуктовой ценностью после P1. |
 | P3 | Следующая самостоятельная feature-итерация после соответствующей foundation. |
+| P3.5 | Release-integration cleanup после P3, обязательный до общего build/release pass. |
 | P4 | Дорогая или platform-native experimental работа без обязательства ближайшего release. |
 | Deferred | Осознанно не входит в ближайшую основную программу. |
 
@@ -42,7 +43,8 @@
 | `PM-REN-001` Render integration context | P3 | implemented, pending release | Integration-neutral public snapshot для camera/SRP/pass/freshness/GRD/VRS context через additive compatibility facade. URP сообщает public current-frame rendering mode и фактически scheduled PerfMeter passes; HDRP сообщает observed Custom Pass, но не effective rendering mode. Private RenderGraph pass/resource counters и Editor navigation не заявляются без стабильного public Unity API. | `PM-OBS-001` |
 | `PM-GRD-001` GPU Resident Drawer telemetry | P3 | implemented, pending release | Показывать GRD/Forward+/compute support, фактическую global runtime activity, aggregate BRG effectiveness counters с provenance и structured fallback/degraded reasons без ложного per-renderer claim. | `PM-OBS-001`, `PM-REN-001` |
 | `PM-CI-001` Profile Analyzer and benchmark CI | P3 | implemented, pending release | Additive session ID в API/MCP/JSON и последнем CSV-столбце, корреляционные Profiler markers, optional Profile Analyzer opener без hard dependency, versioned zero-allocation/CPU baselines и Unity `6000.4`/`6000.5` CI с NUnit/JUnit/performance artifacts. | `PM-OBS-002` |
-| `PM-SESSION-001` Session analysis UI | P3 | design backlog | Timeline, worst-frame inspector, budget violations и scene-scope summaries поверх существующего recorder/export. | stable session/artifact schemas |
+| `PM-SESSION-001` Session analysis UI | P3 | implemented, pending release | Read-only virtualized Editor UI Toolkit window с retained-sample timeline, worst-frame inspector, derived CPU/GPU budget violations и authoritative whole-run/current-scene scopes без runtime/schema changes. | stable session/artifact schemas |
+| `PM-SETUP-001` Setup UX completeness | P3.5 | planned | Проверить представление всех новых P2/P3 settings, optional integrations и analysis entry points в Setup window; устранить пропуски до общего P3/P3.5 build. | completed P3 scope |
 | `PM-UI-003` Widgets, themes and layout descriptors | P4 | design backlog | Расширяемые bounded widgets, semantic theme tokens, manifests, layout descriptors и safety limits без steady-state tree rebuild. | `PM-UI-001`, `PM-UI-002`, `PM-OBS-003` |
 | `PM-RG-001` Deeper Render Graph diagnostics | P4 | waiting for stable public APIs | Добавлять pass/resource/aliasing/merge counters только через стабильные Unity APIs; сохранять degraded state вместо reflection. | Unity public APIs |
 | `PM-ANDROID-001` Android Perfetto/AGI | P4 | experimental candidate | Low-overhead ATrace/ADPF correlation и Editor sidecar для `adb`, Perfetto config, artifact import и AGI workflow. | `PM-CAP-002`, `PM-PLAT-001` |
@@ -74,6 +76,8 @@
 
 `PM-CI-001` реализован, но ожидает release pass: Unity `6000.4.12f1` compile passed; targeted `PerfMeterSessionCorrelationTests` `5/5`, `PerformanceMeterApiTests` `58/58` и `PerfMeterPerformanceTests` `2/2` прошли, warmed instrumentation и session-boundary paths подтвердили `0 B` allocations; final full EditMode `227/227` и PlayMode `16/16` прошли. Isolated Unity `6000.5.6f1` consumer с `com.unity.test-framework.performance@3.2.0` скомпилировался при отключённой version-defined performance test assembly. YAML и локальная NUnit-to-JUnit conversion проверены. Focused review P1/P2 resolved. GitHub-hosted matrix, release-player и device behavior остаются release gates; release не заявляется.
 
+`PM-SESSION-001` реализован, но ожидает release pass: Unity `6000.4.12f1` compile passed; targeted `PerfMeterSessionAnalysisTests` `11/11`, `PerformanceMeterApiTests` `58/58`, `PerfMeterSessionCorrelationTests` `5/5` и `PerfMeterCaptureBundleTests` `15/15` прошли; final full EditMode `238/238` и PlayMode `16/16` прошли. Isolated package consumer compile на Unity `6000.5.6f1` также прошёл. Focused review P1/P2 resolved. Окно не меняет runtime retention/API/schema и не запускает runtime. Release build отложен до завершения `PM-SETUP-001`; P3 и P3.5 войдут в общий `2026.8.7-1` build/release pass.
+
 ## Release Sequence
 
 | Phase | Scope | Exit Gate |
@@ -84,6 +88,7 @@
 | Observability | `PM-OBS-001` through `PM-OBS-003` | Startup-only discovery, capability dump, custom markers/counters and measured overhead budgets. |
 | Platform telemetry | `PM-PLAT-001`, then selected P3 integrations | Optional assemblies, no core hard dependency, explicit unavailable states and device validation. |
 | Graphics diagnostics | `PM-GFX-001` | Post-fix Unity 6000.4/6000.5 compile and targeted/full EditMode/PlayMode validation, dynamic-marker provenance checks, plus release-player and target-device behavior before release. |
+| P3 analysis and setup | `PM-CI-001`, `PM-SESSION-001`, `PM-SETUP-001` | Session correlation/analysis and complete Setup presentation validated before one combined `2026.8.7-1` build/release pass. |
 | Platform capture previews | Selected P4 backends | Experimental feature flags, native lifecycle/IL2CPP tests and tool-specific artifact confirmation. |
 
 ## Required Gates

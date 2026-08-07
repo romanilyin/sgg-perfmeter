@@ -152,6 +152,12 @@ shader marker 先解析 exact `Shader.CreateGPUProgram`，再解析 aliases `Sha
 
 Profiler 记录期间，每个 session 都会生成瞬时的 `SGG.PerfMeter.Session.<sessionId>.Begin` 和 `.End` sample。`SGG/Perfmeter/Open Profile Analyzer For Session` 会打开可选的 Profile Analyzer 窗口，并将 current session ID 复制到剪贴板。该命令不会安装 Profile Analyzer、加载 Profiler 数据或自动应用过滤器；加载相关 capture 后，请搜索复制的 ID。
 
+## 会话分析窗口
+
+打开 `SGG/Perfmeter/Session Analysis`，可在 Editor 中以只读方式查看当前保存在内存中的 session。virtualized tab 显示 retained sample timeline、包含可用 sample detail 的 authoritative worst frame、derived CPU-main/CPU-render/GPU budget violation，以及 authoritative whole-run/current-scene scope。CPU-main 会排除 present wait；GPU value 和 violation 仅在 GPU timing 明确可用时显示。
+
+该窗口只读取 `GetSessionSummary()` 和 `GetSessionSamples()`，不会启动 runtime。不可用的 timing 显示为 `Unavailable`，而不是数字 0。stopped session 只在其 runtime instance 存在期间可见；`PerformanceMeter.Stop()`、domain reload 或退出 Play Mode 可能丢弃内存中的 session。
+
 ## GraphicsStateCollection trace 与 prewarm
 
 1. 在 Unity `6000.4+` 中确认可选 `SGG.PerfMeter.GraphicsStateCollection` assembly 可用。Unity `6000.4` 使用 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`，Unity `6000.5+` 使用 `UnityEngine.Rendering.GraphicsStateCollection` namespace。

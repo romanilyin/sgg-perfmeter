@@ -152,6 +152,12 @@ Shader marker сначала разрешает exact `Shader.CreateGPUProgram`,
 
 Во время профилирования каждая сессия создаёт мгновенные samples `SGG.PerfMeter.Session.<sessionId>.Begin` и `.End`. Команда `SGG/Perfmeter/Open Profile Analyzer For Session` открывает опциональное окно Profile Analyzer и копирует ID текущей сессии в буфер обмена. Команда не устанавливает Profile Analyzer, не загружает данные Profiler и не применяет фильтр автоматически; после загрузки нужного capture найдите скопированный ID.
 
+## Окно анализа сессии
+
+Откройте `SGG/Perfmeter/Session Analysis` для read-only анализа текущей сессии в памяти Editor. Виртуализированные вкладки показывают timeline сохранённых samples, authoritative worst frame с деталями сохранённого sample, derived нарушения CPU-main/CPU-render/GPU budget и authoritative scopes whole-run/current-scene. Для CPU-main исключается present wait; GPU values и нарушения показываются только при явной доступности GPU timing.
+
+Окно читает только `GetSessionSummary()` и `GetSessionSamples()` и никогда не запускает runtime. Недоступный timing отображается как `Unavailable`, а не числовой ноль. Остановленная сессия видна, пока существует её runtime instance; `PerformanceMeter.Stop()`, domain reload или выход из Play Mode могут удалить эту сессию из памяти.
+
 ## Trace и prewarm GraphicsStateCollection
 
 1. В Unity `6000.4+` убедитесь, что доступна опциональная сборка `SGG.PerfMeter.GraphicsStateCollection`. В Unity `6000.4` она использует namespace `UnityEngine.Experimental.Rendering.GraphicsStateCollection`, а в Unity `6000.5+` — `UnityEngine.Rendering.GraphicsStateCollection`.
