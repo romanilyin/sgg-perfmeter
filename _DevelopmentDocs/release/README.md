@@ -2,36 +2,28 @@
 
 Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация и GitHub Release выполняются только в запланированный release pass.
 
-## Current Candidate
-
-- Current release candidate: `2026.8.7-2`
-- Candidate branch: `release/perfmeter-2026.8.7-2`
-- Candidate feature commit: `e78f672dcda0b9373519e5975f77eab36be02835`
-- Candidate record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`
-- Publication is pending; public npm and Git UPM install pins remain on verified release `2026.8.7-1` until GitHub and npm publication both succeed.
-
 ## Current Release
 
-- Current published release: `2026.8.7-1`
-- Current npm `latest`: `2026.8.7-1`
-- Previous published release: `2026.8.6-2`
+- Current published release: `2026.8.7-2`
+- Current npm `latest`: `2026.8.7-2`
+- Previous published release: `2026.8.7-1`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.7-1
-- Git tag `2026.8.7-1` points to main merge commit `81e4381ca8425e2797550913fab9f0508c721c37`
-- Last published npm: `com.sungeargames.perfmeter@2026.8.7-1` through Trusted Publishing OIDC with verified SLSA provenance v1
-- npm dist-tag: `latest` -> `2026.8.7-1`
-- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31184171980 (completed successfully and published npm)
-- Last published npm SHA-1: `49baaf57bfae451c4be533a2e122bed949eb8b23`
-- Last published npm integrity: `sha512-rZUmXrN16/Ls6m7scY/d3GrjyTBLXmjV7oaqiL4khfhuLmhCFrC0NfRg/vtjcGuQbGtt2ybtbWP8X57RZSrk8w==`
-- Public npm and Git UPM install pins point to published `2026.8.7-1`; they were updated only after verified GitHub and npm publication.
+- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.7-2
+- Git tag `2026.8.7-2` points to main merge commit `3bddc31699bb95ef43bf7df292771f476c99080c`
+- Last published npm: `com.sungeargames.perfmeter@2026.8.7-2` through Trusted Publishing OIDC with verified SLSA provenance v1
+- npm dist-tag: `latest` -> `2026.8.7-2`
+- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31222122073 (completed successfully and published npm)
+- Last published npm SHA-1: `d8dec280b669a049140c65896e75a7fe3ba64afd`
+- Last published npm integrity: `sha512-rooQCnGEIbwm7ST3+3Z31ag/4517gfFat2tYt/lpryE7CwBUDNX4J+rkvDf6Mxeh/ngbzEfKYGYQosBSOJvvqw==`
+- Public npm and Git UPM install pins point to published `2026.8.7-2`; they were updated only after verified GitHub and npm publication.
 - Package: `com.sungeargames.perfmeter`
 - Unity validation target: `6000.5.6f1`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-08-07
+- Release work date: 2026-08-08
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Current release record: `_DevelopmentDocs/release/2026.8.7-1-p3-diagnostics-release.md`.
+Current release record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
