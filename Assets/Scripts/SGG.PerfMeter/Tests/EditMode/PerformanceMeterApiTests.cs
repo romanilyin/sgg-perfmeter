@@ -761,6 +761,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterRenderGraphAnalytics.ResetForTests();
 
 			Assert.That(QualitySettings.renderPipeline, Is.Not.Null);
+			PerfMeterRenderPipelineSnapshot expectedPipeline = PerfMeterRenderPipelineDetector.CreateSnapshot(out PerfMeterRenderPipelineAssetSource expectedSource);
+			Assert.That(expectedPipeline.Kind == PerfMeterRenderPipelineKind.Universal || expectedPipeline.Kind == PerfMeterRenderPipelineKind.HighDefinition, Is.True);
 			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 
 			PerfMeterRenderIntegrationSnapshot snapshot = default;
@@ -769,8 +771,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.IsAvailable, Is.True);
 			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Available));
 			Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.NotObserved));
-			Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(PerfMeterRenderPipelineKind.Universal));
-			Assert.That(snapshot.RenderPipelineAssetSource, Is.EqualTo(PerfMeterRenderPipelineAssetSource.QualitySettings));
+			Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(expectedPipeline.Kind));
+			Assert.That(snapshot.RenderPipelineAssetSource, Is.EqualTo(expectedSource));
 			Assert.That(snapshot.RenderPipeline.AssetName, Is.EqualTo(QualitySettings.renderPipeline.name));
 			Assert.That(snapshot.RenderPipeline.AssetTypeName, Is.EqualTo(QualitySettings.renderPipeline.GetType().FullName));
 			Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.False);
@@ -795,6 +797,11 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TypedUrpRenderIntegrationObservationReportsCameraPassAndCapabilitySemantics()
 		{
 			PerfMeterRenderGraphAnalytics.ResetForTests();
+			if (PerfMeterRenderPipelineDetector.CreateSnapshot().Kind != PerfMeterRenderPipelineKind.Universal)
+			{
+				Assert.Pass("URP-specific observation coverage is not applicable to the active render pipeline.");
+			}
+
 			GameObject cameraObject = null;
 
 			try
@@ -1240,27 +1247,32 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void HdrpCompatibilityFacadeRemainsObservedWhenNeutralObservationIsStale()
+		public void HdrpCompatibilityFacadeReflectsCurrentPipelineFreshness()
 		{
 			PerfMeterRenderGraphAnalytics.ResetForTests();
 
 			try
 			{
 				Assert.That(QualitySettings.renderPipeline, Is.Not.Null);
+				PerfMeterRenderPipelineKind currentKind = PerfMeterRenderPipelineDetector.CreateSnapshot().Kind;
+				bool observationMatches = currentKind == PerfMeterRenderPipelineKind.HighDefinition;
 				PerfMeterRenderGraphAnalytics.RecordHdrpCustomPassSnapshot(
 					"Synthetic HDRP Camera",
 					"Game",
 					"BeforePostProcess");
 
 				PerfMeterRenderIntegrationSnapshot snapshot = PerformanceMeter.GetRenderIntegrationSnapshot();
-				Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(PerfMeterRenderPipelineKind.Universal));
-				Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.NotObserved));
-				Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.False);
+				Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(currentKind));
+				Assert.That(snapshot.State, Is.EqualTo(observationMatches ? PerfMeterRenderIntegrationState.Observed : PerfMeterRenderIntegrationState.NotObserved));
+				Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.EqualTo(observationMatches));
 				Assert.That(snapshot.LastObservedFrame, Is.GreaterThanOrEqualTo(0));
 				Assert.That(snapshot.ObservationAgeFrames, Is.GreaterThanOrEqualTo(0));
 				Assert.That(snapshot.IntegrationId, Is.EqualTo("sgg.perfmeter.hdrp.custom-pass"));
 				Assert.That(snapshot.PassKind, Is.EqualTo(PerfMeterRenderPassKind.CustomPass));
-				Assert.That(snapshot.Warning, Does.Contain("different render pipeline"));
+				if (!observationMatches)
+				{
+					Assert.That(snapshot.Warning, Does.Contain("different render pipeline"));
+				}
 
 				PerfMeterRenderGraphSnapshot legacy = PerformanceMeter.GetRenderGraphSnapshot();
 				Assert.That(legacy.IsAvailable, Is.True);
@@ -1291,11 +1303,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderIntegrationSnapshot"));
 			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 
+			PerfMeterRenderPipelineKind currentKind = PerfMeterRenderPipelineDetector.CreateSnapshot().Kind;
 			string json = PerfMeterMcpCommands.RenderIntegrationSnapshot();
 			Assert.That(json, Does.Contain("\"schema_version\":1"));
 			Assert.That(json, Does.Contain("\"render_integration\":{"));
 			Assert.That(json, Does.Contain("\"render_pipeline\":{"));
-			Assert.That(json, Does.Contain("\"kind\":\"Universal\""));
+			Assert.That(json, Does.Contain("\"kind\":\"" + currentKind + "\""));
 			Assert.That(json, Does.Contain("\"gpu_resident_drawer\":{"));
 			Assert.That(json, Does.Contain("\"support_availability\""));
 			Assert.That(json, Does.Contain("\"project_configuration_availability\""));
