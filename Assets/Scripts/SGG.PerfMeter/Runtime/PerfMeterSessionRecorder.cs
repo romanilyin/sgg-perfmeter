@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,6 +14,7 @@ namespace SGG.PerfMeter
 		private PerfMeterSettingsSnapshot _configuredSettings;
 		private PerfMeterSettingsSnapshot _effectiveSettings;
 		private PerfMeterSessionSummarySnapshot _summary = PerfMeterSessionSummarySnapshot.Empty;
+		private string _sessionId = string.Empty;
 		private SessionStats _wholeRunStats;
 		private SessionStats _currentSceneStats;
 		private string _startSceneName = string.Empty;
@@ -40,6 +42,13 @@ namespace SGG.PerfMeter
 
 		internal void Start(PerfMeterSessionOptions options, PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterSettingsSnapshot configuredSettings, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics, bool applicationFocused = true, bool applicationPaused = false, PerfMeterSettingsSnapshot? effectiveSettings = null)
 		{
+			if (_state == PerfMeterSessionState.Recording)
+			{
+				PerfMeterProfilerInstrumentation.RecordSessionEnd(_sessionId);
+			}
+
+			_sessionId = Guid.NewGuid().ToString("N");
+			PerfMeterProfilerInstrumentation.RecordSessionBegin(_sessionId);
 			_options = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(configuredSettings);
 			_samples = new PerfMeterSessionSampleSnapshot[_options.MaxSamples];
 			_state = PerfMeterSessionState.Recording;
@@ -64,11 +73,17 @@ namespace SGG.PerfMeter
 			_state = PerfMeterSessionState.Stopped;
 			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_stopTimeSeconds = timeSeconds;
+			PerfMeterProfilerInstrumentation.RecordSessionEnd(_sessionId);
 			_summary = CreateSummary(timeSeconds, string.Empty);
 		}
 
 		internal void Reset()
 		{
+			if (_state == PerfMeterSessionState.Recording)
+			{
+				PerfMeterProfilerInstrumentation.RecordSessionEnd(_sessionId);
+			}
+
 			_state = PerfMeterSessionState.Idle;
 			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_options = PerfMeterSessionOptions.Default;
@@ -84,6 +99,7 @@ namespace SGG.PerfMeter
 			_currentSceneStats = default;
 			_applicationFocused = true;
 			_applicationPaused = false;
+			_sessionId = string.Empty;
 			ResetFocusStats(0d);
 			_summary = PerfMeterSessionSummarySnapshot.Empty;
 		}
@@ -342,7 +358,8 @@ namespace SGG.PerfMeter
 				currentScene,
 				_focusLossCount,
 				_pauseCount,
-				GetFocusPausedDurationSeconds(stopped ? _stopTimeSeconds : currentTimeSeconds));
+				GetFocusPausedDurationSeconds(stopped ? _stopTimeSeconds : currentTimeSeconds),
+				_sessionId);
 		}
 
 		private static string GetActiveSceneName()

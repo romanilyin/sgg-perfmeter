@@ -136,6 +136,10 @@ Memory-only-Evidence wird ueber die bestehende Capture-Bundle-API unter `Temp/Pe
 
 Der Shader-Marker loest zuerst exakt `Shader.CreateGPUProgram` und danach die Aliase `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` und `Shader.DynamicLoadGPUProgram` auf. Der Pipeline-Marker verwendet exakt `CreatePSO.Job`. Dieselben Werte und Provenance sind ueber `perfmeter.metrics.latest` und Session-JSON/CSV verfuegbar.
 
+## Sitzungskorrelation Mit Profile Analyzer
+
+Waerend der Profiler-Aufzeichnung erzeugt jede Sitzung die unmittelbaren Samples `SGG.PerfMeter.Session.<sessionId>.Begin` und `.End`. `SGG/Perfmeter/Open Profile Analyzer For Session` oeffnet das optionale Profile-Analyzer-Fenster und kopiert die aktuelle Sitzungs-ID in die Zwischenablage. Der Befehl installiert Profile Analyzer nicht, laedt keine Profiler-Daten und setzt keinen Filter automatisch; suchen Sie nach dem Laden des passenden Captures nach der kopierten ID.
+
 ## Graphics-State-Trace und Prewarm
 
 1. Stelle unter Unity `6000.4+` sicher, dass die optionale Assembly `SGG.PerfMeter.GraphicsStateCollection` verfuegbar ist. Sie nutzt unter Unity `6000.4` den Namespace `UnityEngine.Experimental.Rendering.GraphicsStateCollection` und unter Unity `6000.5+` `UnityEngine.Rendering.GraphicsStateCollection`.

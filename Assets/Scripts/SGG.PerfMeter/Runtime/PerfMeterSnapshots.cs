@@ -1279,7 +1279,7 @@ namespace SGG.PerfMeter
 			int focusLossCount = 0,
 			int pauseCount = 0,
 			double focusPausedDurationSeconds = 0d)
-			: this(state, options, sampleCount, droppedSampleCount, firstFrame, lastFrame, startTimeSeconds, stopTimeSeconds, durationSeconds, averageFrameTimeMs, minFrameTimeMs, maxFrameTimeMs, averageFps, minFps, maxFps, gpuBoundSampleCount, cpuMainThreadBoundSampleCount, cpuRenderThreadBoundSampleCount, presentLimitedSampleCount, frameSpikeCount, severeFrameSpikeCount, warning, device, camera, settings, settings, startSceneName, lastSceneName, wholeRun, currentScene, focusLossCount, pauseCount, focusPausedDurationSeconds)
+			: this(state, options, sampleCount, droppedSampleCount, firstFrame, lastFrame, startTimeSeconds, stopTimeSeconds, durationSeconds, averageFrameTimeMs, minFrameTimeMs, maxFrameTimeMs, averageFps, minFps, maxFps, gpuBoundSampleCount, cpuMainThreadBoundSampleCount, cpuRenderThreadBoundSampleCount, presentLimitedSampleCount, frameSpikeCount, severeFrameSpikeCount, warning, device, camera, settings, settings, startSceneName, lastSceneName, wholeRun, currentScene, focusLossCount, pauseCount, focusPausedDurationSeconds, string.Empty)
 		{
 		}
 
@@ -1317,8 +1317,48 @@ namespace SGG.PerfMeter
 			int focusLossCount = 0,
 			int pauseCount = 0,
 			double focusPausedDurationSeconds = 0d)
+			: this(state, options, sampleCount, droppedSampleCount, firstFrame, lastFrame, startTimeSeconds, stopTimeSeconds, durationSeconds, averageFrameTimeMs, minFrameTimeMs, maxFrameTimeMs, averageFps, minFps, maxFps, gpuBoundSampleCount, cpuMainThreadBoundSampleCount, cpuRenderThreadBoundSampleCount, presentLimitedSampleCount, frameSpikeCount, severeFrameSpikeCount, warning, device, camera, configuredSettings, effectiveSettings, startSceneName, lastSceneName, wholeRun, currentScene, focusLossCount, pauseCount, focusPausedDurationSeconds, string.Empty)
+		{
+		}
+
+		public PerfMeterSessionSummarySnapshot(
+			PerfMeterSessionState state,
+			PerfMeterSessionOptions options,
+			int sampleCount,
+			int droppedSampleCount,
+			int firstFrame,
+			int lastFrame,
+			double startTimeSeconds,
+			double stopTimeSeconds,
+			double durationSeconds,
+			double averageFrameTimeMs,
+			double minFrameTimeMs,
+			double maxFrameTimeMs,
+			double averageFps,
+			double minFps,
+			double maxFps,
+			int gpuBoundSampleCount,
+			int cpuMainThreadBoundSampleCount,
+			int cpuRenderThreadBoundSampleCount,
+			int presentLimitedSampleCount,
+			int frameSpikeCount,
+			int severeFrameSpikeCount,
+			string warning,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterSettingsSnapshot configuredSettings,
+			PerfMeterSettingsSnapshot effectiveSettings,
+			string startSceneName,
+			string lastSceneName,
+			PerfMeterSessionScopeSummarySnapshot wholeRun,
+			PerfMeterSessionScopeSummarySnapshot currentScene,
+			int focusLossCount,
+			int pauseCount,
+			double focusPausedDurationSeconds,
+			string sessionId)
 		{
 			State = state;
+			SessionId = sessionId ?? string.Empty;
 			Options = options;
 			SampleCount = Mathf.Max(0, sampleCount);
 			DroppedSampleCount = Mathf.Max(0, droppedSampleCount);
@@ -1386,6 +1426,7 @@ namespace SGG.PerfMeter
 			PerfMeterSessionScopeSummarySnapshot.Empty);
 
 		public PerfMeterSessionState State { get; }
+		public string SessionId { get; }
 		public PerfMeterSessionOptions Options { get; }
 		public int SampleCount { get; }
 		public int DroppedSampleCount { get; }

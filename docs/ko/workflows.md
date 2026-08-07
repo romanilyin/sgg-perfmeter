@@ -148,6 +148,10 @@ memory-only evidence는 기존 capture-bundle API를 통해 `Temp/PerfMeter/Capt
 
 shader marker는 exact `Shader.CreateGPUProgram`을 먼저 해석하고 aliases `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram`, `Shader.DynamicLoadGPUProgram`을 이어서 사용합니다. pipeline marker는 exact `CreatePSO.Job`을 해석합니다. 동일한 value와 provenance는 `perfmeter.metrics.latest`와 session JSON/CSV에도 제공됩니다.
 
+## Profile Analyzer 세션 상관관계
+
+Profiler 기록 중 각 session은 순간적인 `SGG.PerfMeter.Session.<sessionId>.Begin` 및 `.End` sample을 생성합니다. `SGG/Perfmeter/Open Profile Analyzer For Session`은 optional Profile Analyzer window를 열고 current session ID를 clipboard에 복사합니다. 이 command는 Profile Analyzer를 설치하거나 Profiler data를 로드하거나 filter를 자동 적용하지 않습니다. 관련 capture를 로드한 뒤 복사된 ID를 검색하십시오.
+
 ## GraphicsStateCollection trace 및 prewarm
 
 1. Unity `6000.4+`에서 optional `SGG.PerfMeter.GraphicsStateCollection` assembly가 사용 가능한지 확인합니다. Unity `6000.4`에서는 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`, Unity `6000.5+`에서는 `UnityEngine.Rendering.GraphicsStateCollection` namespace를 사용합니다.

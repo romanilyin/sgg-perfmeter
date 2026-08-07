@@ -148,6 +148,10 @@ memory-only evidence 通过现有 capture-bundle API 写入 `Temp/PerfMeter/Capt
 
 shader marker 先解析 exact `Shader.CreateGPUProgram`，再解析 aliases `Shader.CreateGPUPrograms`、`Shader.CompileGPUProgram`、`Shader.DynamicLoadGPUProgram`。pipeline marker 解析 exact `CreatePSO.Job`。相同的 value 和 provenance 也可通过 `perfmeter.metrics.latest` 和 session JSON/CSV 获取。
 
+## 与 Profile Analyzer 的会话关联
+
+Profiler 记录期间，每个 session 都会生成瞬时的 `SGG.PerfMeter.Session.<sessionId>.Begin` 和 `.End` sample。`SGG/Perfmeter/Open Profile Analyzer For Session` 会打开可选的 Profile Analyzer 窗口，并将 current session ID 复制到剪贴板。该命令不会安装 Profile Analyzer、加载 Profiler 数据或自动应用过滤器；加载相关 capture 后，请搜索复制的 ID。
+
 ## GraphicsStateCollection trace 与 prewarm
 
 1. 在 Unity `6000.4+` 中确认可选 `SGG.PerfMeter.GraphicsStateCollection` assembly 可用。Unity `6000.4` 使用 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`，Unity `6000.5+` 使用 `UnityEngine.Rendering.GraphicsStateCollection` namespace。

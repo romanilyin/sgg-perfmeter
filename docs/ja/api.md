@@ -287,3 +287,7 @@ URP は public な current-frame `UniversalRenderingData.renderingMode` と、�
 `LegacyRenderGraph` は `GetRenderGraphSnapshot()` のための embedded compatibility facade です。private/internal な pass/resource reflection は削除され、legacy counter は `-1` のままです。安定した Unity public API は RenderGraph/CustomPass viewer や pass target も公開しないため、この API は Editor navigation を提供・約束しません。
 
 `GpuResidentDrawer` はさらに `ProjectConfigurationAvailability`、`IsProjectConfigurationSupported`、`ComputeShaderAvailability`、`SupportsComputeShaders`、`ForwardPlusActivityAvailability`、`IsObservedForwardPlusActive`、`RenderingModeCompatibilityAvailability`、`IsRenderingModeCompatible`、`ActivitySource`、`DegradedReason`、`Effectiveness` を持ちます。`PerfMeterGpuResidentDrawerReason` は structured fallback state を示します。`PerfMeterGpuResidentDrawerEffectivenessSnapshot` は BRG draw call/instance と Profiler capability provenance を保持し、未 sample 値は C# で `-1`、JSON で `null` です。これは BatchRendererGroup aggregate counter であり、renderer ごとの authoritative GRD evidence ではありません。
+
+## セッション相関
+
+`PerformanceMeter.GetSessionSummary().SessionId` は小文字の 32 文字 hexadecimal identifier です。`StartSession` で作成され、`StopSession` 後も変わらず、新しい session の開始時に変更され、session がない場合は空です。session JSON は同じ値を root の `session_id` として公開します。CSV は既存 column の位置を保つため最後に `session_id` column を追加し、`perfmeter.session.summary` も `session_id` を返します。

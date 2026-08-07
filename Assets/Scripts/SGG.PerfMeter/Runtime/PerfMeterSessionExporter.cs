@@ -56,6 +56,7 @@ namespace SGG.PerfMeter
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(2048 + safeSamples.Length * 768);
 			builder.Append("{\"schema_version\":").Append(SchemaVersion);
+			builder.Append(",\"session_id\":").Append(JsonString(summary.SessionId));
 			builder.Append(",\"package\":").Append(JsonString(packageIdentity.Name));
 			builder.Append(",\"package_version\":").Append(JsonString(packageIdentity.Version));
 			builder.Append(",\"package_version_source\":").Append(JsonString(packageIdentity.Source));
@@ -100,7 +101,7 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(1024 + safeSamples.Length * 512);
-			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters,platform_telemetry_available,platform_telemetry_provider,platform_telemetry_provider_version,thermal_warning_level,temperature_level,temperature_trend,cpu_performance_level,gpu_performance_level,adaptive_bottleneck,telemetry_last_change_time_seconds,graphics_state_trace_id,graphics_profiler_catalog_revision,shader_gpu_program_creation_value,shader_gpu_program_creation_sample_state,shader_gpu_program_creation_resolution,shader_gpu_program_creation_category,shader_gpu_program_creation_recorder_names,shader_gpu_program_creation_unit,shader_gpu_program_creation_data_type,shader_gpu_program_creation_resolved_components,shader_gpu_program_creation_sampled_components,graphics_pipeline_creation_value,graphics_pipeline_creation_sample_state,graphics_pipeline_creation_resolution,graphics_pipeline_creation_category,graphics_pipeline_creation_recorder_names,graphics_pipeline_creation_unit,graphics_pipeline_creation_data_type,graphics_pipeline_creation_resolved_components,graphics_pipeline_creation_sampled_components");
+			builder.Append("frame,time_seconds,scene,bottleneck,cpu_frame_ms,cpu_main_thread_ms,cpu_render_thread_ms,cpu_present_wait_ms,gpu_frame_ms,gpu_available,frame_budget_ms,average_fps,one_percent_low_fps,point_one_percent_low_fps,frame_spike_count,severe_frame_spike_count,draw_calls,set_pass_calls,batches,vertices,srp_batcher_instances,brg_draw_calls,brg_instances,index_buffer_upload_in_frame_bytes,system_used_memory_bytes,gc_reserved_memory_bytes,gpu_memory_bytes,overdraw_state,overdraw_progress,overdraw_ratio,session_warning,session_focus_loss_count,session_pause_count,session_focus_paused_duration_seconds,available_counters,unavailable_counters,platform_telemetry_available,platform_telemetry_provider,platform_telemetry_provider_version,thermal_warning_level,temperature_level,temperature_trend,cpu_performance_level,gpu_performance_level,adaptive_bottleneck,telemetry_last_change_time_seconds,graphics_state_trace_id,graphics_profiler_catalog_revision,shader_gpu_program_creation_value,shader_gpu_program_creation_sample_state,shader_gpu_program_creation_resolution,shader_gpu_program_creation_category,shader_gpu_program_creation_recorder_names,shader_gpu_program_creation_unit,shader_gpu_program_creation_data_type,shader_gpu_program_creation_resolved_components,shader_gpu_program_creation_sampled_components,graphics_pipeline_creation_value,graphics_pipeline_creation_sample_state,graphics_pipeline_creation_resolution,graphics_pipeline_creation_category,graphics_pipeline_creation_recorder_names,graphics_pipeline_creation_unit,graphics_pipeline_creation_data_type,graphics_pipeline_creation_resolved_components,graphics_pipeline_creation_sampled_components,session_id");
 			builder.AppendLine();
 			for (int i = 0; i < safeSamples.Length; i++)
 			{
@@ -749,7 +750,8 @@ namespace SGG.PerfMeter
 			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.Unit).Append(',');
 			AppendCsv(builder, metrics.GraphicsPipelineCreationCapability.DataType).Append(',');
 			builder.Append(metrics.GraphicsPipelineCreationCapability.ResolvedComponentCount).Append(',');
-			builder.Append(metrics.GraphicsPipelineCreationCapability.SampledComponentCount);
+			builder.Append(metrics.GraphicsPipelineCreationCapability.SampledComponentCount).Append(',');
+			AppendCsv(builder, summary.SessionId);
 		}
 
 		private static void AppendGraphicsMetric(StringBuilder builder, long value, PerfMeterProfilerMetricCapabilitySnapshot capability)

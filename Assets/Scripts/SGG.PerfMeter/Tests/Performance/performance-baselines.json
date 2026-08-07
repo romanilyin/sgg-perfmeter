@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "benchmarks": [
+    {
+      "id": "profiler_instrumentation_warmed",
+      "iterations": 10000,
+      "max_average_cpu_ms_per_invocation": 0.05,
+      "max_allocated_bytes_per_invocation": 0
+    },
+    {
+      "id": "session_boundary_markers_warmed",
+      "iterations": 10000,
+      "max_average_cpu_ms_per_invocation": 0.05,
+      "max_allocated_bytes_per_invocation": 0
+    }
+  ]
+}

@@ -148,6 +148,10 @@ memory-only evidence は既存の capture-bundle API により `Temp/PerfMeter/C
 
 shader marker は exact `Shader.CreateGPUProgram` を優先し、その後 aliases `Shader.CreateGPUPrograms`、`Shader.CompileGPUProgram`、`Shader.DynamicLoadGPUProgram` を解決します。pipeline marker は exact `CreatePSO.Job` を解決します。同じ value と provenance は `perfmeter.metrics.latest` と session JSON/CSV にもあります。
 
+## Profile Analyzer とのセッション相関
+
+Profiler 記録中、各 session は瞬間的な `SGG.PerfMeter.Session.<sessionId>.Begin` と `.End` sample を生成します。`SGG/Perfmeter/Open Profile Analyzer For Session` は optional Profile Analyzer window を開き、current session ID を clipboard にコピーします。この command は Profile Analyzer の install、Profiler data の load、filter の自動適用を行いません。対象 capture を読み込んだ後、コピーした ID を検索してください。
+
 ## GraphicsStateCollection trace と prewarm
 
 1. Unity `6000.4+` で optional `SGG.PerfMeter.GraphicsStateCollection` assembly が利用可能であることを確認します。Unity `6000.4` では `UnityEngine.Experimental.Rendering.GraphicsStateCollection`、Unity `6000.5+` では `UnityEngine.Rendering.GraphicsStateCollection` namespace を使います。

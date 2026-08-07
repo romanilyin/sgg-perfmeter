@@ -287,3 +287,7 @@ URP는 public current-frame `UniversalRenderingData.renderingMode`와 해당 fra
 `LegacyRenderGraph`는 `GetRenderGraphSnapshot()`을 위한 embedded compatibility facade입니다. private/internal pass/resource reflection은 제거되었으므로 legacy counter는 `-1`로 유지됩니다. 안정적인 Unity public API는 RenderGraph/CustomPass viewer나 pass target도 제공하지 않으므로 이 API는 Editor navigation을 제공하거나 약속하지 않습니다.
 
 `GpuResidentDrawer`는 추가로 `ProjectConfigurationAvailability`, `IsProjectConfigurationSupported`, `ComputeShaderAvailability`, `SupportsComputeShaders`, `ForwardPlusActivityAvailability`, `IsObservedForwardPlusActive`, `RenderingModeCompatibilityAvailability`, `IsRenderingModeCompatible`, `ActivitySource`, `DegradedReason`, `Effectiveness`를 제공합니다. `PerfMeterGpuResidentDrawerReason`은 structured fallback state를 나타냅니다. `PerfMeterGpuResidentDrawerEffectivenessSnapshot`은 BRG draw call/instance와 Profiler capability provenance를 보존하며 sample이 없으면 C#에서 `-1`, JSON에서 `null`입니다. 이는 BatchRendererGroup aggregate counter이며 renderer별 authoritative GRD evidence가 아닙니다.
+
+## 세션 상관관계
+
+`PerformanceMeter.GetSessionSummary().SessionId`는 소문자 32자리 hexadecimal identifier입니다. `StartSession`에서 생성되고 `StopSession` 후에도 유지되며 새 session이 시작되면 변경되고 session이 없으면 비어 있습니다. session JSON은 같은 값을 root `session_id`로 제공하고, CSV는 기존 column 위치를 보존하도록 마지막 `session_id` column으로 추가하며, `perfmeter.session.summary`도 `session_id`를 반환합니다.

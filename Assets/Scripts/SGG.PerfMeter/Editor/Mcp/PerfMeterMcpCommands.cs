@@ -787,7 +787,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 		private static void AppendSessionSummary(StringBuilder builder, PerfMeterSessionSummarySnapshot summary)
 		{
 			builder.Append('{');
-			builder.Append("\"state\":").Append(JsonString(summary.State.ToString()));
+			builder.Append("\"session_id\":").Append(JsonString(summary.SessionId));
+			builder.Append(",\"state\":").Append(JsonString(summary.State.ToString()));
 			builder.Append(",\"sample_count\":").Append(summary.SampleCount);
 			builder.Append(",\"dropped_sample_count\":").Append(summary.DroppedSampleCount);
 			builder.Append(",\"first_frame\":").Append(summary.FirstFrame);

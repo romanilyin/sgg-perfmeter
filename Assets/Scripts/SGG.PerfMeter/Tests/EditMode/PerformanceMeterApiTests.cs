@@ -524,6 +524,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"id\":\"combat.active_units\""));
 			Assert.That(json, Does.Contain("\"value\":42"));
 			Assert.That(csv, Does.StartWith("frame,time_seconds,scene,bottleneck,cpu_frame_ms"));
+			Assert.That(csv.Split('\n')[0].TrimEnd('\r'), Does.EndWith(",session_id"));
 			Assert.That(csv, Does.Contain("GpuBound"));
 			Assert.That(csv, Does.Contain("overdraw_ratio"));
 			Assert.That(csv, Does.Contain("session_focus_loss_count"));

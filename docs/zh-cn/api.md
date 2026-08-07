@@ -287,3 +287,7 @@ URP 使用 public current-frame `UniversalRenderingData.renderingMode`，并报�
 `LegacyRenderGraph` 是嵌入的 compatibility facade，用于 `GetRenderGraphSnapshot()`。private/internal pass/resource reflection 已移除，因此 legacy counters 保持 `-1`。Unity stable public API 也不提供 RenderGraph/CustomPass viewer 或 pass targets；此 API 不提供也不承诺 Editor navigation。
 
 `GpuResidentDrawer` 还包含 `ProjectConfigurationAvailability`、`IsProjectConfigurationSupported`、`ComputeShaderAvailability`、`SupportsComputeShaders`、`ForwardPlusActivityAvailability`、`IsObservedForwardPlusActive`、`RenderingModeCompatibilityAvailability`、`IsRenderingModeCompatible`、`ActivitySource`、`DegradedReason` 和 `Effectiveness`。`PerfMeterGpuResidentDrawerReason` 提供 structured fallback states。`PerfMeterGpuResidentDrawerEffectivenessSnapshot` 保存 BRG draw calls/instances 和 Profiler capability provenance；未采样值在 C# 中为 `-1`，在 JSON 中为 `null`。这些是 BatchRendererGroup aggregate counters，不是逐 renderer 的 authoritative GRD evidence。
+
+## 会话关联
+
+`PerformanceMeter.GetSessionSummary().SessionId` 是 32 个小写 hexadecimal 字符组成的 identifier。它由 `StartSession` 创建，在 `StopSession` 后保持不变，在新 session 启动时更改，并在没有 session 时为空。session JSON 在根级 `session_id` 字段公开相同值；CSV 将其追加为最后一个 `session_id` column，以保留现有 column 位置；`perfmeter.session.summary` 也返回 `session_id`。

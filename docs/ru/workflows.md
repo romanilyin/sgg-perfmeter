@@ -148,6 +148,10 @@ Memory-only evidence проходит через существующий captur
 
 Shader marker сначала разрешает exact `Shader.CreateGPUProgram`, затем aliases `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` и `Shader.DynamicLoadGPUProgram`. Pipeline marker использует exact `CreatePSO.Job`. Те же values и provenance доступны через `perfmeter.metrics.latest` и session JSON/CSV.
 
+## Корреляция сессии с Profile Analyzer
+
+Во время профилирования каждая сессия создаёт мгновенные samples `SGG.PerfMeter.Session.<sessionId>.Begin` и `.End`. Команда `SGG/Perfmeter/Open Profile Analyzer For Session` открывает опциональное окно Profile Analyzer и копирует ID текущей сессии в буфер обмена. Команда не устанавливает Profile Analyzer, не загружает данные Profiler и не применяет фильтр автоматически; после загрузки нужного capture найдите скопированный ID.
+
 ## Trace и prewarm GraphicsStateCollection
 
 1. В Unity `6000.4+` убедитесь, что доступна опциональная сборка `SGG.PerfMeter.GraphicsStateCollection`. В Unity `6000.4` она использует namespace `UnityEngine.Experimental.Rendering.GraphicsStateCollection`, а в Unity `6000.5+` — `UnityEngine.Rendering.GraphicsStateCollection`.
