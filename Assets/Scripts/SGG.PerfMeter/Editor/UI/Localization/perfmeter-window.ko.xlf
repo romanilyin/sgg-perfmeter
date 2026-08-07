@@ -47,9 +47,13 @@
       <trans-unit id="label.status"><source>Status</source><target>상태</target></trans-unit>
       <trans-unit id="label.json_path"><source>JSON Path</source><target>JSON 경로</target></trans-unit>
       <trans-unit id="label.resources_path"><source>Resources Path</source><target>Resources 경로</target></trans-unit>
+      <trans-unit id="label.supported_schema_version"><source>Supported schema version</source><target>지원되는 스키마 버전</target></trans-unit>
+      <trans-unit id="label.saved_collection_mode"><source>Saved collection mode (derived)</source><target>저장된 수집 모드(파생)</target></trans-unit>
       <trans-unit id="label.enabled"><source>Enabled</source><target>활성화됨</target></trans-unit>
       <trans-unit id="label.auto_start"><source>Auto Start</source><target>자동 시작</target></trans-unit>
       <trans-unit id="label.collection_mode"><source>Collection Mode</source><target>수집 모드</target></trans-unit>
+      <trans-unit id="label.legacy_active_preset"><source>Legacy active preset (read-only compatibility)</source><target>레거시 활성 프리셋(읽기 전용 호환성)</target></trans-unit>
+      <trans-unit id="label.legacy_resolved_modules"><source>Legacy resolved modules (read-only compatibility)</source><target>레거시 확인된 모듈(읽기 전용 호환성)</target></trans-unit>
       <trans-unit id="label.active_preset"><source>Active Preset</source><target>활성 프리셋</target></trans-unit>
       <trans-unit id="label.modules"><source>Modules</source><target>모듈</target></trans-unit>
       <trans-unit id="label.overlay_scale"><source>Overlay Scale</source><target>오버레이 스케일</target></trans-unit>
@@ -114,6 +118,7 @@
       <trans-unit id="button.cpu_core_graphs"><source>CPU Core Graphs</source><target>CPU 코어 그래프</target></trans-unit>
       <trans-unit id="button.hide_cpu_cores"><source>Hide CPU Cores</source><target>CPU 코어 숨기기</target></trans-unit>
       <trans-unit id="button.measure_overdraw"><source>Measure Overdraw 30f</source><target>오버드로우 30f 측정</target></trans-unit>
+      <trans-unit id="button.measure_overdraw_project_default"><source>Measure Overdraw (project default)</source><target>오버드로우 측정(프로젝트 기본값)</target></trans-unit>
       <trans-unit id="button.cancel_overdraw"><source>Cancel Overdraw</source><target>오버드로우 취소</target></trans-unit>
       <trans-unit id="button.show_heatmap"><source>Show Heatmap</source><target>히트맵 표시</target></trans-unit>
       <trans-unit id="button.hide_heatmap"><source>Hide Heatmap</source><target>히트맵 숨기기</target></trans-unit>
@@ -243,10 +248,13 @@
       <trans-unit id="section.runtime_technical_overrides"><source>Runtime technical overrides</source><target>런타임 기술 오버라이드</target></trans-unit>
       <trans-unit id="section.runtime_visual_preset"><source>Runtime visual preset</source><target>런타임 비주얼 프리셋</target></trans-unit>
       <trans-unit id="section.diagnostics_actions"><source>Diagnostics / actions</source><target>진단 / 작업</target></trans-unit>
+      <trans-unit id="section.p3_integrations"><source>P3 integrations &amp; analysis</source><target>P3 통합 및 분석</target></trans-unit>
       <trans-unit id="info.setup_checklist"><source>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</source><target>필수 검사는 PerfMeter를 Unity/URP 런타임 데이터에 연결합니다. 권장 및 선택 검사는 진단을 개선하지만 모든 프로젝트에 필요한 것은 아닙니다.</target></trans-unit>
       <trans-unit id="info.project_settings_json"><source>Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.</source><target>기술/프로젝트 설정은 Resources JSON에 저장됩니다. Visual 오버레이 프리셋은 Assets/SGG PerfMeter/Presets/Overlay 아래의 프로젝트 JSON 파일이며 빌드용 Resources JSON에 포함됩니다.</target></trans-unit>
       <trans-unit id="info.work_mode"><source>Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.</source><target>작업 모드는 PerfMeter 실행 여부와 수집 대상을 제어합니다. 아래 비주얼 프리셋은 오버레이 모양과 구성만 변경합니다.</target></trans-unit>
       <trans-unit id="info.widget_composition"><source>Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.</source><target>여기에는 상위 수준 프리셋 블록만 표시됩니다. 하위 수준 행과 메트릭 바는 디버그에서 계속 볼 수 있습니다.</target></trans-unit>
+      <trans-unit id="info.legacy_compatibility"><source>Legacy enum values below are read-only compatibility data. Visual presets and widget composition are authoritative for the current overlay.</source><target>레거시 열거형 값은 읽기 전용 호환성 데이터입니다. 현재 오버레이에서는 비주얼 프리셋과 위젯 구성이 기준입니다.</target></trans-unit>
+      <trans-unit id="info.p3_integrations"><source>Read-only capability and status discovery for optional P3 integrations. Memory snapshot and graphics-state trace/prewarm request parameters remain runtime-only API/MCP inputs and are not project settings.</source><target>선택적 P3 통합의 기능과 상태를 읽기 전용으로 확인합니다. 메모리 스냅샷 및 그래픽 상태 추적/프리웜 요청 매개변수는 런타임 전용 API/MCP 입력이며 프로젝트 설정이 아닙니다.</target></trans-unit>
       <trans-unit id="label.required"><source>required</source><target>필수</target></trans-unit>
       <trans-unit id="label.recommended"><source>recommended</source><target>권장</target></trans-unit>
       <trans-unit id="label.optional"><source>optional</source><target>선택</target></trans-unit>
@@ -261,6 +269,9 @@
       <trans-unit id="label.warning_logs_editor"><source>Warning logs in Editor</source><target>Editor의 경고 로그</target></trans-unit>
       <trans-unit id="label.preset"><source>Preset</source><target>프리셋</target></trans-unit>
       <trans-unit id="label.description"><source>Description</source><target>설명</target></trans-unit>
+      <trans-unit id="label.tags"><source>Tags</source><target>태그</target></trans-unit>
+      <trans-unit id="label.preset_schema_version"><source>Preset schema / version</source><target>프리셋 스키마 / 버전</target></trans-unit>
+      <trans-unit id="label.reserved_widget_metadata"><source>Reserved widget variant / height (read-only)</source><target>예약된 위젯 변형 / 높이(읽기 전용)</target></trans-unit>
       <trans-unit id="label.anchor"><source>Anchor</source><target>앵커</target></trans-unit>
       <trans-unit id="label.font"><source>Font</source><target>글꼴</target></trans-unit>
       <trans-unit id="label.scale"><source>Scale</source><target>스케일</target></trans-unit>
@@ -273,6 +284,17 @@
       <trans-unit id="label.cpu_frame"><source>CPU frame</source><target>CPU 프레임</target></trans-unit>
       <trans-unit id="label.gpu_frame"><source>GPU frame</source><target>GPU 프레임</target></trans-unit>
       <trans-unit id="label.style_summary"><source>Style summary</source><target>스타일 요약</target></trans-unit>
+      <trans-unit id="label.session_state"><source>Session state</source><target>세션 상태</target></trans-unit>
+      <trans-unit id="label.session_id"><source>Session ID</source><target>세션 ID</target></trans-unit>
+      <trans-unit id="label.session_samples"><source>Session samples</source><target>세션 샘플</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_capabilities"><source>Memory snapshot capabilities</source><target>메모리 스냅샷 기능</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_status"><source>Memory snapshot status</source><target>메모리 스냅샷 상태</target></trans-unit>
+      <trans-unit id="label.graphics_state_capabilities"><source>Graphics-state capabilities</source><target>그래픽 상태 기능</target></trans-unit>
+      <trans-unit id="label.graphics_state_status"><source>Graphics-state status</source><target>그래픽 상태 현황</target></trans-unit>
+      <trans-unit id="label.graphics_creation_markers"><source>Graphics creation markers</source><target>그래픽 생성 마커</target></trans-unit>
+      <trans-unit id="label.render_integration"><source>Render integration</source><target>렌더링 통합</target></trans-unit>
+      <trans-unit id="label.grd_brg_telemetry"><source>GRD / BRG telemetry</source><target>GRD / BRG 텔레메트리</target></trans-unit>
+      <trans-unit id="label.combined_warnings"><source>Combined warnings</source><target>통합 경고</target></trans-unit>
       <trans-unit id="button.ensure_default_presets"><source>Ensure Default Presets</source><target>기본 프리셋 확인</target></trans-unit>
       <trans-unit id="button.save"><source>Save</source><target>저장</target></trans-unit>
       <trans-unit id="button.save_as_custom"><source>Save as custom</source><target>커스텀으로 저장</target></trans-unit>
@@ -291,6 +313,10 @@
       <trans-unit id="button.reset_alert_counters"><source>Reset alert counters</source><target>알림 카운터 초기화</target></trans-unit>
       <trans-unit id="button.dump_runtime_snapshot"><source>Dump runtime snapshot</source><target>런타임 스냅샷 덤프</target></trans-unit>
       <trans-unit id="button.copy_runtime_summary"><source>Copy runtime summary</source><target>런타임 요약 복사</target></trans-unit>
+      <trans-unit id="button.start_session"><source>Start Session</source><target>세션 시작</target></trans-unit>
+      <trans-unit id="button.stop_session"><source>Stop Session</source><target>세션 중지</target></trans-unit>
+      <trans-unit id="button.session_analysis"><source>Session Analysis</source><target>세션 분석</target></trans-unit>
+      <trans-unit id="button.profile_analyzer"><source>Profile Analyzer</source><target>프로파일 분석기</target></trans-unit>
 
       <trans-unit id="status.disabled"><source>Disabled</source><target>비활성화됨</target></trans-unit>
       <trans-unit id="status.not_found"><source>Not found</source><target>찾을 수 없음</target></trans-unit>
@@ -335,6 +361,9 @@
       <trans-unit id="message.runtime_failed"><source>Ensure Runtime Failed</source><target>런타임 확인 실패</target></trans-unit>
       <trans-unit id="message.enter_play_apply"><source>Enter Play Mode to apply PerfMeter settings to the active runtime session.</source><target>활성 런타임 세션에 PerfMeter 설정을 적용하려면 Play Mode로 전환하세요.</target></trans-unit>
       <trans-unit id="message.applied_runtime"><source>PerfMeter JSON settings applied to the active Play Mode session.</source><target>PerfMeter JSON 설정이 활성 Play Mode 세션에 적용되었습니다.</target></trans-unit>
+      <trans-unit id="message.session_analysis_opened"><source>Session Analysis: opened.</source><target>세션 분석: 열림.</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_opened"><source>Profile Analyzer: opened; session ID copied to clipboard.</source><target>프로파일 분석기: 열림. 세션 ID가 클립보드에 복사되었습니다.</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_unavailable"><source>Profile Analyzer: unavailable; see Console warning.</source><target>프로파일 분석기: 사용할 수 없음. Console 경고를 확인하세요.</target></trans-unit>
       <trans-unit id="message.frame_already"><source>Frame Timing Stats is already enabled.</source><target>프레임 타이밍 통계가 이미 활성화되어 있습니다.</target></trans-unit>
       <trans-unit id="message.frame_enabled_action"><source>Frame Timing Stats enabled in Player Settings.</source><target>Player Settings에서 프레임 타이밍 통계를 활성화했습니다.</target></trans-unit>
       <trans-unit id="message.no_selected"><source>No renderer assets selected.</source><target>선택된 렌더러 에셋이 없습니다.</target></trans-unit>
@@ -372,6 +401,20 @@
       <trans-unit id="tooltip.warning_attention"><source>Warning / attention</source><target>경고 / 주의</target></trans-unit>
       <trans-unit id="tooltip.optional"><source>Optional</source><target>선택</target></trans-unit>
       <trans-unit id="tooltip.error_danger"><source>Error / danger</source><target>오류 / 위험</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_refresh_range"><source>Normalized on focus loss to the persisted overlay refresh interval range.</source><target>포커스를 잃으면 저장된 오버레이 업데이트 간격 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_graph_history_range"><source>Normalized on focus loss to the persisted graph history range.</source><target>포커스를 잃으면 저장된 그래프 기록 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.min_one_second"><source>Must be at least 1 second; normalized on focus loss.</source><target>1초 이상이어야 하며 포커스를 잃으면 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.nonnegative_focus_loss"><source>Must be zero or greater; normalized on focus loss.</source><target>0 이상이어야 하며 포커스를 잃으면 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.min_point_one"><source>Must be at least 0.1; normalized on focus loss.</source><target>0.1 이상이어야 하며 포커스를 잃으면 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.min_one_frame"><source>Must be at least 1 frame; normalized on focus loss.</source><target>1프레임 이상이어야 하며 포커스를 잃으면 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_min_sample_interval"><source>Normalized on focus loss to the persisted minimum sample interval.</source><target>포커스를 잃으면 저장된 최소 샘플 간격으로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_session_sample_range"><source>Normalized on focus loss to the persisted session sample range.</source><target>포커스를 잃으면 저장된 세션 샘플 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.configured_overdraw_max"><source>Normalized to 1..the configured overdraw maximum on focus loss.</source><target>포커스를 잃으면 1부터 구성된 오버드로우 최대값까지의 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overdraw_max"><source>Normalized to 1..the persisted overdraw maximum limit on focus loss.</source><target>포커스를 잃으면 1부터 저장된 오버드로우 최대 제한까지의 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_font_size_range"><source>Normalized on focus loss to the persisted overlay font size range.</source><target>포커스를 잃으면 저장된 오버레이 글꼴 크기 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_scale_range"><source>Normalized on focus loss to the persisted overlay scale range.</source><target>포커스를 잃으면 저장된 오버레이 스케일 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_opacity_range"><source>Normalized on focus loss to the persisted overlay opacity range.</source><target>포커스를 잃으면 저장된 오버레이 불투명도 범위로 정규화됩니다.</target></trans-unit>
+      <trans-unit id="tooltip.min_one_pixel"><source>Must be at least 1 pixel; normalized on focus loss.</source><target>1픽셀 이상이어야 하며 포커스를 잃으면 정규화됩니다.</target></trans-unit>
 
       <trans-unit id="dynamic.type.card"><source>Card</source><target>카드</target></trans-unit>
       <trans-unit id="dynamic.type.budget_bar"><source>BudgetBar</source><target>예산 바</target></trans-unit>

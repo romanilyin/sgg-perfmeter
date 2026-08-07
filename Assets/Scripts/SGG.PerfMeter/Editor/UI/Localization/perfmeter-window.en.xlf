@@ -47,9 +47,13 @@
       <trans-unit id="label.status"><source>Status</source><target>Status</target></trans-unit>
       <trans-unit id="label.json_path"><source>JSON Path</source><target>JSON Path</target></trans-unit>
       <trans-unit id="label.resources_path"><source>Resources Path</source><target>Resources Path</target></trans-unit>
+      <trans-unit id="label.supported_schema_version"><source>Supported schema version</source><target>Supported schema version</target></trans-unit>
+      <trans-unit id="label.saved_collection_mode"><source>Saved collection mode (derived)</source><target>Saved collection mode (derived)</target></trans-unit>
       <trans-unit id="label.enabled"><source>Enabled</source><target>Enabled</target></trans-unit>
       <trans-unit id="label.auto_start"><source>Auto Start</source><target>Auto Start</target></trans-unit>
       <trans-unit id="label.collection_mode"><source>Collection Mode</source><target>Collection Mode</target></trans-unit>
+      <trans-unit id="label.legacy_active_preset"><source>Legacy active preset (read-only compatibility)</source><target>Legacy active preset (read-only compatibility)</target></trans-unit>
+      <trans-unit id="label.legacy_resolved_modules"><source>Legacy resolved modules (read-only compatibility)</source><target>Legacy resolved modules (read-only compatibility)</target></trans-unit>
       <trans-unit id="label.active_preset"><source>Active Preset</source><target>Active Preset</target></trans-unit>
       <trans-unit id="label.modules"><source>Modules</source><target>Modules</target></trans-unit>
       <trans-unit id="label.overlay_scale"><source>Overlay Scale</source><target>Overlay Scale</target></trans-unit>
@@ -114,6 +118,7 @@
       <trans-unit id="button.cpu_core_graphs"><source>CPU Core Graphs</source><target>CPU Core Graphs</target></trans-unit>
       <trans-unit id="button.hide_cpu_cores"><source>Hide CPU Cores</source><target>Hide CPU Cores</target></trans-unit>
       <trans-unit id="button.measure_overdraw"><source>Measure Overdraw 30f</source><target>Measure Overdraw 30f</target></trans-unit>
+      <trans-unit id="button.measure_overdraw_project_default"><source>Measure Overdraw (project default)</source><target>Measure Overdraw (project default)</target></trans-unit>
       <trans-unit id="button.cancel_overdraw"><source>Cancel Overdraw</source><target>Cancel Overdraw</target></trans-unit>
       <trans-unit id="button.show_heatmap"><source>Show Heatmap</source><target>Show Heatmap</target></trans-unit>
       <trans-unit id="button.hide_heatmap"><source>Hide Heatmap</source><target>Hide Heatmap</target></trans-unit>
@@ -243,10 +248,13 @@
       <trans-unit id="section.runtime_technical_overrides"><source>Runtime technical overrides</source><target>Runtime technical overrides</target></trans-unit>
       <trans-unit id="section.runtime_visual_preset"><source>Runtime visual preset</source><target>Runtime visual preset</target></trans-unit>
       <trans-unit id="section.diagnostics_actions"><source>Diagnostics / actions</source><target>Diagnostics / actions</target></trans-unit>
+      <trans-unit id="section.p3_integrations"><source>P3 integrations &amp; analysis</source><target>P3 integrations &amp; analysis</target></trans-unit>
       <trans-unit id="info.setup_checklist"><source>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</source><target>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</target></trans-unit>
       <trans-unit id="info.project_settings_json"><source>Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.</source><target>Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.</target></trans-unit>
       <trans-unit id="info.work_mode"><source>Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.</source><target>Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.</target></trans-unit>
       <trans-unit id="info.widget_composition"><source>Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.</source><target>Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.</target></trans-unit>
+      <trans-unit id="info.legacy_compatibility"><source>Legacy enum values below are read-only compatibility data. Visual presets and widget composition are authoritative for the current overlay.</source><target>Legacy enum values below are read-only compatibility data. Visual presets and widget composition are authoritative for the current overlay.</target></trans-unit>
+      <trans-unit id="info.p3_integrations"><source>Read-only capability and status discovery for optional P3 integrations. Memory snapshot and graphics-state trace/prewarm request parameters remain runtime-only API/MCP inputs and are not project settings.</source><target>Read-only capability and status discovery for optional P3 integrations. Memory snapshot and graphics-state trace/prewarm request parameters remain runtime-only API/MCP inputs and are not project settings.</target></trans-unit>
       <trans-unit id="label.required"><source>required</source><target>required</target></trans-unit>
       <trans-unit id="label.recommended"><source>recommended</source><target>recommended</target></trans-unit>
       <trans-unit id="label.optional"><source>optional</source><target>optional</target></trans-unit>
@@ -261,6 +269,9 @@
       <trans-unit id="label.warning_logs_editor"><source>Warning logs in Editor</source><target>Warning logs in Editor</target></trans-unit>
       <trans-unit id="label.preset"><source>Preset</source><target>Preset</target></trans-unit>
       <trans-unit id="label.description"><source>Description</source><target>Description</target></trans-unit>
+      <trans-unit id="label.tags"><source>Tags</source><target>Tags</target></trans-unit>
+      <trans-unit id="label.preset_schema_version"><source>Preset schema / version</source><target>Preset schema / version</target></trans-unit>
+      <trans-unit id="label.reserved_widget_metadata"><source>Reserved widget variant / height (read-only)</source><target>Reserved widget variant / height (read-only)</target></trans-unit>
       <trans-unit id="label.anchor"><source>Anchor</source><target>Anchor</target></trans-unit>
       <trans-unit id="label.font"><source>Font</source><target>Font</target></trans-unit>
       <trans-unit id="label.scale"><source>Scale</source><target>Scale</target></trans-unit>
@@ -273,6 +284,17 @@
       <trans-unit id="label.cpu_frame"><source>CPU frame</source><target>CPU frame</target></trans-unit>
       <trans-unit id="label.gpu_frame"><source>GPU frame</source><target>GPU frame</target></trans-unit>
       <trans-unit id="label.style_summary"><source>Style summary</source><target>Style summary</target></trans-unit>
+      <trans-unit id="label.session_state"><source>Session state</source><target>Session state</target></trans-unit>
+      <trans-unit id="label.session_id"><source>Session ID</source><target>Session ID</target></trans-unit>
+      <trans-unit id="label.session_samples"><source>Session samples</source><target>Session samples</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_capabilities"><source>Memory snapshot capabilities</source><target>Memory snapshot capabilities</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_status"><source>Memory snapshot status</source><target>Memory snapshot status</target></trans-unit>
+      <trans-unit id="label.graphics_state_capabilities"><source>Graphics-state capabilities</source><target>Graphics-state capabilities</target></trans-unit>
+      <trans-unit id="label.graphics_state_status"><source>Graphics-state status</source><target>Graphics-state status</target></trans-unit>
+      <trans-unit id="label.graphics_creation_markers"><source>Graphics creation markers</source><target>Graphics creation markers</target></trans-unit>
+      <trans-unit id="label.render_integration"><source>Render integration</source><target>Render integration</target></trans-unit>
+      <trans-unit id="label.grd_brg_telemetry"><source>GRD / BRG telemetry</source><target>GRD / BRG telemetry</target></trans-unit>
+      <trans-unit id="label.combined_warnings"><source>Combined warnings</source><target>Combined warnings</target></trans-unit>
       <trans-unit id="button.ensure_default_presets"><source>Ensure Default Presets</source><target>Ensure Default Presets</target></trans-unit>
       <trans-unit id="button.save"><source>Save</source><target>Save</target></trans-unit>
       <trans-unit id="button.save_as_custom"><source>Save as custom</source><target>Save as custom</target></trans-unit>
@@ -291,6 +313,10 @@
       <trans-unit id="button.reset_alert_counters"><source>Reset alert counters</source><target>Reset alert counters</target></trans-unit>
       <trans-unit id="button.dump_runtime_snapshot"><source>Dump runtime snapshot</source><target>Dump runtime snapshot</target></trans-unit>
       <trans-unit id="button.copy_runtime_summary"><source>Copy runtime summary</source><target>Copy runtime summary</target></trans-unit>
+      <trans-unit id="button.start_session"><source>Start Session</source><target>Start Session</target></trans-unit>
+      <trans-unit id="button.stop_session"><source>Stop Session</source><target>Stop Session</target></trans-unit>
+      <trans-unit id="button.session_analysis"><source>Session Analysis</source><target>Session Analysis</target></trans-unit>
+      <trans-unit id="button.profile_analyzer"><source>Profile Analyzer</source><target>Profile Analyzer</target></trans-unit>
 
       <trans-unit id="status.disabled"><source>Disabled</source><target>Disabled</target></trans-unit>
       <trans-unit id="status.not_found"><source>Not found</source><target>Not found</target></trans-unit>
@@ -335,6 +361,9 @@
       <trans-unit id="message.runtime_failed"><source>Ensure Runtime Failed</source><target>Ensure Runtime Failed</target></trans-unit>
       <trans-unit id="message.enter_play_apply"><source>Enter Play Mode to apply PerfMeter settings to the active runtime session.</source><target>Enter Play Mode to apply PerfMeter settings to the active runtime session.</target></trans-unit>
       <trans-unit id="message.applied_runtime"><source>PerfMeter JSON settings applied to the active Play Mode session.</source><target>PerfMeter JSON settings applied to the active Play Mode session.</target></trans-unit>
+      <trans-unit id="message.session_analysis_opened"><source>Session Analysis: opened.</source><target>Session Analysis: opened.</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_opened"><source>Profile Analyzer: opened; session ID copied to clipboard.</source><target>Profile Analyzer: opened; session ID copied to clipboard.</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_unavailable"><source>Profile Analyzer: unavailable; see Console warning.</source><target>Profile Analyzer: unavailable; see Console warning.</target></trans-unit>
       <trans-unit id="message.frame_already"><source>Frame Timing Stats is already enabled.</source><target>Frame Timing Stats is already enabled.</target></trans-unit>
       <trans-unit id="message.frame_enabled_action"><source>Frame Timing Stats enabled in Player Settings.</source><target>Frame Timing Stats enabled in Player Settings.</target></trans-unit>
       <trans-unit id="message.no_selected"><source>No renderer assets selected.</source><target>No renderer assets selected.</target></trans-unit>
@@ -372,6 +401,20 @@
       <trans-unit id="tooltip.warning_attention"><source>Warning / attention</source><target>Warning / attention</target></trans-unit>
       <trans-unit id="tooltip.optional"><source>Optional</source><target>Optional</target></trans-unit>
       <trans-unit id="tooltip.error_danger"><source>Error / danger</source><target>Error / danger</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_refresh_range"><source>Normalized on focus loss to the persisted overlay refresh interval range.</source><target>Normalized on focus loss to the persisted overlay refresh interval range.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_graph_history_range"><source>Normalized on focus loss to the persisted graph history range.</source><target>Normalized on focus loss to the persisted graph history range.</target></trans-unit>
+      <trans-unit id="tooltip.min_one_second"><source>Must be at least 1 second; normalized on focus loss.</source><target>Must be at least 1 second; normalized on focus loss.</target></trans-unit>
+      <trans-unit id="tooltip.nonnegative_focus_loss"><source>Must be zero or greater; normalized on focus loss.</source><target>Must be zero or greater; normalized on focus loss.</target></trans-unit>
+      <trans-unit id="tooltip.min_point_one"><source>Must be at least 0.1; normalized on focus loss.</source><target>Must be at least 0.1; normalized on focus loss.</target></trans-unit>
+      <trans-unit id="tooltip.min_one_frame"><source>Must be at least 1 frame; normalized on focus loss.</source><target>Must be at least 1 frame; normalized on focus loss.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_min_sample_interval"><source>Normalized on focus loss to the persisted minimum sample interval.</source><target>Normalized on focus loss to the persisted minimum sample interval.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_session_sample_range"><source>Normalized on focus loss to the persisted session sample range.</source><target>Normalized on focus loss to the persisted session sample range.</target></trans-unit>
+      <trans-unit id="tooltip.configured_overdraw_max"><source>Normalized to 1..the configured overdraw maximum on focus loss.</source><target>Normalized to 1..the configured overdraw maximum on focus loss.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overdraw_max"><source>Normalized to 1..the persisted overdraw maximum limit on focus loss.</source><target>Normalized to 1..the persisted overdraw maximum limit on focus loss.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_font_size_range"><source>Normalized on focus loss to the persisted overlay font size range.</source><target>Normalized on focus loss to the persisted overlay font size range.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_scale_range"><source>Normalized on focus loss to the persisted overlay scale range.</source><target>Normalized on focus loss to the persisted overlay scale range.</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_opacity_range"><source>Normalized on focus loss to the persisted overlay opacity range.</source><target>Normalized on focus loss to the persisted overlay opacity range.</target></trans-unit>
+      <trans-unit id="tooltip.min_one_pixel"><source>Must be at least 1 pixel; normalized on focus loss.</source><target>Must be at least 1 pixel; normalized on focus loss.</target></trans-unit>
 
       <trans-unit id="dynamic.type.card"><source>Card</source><target>Card</target></trans-unit>
       <trans-unit id="dynamic.type.budget_bar"><source>BudgetBar</source><target>BudgetBar</target></trans-unit>

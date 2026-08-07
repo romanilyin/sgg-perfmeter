@@ -47,9 +47,13 @@
       <trans-unit id="label.status"><source>Status</source><target>状態</target></trans-unit>
       <trans-unit id="label.json_path"><source>JSON Path</source><target>JSON パス</target></trans-unit>
       <trans-unit id="label.resources_path"><source>Resources Path</source><target>Resources パス</target></trans-unit>
+      <trans-unit id="label.supported_schema_version"><source>Supported schema version</source><target>サポート対象スキーマバージョン</target></trans-unit>
+      <trans-unit id="label.saved_collection_mode"><source>Saved collection mode (derived)</source><target>保存された収集モード（派生）</target></trans-unit>
       <trans-unit id="label.enabled"><source>Enabled</source><target>有効</target></trans-unit>
       <trans-unit id="label.auto_start"><source>Auto Start</source><target>自動開始</target></trans-unit>
       <trans-unit id="label.collection_mode"><source>Collection Mode</source><target>収集モード</target></trans-unit>
+      <trans-unit id="label.legacy_active_preset"><source>Legacy active preset (read-only compatibility)</source><target>レガシーアクティブプリセット（読み取り専用互換性）</target></trans-unit>
+      <trans-unit id="label.legacy_resolved_modules"><source>Legacy resolved modules (read-only compatibility)</source><target>レガシー解決済みモジュール（読み取り専用互換性）</target></trans-unit>
       <trans-unit id="label.active_preset"><source>Active Preset</source><target>アクティブなプリセット</target></trans-unit>
       <trans-unit id="label.modules"><source>Modules</source><target>モジュール</target></trans-unit>
       <trans-unit id="label.overlay_scale"><source>Overlay Scale</source><target>オーバーレイ スケール</target></trans-unit>
@@ -114,6 +118,7 @@
       <trans-unit id="button.cpu_core_graphs"><source>CPU Core Graphs</source><target>CPU コアグラフ</target></trans-unit>
       <trans-unit id="button.hide_cpu_cores"><source>Hide CPU Cores</source><target>CPU コアを非表示</target></trans-unit>
       <trans-unit id="button.measure_overdraw"><source>Measure Overdraw 30f</source><target>オーバードロー 30f を測定</target></trans-unit>
+      <trans-unit id="button.measure_overdraw_project_default"><source>Measure Overdraw (project default)</source><target>オーバードローを測定（プロジェクト既定値）</target></trans-unit>
       <trans-unit id="button.cancel_overdraw"><source>Cancel Overdraw</source><target>オーバードロー をキャンセル</target></trans-unit>
       <trans-unit id="button.show_heatmap"><source>Show Heatmap</source><target>ヒートマップ を表示</target></trans-unit>
       <trans-unit id="button.hide_heatmap"><source>Hide Heatmap</source><target>ヒートマップ を非表示</target></trans-unit>
@@ -243,10 +248,13 @@
       <trans-unit id="section.runtime_technical_overrides"><source>Runtime technical overrides</source><target>ランタイム 技術オーバーライド</target></trans-unit>
       <trans-unit id="section.runtime_visual_preset"><source>Runtime visual preset</source><target>ランタイム ビジュアルプリセット</target></trans-unit>
       <trans-unit id="section.diagnostics_actions"><source>Diagnostics / actions</source><target>診断 / アクション</target></trans-unit>
+      <trans-unit id="section.p3_integrations"><source>P3 integrations &amp; analysis</source><target>P3 統合と分析</target></trans-unit>
       <trans-unit id="info.setup_checklist"><source>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</source><target>必須チェックは PerfMeter を Unity/URP ランタイム データに接続します。推奨および任意チェックは診断を強化しますが、すべてのプロジェクトで必要なわけではありません。</target></trans-unit>
       <trans-unit id="info.project_settings_json"><source>Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.</source><target>技術/プロジェクト設定は Resources JSON に保存されます。Visual オーバーレイ プリセットは Assets/SGG PerfMeter/Presets/Overlay 配下のプロジェクト JSON ファイルで、ビルド用に Resources JSON へ焼き込まれます。</target></trans-unit>
       <trans-unit id="info.work_mode"><source>Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.</source><target>作業モードは PerfMeter を実行するか、何を収集するかを制御します。下のビジュアルプリセットは オーバーレイ の外観と構成のみを変更します。</target></trans-unit>
       <trans-unit id="info.widget_composition"><source>Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.</source><target>ここには高レベルのプリセットブロックのみ表示されます。低レベルの行とメトリックバーは デバッグ で引き続き表示されます。</target></trans-unit>
+      <trans-unit id="info.legacy_compatibility"><source>Legacy enum values below are read-only compatibility data. Visual presets and widget composition are authoritative for the current overlay.</source><target>レガシー列挙値は読み取り専用の互換性データです。現在のオーバーレイでは、ビジュアルプリセットとウィジェット構成が正となります。</target></trans-unit>
+      <trans-unit id="info.p3_integrations"><source>Read-only capability and status discovery for optional P3 integrations. Memory snapshot and graphics-state trace/prewarm request parameters remain runtime-only API/MCP inputs and are not project settings.</source><target>オプションの P3 統合機能の能力と状態を読み取り専用で確認します。メモリスナップショットとグラフィックステートのトレース/プリウォーム要求パラメーターはランタイム専用の API/MCP 入力であり、プロジェクト設定ではありません。</target></trans-unit>
       <trans-unit id="label.required"><source>required</source><target>必須</target></trans-unit>
       <trans-unit id="label.recommended"><source>recommended</source><target>推奨</target></trans-unit>
       <trans-unit id="label.optional"><source>optional</source><target>任意</target></trans-unit>
@@ -261,6 +269,9 @@
       <trans-unit id="label.warning_logs_editor"><source>Warning logs in Editor</source><target>Editor の警告ログ</target></trans-unit>
       <trans-unit id="label.preset"><source>Preset</source><target>プリセット</target></trans-unit>
       <trans-unit id="label.description"><source>Description</source><target>説明</target></trans-unit>
+      <trans-unit id="label.tags"><source>Tags</source><target>タグ</target></trans-unit>
+      <trans-unit id="label.preset_schema_version"><source>Preset schema / version</source><target>プリセットスキーマ / バージョン</target></trans-unit>
+      <trans-unit id="label.reserved_widget_metadata"><source>Reserved widget variant / height (read-only)</source><target>予約ウィジェットバリアント / 高さ（読み取り専用）</target></trans-unit>
       <trans-unit id="label.anchor"><source>Anchor</source><target>アンカー</target></trans-unit>
       <trans-unit id="label.font"><source>Font</source><target>フォント</target></trans-unit>
       <trans-unit id="label.scale"><source>Scale</source><target>スケール</target></trans-unit>
@@ -273,6 +284,17 @@
       <trans-unit id="label.cpu_frame"><source>CPU frame</source><target>CPU フレーム</target></trans-unit>
       <trans-unit id="label.gpu_frame"><source>GPU frame</source><target>GPU フレーム</target></trans-unit>
       <trans-unit id="label.style_summary"><source>Style summary</source><target>スタイル概要</target></trans-unit>
+      <trans-unit id="label.session_state"><source>Session state</source><target>セッション状態</target></trans-unit>
+      <trans-unit id="label.session_id"><source>Session ID</source><target>セッション ID</target></trans-unit>
+      <trans-unit id="label.session_samples"><source>Session samples</source><target>セッションサンプル</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_capabilities"><source>Memory snapshot capabilities</source><target>メモリスナップショット機能</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_status"><source>Memory snapshot status</source><target>メモリスナップショット状態</target></trans-unit>
+      <trans-unit id="label.graphics_state_capabilities"><source>Graphics-state capabilities</source><target>グラフィックステート機能</target></trans-unit>
+      <trans-unit id="label.graphics_state_status"><source>Graphics-state status</source><target>グラフィックステート状態</target></trans-unit>
+      <trans-unit id="label.graphics_creation_markers"><source>Graphics creation markers</source><target>グラフィックス作成マーカー</target></trans-unit>
+      <trans-unit id="label.render_integration"><source>Render integration</source><target>レンダリング統合</target></trans-unit>
+      <trans-unit id="label.grd_brg_telemetry"><source>GRD / BRG telemetry</source><target>GRD / BRG テレメトリ</target></trans-unit>
+      <trans-unit id="label.combined_warnings"><source>Combined warnings</source><target>統合された警告</target></trans-unit>
       <trans-unit id="button.ensure_default_presets"><source>Ensure Default Presets</source><target>既定プリセットを確保</target></trans-unit>
       <trans-unit id="button.save"><source>Save</source><target>保存</target></trans-unit>
       <trans-unit id="button.save_as_custom"><source>Save as custom</source><target>カスタムとして保存</target></trans-unit>
@@ -291,6 +313,10 @@
       <trans-unit id="button.reset_alert_counters"><source>Reset alert counters</source><target>アラートカウンターをリセット</target></trans-unit>
       <trans-unit id="button.dump_runtime_snapshot"><source>Dump runtime snapshot</source><target>ランタイム スナップショットをダンプ</target></trans-unit>
       <trans-unit id="button.copy_runtime_summary"><source>Copy runtime summary</source><target>ランタイム 概要をコピー</target></trans-unit>
+      <trans-unit id="button.start_session"><source>Start Session</source><target>セッションを開始</target></trans-unit>
+      <trans-unit id="button.stop_session"><source>Stop Session</source><target>セッションを停止</target></trans-unit>
+      <trans-unit id="button.session_analysis"><source>Session Analysis</source><target>セッション分析</target></trans-unit>
+      <trans-unit id="button.profile_analyzer"><source>Profile Analyzer</source><target>プロファイルアナライザー</target></trans-unit>
 
       <trans-unit id="status.disabled"><source>Disabled</source><target>無効</target></trans-unit>
       <trans-unit id="status.not_found"><source>Not found</source><target>見つかりません</target></trans-unit>
@@ -335,6 +361,9 @@
       <trans-unit id="message.runtime_failed"><source>Ensure Runtime Failed</source><target>ランタイム の確保に失敗</target></trans-unit>
       <trans-unit id="message.enter_play_apply"><source>Enter Play Mode to apply PerfMeter settings to the active runtime session.</source><target>アクティブな ランタイム セッションに PerfMeter 設定を適用するには Play Mode に入ってください。</target></trans-unit>
       <trans-unit id="message.applied_runtime"><source>PerfMeter JSON settings applied to the active Play Mode session.</source><target>PerfMeter JSON 設定をアクティブな Play Mode セッションに適用しました。</target></trans-unit>
+      <trans-unit id="message.session_analysis_opened"><source>Session Analysis: opened.</source><target>セッション分析: 開きました。</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_opened"><source>Profile Analyzer: opened; session ID copied to clipboard.</source><target>プロファイルアナライザー: 開きました。セッション ID をクリップボードにコピーしました。</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_unavailable"><source>Profile Analyzer: unavailable; see Console warning.</source><target>プロファイルアナライザー: 利用できません。Console の警告を確認してください。</target></trans-unit>
       <trans-unit id="message.frame_already"><source>Frame Timing Stats is already enabled.</source><target>フレームタイミング統計 はすでに有効です。</target></trans-unit>
       <trans-unit id="message.frame_enabled_action"><source>Frame Timing Stats enabled in Player Settings.</source><target>Player Settings で フレームタイミング統計 を有効にしました。</target></trans-unit>
       <trans-unit id="message.no_selected"><source>No renderer assets selected.</source><target>レンダラー アセットが選択されていません。</target></trans-unit>
@@ -372,6 +401,20 @@
       <trans-unit id="tooltip.warning_attention"><source>Warning / attention</source><target>警告 / 注意</target></trans-unit>
       <trans-unit id="tooltip.optional"><source>Optional</source><target>任意</target></trans-unit>
       <trans-unit id="tooltip.error_danger"><source>Error / danger</source><target>エラー / 危険</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_refresh_range"><source>Normalized on focus loss to the persisted overlay refresh interval range.</source><target>フォーカスを失うと、保存済みのオーバーレイ更新間隔の範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_graph_history_range"><source>Normalized on focus loss to the persisted graph history range.</source><target>フォーカスを失うと、保存済みのグラフ履歴の範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.min_one_second"><source>Must be at least 1 second; normalized on focus loss.</source><target>1 秒以上である必要があります。フォーカスを失うと正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.nonnegative_focus_loss"><source>Must be zero or greater; normalized on focus loss.</source><target>0 以上である必要があります。フォーカスを失うと正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.min_point_one"><source>Must be at least 0.1; normalized on focus loss.</source><target>0.1 以上である必要があります。フォーカスを失うと正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.min_one_frame"><source>Must be at least 1 frame; normalized on focus loss.</source><target>1 フレーム以上である必要があります。フォーカスを失うと正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_min_sample_interval"><source>Normalized on focus loss to the persisted minimum sample interval.</source><target>フォーカスを失うと、保存済みの最小サンプル間隔に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_session_sample_range"><source>Normalized on focus loss to the persisted session sample range.</source><target>フォーカスを失うと、保存済みのセッションサンプル範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.configured_overdraw_max"><source>Normalized to 1..the configured overdraw maximum on focus loss.</source><target>フォーカスを失うと、1 から設定済みのオーバードロー最大値までの範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overdraw_max"><source>Normalized to 1..the persisted overdraw maximum limit on focus loss.</source><target>フォーカスを失うと、1 から保存済みのオーバードロー最大制限までの範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_font_size_range"><source>Normalized on focus loss to the persisted overlay font size range.</source><target>フォーカスを失うと、保存済みのオーバーレイフォントサイズの範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_scale_range"><source>Normalized on focus loss to the persisted overlay scale range.</source><target>フォーカスを失うと、保存済みのオーバーレイスケールの範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_opacity_range"><source>Normalized on focus loss to the persisted overlay opacity range.</source><target>フォーカスを失うと、保存済みのオーバーレイ不透明度の範囲に正規化されます。</target></trans-unit>
+      <trans-unit id="tooltip.min_one_pixel"><source>Must be at least 1 pixel; normalized on focus loss.</source><target>1 ピクセル以上である必要があります。フォーカスを失うと正規化されます。</target></trans-unit>
 
       <trans-unit id="dynamic.type.card"><source>Card</source><target>カード</target></trans-unit>
       <trans-unit id="dynamic.type.budget_bar"><source>BudgetBar</source><target>予算バー</target></trans-unit>
