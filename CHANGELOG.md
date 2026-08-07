@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.8.7-2
+
+- Added a separate first-time setup tab with live required checks, optional package installation, explicit skips, external capture-tool download actions, and automatic hide/reappearance as setup readiness changes.
+- Added independently persisted Editor warning-log and structured-log controls while keeping schema `1` JSON files backward compatible with structured logs enabled by default.
+- Added package-version visibility to the Setup window title and header and localized the new FTUE controls in all supported languages.
+
 ## 2026.8.7-1
 
 - Added optional Memory Profiler snapshot triggers for manual, threshold, and leak workflows with cooldown, free-space guards, capture flags, and bundle manifest metadata.

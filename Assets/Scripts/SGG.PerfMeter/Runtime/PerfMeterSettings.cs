@@ -53,7 +53,8 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
 			bool editorWarningsEnabled = true,
 			string activeOverlayPresetId = "",
-			PerfMeterOverlayPresetJson activeOverlayPreset = null)
+			PerfMeterOverlayPresetJson activeOverlayPreset = null,
+			bool structuredLogsEnabled = true)
 		{
 			Enabled = enabled;
 			AutoStart = autoStart;
@@ -98,6 +99,7 @@ namespace SGG.PerfMeter
 			AlertGpuTimingUnavailableConsecutiveFrames = Mathf.Max(1, alertGpuTimingUnavailableConsecutiveFrames);
 			AlertOverdrawConsecutiveFrames = Mathf.Max(1, alertOverdrawConsecutiveFrames);
 			EditorWarningsEnabled = editorWarningsEnabled;
+			StructuredLogsEnabled = structuredLogsEnabled;
 			LoadState = loadState;
 			Warning = warning ?? string.Empty;
 			ActiveOverlayPresetId = string.IsNullOrEmpty(activeOverlayPresetId) ? string.Empty : activeOverlayPresetId;
@@ -139,6 +141,7 @@ namespace SGG.PerfMeter
 		public int AlertGpuTimingUnavailableConsecutiveFrames { get; }
 		public int AlertOverdrawConsecutiveFrames { get; }
 		public bool EditorWarningsEnabled { get; }
+		public bool StructuredLogsEnabled { get; }
 		public PerfMeterSettingsLoadState LoadState { get; }
 		public string Warning { get; }
 		public string ActiveOverlayPresetId { get; }
@@ -213,6 +216,7 @@ namespace SGG.PerfMeter
 		public int gpuTimingUnavailableConsecutiveFrames = 120;
 		public int overdrawConsecutiveFrames = 3;
 		public bool editorWarningsEnabled = true;
+		public bool structuredLogsEnabled = true;
 	}
 
 	[Serializable]
@@ -314,6 +318,7 @@ namespace SGG.PerfMeter
 			settings.ruleDefaults.gpuTimingUnavailableConsecutiveFrames = snapshot.AlertGpuTimingUnavailableConsecutiveFrames;
 			settings.ruleDefaults.overdrawConsecutiveFrames = snapshot.AlertOverdrawConsecutiveFrames;
 			settings.ruleDefaults.editorWarningsEnabled = snapshot.EditorWarningsEnabled;
+			settings.ruleDefaults.structuredLogsEnabled = snapshot.StructuredLogsEnabled;
 			settings.overdraw.defaultFrameCount = snapshot.OverdrawDefaultFrameCount;
 			settings.overdraw.maxFrameCount = snapshot.OverdrawMaxFrameCount;
 			ApplySnapshotToPreset(settings, snapshot);
@@ -361,7 +366,53 @@ namespace SGG.PerfMeter
 				overlayFontFamily: snapshot.OverlayFontFamily,
 				editorWarningsEnabled: editorWarningsEnabled,
 				activeOverlayPresetId: snapshot.ActiveOverlayPresetId,
-				activeOverlayPreset: snapshot.ActiveOverlayPreset);
+				activeOverlayPreset: snapshot.ActiveOverlayPreset,
+				structuredLogsEnabled: snapshot.StructuredLogsEnabled);
+		}
+
+		internal static PerfMeterSettingsSnapshot WithStructuredLogsEnabled(PerfMeterSettingsSnapshot snapshot, bool structuredLogsEnabled)
+		{
+			return new PerfMeterSettingsSnapshot(
+				snapshot.Enabled,
+				snapshot.AutoStart,
+				snapshot.CollectionMode,
+				snapshot.OverlayVisible,
+				snapshot.OverlayCorner,
+				snapshot.OverlayMode,
+				snapshot.TargetFps,
+				snapshot.ActivePreset,
+				snapshot.OverlayModules,
+				snapshot.SessionWarmupFrames,
+				snapshot.SessionWarmupSeconds,
+				snapshot.SessionSampleIntervalSeconds,
+				snapshot.SessionMaxSamples,
+				snapshot.SessionResetOnSceneLoad,
+				snapshot.SessionSceneLoadIgnoreFrames,
+				snapshot.SessionSceneLoadIgnoreSeconds,
+				snapshot.EditorWarningCooldownSeconds,
+				snapshot.StructuredLogCooldownSeconds,
+				snapshot.CallbackCooldownSeconds,
+				snapshot.LoadState,
+				snapshot.Warning,
+				overlayScale: snapshot.OverlayScale,
+				overlayOpacity: snapshot.OverlayOpacity,
+				overlayFontSize: snapshot.OverlayFontSize,
+				overlayRefreshIntervalSeconds: snapshot.OverlayRefreshIntervalSeconds,
+				overlayGraphHistoryLength: snapshot.OverlayGraphHistoryLength,
+				overdrawDefaultFrameCount: snapshot.OverdrawDefaultFrameCount,
+				overdrawMaxFrameCount: snapshot.OverdrawMaxFrameCount,
+				alertOverdrawRatioThreshold: snapshot.AlertOverdrawRatioThreshold,
+				alertTimingConsecutiveFrames: snapshot.AlertTimingConsecutiveFrames,
+				alertFpsConsecutiveFrames: snapshot.AlertFpsConsecutiveFrames,
+				alertGpuTimingUnavailableConsecutiveFrames: snapshot.AlertGpuTimingUnavailableConsecutiveFrames,
+				alertOverdrawConsecutiveFrames: snapshot.AlertOverdrawConsecutiveFrames,
+				overlayTheme: snapshot.OverlayTheme,
+				overlayLayout: snapshot.OverlayLayout,
+				overlayFontFamily: snapshot.OverlayFontFamily,
+				editorWarningsEnabled: snapshot.EditorWarningsEnabled,
+				activeOverlayPresetId: snapshot.ActiveOverlayPresetId,
+				activeOverlayPreset: snapshot.ActiveOverlayPreset,
+				structuredLogsEnabled: structuredLogsEnabled);
 		}
 
 		internal static PerfMeterSettingsSnapshot WithRuntimeState(
@@ -421,6 +472,7 @@ namespace SGG.PerfMeter
 				overlayLayout: overlayLayout,
 				overlayFontFamily: overlayFontFamily,
 				editorWarningsEnabled: configured.EditorWarningsEnabled,
+				structuredLogsEnabled: configured.StructuredLogsEnabled,
 				activeOverlayPresetId: activeOverlayPresetId,
 				activeOverlayPreset: null);
 		}
@@ -595,6 +647,7 @@ namespace SGG.PerfMeter
 				overlayLayout: overlayLayout,
 				overlayFontFamily: overlayFontFamily,
 				editorWarningsEnabled: settings.ruleDefaults == null || settings.ruleDefaults.editorWarningsEnabled,
+				structuredLogsEnabled: settings.ruleDefaults == null || settings.ruleDefaults.structuredLogsEnabled,
 				activeOverlayPresetId: activeOverlayPresetId,
 				activeOverlayPreset: activeOverlayPreset);
 		}

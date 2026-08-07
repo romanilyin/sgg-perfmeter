@@ -1261,7 +1261,9 @@ namespace SGG.PerfMeter
 			_visualOverlayPresetId = settings.ActiveOverlayPresetId;
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
+			_structuredLogsEnabled = settings.StructuredLogsEnabled;
 			_alertEngine.ApplySettings(settings, _targetFps);
+			_alertEngine.SetStructuredLogsEnabled(_structuredLogsEnabled);
 
 			if (_overlay != null)
 			{
@@ -1295,6 +1297,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			_settings = PerfMeterSettingsStore.WithStructuredLogsEnabled(_settings, enabled);
 			_structuredLogsEnabled = enabled;
 			_alertEngine.SetStructuredLogsEnabled(enabled);
 		}
@@ -1927,6 +1930,7 @@ namespace SGG.PerfMeter
 		private void ApplyAlertSettings()
 		{
 			_settings = PerfMeterSettingsStore.LoadFromResources();
+			_structuredLogsEnabled = _settings.StructuredLogsEnabled;
 			if (!_alertEngineInitialized)
 			{
 				ApplyAlertSettings(_settings);
@@ -1936,11 +1940,13 @@ namespace SGG.PerfMeter
 			_overdrawDefaultFrameCount = _settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = _settings.OverdrawMaxFrameCount;
 			_alertEngine.ApplySettings(_settings, _targetFps);
+			_alertEngine.SetStructuredLogsEnabled(_structuredLogsEnabled);
 		}
 
 		private void ApplyAlertSettings(PerfMeterSettingsSnapshot settings)
 		{
 			_settings = settings;
+			_structuredLogsEnabled = settings.StructuredLogsEnabled;
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
 			_alertEngine = new PerfMeterAlertEngine(PerfMeterAlertEngine.CreateDefaultRules(_targetFps, settings));

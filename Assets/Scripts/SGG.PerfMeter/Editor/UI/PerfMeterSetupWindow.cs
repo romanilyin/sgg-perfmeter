@@ -22,15 +22,18 @@ namespace SGG.PerfMeter.Editor.UI
 		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private readonly List<string> _overlayPresetChoiceLabels = new List<string>();
 		private List<PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset> _overlayPresetAssets = new List<PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset>();
+		private VisualElement _ftuePanel;
 		private VisualElement _setupPanel;
 		private VisualElement _presetsPanel;
 		private VisualElement _runtimePanel;
 		private VisualElement _debugPanel;
+		private ToolbarToggle _ftueTab;
 		private ToolbarToggle _setupTab;
 		private ToolbarToggle _presetsTab;
 		private ToolbarToggle _runtimeTab;
 		private ToolbarToggle _debugTab;
-		private string _currentTab = "Setup";
+		private string _currentTab = "FTUE";
+		private PerfMeterFtuePage _ftuePage;
 		private Label _checklistFrameTiming;
 		private Label _checklistPackagePath;
 		private Label _checklistRendererFeature;
@@ -81,6 +84,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private IntegerField _settingsPresetMaxWidth;
 		private IntegerField _settingsPresetGap;
 		private Toggle _settingsEditorWarningsEnabled;
+		private Toggle _settingsStructuredLogsEnabled;
 		private FloatField _settingsEditorWarningCooldown;
 		private FloatField _settingsStructuredLogCooldown;
 		private FloatField _settingsCallbackCooldown;
@@ -127,6 +131,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _runtimeGpuFrame;
 		private Label _runtimeStyleSummary;
 		private Label _runtimeEditorWarnings;
+		private Label _runtimeStructuredLogs;
 		private Label _runtimeOverdraw;
 		private Label _runtimeP3SessionState;
 		private Label _runtimeP3SessionId;
@@ -175,6 +180,7 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string SettingsOverlayRefreshIntervalElementName = "settings-overlay-refresh-interval";
 		internal const string SettingsOverlayGraphHistoryElementName = "settings-overlay-graph-history";
 		internal const string SettingsEditorWarningsEnabledElementName = "settings-editor-warnings-enabled";
+		internal const string SettingsStructuredLogsEnabledElementName = "settings-structured-logs-enabled";
 		internal const string SettingsEditorWarningCooldownElementName = "settings-editor-warning-cooldown";
 		internal const string SettingsStructuredLogCooldownElementName = "settings-structured-log-cooldown";
 		internal const string SettingsCallbackCooldownElementName = "settings-callback-cooldown";
@@ -207,6 +213,8 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string RuntimeP3RefreshButtonName = "runtime-p3-refresh";
 		internal const string RuntimeP3StartSessionButtonName = "runtime-p3-start-session";
 		internal const string RuntimeP3StopSessionButtonName = "runtime-p3-stop-session";
+		internal const string FtueTabElementName = "ftue-tab";
+		internal const string ReviewFtueButtonElementName = "review-ftue";
 		internal const int ProjectDefaultOverdrawRequestFrameCount = 0;
 		internal const float MinPersistedSessionSampleIntervalSeconds = 0.02f;
 		internal const int MaxPersistedSessionSamples = 100000;
@@ -214,13 +222,14 @@ namespace SGG.PerfMeter.Editor.UI
 		[MenuItem("SGG/Perfmeter/Setup")]
 		public static void Open()
 		{
-			PerfMeterSetupWindow window = GetWindow<PerfMeterSetupWindow>("SGG PerfMeter");
+			PerfMeterSetupWindow window = GetWindow<PerfMeterSetupWindow>(BuildWindowTitle());
 			window.minSize = new Vector2(480f, 360f);
 			window.Show();
 		}
 
 		private void OnEnable()
 		{
+			UpdateWindowTitle();
 			EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
 			EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 		}
@@ -232,6 +241,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 		public void CreateGUI()
 		{
+			UpdateWindowTitle();
 			rootVisualElement.Clear();
 			_runtimeButtons.Clear();
 			_runtimeButtonBindings.Clear();
@@ -247,7 +257,8 @@ namespace SGG.PerfMeter.Editor.UI
 				rootVisualElement.styleSheets.Add(style);
 			}
 
-			Label title = new Label("SGG PerfMeter Setup");
+			string version = PerfMeterFtueState.PackageVersion;
+			Label title = new Label(string.IsNullOrEmpty(version) ? "SGG PerfMeter Setup" : "SGG PerfMeter Setup " + version);
 			title.AddToClassList("pm-title");
 			rootVisualElement.Add(title);
 
@@ -257,40 +268,70 @@ namespace SGG.PerfMeter.Editor.UI
 			scroll.style.flexGrow = 1f;
 			rootVisualElement.Add(scroll);
 
+			_ftuePanel = new VisualElement();
 			_setupPanel = new VisualElement();
 			_presetsPanel = new VisualElement();
 			_runtimePanel = new VisualElement();
 			_debugPanel = new VisualElement();
+			scroll.Add(_ftuePanel);
 			scroll.Add(_setupPanel);
 			scroll.Add(_presetsPanel);
 			scroll.Add(_runtimePanel);
 			scroll.Add(_debugPanel);
 
+			_lastActionLabel = new Label();
+			_lastActionLabel.AddToClassList("pm-log");
+
 			BuildSetupPanel();
 			BuildPresetsPanel();
 			BuildRuntimePanel();
 			BuildDebugPanel();
+			_ftuePage = new PerfMeterFtuePage(
+				_ftuePanel,
+				SelectSetupTab,
+				SelectPresetsTab,
+				SelectRuntimeTab,
+				message => _lastActionLabel.text = message,
+				SetFtueVisibility);
 
-			_lastActionLabel = new Label();
-			_lastActionLabel.AddToClassList("pm-log");
 			rootVisualElement.Add(_lastActionLabel);
 
 			SelectCurrentTab();
 			RefreshAll();
 		}
 
+		internal static string BuildWindowTitle()
+		{
+			string version = PerfMeterFtueState.PackageVersion;
+			return string.IsNullOrEmpty(version) ? "SGG PerfMeter" : "SGG PerfMeter " + version;
+		}
+
+		private void UpdateWindowTitle()
+		{
+			titleContent = new GUIContent(BuildWindowTitle());
+		}
+
 		private void BuildTabs()
 		{
 			Toolbar toolbar = new Toolbar();
 			toolbar.AddToClassList("pm-tabs");
+			_ftueTab = new ToolbarToggle { text = "FTUE", name = FtueTabElementName };
 			_setupTab = new ToolbarToggle { text = "Setup" };
 			_presetsTab = new ToolbarToggle { text = "Presets" };
 			_runtimeTab = new ToolbarToggle { text = "Runtime" };
 			_debugTab = new ToolbarToggle { text = "Debug" };
+			_ftueTab.AddToClassList("pm-tab");
 			_setupTab.AddToClassList("pm-tab");
 			_presetsTab.AddToClassList("pm-tab");
 			_runtimeTab.AddToClassList("pm-tab");
 			_debugTab.AddToClassList("pm-tab");
+			_ftueTab.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue)
+				{
+					SelectFtueTab();
+				}
+			});
 			_setupTab.RegisterValueChangedCallback(evt =>
 			{
 				if (evt.newValue)
@@ -319,6 +360,7 @@ namespace SGG.PerfMeter.Editor.UI
 					SelectDebugTab();
 				}
 			});
+			toolbar.Add(_ftueTab);
 			toolbar.Add(_setupTab);
 			toolbar.Add(_presetsTab);
 			toolbar.Add(_runtimeTab);
@@ -356,6 +398,8 @@ namespace SGG.PerfMeter.Editor.UI
 			VisualElement actions = AddActions(section);
 			AddButton(actions, "Enable Frame Timing", () => RunAction("Enable Frame Timing", PerfMeterSetupActions.EnableFrameTimingStats));
 			AddButton(actions, "Refresh", RefreshAll);
+			Button reviewFtueButton = AddButton(actions, "Review FTUE", ShowFtueForReview);
+			reviewFtueButton.name = ReviewFtueButtonElementName;
 		}
 
 		private void BuildRendererSection(VisualElement parent)
@@ -461,6 +505,8 @@ namespace SGG.PerfMeter.Editor.UI
 			technicalSection.Add(advanced);
 			_settingsEditorWarningsEnabled = NameElement(new Toggle(), SettingsEditorWarningsEnabledElementName);
 			AddControlRow(advanced, "Warning logs in Editor", _settingsEditorWarningsEnabled);
+			_settingsStructuredLogsEnabled = NameElement(new Toggle(), SettingsStructuredLogsEnabledElementName);
+			AddControlRow(advanced, "Structured logs", _settingsStructuredLogsEnabled);
 			_settingsEditorWarningCooldown = NameElement(new FloatField(), SettingsEditorWarningCooldownElementName);
 			ConfigureFloatField(_settingsEditorWarningCooldown, "Must be at least 1 second; normalized on focus loss.", value => Mathf.Max(1f, value));
 			AddControlRow(advanced, "Editor Warning Cooldown", _settingsEditorWarningCooldown);
@@ -601,6 +647,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeGpuFrame = NameElement(AddRawRow(statusSection, "GPU frame"), RuntimeGpuFrameElementName);
 			_runtimeStyleSummary = NameElement(AddRawRow(statusSection, "Style summary"), RuntimeStyleSummaryElementName);
 			_runtimeEditorWarnings = AddRawRow(statusSection, "Editor Warning Logs");
+			_runtimeStructuredLogs = AddRawRow(statusSection, "Structured Logs");
 			_runtimeOverdraw = AddRawRow(statusSection, "Overdraw");
 
 			VisualElement controlSection = AddSection(_runtimePanel, "Runtime controls");
@@ -1210,6 +1257,7 @@ namespace SGG.PerfMeter.Editor.UI
 			RefreshRuntimePanel();
 			RefreshDebugPanel();
 			RefreshWindowSettingsPanel();
+			_ftuePage?.Refresh();
 			ApplyLocalization();
 		}
 
@@ -1277,6 +1325,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsOverlayRefreshInterval?.SetValueWithoutNotify(settings.OverlayRefreshIntervalSeconds);
 			_settingsOverlayGraphHistory?.SetValueWithoutNotify(settings.OverlayGraphHistoryLength);
 			_settingsEditorWarningsEnabled?.SetValueWithoutNotify(settings.EditorWarningsEnabled);
+			_settingsStructuredLogsEnabled?.SetValueWithoutNotify(settings.StructuredLogsEnabled);
 			_settingsEditorWarningCooldown?.SetValueWithoutNotify(settings.EditorWarningCooldownSeconds);
 			_settingsStructuredLogCooldown?.SetValueWithoutNotify(settings.StructuredLogCooldownSeconds);
 			_settingsCallbackCooldown?.SetValueWithoutNotify(settings.CallbackCooldownSeconds);
@@ -1391,7 +1440,8 @@ namespace SGG.PerfMeter.Editor.UI
 				overlayFontFamily: _settingsOverlayFontFamily != null && _settingsOverlayFontFamily.value is PerfMeterOverlayFontFamily fontFamily ? fontFamily : currentSettings.OverlayFontFamily,
 				editorWarningsEnabled: _settingsEditorWarningsEnabled == null ? currentSettings.EditorWarningsEnabled : _settingsEditorWarningsEnabled.value,
 				activeOverlayPresetId: activeVisualPresetId,
-				activeOverlayPreset: activeVisualPreset);
+				activeOverlayPreset: activeVisualPreset,
+				structuredLogsEnabled: _settingsStructuredLogsEnabled == null ? currentSettings.StructuredLogsEnabled : _settingsStructuredLogsEnabled.value);
 			return PerfMeterSetupActions.SaveSettings(settings);
 		}
 
@@ -2242,6 +2292,9 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			switch (_currentTab)
 			{
+				case "FTUE":
+					SelectFtueTab();
+					break;
 				case "Presets":
 					SelectPresetsTab();
 					break;
@@ -2257,9 +2310,47 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 		}
 
+		private void SelectFtueTab()
+		{
+			_currentTab = "FTUE";
+			_ftueTab?.SetValueWithoutNotify(true);
+			_setupTab?.SetValueWithoutNotify(false);
+			_presetsTab?.SetValueWithoutNotify(false);
+			_runtimeTab?.SetValueWithoutNotify(false);
+			_debugTab?.SetValueWithoutNotify(false);
+			if (_ftuePanel != null)
+			{
+				_ftuePanel.style.display = DisplayStyle.Flex;
+			}
+
+			if (_setupPanel != null)
+			{
+				_setupPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_presetsPanel != null)
+			{
+				_presetsPanel.style.display = DisplayStyle.None;
+			}
+
+			if (_runtimePanel != null)
+			{
+				_runtimePanel.style.display = DisplayStyle.None;
+			}
+
+			if (_debugPanel != null)
+			{
+				_debugPanel.style.display = DisplayStyle.None;
+			}
+
+			_ftuePage?.Refresh();
+			ApplyLocalization();
+		}
+
 		private void SelectSetupTab()
 		{
 			_currentTab = "Setup";
+			_ftueTab?.SetValueWithoutNotify(false);
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(true);
@@ -2285,6 +2376,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_setupPanel.style.display = DisplayStyle.Flex;
 			}
 
+			if (_ftuePanel != null)
+			{
+				_ftuePanel.style.display = DisplayStyle.None;
+			}
+
 			if (_presetsPanel != null)
 			{
 				_presetsPanel.style.display = DisplayStyle.None;
@@ -2305,6 +2401,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void SelectPresetsTab()
 		{
 			_currentTab = "Presets";
+			_ftueTab?.SetValueWithoutNotify(false);
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(false);
@@ -2330,6 +2427,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_setupPanel.style.display = DisplayStyle.None;
 			}
 
+			if (_ftuePanel != null)
+			{
+				_ftuePanel.style.display = DisplayStyle.None;
+			}
+
 			if (_presetsPanel != null)
 			{
 				_presetsPanel.style.display = DisplayStyle.Flex;
@@ -2350,6 +2452,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void SelectRuntimeTab()
 		{
 			_currentTab = "Runtime";
+			_ftueTab?.SetValueWithoutNotify(false);
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(false);
@@ -2375,6 +2478,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_setupPanel.style.display = DisplayStyle.None;
 			}
 
+			if (_ftuePanel != null)
+			{
+				_ftuePanel.style.display = DisplayStyle.None;
+			}
+
 			if (_presetsPanel != null)
 			{
 				_presetsPanel.style.display = DisplayStyle.None;
@@ -2397,6 +2505,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void SelectDebugTab()
 		{
 			_currentTab = "Debug";
+			_ftueTab?.SetValueWithoutNotify(false);
 			if (_setupTab != null)
 			{
 				_setupTab.SetValueWithoutNotify(false);
@@ -2422,6 +2531,11 @@ namespace SGG.PerfMeter.Editor.UI
 				_setupPanel.style.display = DisplayStyle.None;
 			}
 
+			if (_ftuePanel != null)
+			{
+				_ftuePanel.style.display = DisplayStyle.None;
+			}
+
 			if (_presetsPanel != null)
 			{
 				_presetsPanel.style.display = DisplayStyle.None;
@@ -2439,6 +2553,25 @@ namespace SGG.PerfMeter.Editor.UI
 
 			RefreshDebugPanel();
 			ApplyLocalization();
+		}
+
+		private void SetFtueVisibility(bool visible)
+		{
+			if (_ftueTab != null)
+			{
+				_ftueTab.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+
+			if (!visible && string.Equals(_currentTab, "FTUE", StringComparison.Ordinal))
+			{
+				SelectSetupTab();
+			}
+		}
+
+		private void ShowFtueForReview()
+		{
+			SetFtueVisibility(true);
+			SelectFtueTab();
 		}
 
 		private void RunRuntimeAction(string title, Action action)
@@ -2517,7 +2650,8 @@ namespace SGG.PerfMeter.Editor.UI
 				overlayFontFamily: current.OverlayFontFamily,
 				editorWarningsEnabled: current.EditorWarningsEnabled,
 				activeOverlayPresetId: current.ActiveOverlayPresetId,
-				activeOverlayPreset: current.ActiveOverlayPreset);
+				activeOverlayPreset: current.ActiveOverlayPreset,
+				structuredLogsEnabled: current.StructuredLogsEnabled);
 			PerfMeterSetupActions.SaveSettings(settings);
 		}
 
@@ -2599,6 +2733,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeGpuFrame.text = metrics.GpuFrameTimeAvailable ? FormatRuntimeMs(metrics.GpuFrameTimeMs) : "Unavailable";
 			_runtimeStyleSummary.text = status.OverlayCorner + " · " + status.OverlayLayout + " · " + status.OverlayTheme + " · " + status.OverlayFontFamily;
 			_runtimeEditorWarnings.text = status.EditorWarningsEnabled ? "Enabled" : "Disabled";
+			_runtimeStructuredLogs.text = RuntimePerformanceMeter.StructuredLogsEnabled ? "Enabled" : "Disabled";
 			_runtimeOverdraw.text = status.OverdrawState + " " + (status.OverdrawProgress * 100f).ToString("0") + "% / heatmap " + (status.OverdrawHeatmapVisible ? "on" : "off");
 
 			PerfMeterSettingsSnapshot projectSettings = PerfMeterSetupActions.LoadSettings();
