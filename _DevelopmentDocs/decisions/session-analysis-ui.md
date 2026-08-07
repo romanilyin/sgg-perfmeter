@@ -1,6 +1,6 @@
 # Session Analysis UI Decision
 
-Status: implemented for `PM-SESSION-001`; pending the combined P3/P3.5 release.
+Status: implemented for `PM-SESSION-001`; released `2026.8.7-1`.
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # Profile Analyzer And Benchmark CI Decision
 
-Status: implemented for `PM-CI-001`; pending release.
+Status: implemented for `PM-CI-001`; released `2026.8.7-1`.
 
 ## Decision
 

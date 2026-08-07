@@ -1,6 +1,6 @@
 # Graphics State Collection Decision
 
-Status: implemented for `PM-GFX-001`; pending release.
+Status: implemented for `PM-GFX-001`; released `2026.8.7-1`.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # Setup UX Completeness Decision
 
-Status: implemented for `PM-SETUP-001`; pending release.
+Status: implemented for `PM-SETUP-001`; released `2026.8.7-1`.
 
 ## Decision
 
