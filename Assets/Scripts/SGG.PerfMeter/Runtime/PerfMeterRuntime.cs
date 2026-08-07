@@ -75,6 +75,7 @@ namespace SGG.PerfMeter
 		internal static PerfMeterCaptureCapabilitiesSnapshot CaptureCapabilities => PerfMeterCaptureBundleExporter.GetCapabilities();
 		internal PerfMeterStatusSnapshot Status => _status.WithSelfOverhead(PerfMeterSelfObservability.GetSnapshot());
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
+		internal PerfMeterProfilerMetricCapabilitySnapshot GetLatestProfilerMetricCapability(PerfMeterProfilerMetricSemantic semantic) => _collector.GetProfilerMetricCapability(semantic);
 		internal PerfMeterPlatformTelemetrySnapshot LatestPlatformTelemetry => _latestPlatformTelemetry;
 		internal PerfMeterProfilerMetricCatalogSnapshot ProfilerMetricCatalog => _collector.GetProfilerMetricCatalog();
 		internal PerfMeterSelfOverheadSnapshot SelfOverhead => PerfMeterSelfObservability.GetSnapshot();

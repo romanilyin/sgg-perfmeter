@@ -25,6 +25,95 @@ namespace SGG.PerfMeter
 		CustomPass = 2
 	}
 
+	public enum PerfMeterGpuResidentDrawerReason
+	{
+		Unknown = 0,
+		None = 1,
+		NotObserved = 2,
+		PipelineUnavailable = 3,
+		ModeDisabled = 4,
+		SrpUnsupported = 5,
+		ProjectConfigurationUnsupported = 6,
+		ComputeShadersUnsupported = 7,
+		IncompatibleRenderingMode = 8,
+		RuntimeInactive = 9,
+		QueryFailed = 10
+	}
+
+	public readonly struct PerfMeterGpuResidentDrawerEffectivenessSnapshot
+	{
+		public const int UnavailableCount = -1;
+		public const string AggregateScope = "brg_aggregate";
+		public const string AggregateWarning = "Counters are aggregate BatchRendererGroup telemetry and are not authoritative GPU Resident Drawer or per-renderer effectiveness.";
+
+		public PerfMeterGpuResidentDrawerEffectivenessSnapshot(
+			PerfMeterAvailability availability,
+			int collectionFrame,
+			int brgDrawCalls,
+			int brgInstances,
+			PerfMeterProfilerMetricCapabilitySnapshot brgDrawCallsCapability,
+			PerfMeterProfilerMetricCapabilitySnapshot brgInstancesCapability,
+			string warning)
+		{
+			Availability = availability;
+			CollectionFrame = collectionFrame;
+			BrgDrawCallsCapability = NormalizeCapability(brgDrawCallsCapability, PerfMeterProfilerMetricSemantic.BrgDrawCalls);
+			BrgInstancesCapability = NormalizeCapability(brgInstancesCapability, PerfMeterProfilerMetricSemantic.BrgInstances);
+			BrgDrawCalls = IsSampled(BrgDrawCallsCapability) ? brgDrawCalls : UnavailableCount;
+			BrgInstances = IsSampled(BrgInstancesCapability) ? brgInstances : UnavailableCount;
+			HasSample = IsSampled(BrgDrawCallsCapability) || IsSampled(BrgInstancesCapability);
+			HasObservedBrgWorkload = (IsSampled(BrgDrawCallsCapability) && BrgDrawCalls > 0) ||
+				(IsSampled(BrgInstancesCapability) && BrgInstances > 0);
+			Warning = string.IsNullOrEmpty(warning) ? AggregateWarning : warning;
+		}
+
+		public static PerfMeterGpuResidentDrawerEffectivenessSnapshot Unknown => new PerfMeterGpuResidentDrawerEffectivenessSnapshot(
+			PerfMeterAvailability.Unknown,
+			-1,
+			UnavailableCount,
+			UnavailableCount,
+			UnavailableCapability(PerfMeterProfilerMetricSemantic.BrgDrawCalls),
+			UnavailableCapability(PerfMeterProfilerMetricSemantic.BrgInstances),
+			"BRG aggregate effectiveness was not sampled because the PerfMeter runtime is not running.");
+
+		public PerfMeterAvailability Availability { get; }
+		public int CollectionFrame { get; }
+		public int BrgDrawCalls { get; }
+		public int BrgInstances { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot BrgDrawCallsCapability { get; }
+		public PerfMeterProfilerMetricCapabilitySnapshot BrgInstancesCapability { get; }
+		public bool HasSample { get; }
+		public bool HasObservedBrgWorkload { get; }
+		public string Scope => AggregateScope;
+		public string Warning { get; }
+
+		private static bool IsSampled(PerfMeterProfilerMetricCapabilitySnapshot capability)
+		{
+			return capability.SampleState == PerfMeterProfilerMetricSampleState.AvailableSampled;
+		}
+
+		private static PerfMeterProfilerMetricCapabilitySnapshot NormalizeCapability(
+			PerfMeterProfilerMetricCapabilitySnapshot capability,
+			PerfMeterProfilerMetricSemantic semantic)
+		{
+			return capability.Semantic == semantic ? capability : UnavailableCapability(semantic);
+		}
+
+		private static PerfMeterProfilerMetricCapabilitySnapshot UnavailableCapability(PerfMeterProfilerMetricSemantic semantic)
+		{
+			return new PerfMeterProfilerMetricCapabilitySnapshot(
+				semantic,
+				PerfMeterProfilerMetricSampleState.Unavailable,
+				PerfMeterProfilerMetricResolution.None,
+				string.Empty,
+				string.Empty,
+				string.Empty,
+				string.Empty,
+				0,
+				0);
+		}
+	}
+
 	public readonly struct PerfMeterGpuResidentDrawerContextSnapshot
 	{
 		public PerfMeterGpuResidentDrawerContextSnapshot(
@@ -35,6 +124,46 @@ namespace SGG.PerfMeter
 			PerfMeterAvailability activityAvailability,
 			bool isObservedActive,
 			string warning)
+			: this(
+				availability,
+				configuredMode,
+				supportAvailability,
+				isSupported,
+				activityAvailability,
+				isObservedActive,
+				warning,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+				PerfMeterGpuResidentDrawerReason.Unknown)
+		{
+			ActivitySource = string.Empty;
+		}
+
+		public PerfMeterGpuResidentDrawerContextSnapshot(
+			PerfMeterAvailability availability,
+			string configuredMode,
+			PerfMeterAvailability supportAvailability,
+			bool isSupported,
+			PerfMeterAvailability activityAvailability,
+			bool isObservedActive,
+			string warning,
+			PerfMeterAvailability projectConfigurationAvailability,
+			bool isProjectConfigurationSupported,
+			PerfMeterAvailability computeShaderAvailability,
+			bool supportsComputeShaders,
+			PerfMeterAvailability forwardPlusActivityAvailability,
+			bool isObservedForwardPlusActive,
+			PerfMeterAvailability renderingModeCompatibilityAvailability,
+			bool isRenderingModeCompatible,
+			PerfMeterGpuResidentDrawerEffectivenessSnapshot effectiveness,
+			PerfMeterGpuResidentDrawerReason degradedReason)
 		{
 			Availability = availability;
 			ConfiguredMode = configuredMode ?? string.Empty;
@@ -43,6 +172,20 @@ namespace SGG.PerfMeter
 			ActivityAvailability = activityAvailability;
 			IsObservedActive = isObservedActive;
 			Warning = warning ?? string.Empty;
+			ProjectConfigurationAvailability = projectConfigurationAvailability;
+			IsProjectConfigurationSupported = isProjectConfigurationSupported;
+			ComputeShaderAvailability = computeShaderAvailability;
+			SupportsComputeShaders = supportsComputeShaders;
+			ForwardPlusActivityAvailability = forwardPlusActivityAvailability;
+			IsObservedForwardPlusActive = isObservedForwardPlusActive;
+			RenderingModeCompatibilityAvailability = renderingModeCompatibilityAvailability;
+			IsRenderingModeCompatible = isRenderingModeCompatible;
+			ActivitySource = activityAvailability != PerfMeterAvailability.Unknown ? UnityRuntimeActivitySource : string.Empty;
+			Effectiveness = effectiveness.BrgDrawCallsCapability.Semantic == PerfMeterProfilerMetricSemantic.BrgDrawCalls &&
+				effectiveness.BrgInstancesCapability.Semantic == PerfMeterProfilerMetricSemantic.BrgInstances
+				? effectiveness
+				: PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown;
+			DegradedReason = degradedReason;
 		}
 
 		public static PerfMeterGpuResidentDrawerContextSnapshot Unknown => new PerfMeterGpuResidentDrawerContextSnapshot(
@@ -52,7 +195,17 @@ namespace SGG.PerfMeter
 			false,
 			PerfMeterAvailability.Unknown,
 			false,
-			"GPU Resident Drawer context has not been reported by the active render integration.");
+			"GPU Resident Drawer context has not been reported by the active render integration.",
+			PerfMeterAvailability.Unknown,
+			false,
+			PerfMeterAvailability.Unknown,
+			false,
+			PerfMeterAvailability.Unknown,
+			false,
+			PerfMeterAvailability.Unknown,
+			false,
+			PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+			PerfMeterGpuResidentDrawerReason.NotObserved);
 
 		public PerfMeterAvailability Availability { get; }
 		public string ConfiguredMode { get; }
@@ -64,6 +217,18 @@ namespace SGG.PerfMeter
 		public bool IsSupported { get; }
 		public PerfMeterAvailability ActivityAvailability { get; }
 		public bool IsObservedActive { get; }
+		public PerfMeterAvailability ProjectConfigurationAvailability { get; }
+		public bool IsProjectConfigurationSupported { get; }
+		public PerfMeterAvailability ComputeShaderAvailability { get; }
+		public bool SupportsComputeShaders { get; }
+		public PerfMeterAvailability ForwardPlusActivityAvailability { get; }
+		public bool IsObservedForwardPlusActive { get; }
+		public PerfMeterAvailability RenderingModeCompatibilityAvailability { get; }
+		public bool IsRenderingModeCompatible { get; }
+		public const string UnityRuntimeActivitySource = "IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled";
+		public string ActivitySource { get; }
+		public PerfMeterGpuResidentDrawerEffectivenessSnapshot Effectiveness { get; }
+		public PerfMeterGpuResidentDrawerReason DegradedReason { get; }
 		public string Warning { get; }
 	}
 

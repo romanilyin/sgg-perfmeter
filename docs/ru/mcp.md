@@ -121,4 +121,6 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 
 `perfmeter.render.snapshot {}` — read-only команда без inputs. Она не запускает runtime. Ответ содержит `schema_version: 1` и `render_integration` с current pipeline/source, observation frame и age, `observation_matches_current_pipeline`, observed camera identity, integration/pass/injection metadata, scheduled PerfMeter pass count, effective rendering mode (если доступен), вложенные `gpu_resident_drawer` и `variable_rate_shading`, а также `legacy_render_graph`.
 
+`gpu_resident_drawer` содержит project/compute support, public global activity с `activity_source`, URP Forward+/clustered compatibility, `degraded_reason` и вложенный BRG `effectiveness`. Значения равны `null`, пока capability не имеет `AvailableSampled`; recorder names, exact/alias resolution и component counts сохраняют provenance. `scope: "brg_aggregate"` не доказывает использование GRD каждым renderer.
+
 Это MCP-эквивалент `PerformanceMeter.GetRenderIntegrationSnapshot()` и `TryGetRenderIntegrationSnapshot(...)`. Stale observation отмечается явным non-match и warning, а не выдаётся за current. `perfmeter.rendergraph.snapshot` сохраняется для legacy facade. Команда не добавляет Editor navigation: стабильные Unity API не раскрывают RenderGraph/CustomPass viewer или pass targets.

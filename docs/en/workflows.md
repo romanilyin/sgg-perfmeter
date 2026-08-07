@@ -181,4 +181,6 @@ perfmeter.render.snapshot {}
 
 These reads do not start runtime collection. Check `State`, `ObservationAgeFrames`, `LastObservedFrame`, and `ObservationMatchesCurrentPipeline` together. A changed pipeline or asset configuration makes the previous observation stale; keep the explicit warning and do not treat its pass, mode, GRD, or VRS values as current. The legacy `PerformanceMeter.GetRenderGraphSnapshot()` API and `perfmeter.rendergraph.snapshot` command remain available.
 
+For GRD diagnosis, check `DegradedReason` in order with SRP support, project configuration, compute support, URP rendering-mode compatibility, and `ActivityAvailability`. Treat `IsObservedActive` as Unity's global enabled state. Use `Effectiveness` only as aggregate BRG workload context; `AvailableNoSample` and `Unavailable` are not zero workload, and positive BRG counters do not prove that a specific renderer used GRD.
+
 For a capture bundle, schema `sgg.perfmeter.capture-context` version `1` preserves the existing `render` object and adds `render_integration`. External GPU capture freezes that context on the first `Capturing` sample; a Memory Profiler bundle records it when the memory request completes. Session JSON/CSV schemas are unchanged. The public API provides no stable RenderGraph/CustomPass viewer or pass targets, so this workflow does not promise Editor navigation.

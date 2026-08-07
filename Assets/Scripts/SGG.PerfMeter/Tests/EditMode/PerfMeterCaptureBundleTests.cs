@@ -57,9 +57,44 @@ namespace SGG.PerfMeter.Tests.EditMode
 				"Enabled",
 				PerfMeterAvailability.Available,
 				true,
-				PerfMeterAvailability.Unknown,
-				false,
-				"synthetic GRD activity is unknown");
+				PerfMeterAvailability.Available,
+				true,
+				"synthetic GRD activity is sampled",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				new PerfMeterGpuResidentDrawerEffectivenessSnapshot(
+					PerfMeterAvailability.Available,
+					73,
+					11,
+					22,
+					new PerfMeterProfilerMetricCapabilitySnapshot(
+						PerfMeterProfilerMetricSemantic.BrgDrawCalls,
+						PerfMeterProfilerMetricSampleState.AvailableSampled,
+						PerfMeterProfilerMetricResolution.Exact,
+						"Render",
+						"BRG Draw Calls Count",
+						"Count",
+						"Int64",
+						1,
+						1),
+					new PerfMeterProfilerMetricCapabilitySnapshot(
+						PerfMeterProfilerMetricSemantic.BrgInstances,
+						PerfMeterProfilerMetricSampleState.AvailableSampled,
+						PerfMeterProfilerMetricResolution.Alias,
+						"Render",
+						"BRG Instances Count",
+						"Count",
+						"Int64",
+						1,
+						1),
+					string.Empty),
+				PerfMeterGpuResidentDrawerReason.None);
 			PerfMeterVariableRateShadingContextSnapshot firstVrs = new PerfMeterVariableRateShadingContextSnapshot(
 				PerfMeterAvailability.Available,
 				true,
@@ -208,6 +243,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(data.Render.IntegrationName, Is.EqualTo("Legacy First Integration"));
 			Assert.That(data.RenderIntegration.IntegrationId, Is.EqualTo("neutral.integration.first"));
 			Assert.That(data.RenderIntegration.ObservedCameraEntityId, Is.EqualTo(9007199254740993UL));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgDrawCalls, Is.EqualTo(11));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgInstances, Is.EqualTo(22));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgDrawCallsCapability.Resolution, Is.EqualTo(PerfMeterProfilerMetricResolution.Exact));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgInstancesCapability.Resolution, Is.EqualTo(PerfMeterProfilerMetricResolution.Alias));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.ActivitySource, Is.EqualTo(PerfMeterGpuResidentDrawerContextSnapshot.UnityRuntimeActivitySource));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.None));
 
 			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/render-context-" + Guid.NewGuid().ToString("N");
 			string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
@@ -225,7 +266,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(context, Does.Contain("\"integration_id\":\"neutral.integration.first\""));
 				Assert.That(context, Does.Contain("\"pass_kind\":\"RenderGraphRaster\""));
 				Assert.That(context, Does.Contain("\"perfmeter_pass_count\":3,\"effective_rendering_mode\":\"Deferred+\""));
-				Assert.That(context, Does.Contain("\"gpu_resident_drawer\":{\"availability\":\"Available\",\"configured_mode\":\"Enabled\",\"is_configured\":true,\"support_availability\":\"Available\",\"is_supported\":true,\"activity_availability\":\"Unknown\""));
+				Assert.That(context, Does.Contain("\"gpu_resident_drawer\":{\"availability\":\"Available\",\"configured_mode\":\"Enabled\",\"is_configured\":true,\"support_availability\":\"Available\",\"is_supported\":true,\"activity_availability\":\"Available\""));
+				Assert.That(context, Does.Contain("\"activity_source\":\"IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled\""));
+				Assert.That(context, Does.Contain("\"degraded_reason\":\"None\""));
+				Assert.That(context, Does.Contain("\"effectiveness\":{\"availability\":\"Available\",\"collection_frame\":73,\"scope\":\"brg_aggregate\",\"brg_draw_calls\":11,\"brg_instances\":22"));
+				Assert.That(context, Does.Contain("\"brg_draw_calls_capability\":{\"sample_state\":\"AvailableSampled\",\"resolution\":\"Exact\""));
+				Assert.That(context, Does.Contain("\"brg_instances_capability\":{\"sample_state\":\"AvailableSampled\",\"resolution\":\"Alias\""));
 				Assert.That(context, Does.Contain("\"variable_rate_shading\":{\"availability\":\"Available\",\"supports_variable_rate_shading\":true,\"supports_per_draw_call\":true,\"supports_per_image_tile\":true,\"image_tile_width\":16,\"image_tile_height\":16,\"graphics_format\":\"R8G8B8A8_UNorm\",\"configuration_availability\":\"Unknown\",\"is_configured\":false,\"activity_availability\":\"Unknown\""));
 				Assert.That(context, Does.Contain("\"legacy_render_graph\":{\"is_available\":true,\"availability\":\"Available\",\"state\":\"Observed\",\"last_frame\":72,\"observed_camera_name\":\"Legacy Camera First\",\"observed_camera_type\":\"Game\",\"render_pipeline\":\"Universal\",\"integration_name\":\"Legacy First Integration\",\"observed_injection_point\":\"BeforeRendering\",\"perfmeter_pass_count\":2,\"registered_pass_count\":4,\"merged_pass_count\":3"));
 				Assert.That(context, Does.Not.Contain("neutral.integration.later"));

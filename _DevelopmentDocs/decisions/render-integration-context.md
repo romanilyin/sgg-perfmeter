@@ -15,7 +15,7 @@ The existing `PerformanceMeter.GetRenderGraphSnapshot()` API and `perfmeter.rend
 - URP reads the public current-frame `UniversalRenderingData.renderingMode` and reports the PerfMeter passes actually scheduled for that frame.
 - HDRP reports the actual observed PerfMeter `CustomPass`; effective rendering mode remains unavailable because no stable public API exposes it.
 - Private/internal Render Graph pass/resource reflection is not used. Legacy facade counters (`registered_pass_count`, `merged_pass_count`, `transient_resource_count`, `imported_resource_count`, and `aliased_resource_count`) remain `-1` because no stable public API exists for them.
-- GRD exposes configured mode and public SRP support. Activity remains `Unknown`: Unity 17.4/17.5 enabled semantics differ, and deeper telemetry belongs to `PM-GRD-001`.
+- GRD exposes configured mode and public SRP support. `PM-GRD-001` additively extends this nested context with public project/compute support, global runtime activity, URP rendering-mode context, degraded reasons, and aggregate BRG effectiveness provenance; see `gpu-resident-drawer-telemetry.md`.
 - VRS exposes authoritative `SystemInfo`/`ShadingRateInfo` hardware support. Configuration and activity remain `Unknown` unless a future typed adapter proves them.
 - No Editor navigation is added. Stable public APIs do not expose a RenderGraph/CustomPass viewer or pass targets, so the snapshot does not promise navigation.
 

@@ -174,4 +174,6 @@ perfmeter.render.snapshot {}
 
 これらの read は runtime collection を開始しません。`State`、`ObservationAgeFrames`、`LastObservedFrame`、`ObservationMatchesCurrentPipeline` を一緒に確認してください。pipeline または asset configuration が変わると以前の observation は stale になります。warning と non-match を尊重し、その pass、mode、GRD、VRS の値を current frame の値として扱わないでください。legacy API `PerformanceMeter.GetRenderGraphSnapshot()` と `perfmeter.rendergraph.snapshot` は引き続き利用できます。
 
+GRD diagnosis では `DegradedReason`、SRP support、project configuration、compute support、URP mode compatibility、`ActivityAvailability` を確認します。`IsObservedActive` は Unity の global enabled state です。`Effectiveness` は aggregate BRG workload context としてのみ使用してください。`AvailableNoSample`/`Unavailable` は workload 0 を意味せず、positive BRG counter も特定 renderer の GRD use を証明しません。
+
 capture bundle の schema `sgg.perfmeter.capture-context` version `1` は既存の `render` を保持し、`render_integration` を追加します。external GPU capture では `Capturing` phase の最初の sample で context を freeze し、Memory Profiler bundle では memory request の完了時に記録します。session JSON/CSV schema は変更されません。public API に安定した RenderGraph/CustomPass viewer や pass target はないため、この workflow は Editor navigation を約束しません。

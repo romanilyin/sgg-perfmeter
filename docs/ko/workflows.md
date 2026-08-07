@@ -174,4 +174,6 @@ perfmeter.render.snapshot {}
 
 이 read들은 runtime collection을 시작하지 않습니다. `State`, `ObservationAgeFrames`, `LastObservedFrame`, `ObservationMatchesCurrentPipeline`을 함께 확인하십시오. pipeline이나 asset configuration이 바뀌면 이전 observation은 stale이 됩니다. warning과 non-match를 유지하고 pass, mode, GRD, VRS 값을 current frame 값으로 취급하지 마십시오. legacy API `PerformanceMeter.GetRenderGraphSnapshot()`과 `perfmeter.rendergraph.snapshot`은 계속 사용할 수 있습니다.
 
+GRD 진단에서는 `DegradedReason`, SRP support, project configuration, compute support, URP mode compatibility, `ActivityAvailability`를 확인합니다. `IsObservedActive`는 Unity의 global enabled state입니다. `Effectiveness`는 aggregate BRG workload context로만 사용하십시오. `AvailableNoSample`/`Unavailable`은 workload 0을 뜻하지 않으며 positive BRG counter도 특정 renderer의 GRD 사용을 증명하지 않습니다.
+
 capture bundle의 schema `sgg.perfmeter.capture-context` version `1`은 기존 `render`를 유지하고 `render_integration`을 추가합니다. external GPU capture에서는 `Capturing` phase의 첫 sample에서 context를 freeze하고, Memory Profiler bundle에서는 memory request 완료 시 기록합니다. session JSON/CSV schema는 변경되지 않습니다. public API에 안정적인 RenderGraph/CustomPass viewer나 pass target이 없으므로 이 workflow는 Editor navigation을 약속하지 않습니다.

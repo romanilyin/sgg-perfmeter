@@ -121,4 +121,6 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 
 `perfmeter.render.snapshot {}` 是无 input 的 read-only command，不会启动 runtime。response 使用 `schema_version: 1`，并在 `render_integration` 中返回 current pipeline/source、observation frame/age、`observation_matches_current_pipeline`、observed camera identity、integration/pass/injection metadata、实际 schedule 的 PerfMeter pass count、可用时的 effective rendering mode、嵌套的 `gpu_resident_drawer` 与 `variable_rate_shading`，以及 `legacy_render_graph`。
 
+`gpu_resident_drawer` 包含 project/compute support、带 `activity_source` 的 public global activity、URP Forward+/clustered compatibility、`degraded_reason` 和嵌套 BRG `effectiveness`。capability 不是 `AvailableSampled` 时值为 `null`；recorder names、exact/alias resolution 和 component counts 保留 provenance。`scope: "brg_aggregate"` 不证明逐 renderer 的 GRD 使用。
+
 该 command 对应 `PerformanceMeter.GetRenderIntegrationSnapshot()` 和 `TryGetRenderIntegrationSnapshot(...)`。stale observation 会通过明确的 non-match 和 warning 报告，而不会伪装成 current。`perfmeter.rendergraph.snapshot` 作为 legacy facade 保留。稳定的 Unity API 不提供 RenderGraph/CustomPass viewer 或 pass-target 信息，因此不会增加 Editor navigation。

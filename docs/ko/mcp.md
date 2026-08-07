@@ -121,4 +121,6 @@ graphics-state flight는 하나만 허용됩니다. 동일한 active ID는 `Alre
 
 `perfmeter.render.snapshot {}`은 input이 없는 read-only command입니다. runtime을 시작하지 않습니다. response는 `schema_version: 1`을 사용하며 `render_integration`에 current pipeline/source, observation frame/age, `observation_matches_current_pipeline`, observed camera identity, integration/pass/injection metadata, 실제로 schedule된 PerfMeter pass count, 가능한 경우 effective rendering mode, 중첩된 `gpu_resident_drawer`와 `variable_rate_shading`, `legacy_render_graph`를 포함합니다.
 
+`gpu_resident_drawer`에는 project/compute support, `activity_source`가 있는 public global activity, URP Forward+/clustered compatibility, `degraded_reason`, 중첩된 BRG `effectiveness`가 포함됩니다. capability가 `AvailableSampled`가 아니면 값은 `null`이며 recorder name, exact/alias resolution, component count가 provenance를 보존합니다. `scope: "brg_aggregate"`는 renderer별 GRD 사용을 증명하지 않습니다.
+
 이 command는 `PerformanceMeter.GetRenderIntegrationSnapshot()` 및 `TryGetRenderIntegrationSnapshot(...)`에 대응하는 MCP surface입니다. stale observation은 current로 표시하지 않고 명시적인 non-match와 warning으로 보고합니다. `perfmeter.rendergraph.snapshot`은 legacy facade로 유지됩니다. 안정적인 Unity API가 RenderGraph/CustomPass viewer나 pass-target 정보를 공개하지 않으므로 Editor navigation은 추가되지 않습니다.

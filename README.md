@@ -84,7 +84,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
 - Dynamic `ProfilerRecorder` shader GPU-program and graphics-pipeline creation markers when Unity exposes them; values keep their discovered units and are not assumed to be shader or PSO counts.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
-- Integration-neutral render context: current pipeline/source, observed camera and frame freshness, integration/pass/injection details, actual PerfMeter pass count, effective mode where Unity exposes it, plus explicit GRD/VRS availability and unknown activity states.
+- Integration-neutral render context: current pipeline/source, observed camera and frame freshness, integration/pass/injection details, actual PerfMeter pass count, effective mode where Unity exposes it, typed GRD support/activity/effectiveness, and explicit VRS availability.
 
 ## Optional Platform Telemetry
 
@@ -118,6 +118,8 @@ See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](
 `PerformanceMeter.GetRenderIntegrationSnapshot()` and `TryGetRenderIntegrationSnapshot(...)` expose the additive `PerfMeterRenderIntegrationSnapshot` for URP Render Graph and HDRP Custom Pass integrations. The snapshot includes the current pipeline and asset source, the observed camera identity, observation frame/age and current-pipeline match, integration/pass/injection metadata, scheduled PerfMeter pass count, effective rendering mode where a stable public API provides it, and nested GRD/VRS context. `perfmeter.render.snapshot` exposes the same read-only data; `perfmeter.rendergraph.snapshot` remains available as the legacy facade.
 
 Reads do not start runtime collection. A stale observation is marked as not matching the current pipeline instead of being presented as current. Capture context schema v1 preserves `render` and adds `render_integration`; session schemas are unchanged. Unity does not expose a stable public RenderGraph/CustomPass viewer or pass-target API for navigation, so PerfMeter does not promise Editor navigation or private pass/resource counters.
+
+The nested GRD context reports public SRP/project/compute support, Unity's global runtime-enabled result, current-frame URP Forward+/clustered compatibility, structured degraded reasons, and provenance-rich BRG effectiveness counters. BRG values are aggregate `BatchRendererGroup` evidence, not proof that a particular renderer used GRD; unavailable or unsampled JSON values are `null`.
 
 ## Quick Start
 

@@ -119,7 +119,6 @@ namespace SGG.PerfMeter
 			private const string GpuResidentDrawerInstancedDrawingModeName = "InstancedDrawing";
 			private const string GpuResidentDrawerUnknownModeName = "Unknown";
 			private const string GpuResidentDrawerUnavailableWarning = "The active render pipeline does not expose IGPUResidentRenderPipeline; GPU Resident Drawer context is unavailable.";
-			private const string GpuResidentDrawerSupportUnavailablePrefix = "GPU Resident Drawer is not supported by the active URP asset: ";
 			private const string GpuResidentDrawerSupportErrorWarning = "GPU Resident Drawer support query failed for the active URP asset.";
 			private const string GpuResidentDrawerSupportUnavailableWarning = "GPU Resident Drawer is not supported by the active URP asset.";
 			private const string GpuResidentDrawerSupportExceptionWarningPrefix = "GPU Resident Drawer support query failed for the active URP asset: ";
@@ -224,7 +223,11 @@ namespace SGG.PerfMeter
 					GetGpuResidentDrawerSnapshot(),
 					recordsOverlayMarkerPass,
 					recordsOverdrawCounterPass,
-					recordsOverdrawHeatmapPass);
+					recordsOverdrawHeatmapPass,
+					PerfMeterAvailability.Available,
+					renderingData.renderingMode == RenderingMode.ForwardPlus,
+					PerfMeterAvailability.Available,
+					renderingData.renderingMode == RenderingMode.ForwardPlus || renderingData.renderingMode == RenderingMode.DeferredPlus);
 			}
 
 			internal void Dispose()
@@ -398,12 +401,61 @@ namespace SGG.PerfMeter
 			{
 				try
 				{
-					return GetGpuResidentDrawerSnapshotCore();
+					PerfMeterGpuResidentDrawerContextSnapshot supportSnapshot = GetGpuResidentDrawerSupportSnapshot();
+					PerfMeterAvailability projectConfigurationAvailability = PerfMeterAvailability.Unknown;
+					bool isProjectConfigurationSupported = false;
+					PerfMeterAvailability activityAvailability = supportSnapshot.ActivityAvailability;
+					bool isObservedActive = supportSnapshot.IsObservedActive;
+					string warning = supportSnapshot.Warning;
+					if (supportSnapshot.Availability != PerfMeterAvailability.Unavailable)
+					{
+						try
+						{
+							isProjectConfigurationSupported = IGPUResidentRenderPipeline.IsGPUResidentDrawerSupportedByProjectConfiguration(false);
+							projectConfigurationAvailability = PerfMeterAvailability.Available;
+						}
+						catch (Exception exception)
+						{
+							projectConfigurationAvailability = PerfMeterAvailability.Unavailable;
+							warning = PerfMeterRenderGraphAnalytics.CombineWarnings(warning, "GPU Resident Drawer project-configuration query failed: " + exception.GetType().Name + ".");
+						}
+
+						try
+						{
+							isObservedActive = IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled();
+							activityAvailability = PerfMeterAvailability.Available;
+						}
+						catch (Exception exception)
+						{
+							activityAvailability = PerfMeterAvailability.Unavailable;
+							warning = PerfMeterRenderGraphAnalytics.CombineWarnings(warning, "GPU Resident Drawer runtime activity query failed: " + exception.GetType().Name + ".");
+						}
+					}
+
+					PerfMeterGpuResidentDrawerContextSnapshot primitiveObservation = new PerfMeterGpuResidentDrawerContextSnapshot(
+						supportSnapshot.Availability,
+						supportSnapshot.ConfiguredMode,
+						supportSnapshot.SupportAvailability,
+						supportSnapshot.IsSupported,
+						activityAvailability,
+						isObservedActive,
+						warning,
+						projectConfigurationAvailability,
+						isProjectConfigurationSupported,
+						PerfMeterAvailability.Unknown,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+						PerfMeterGpuResidentDrawerReason.Unknown);
+					return primitiveObservation;
 				}
 				catch (Exception exception)
 				{
 					return new PerfMeterGpuResidentDrawerContextSnapshot(
-						PerfMeterAvailability.Unavailable,
+						PerfMeterAvailability.Available,
 						string.Empty,
 						PerfMeterAvailability.Unavailable,
 						false,
@@ -413,7 +465,7 @@ namespace SGG.PerfMeter
 				}
 			}
 
-			private static PerfMeterGpuResidentDrawerContextSnapshot GetGpuResidentDrawerSnapshotCore()
+			private static PerfMeterGpuResidentDrawerContextSnapshot GetGpuResidentDrawerSupportSnapshot()
 			{
 				RenderPipelineAsset renderPipelineAsset = GraphicsSettings.currentRenderPipeline;
 				IGPUResidentRenderPipeline gpuResidentRenderPipeline = renderPipelineAsset as IGPUResidentRenderPipeline;
@@ -439,7 +491,7 @@ namespace SGG.PerfMeter
 						_cachedHasGpuResidentRenderPipeline = true;
 						_cachedGpuResidentDrawerModeReadFailed = true;
 						_cachedGpuResidentDrawerSnapshot = new PerfMeterGpuResidentDrawerContextSnapshot(
-							PerfMeterAvailability.Unavailable,
+							PerfMeterAvailability.Available,
 							string.Empty,
 							PerfMeterAvailability.Unavailable,
 							false,
@@ -449,14 +501,6 @@ namespace SGG.PerfMeter
 						_hasCachedGpuResidentDrawerSnapshot = true;
 						return _cachedGpuResidentDrawerSnapshot;
 					}
-				}
-
-				if (_hasCachedGpuResidentDrawerSnapshot &&
-					object.ReferenceEquals(_cachedRenderPipelineAsset, renderPipelineAsset) &&
-					_cachedHasGpuResidentRenderPipeline == hasGpuResidentRenderPipeline &&
-					(!hasGpuResidentRenderPipeline || _cachedGpuResidentDrawerMode == configuredMode))
-				{
-					return _cachedGpuResidentDrawerSnapshot;
 				}
 
 				_hasCachedGpuResidentDrawerSnapshot = true;
@@ -544,7 +588,7 @@ namespace SGG.PerfMeter
 
 				if (!string.IsNullOrEmpty(reason))
 				{
-					return GpuResidentDrawerSupportUnavailablePrefix + reason;
+					return reason;
 				}
 
 				return severity == LogType.Error

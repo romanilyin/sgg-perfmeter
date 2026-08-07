@@ -174,4 +174,6 @@ perfmeter.render.snapshot {}
 
 Эти read-операции не запускают runtime collection. Проверяйте вместе `State`, `ObservationAgeFrames`, `LastObservedFrame` и `ObservationMatchesCurrentPipeline`. После смены pipeline или asset configuration предыдущая observation становится stale; сохраняйте явные warning и non-match и не считайте её pass/mode/GRD/VRS данными текущего кадра. Legacy API `PerformanceMeter.GetRenderGraphSnapshot()` и команда `perfmeter.rendergraph.snapshot` остаются доступны.
 
+Для диагностики GRD проверяйте `DegradedReason`, SRP support, project configuration, compute support, compatibility режима URP и `ActivityAvailability`. `IsObservedActive` — global enabled state Unity. Используйте `Effectiveness` только как aggregate BRG workload context: `AvailableNoSample`/`Unavailable` не означают нулевую нагрузку, а положительные BRG counters не доказывают использование GRD конкретным renderer.
+
 В capture bundle schema `sgg.perfmeter.capture-context` версии `1` сохраняет существующий `render` и добавляет `render_integration`. Для external GPU capture этот context фиксируется на первом sample фазы `Capturing`; Memory Profiler bundle записывает его при завершении memory request. Session JSON/CSV schemas не изменяются. Public API не предоставляет стабильного RenderGraph/CustomPass viewer или pass targets, поэтому workflow не обещает Editor navigation.

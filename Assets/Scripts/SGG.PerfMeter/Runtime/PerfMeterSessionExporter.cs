@@ -417,7 +417,67 @@ namespace SGG.PerfMeter
 			builder.Append(",\"is_supported\":").Append(JsonBool(gpuResidentDrawer.IsSupported));
 			builder.Append(",\"activity_availability\":").Append(JsonString(gpuResidentDrawer.ActivityAvailability.ToString()));
 			builder.Append(",\"is_observed_active\":").Append(JsonBool(gpuResidentDrawer.IsObservedActive));
+			builder.Append(",\"project_configuration_availability\":").Append(JsonString(gpuResidentDrawer.ProjectConfigurationAvailability.ToString()));
+			builder.Append(",\"is_project_configuration_supported\":").Append(JsonBool(gpuResidentDrawer.IsProjectConfigurationSupported));
+			builder.Append(",\"compute_shader_availability\":").Append(JsonString(gpuResidentDrawer.ComputeShaderAvailability.ToString()));
+			builder.Append(",\"supports_compute_shaders\":").Append(JsonBool(gpuResidentDrawer.SupportsComputeShaders));
+			builder.Append(",\"forward_plus_activity_availability\":").Append(JsonString(gpuResidentDrawer.ForwardPlusActivityAvailability.ToString()));
+			builder.Append(",\"is_observed_forward_plus_active\":").Append(JsonBool(gpuResidentDrawer.IsObservedForwardPlusActive));
+			builder.Append(",\"rendering_mode_compatibility_availability\":").Append(JsonString(gpuResidentDrawer.RenderingModeCompatibilityAvailability.ToString()));
+			builder.Append(",\"is_rendering_mode_compatible\":").Append(JsonBool(gpuResidentDrawer.IsRenderingModeCompatible));
+			builder.Append(",\"activity_source\":").Append(JsonString(gpuResidentDrawer.ActivitySource));
+			builder.Append(",\"degraded_reason\":").Append(JsonString(gpuResidentDrawer.DegradedReason.ToString()));
+			builder.Append(",\"effectiveness\":");
+			AppendGpuResidentDrawerEffectiveness(builder, gpuResidentDrawer.Effectiveness);
 			builder.Append(",\"warning\":").Append(JsonString(gpuResidentDrawer.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendGpuResidentDrawerEffectiveness(StringBuilder builder, PerfMeterGpuResidentDrawerEffectivenessSnapshot effectiveness)
+		{
+			builder.Append('{');
+			builder.Append("\"availability\":").Append(JsonString(effectiveness.Availability.ToString()));
+			builder.Append(",\"collection_frame\":").Append(effectiveness.CollectionFrame);
+			builder.Append(",\"scope\":").Append(JsonString(effectiveness.Scope));
+			builder.Append(",\"brg_draw_calls\":");
+			AppendNullableBrgValue(builder, effectiveness.BrgDrawCalls, effectiveness.BrgDrawCallsCapability);
+			builder.Append(",\"brg_instances\":");
+			AppendNullableBrgValue(builder, effectiveness.BrgInstances, effectiveness.BrgInstancesCapability);
+			builder.Append(",\"has_sample\":").Append(JsonBool(effectiveness.HasSample));
+			builder.Append(",\"has_observed_brg_workload\":").Append(JsonBool(effectiveness.HasObservedBrgWorkload));
+			builder.Append(",\"brg_draw_calls_capability\":");
+			AppendBrgCapability(builder, effectiveness.BrgDrawCallsCapability);
+			builder.Append(",\"brg_instances_capability\":");
+			AppendBrgCapability(builder, effectiveness.BrgInstancesCapability);
+			builder.Append(",\"warning\":").Append(JsonString(effectiveness.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendNullableBrgValue(
+			StringBuilder builder,
+			int value,
+			PerfMeterProfilerMetricCapabilitySnapshot capability)
+		{
+			if (capability.SampleState != PerfMeterProfilerMetricSampleState.AvailableSampled)
+			{
+				builder.Append("null");
+				return;
+			}
+
+			builder.Append(value);
+		}
+
+		private static void AppendBrgCapability(StringBuilder builder, PerfMeterProfilerMetricCapabilitySnapshot capability)
+		{
+			builder.Append('{');
+			builder.Append("\"sample_state\":").Append(JsonString(capability.SampleState.ToString()));
+			builder.Append(",\"resolution\":").Append(JsonString(capability.Resolution.ToString()));
+			builder.Append(",\"category\":").Append(JsonString(capability.Category));
+			builder.Append(",\"resolved_recorder_names\":").Append(JsonString(capability.ResolvedRecorderNames));
+			builder.Append(",\"unit\":").Append(JsonString(capability.Unit));
+			builder.Append(",\"data_type\":").Append(JsonString(capability.DataType));
+			builder.Append(",\"resolved_component_count\":").Append(capability.ResolvedComponentCount);
+			builder.Append(",\"sampled_component_count\":").Append(capability.SampledComponentCount);
 			builder.Append('}');
 		}
 

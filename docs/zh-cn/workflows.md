@@ -174,4 +174,6 @@ perfmeter.render.snapshot {}
 
 这些 read 不会启动 runtime collection。请一起检查 `State`、`ObservationAgeFrames`、`LastObservedFrame` 和 `ObservationMatchesCurrentPipeline`。pipeline 或 asset configuration 改变后，之前的 observation 会变成 stale；保留 warning 和 non-match，不要把其 pass、mode、GRD 或 VRS 值当作当前 frame 数据。legacy API `PerformanceMeter.GetRenderGraphSnapshot()` 和 `perfmeter.rendergraph.snapshot` 仍然可用。
 
+诊断 GRD 时，请检查 `DegradedReason`、SRP support、project configuration、compute support、URP mode compatibility 和 `ActivityAvailability`。`IsObservedActive` 是 Unity 的 global enabled state。`Effectiveness` 仅作为 aggregate BRG workload context：`AvailableNoSample`/`Unavailable` 不表示 workload 为零，positive BRG counters 也不证明某个 renderer 使用了 GRD。
+
 capture bundle 的 schema `sgg.perfmeter.capture-context` version `1` 保留已有的 `render` 并添加 `render_integration`。external GPU capture 在 `Capturing` phase 的第一个 sample 冻结 context；Memory Profiler bundle 在 memory request 完成时记录 context。session JSON/CSV schema 不变。public API 没有稳定的 RenderGraph/CustomPass viewer 或 pass target，因此该 workflow 不承诺 Editor navigation。

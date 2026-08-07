@@ -545,7 +545,15 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				Assert.That(renderIntegration.ObservationMatchesCurrentPipeline, Is.True);
 				Assert.That(renderIntegration.PassKind, Is.EqualTo(PerfMeterRenderPassKind.RenderGraphRaster));
 				Assert.That(renderIntegration.IntegrationId, Is.EqualTo("sgg.perfmeter.urp.render-graph"));
-				Assert.That(renderIntegration.GpuResidentDrawer.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+				PerfMeterGpuResidentDrawerContextSnapshot gpuResidentDrawer = renderIntegration.GpuResidentDrawer;
+				Assert.That(gpuResidentDrawer.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+				Assert.That(gpuResidentDrawer.ActivitySource, Is.EqualTo(PerfMeterGpuResidentDrawerContextSnapshot.UnityRuntimeActivitySource));
+				Assert.That(gpuResidentDrawer.ComputeShaderAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+				Assert.That(gpuResidentDrawer.SupportsComputeShaders, Is.EqualTo(SystemInfo.supportsComputeShaders));
+				Assert.That(gpuResidentDrawer.ForwardPlusActivityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+				Assert.That(gpuResidentDrawer.RenderingModeCompatibilityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+				Assert.That(gpuResidentDrawer.Effectiveness.Availability, Is.Not.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(gpuResidentDrawer.Effectiveness.Scope, Is.EqualTo(PerfMeterGpuResidentDrawerEffectivenessSnapshot.AggregateScope));
 				Assert.That(renderIntegration.VariableRateShading.ConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
 				Assert.That(renderIntegration.LegacyRenderGraph.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
 			}

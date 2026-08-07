@@ -121,4 +121,6 @@ graphics-state flight は一つだけです。同じ active ID は `AlreadyActiv
 
 `perfmeter.render.snapshot {}` は input のない read-only command です。runtime は起動しません。response は `schema_version: 1` を使用し、`render_integration` に current pipeline/source、observation frame/age、`observation_matches_current_pipeline`、observed camera identity、integration/pass/injection metadata、実際に schedule された PerfMeter pass count、利用可能な場合の effective rendering mode、nested `gpu_resident_drawer` と `variable_rate_shading`、`legacy_render_graph` を含めます。
 
+`gpu_resident_drawer` は project/compute support、`activity_source` 付き public global activity、URP Forward+/clustered compatibility、`degraded_reason`、nested BRG `effectiveness` を含みます。capability が `AvailableSampled` でない値は `null` で、recorder name、exact/alias resolution、component count が provenance を保持します。`scope: "brg_aggregate"` は renderer ごとの GRD use を証明しません。
+
 これは `PerformanceMeter.GetRenderIntegrationSnapshot()` と `TryGetRenderIntegrationSnapshot(...)` に対応する MCP command です。stale observation は current として返さず、明示的な non-match と warning で示します。`perfmeter.rendergraph.snapshot` は legacy facade として残ります。安定した Unity API に RenderGraph/CustomPass viewer や pass-target 情報がないため、Editor navigation は追加されません。
