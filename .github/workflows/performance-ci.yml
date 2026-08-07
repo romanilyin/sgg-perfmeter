@@ -33,8 +33,9 @@ permissions:
 jobs:
   performance:
     name: EditMode performance (${{ matrix.unityVersion }})
+    # Enable only after the repository has GameCI-compatible Unity credentials.
     # GitHub does not expose Unity license secrets to pull requests from forks.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: vars.PERFMETER_UNITY_CI_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
