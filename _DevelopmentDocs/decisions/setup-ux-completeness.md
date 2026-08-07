@@ -1,6 +1,6 @@
 # Setup UX Completeness Decision
 
-Status: implemented for `PM-SETUP-001`; baseline released `2026.8.7-1`; first-time setup follow-up candidate `2026.8.7-2`.
+Status: implemented for `PM-SETUP-001`; baseline released `2026.8.7-1`; first-time setup follow-up released `2026.8.7-2`.
 
 ## Decision
 
