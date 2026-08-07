@@ -2,6 +2,14 @@
 
 Этот раздел хранит только минимум внутренней release-prep информации. Публичная публикация и GitHub Release выполняются только в запланированный release pass.
 
+## Current Candidate
+
+- Current release candidate: `2026.8.7-2`
+- Candidate branch: `release/perfmeter-2026.8.7-2`
+- Candidate feature commit: `e78f672dcda0b9373519e5975f77eab36be02835`
+- Candidate record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`
+- Publication is pending; public npm and Git UPM install pins remain on verified release `2026.8.7-1` until GitHub and npm publication both succeed.
+
 ## Current Release
 
 - Current published release: `2026.8.7-1`

@@ -42,6 +42,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.StructuredLogCooldownSeconds, Is.EqualTo(2f).Within(0.001f));
 			Assert.That(settings.CallbackCooldownSeconds, Is.EqualTo(0.5f).Within(0.001f));
 			Assert.That(settings.EditorWarningsEnabled, Is.True);
+			Assert.That(settings.StructuredLogsEnabled, Is.True);
 			Assert.That(settings.OverlayScale, Is.EqualTo(1f).Within(0.001f));
 			Assert.That(settings.OverlayOpacity, Is.EqualTo(0.84f).Within(0.001f));
 			Assert.That(settings.OverlayFontSize, Is.EqualTo(12f).Within(0.001f));
@@ -102,7 +103,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 				overlayTheme: PerfMeterOverlayTheme.Cyber,
 				overlayLayout: PerfMeterOverlayLayout.DiagnosticsWide,
 				overlayFontFamily: PerfMeterOverlayFontFamily.JetBrainsMono,
-				editorWarningsEnabled: false);
+				editorWarningsEnabled: false,
+				structuredLogsEnabled: false);
 
 			string json = PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateFromSnapshot(source));
 
@@ -111,6 +113,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"layout\": \"DiagnosticsWide\""));
 			Assert.That(json, Does.Contain("\"fontFamily\": \"JetBrainsMono\""));
 			Assert.That(json, Does.Contain("\"editorWarningsEnabled\": false"));
+			Assert.That(json, Does.Contain("\"structuredLogsEnabled\": false"));
 			Assert.That(json, Does.Not.Contain("disableEditorWarnings"));
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot loaded), Is.True);
 			Assert.That(loaded.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Loaded));
@@ -134,6 +137,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(loaded.StructuredLogCooldownSeconds, Is.EqualTo(3f).Within(0.001f));
 			Assert.That(loaded.CallbackCooldownSeconds, Is.EqualTo(1f).Within(0.001f));
 			Assert.That(loaded.EditorWarningsEnabled, Is.False);
+			Assert.That(loaded.StructuredLogsEnabled, Is.False);
 			Assert.That(loaded.OverlayScale, Is.EqualTo(1.25f).Within(0.001f));
 			Assert.That(loaded.OverlayOpacity, Is.EqualTo(0.66f).Within(0.001f));
 			Assert.That(loaded.OverlayFontSize, Is.EqualTo(14f).Within(0.001f));
@@ -188,7 +192,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot snapshot), Is.True);
 			Assert.That(snapshot.EditorWarningsEnabled, Is.True);
+			Assert.That(snapshot.StructuredLogsEnabled, Is.True);
 			Assert.That(snapshot.EditorWarningCooldownSeconds, Is.EqualTo(9f).Within(0.001f));
+		}
+
+		[Test]
+		public void ExistingRuleDefaultsWithEditorWarningToggleButWithoutStructuredLogToggleKeepStructuredLogsEnabled()
+		{
+			string json = "{\"schemaVersion\":1,\"ruleDefaults\":{\"editorWarningCooldownSeconds\":9.0,\"structuredLogCooldownSeconds\":3.0,\"callbackCooldownSeconds\":1.0,\"editorWarningsEnabled\":false}}";
+
+			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot snapshot), Is.True);
+			Assert.That(snapshot.EditorWarningsEnabled, Is.False);
+			Assert.That(snapshot.StructuredLogsEnabled, Is.True);
 		}
 
 		[Test]

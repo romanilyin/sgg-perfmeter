@@ -201,6 +201,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void StructuredLogApiDefaultsEnabledAndTogglesRuntimeState()
 		{
+			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.True);
 			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(false));
@@ -208,6 +209,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(true));
 			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+
+			PerformanceMeter.Stop();
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+		}
+
+		[Test]
+		public void ApplySettingsUsesStructuredLogSettingAndStopRestoresApiFallback()
+		{
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.WithStructuredLogsEnabled(PerfMeterSettingsStore.Defaults, false);
+
+			PerformanceMeter.ApplySettings(settings);
+
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
+			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.True);
 
 			PerformanceMeter.Stop();
 			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);

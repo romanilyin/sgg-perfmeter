@@ -2,6 +2,7 @@ using NUnit.Framework;
 using SGG.PerfMeter.Editor.Setup;
 using SGG.PerfMeter.Editor.UI;
 using SGG.PerfMeter.Editor.UI.Localization;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -39,6 +40,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			"settings-overlay-refresh-interval",
 			"settings-overlay-graph-history",
 			"settings-editor-warnings-enabled",
+			"settings-structured-logs-enabled",
 			"settings-editor-warning-cooldown",
 			"settings-structured-log-cooldown",
 			"settings-callback-cooldown",
@@ -68,6 +70,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void SetUp()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterFtueState.ResetChoices();
 			_previousLanguage = PerfMeterWindowLocalization.CurrentLanguage;
 			PerfMeterWindowLocalization.CurrentLanguage = PerfMeterWindowLocalization.DefaultLanguage;
 		}
@@ -76,6 +79,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterFtueState.ResetChoices();
 			if (_window != null)
 			{
 				Object.DestroyImmediate(_window);
@@ -98,6 +102,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 
 			Assert.That(_window.rootVisualElement.Q<Toggle>("settings-enabled"), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Toggle>(PerfMeterSetupWindow.SettingsStructuredLogsEnabledElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<PopupField<string>>("settings-active-overlay-preset"), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Label>("settings-preset-schema-version"), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Label>("settings-preset-reserved-widget-metadata"), Is.Not.Null);
@@ -107,6 +112,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3RefreshButtonName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3StartSessionButtonName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3StopSessionButtonName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<ToolbarToggle>(PerfMeterSetupWindow.FtueTabElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<VisualElement>(PerfMeterFtuePage.FtueRootElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Toggle>(PerfMeterFtuePage.EditorWarningLogsToggleElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Toggle>(PerfMeterFtuePage.StructuredLogsToggleElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.ReviewFtueButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<VisualElement>(PerfMeterFtuePage.RequiredPackagePathElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalMemoryProfilerElementName + "-install").text, Is.EqualTo("Install"));
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocElementName + "-open").text, Is.EqualTo("Download RenderDoc"));
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalPixElementName + "-open").text, Is.EqualTo("Download PIX"));
+			Assert.That(_window.rootVisualElement.Q<Label>(PerfMeterFtuePage.FtueTitleElementName).text, Does.Contain("first-time setup"));
+			Assert.That(_window.rootVisualElement.Q<Label>(className: "pm-title").text, Does.Contain(PerfMeterFtueState.PackageVersion));
+			Assert.That(_window.titleContent.text, Does.Contain(PerfMeterFtueState.PackageVersion));
+			Assert.That(PerfMeterFtuePage.RenderDocDownloadUrl, Is.EqualTo("https://renderdoc.org/builds"));
+			Assert.That(PerfMeterFtuePage.PixDownloadUrl, Is.EqualTo("https://devblogs.microsoft.com/pix/download/"));
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3SessionAnalysisButtonName).enabledSelf, Is.True);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3ProfileAnalyzerButtonName).enabledSelf, Is.True);
 			Button startSession = _window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3StartSessionButtonName);
@@ -176,6 +195,17 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterSetupWindow.IsRendererChecklistActive(status), Is.True);
 			renderer.HasMissingFeatureReference = true;
 			Assert.That(PerfMeterSetupWindow.IsRendererChecklistActive(status), Is.False);
+		}
+
+		[Test]
+		public void FtueRequiredSetupRejectsMissingPackagePath()
+		{
+			PerfMeterSetupUtility.PerfMeterSetupStatus status = CreateReadyFtueStatus();
+			Assert.That(PerfMeterFtuePage.AreRequiredSetupStepsReady(status), Is.True);
+
+			status.PackageAssetPath = string.Empty;
+
+			Assert.That(PerfMeterFtuePage.AreRequiredSetupStepsReady(status), Is.False);
 		}
 
 		[Test]
@@ -258,6 +288,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void FtueStatusTooltipRemainsLocalizedAfterRefresh()
+		{
+			PerfMeterWindowLocalization.CurrentLanguage = "ru";
+			CreateWindow();
+
+			Label icon = _window.rootVisualElement.Q<Label>(className: "pm-checklist-icon");
+			Assert.That(icon, Is.Not.Null);
+			Assert.That(icon.tooltip, Is.Not.Empty);
+			Assert.That(icon.tooltip == "Ready" || icon.tooltip == "Error" || icon.tooltip == "Optional" || icon.tooltip == "Next action", Is.False);
+		}
+
+		[Test]
 		public void DebugRowsLocalizePackageMetadataButPreserveProjectIdentity()
 		{
 			PerfMeterWindowLocalization.CurrentLanguage = "ru";
@@ -311,6 +353,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 				"Int64",
 				1,
 				sampleState == PerfMeterProfilerMetricSampleState.AvailableSampled ? 1 : 0);
+		}
+
+		private static PerfMeterSetupUtility.PerfMeterSetupStatus CreateReadyFtueStatus()
+		{
+			return new PerfMeterSetupUtility.PerfMeterSetupStatus
+			{
+				FrameTimingStatsEnabled = true,
+				CompatibilityStatus = new PerfMeterCompatibilityStatus(
+					"6000.4.12f1",
+					PerfMeterRenderPipelineKind.HighDefinition,
+					"com.unity.render-pipelines.high-definition",
+					"17.4.0",
+					true,
+					true,
+					true,
+					"Ready",
+					"Ready",
+					"Ready"),
+				OfficialUnityVersionSupported = true,
+				HdrpCustomPassAvailable = true,
+				ActiveRenderPipeline = PerfMeterRenderPipelineKind.HighDefinition,
+				PackageAssetPath = "Assets/Scripts/SGG.PerfMeter",
+				Settings = new PerfMeterSetupUtility.PerfMeterSettingsSetupStatus
+				{
+					FileExists = true,
+					Snapshot = PerfMeterSettingsStore.ToSnapshot(
+						PerfMeterSettingsStore.CreateDefault(),
+						PerfMeterSettingsLoadState.Loaded,
+						string.Empty)
+				}
+			};
 		}
 
 		private void CreateWindow()

@@ -92,6 +92,8 @@ Open:
 SGG/Perfmeter/Setup
 ```
 
+The first-time setup tab tracks required readiness live. Install or skip each clearly marked optional integration; the tab hides when all steps are resolved and returns if a required check later breaks.
+
 Then run the recommended setup:
 
 1. Enable Frame Timing Stats.

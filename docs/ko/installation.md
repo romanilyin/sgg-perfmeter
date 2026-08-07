@@ -92,6 +92,8 @@ Assets/Scripts/SGG.PerfMeter
 SGG/Perfmeter/Setup
 ```
 
+첫 실행 설정 탭은 필수 준비 상태를 실시간으로 추적합니다. 선택 사항으로 명확히 표시된 각 통합을 설치하거나 건너뛰십시오. 모든 단계가 해결되면 탭이 숨겨지고 필수 검사가 나중에 실패하면 다시 표시됩니다.
+
 그다음 권장 setup을 실행합니다.
 
 1. Frame Timing Stats를 활성화합니다.

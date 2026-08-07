@@ -719,7 +719,7 @@ namespace SGG.PerfMeter
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.StructuredLogsEnabled : true;
+				return runtime != null ? runtime.StructuredLogsEnabled : GetSettings().StructuredLogsEnabled;
 			}
 		}
 

@@ -508,3 +508,108 @@
     white-space: normal;
     color: var(--pm-text-muted);
 }
+
+.pm-ftue-page {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.pm-ftue-scroll {
+    min-width: 0;
+}
+
+.pm-ftue-title {
+    color: #f2f2f2;
+    font-size: 15px;
+    -unity-font-style: bold;
+    margin-bottom: 6px;
+}
+
+.pm-ftue-intro {
+    white-space: normal;
+    color: var(--pm-text-muted);
+    background-color: rgba(255, 255, 255, 0.04);
+    border-left-width: 3px;
+    border-left-color: var(--pm-info);
+    padding-top: 6px;
+    padding-right: 8px;
+    padding-bottom: 6px;
+    padding-left: 8px;
+    margin-bottom: 8px;
+}
+
+.pm-ftue-section {
+    border-width: 1px;
+    border-color: var(--pm-panel-border);
+    margin-bottom: 8px;
+}
+
+.pm-ftue-section-caption {
+    background-color: var(--pm-panel-header);
+    color: #5fa8a8;
+    font-size: 14px;
+    -unity-font-style: bold;
+    padding-top: 5px;
+    padding-right: 8px;
+    padding-bottom: 5px;
+    padding-left: 8px;
+}
+
+.pm-ftue-section-content {
+    background-color: rgba(0, 0, 0, 0.06);
+    padding-top: 7px;
+    padding-right: 7px;
+    padding-bottom: 7px;
+    padding-left: 7px;
+}
+
+.pm-ftue-checklist-row {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.pm-ftue-checklist-key {
+    width: 190px;
+    min-width: 190px;
+    margin-right: 6px;
+    color: var(--pm-text-muted);
+    white-space: normal;
+}
+
+.pm-ftue-checklist-field {
+    min-width: 0;
+}
+
+.pm-ftue-checklist-value {
+    min-width: 0;
+}
+
+.pm-ftue-actions {
+    margin-top: 6px;
+}
+
+.pm-ftue-button {
+    min-width: 145px;
+}
+
+.pm-ftue-toggle {
+    min-width: 220px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    padding-top: 3px;
+    padding-right: 8px;
+    padding-bottom: 3px;
+    padding-left: 8px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(20, 20, 20, 0.35);
+}
+
+.pm-ftue-status {
+    min-width: 0;
+    white-space: normal;
+    color: var(--pm-text-muted);
+    margin-top: 4px;
+    margin-bottom: 4px;
+}

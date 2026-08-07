@@ -92,6 +92,8 @@ Apri:
 SGG/Perfmeter/Setup
 ```
 
+La scheda di configurazione iniziale controlla in tempo reale i requisiti obbligatori. Installa o ignora ogni integrazione chiaramente indicata come opzionale; la scheda si nasconde quando tutti i passaggi sono risolti e riappare se un controllo obbligatorio smette di essere valido.
+
 Poi esegui il setup consigliato:
 
 1. Abilita Frame Timing Stats.

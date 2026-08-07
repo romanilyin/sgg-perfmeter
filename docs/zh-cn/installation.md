@@ -92,6 +92,8 @@ Assets/Scripts/SGG.PerfMeter
 SGG/Perfmeter/Setup
 ```
 
+首次设置选项卡会实时跟踪必需项的就绪状态。安装或跳过每个明确标记为可选的集成；所有步骤解决后该选项卡会隐藏，如果必需检查之后失败则会重新显示。
+
 然后运行 recommended setup：
 
 1. 启用 Frame Timing Stats。
