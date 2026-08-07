@@ -92,6 +92,8 @@ local package development や Git dependencies を使いたくない場合に有
 SGG/Perfmeter/Setup
 ```
 
+初回設定タブは必須項目の準備状態をリアルタイムで追跡します。オプションと明記された各統合をインストールまたはスキップしてください。すべての手順が解決するとタブは非表示になり、必須チェックが後で失敗すると再表示されます。
+
 その後、recommended setup を実行します。
 
 1. Frame Timing Stats を有効化します。

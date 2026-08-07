@@ -1,6 +1,6 @@
 # Setup UX Completeness Decision
 
-Status: implemented for `PM-SETUP-001`; released `2026.8.7-1`.
+Status: implemented for `PM-SETUP-001`; baseline released `2026.8.7-1`; first-time setup follow-up candidate `2026.8.7-2`.
 
 ## Decision
 
@@ -15,6 +15,8 @@ Project settings and overlay-preset data are persisted. Memory-snapshot requests
 ## Action Lifecycle
 
 `Session Analysis`, `Profile Analyzer`, and `Refresh` are explicit Editor actions. `Start Session` and `Stop Session` are available only in Play Mode. Opening or refreshing Setup reads and presents state; it never starts runtime collection.
+
+The separate FTUE tab is a live view rather than a permanent completion flag. It hides only while every required check is ready and every optional integration is available or explicitly skipped; a broken required check makes the tab available again. Optional skip choices are project- and package-version-scoped.
 
 ## Localization Boundary
 

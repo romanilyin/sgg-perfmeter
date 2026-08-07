@@ -92,6 +92,8 @@ Abra:
 SGG/Perfmeter/Setup
 ```
 
+A aba de configuracao inicial acompanha ao vivo os requisitos obrigatorios. Instale ou ignore cada integracao claramente marcada como opcional; a aba e ocultada quando todas as etapas sao resolvidas e reaparece se uma verificacao obrigatoria deixar de passar.
+
 Depois execute o setup recomendado:
 
 1. Ative Frame Timing Stats.

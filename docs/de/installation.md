@@ -92,6 +92,8 @@ Oeffne:
 SGG/Perfmeter/Setup
 ```
 
+Die Registerkarte zur Ersteinrichtung verfolgt die erforderliche Bereitschaft live. Installiere oder ueberspringe jede klar als optional markierte Integration; die Registerkarte wird ausgeblendet, wenn alle Schritte erledigt sind, und erscheint erneut, wenn eine erforderliche Pruefung spaeter fehlschlaegt.
+
 Fuehre dann das empfohlene Setup aus:
 
 1. Aktiviere Frame Timing Stats.

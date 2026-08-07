@@ -92,6 +92,8 @@ Ouvrez:
 SGG/Perfmeter/Setup
 ```
 
+L'onglet de configuration initiale suit en direct les verifications requises. Installez ou ignorez chaque integration clairement marquee comme facultative ; l'onglet se masque lorsque toutes les etapes sont resolues et reapparait si une verification requise echoue ensuite.
+
 Puis executez la configuration recommandee:
 
 1. Activer Frame Timing Stats.
