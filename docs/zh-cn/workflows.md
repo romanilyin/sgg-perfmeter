@@ -130,3 +130,60 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}` 是缓存读取；不会启动 runtime，也不会执行 discovery。
+
+## 可选内存快照 workflow
+
+1. 使用 Unity `6000.4+`，并通过 Package Manager 安装 `com.unity.memoryprofiler` `1.1.0+`。可选的 `SGG.PerfMeter.MemoryProfiler` assembly 会自动注册 backend；没有该 package 时 core integration 保持 unavailable。
+2. 在 Play Mode 中读取 `PerformanceMeter.GetMemorySnapshotCapabilities()` 或 `perfmeter.memory.snapshot.capabilities`，确认 backend 和所需 capture flags 可用。
+3. 使用 `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))` 请求 manual snapshot，或者使用 `ConfigureMemorySnapshotTriggers(...)` 显式启用 system-memory threshold 或 bounded leak-growth window。
+4. 读取 `GetMemorySnapshotStatus()` 或 `perfmeter.memory.snapshot.status`，直到 snapshot 和 correlated bundle 到达 terminal state。使用 `PerformanceMeter.ExportCaptureBundle(captureId)` 或 `perfmeter.capture.export` 导出已准备好的 evidence。
+
+memory-only evidence 通过现有 capture-bundle API 写入 `Temp/PerfMeter/CaptureBundles`。bundle 将 `MemoryProfiler` 记录为 requested tool，包含内存 provenance 和 `.snap` 的 streaming SHA-256，但不包含 external GPU artifact。owned source 位于 `Temp/PerfMeter/MemorySnapshots`；成功 export 后只消费一次。
+
+## 图形 marker 诊断
+
+1. 调用 `PerformanceMeter.GetGraphicsDiagnostics()` 或 `perfmeter.graphics.diagnostics`，读取最新 marker value 与 graphics API context。
+2. 检查每个 capability 的 `SampleState`、`Resolution`、`ResolvedRecorderNames`、`Unit`、`DataType`、resolved/sampled component count 和 catalog revision。discovery 是动态的，在 runtime 启动和显式 profiler catalog refresh/reconfigure 时执行。
+3. 将这些值视为发现 unit 下的 raw recorder value。marker 可能是 unavailable、available 但没有 sample，或 sampled；numeric 0 不是通用 unavailable signal，值也不保证是 shader/PSO count。
+
+shader marker 先解析 exact `Shader.CreateGPUProgram`，再解析 aliases `Shader.CreateGPUPrograms`、`Shader.CompileGPUProgram`、`Shader.DynamicLoadGPUProgram`。pipeline marker 解析 exact `CreatePSO.Job`。相同的 value 和 provenance 也可通过 `perfmeter.metrics.latest` 和 session JSON/CSV 获取。
+
+## 与 Profile Analyzer 的会话关联
+
+Profiler 记录期间，每个 session 都会生成瞬时的 `SGG.PerfMeter.Session.<sessionId>.Begin` 和 `.End` sample。`SGG/Perfmeter/Open Profile Analyzer For Session` 会打开可选的 Profile Analyzer 窗口，并将 current session ID 复制到剪贴板。该命令不会安装 Profile Analyzer、加载 Profiler 数据或自动应用过滤器；加载相关 capture 后，请搜索复制的 ID。
+
+## 会话分析窗口
+
+打开 `SGG/Perfmeter/Session Analysis`，可在 Editor 中以只读方式查看当前保存在内存中的 session。virtualized tab 显示 retained sample timeline、包含可用 sample detail 的 authoritative worst frame、derived CPU-main/CPU-render/GPU budget violation，以及 authoritative whole-run/current-scene scope。CPU-main 会排除 present wait；GPU value 和 violation 仅在 GPU timing 明确可用时显示。
+
+该窗口只读取 `GetSessionSummary()` 和 `GetSessionSamples()`，不会启动 runtime。不可用的 timing 显示为 `Unavailable`，而不是数字 0。stopped session 只在其 runtime instance 存在期间可见；`PerformanceMeter.Stop()`、domain reload 或退出 Play Mode 可能丢弃内存中的 session。
+
+## GraphicsStateCollection trace 与 prewarm
+
+1. 在 Unity `6000.4+` 中确认可选 `SGG.PerfMeter.GraphicsStateCollection` assembly 可用。Unity `6000.4` 使用 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`，Unity `6000.5+` 使用 `UnityEngine.Rendering.GraphicsStateCollection` namespace。
+2. 在 trace 前启动 PerfMeter session。执行 `StartSession(...)`，然后调用 `RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", 60))` 或对应的 MCP request。没有 active session 时 request 会被拒绝；session 必须持续 recording 到 trace 完成，`PerformanceMeter.StopSession()` 会取消 active trace。
+3. 在 bounded trace 推进期间保持场景运行。普通 Play Mode 中，每个 trace frame 在 `WaitForEndOfFrame` 后 tick；batch mode 中 coordinator 使用 next-frame fallback。此期间被 session 接纳的 sample 会记录 `GraphicsStateTraceId`/`graphics_state_trace_id`，session settings 决定保留多少 correlated sample。
+4. 轮询 `GetGraphicsStateCollectionStatus()` 或 `perfmeter.graphics.state_collection.status` 直到 `Completed`，然后按需停止 session。在 active trace 期间停止会取消 trace，并可能在 owned cleanup retry 期间让 `IsBusy`/`is_busy` 保持 true。owned `.graphicsstate` artifact 位于 project-relative 的 `Temp/PerfMeter/GraphicsStateCollections` 下，最大 64 MiB。
+5. 将 status 返回的 owned relative path 传给 `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` 或 MCP prewarm command。prewarm 是 synchronous 的，会保留 artifact，并报告 completed warmup 与 `IsWarmedUp`；progressive warmup 可能以 explicit incomplete warning 结束。
+
+graphics-state coordinator 只允许一个 flight，也会拒绝与 active external GPU capture、memory snapshot 或 alert-capture 的 overlap。相同的 active trace ID 返回 `AlreadyActive`，其他 ID 返回 `RejectedOverlap`。`CancelGraphicsStateTrace` 只 cancel 匹配的 active/preparing trace 并清理 pending artifact。如果 owned artifact 删除失败，`HasPendingCleanup`/`has_pending_cleanup` 会保持 true，旁边的 `.delete-pending` sidecar 会在 domain reload 后恢复并重试；`IsBusy`/`is_busy` 和 warning 会保持可见直到成功。Unity backend 不支持 cache-miss tracing，因此没有 cache-miss evidence。
+
+## Render integration context
+
+当需要查看最新 typed render integration 的 pipeline-neutral 信息时，使用 neutral snapshot：
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+也可以通过 MCP 读取相同数据：
+
+```text
+perfmeter.render.snapshot {}
+```
+
+这些 read 不会启动 runtime collection。请一起检查 `State`、`ObservationAgeFrames`、`LastObservedFrame` 和 `ObservationMatchesCurrentPipeline`。pipeline 或 asset configuration 改变后，之前的 observation 会变成 stale；保留 warning 和 non-match，不要把其 pass、mode、GRD 或 VRS 值当作当前 frame 数据。legacy API `PerformanceMeter.GetRenderGraphSnapshot()` 和 `perfmeter.rendergraph.snapshot` 仍然可用。
+
+诊断 GRD 时，请检查 `DegradedReason`、SRP support、project configuration、compute support、URP mode compatibility 和 `ActivityAvailability`。`IsObservedActive` 是 Unity 的 global enabled state。`Effectiveness` 仅作为 aggregate BRG workload context：`AvailableNoSample`/`Unavailable` 不表示 workload 为零，positive BRG counters 也不证明某个 renderer 使用了 GRD。
+
+capture bundle 的 schema `sgg.perfmeter.capture-context` version `1` 保留已有的 `render` 并添加 `render_integration`。external GPU capture 在 `Capturing` phase 的第一个 sample 冻结 context；Memory Profiler bundle 在 memory request 完成时记录 context。session JSON/CSV schema 不变。public API 没有稳定的 RenderGraph/CustomPass viewer 或 pass target，因此该 workflow 不承诺 Editor navigation。

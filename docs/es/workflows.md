@@ -130,3 +130,60 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}` es una lectura en caché; no inicia el runtime ni realiza discovery.
+
+## Workflow de snapshots de memoria opcionales
+
+1. Usa Unity `6000.4+` e instala `com.unity.memoryprofiler` `1.1.0+` mediante Package Manager. La assembly opcional `SGG.PerfMeter.MemoryProfiler` registra entonces el backend automáticamente; sin ese paquete la integración core permanece unavailable.
+2. En Play Mode, lee `PerformanceMeter.GetMemorySnapshotCapabilities()` o `perfmeter.memory.snapshot.capabilities` y confirma la disponibilidad del backend y de los flags solicitados.
+3. Solicita un snapshot manual con `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))`, o configura `ConfigureMemorySnapshotTriggers(...)` para activar explícitamente un umbral de memoria del sistema o una ventana acotada de crecimiento de fugas.
+4. Consulta `GetMemorySnapshotStatus()` o `perfmeter.memory.snapshot.status` hasta que el snapshot y su bundle correlacionado lleguen a un estado terminal. Exporta la evidencia lista con `PerformanceMeter.ExportCaptureBundle(captureId)` o `perfmeter.capture.export`.
+
+La evidencia solo de memoria se escribe mediante la API existente de capture bundles bajo `Temp/PerfMeter/CaptureBundles`. El bundle registra `MemoryProfiler` como herramienta solicitada, incluye provenance de memoria y un SHA-256 en streaming para el `.snap`, y no incluye un artefacto GPU externo. El source propiedad de PerfMeter está bajo `Temp/PerfMeter/MemorySnapshots`; un export correcto lo consume una sola vez.
+
+## Diagnóstico de markers gráficos
+
+1. Llama a `PerformanceMeter.GetGraphicsDiagnostics()` o `perfmeter.graphics.diagnostics` para leer los últimos valores de markers y el contexto de la API gráfica.
+2. Comprueba `SampleState`, `Resolution`, `ResolvedRecorderNames`, `Unit`, `DataType`, los component counts resueltos/muestreados y la revisión del catálogo de cada capability. La discovery es dinámica: ocurre al iniciar el runtime y durante un refresh/reconfigure explícito del catálogo del profiler.
+3. Trata los valores como valores crudos del recorder en sus units descubiertas. Un marker puede estar unavailable, disponible sin sample o sampled; el cero numérico no es una señal universal de unavailable y el valor no garantiza ser un count de shader o PSO.
+
+El shader marker resuelve primero el nombre exacto `Shader.CreateGPUProgram` y después los alias `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` y `Shader.DynamicLoadGPUProgram`. El pipeline marker resuelve exactamente `CreatePSO.Job`. Los mismos valores y provenance están disponibles mediante `perfmeter.metrics.latest` y session JSON/CSV.
+
+## Correlación De Sesiones Con Profile Analyzer
+
+Durante el perfilado, cada sesión emite las muestras instantáneas `SGG.PerfMeter.Session.<sessionId>.Begin` y `.End`. `SGG/Perfmeter/Open Profile Analyzer For Session` abre la ventana opcional de Profile Analyzer y copia el ID de la sesión actual al portapapeles. El comando no instala Profile Analyzer, no carga datos del Profiler ni aplica filtros automáticamente; tras cargar la captura correspondiente, busca el ID copiado.
+
+## Ventana De Análisis De Sesión
+
+Abre `SGG/Perfmeter/Session Analysis` para consultar en el Editor, en modo de solo lectura, la sesión actual en memoria. Las pestañas virtualizadas muestran el timeline de samples retenidos, el worst frame autoritativo con detalles del sample cuando está disponible, infracciones derivadas de presupuesto CPU-main/CPU-render/GPU y los scopes autoritativos whole-run/current-scene. CPU-main excluye present wait; los valores e infracciones GPU requieren disponibilidad explícita del timing GPU.
+
+La ventana solo lee `GetSessionSummary()` y `GetSessionSamples()` y nunca inicia el runtime. El timing no disponible se muestra como `Unavailable`, no como cero numérico. Una sesión detenida permanece visible mientras exista su instancia runtime; `PerformanceMeter.Stop()`, un domain reload o salir de Play Mode pueden descartar la sesión en memoria.
+
+## Trace y prewarm de GraphicsStateCollection
+
+1. En Unity `6000.4+`, confirma que está disponible la assembly opcional `SGG.PerfMeter.GraphicsStateCollection`. Usa el namespace `UnityEngine.Experimental.Rendering.GraphicsStateCollection` en Unity `6000.4` y `UnityEngine.Rendering.GraphicsStateCollection` en Unity `6000.5+`.
+2. Inicia una sesión de PerfMeter antes del trace. Ejecuta `StartSession(...)` y después `RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", 60))` o la solicitud MCP correspondiente. Sin sesión activa, la solicitud se rechaza; la sesión debe seguir grabando hasta terminar el trace y `PerformanceMeter.StopSession()` cancela un trace activo.
+3. Mantén el escenario en ejecución mientras avanza el trace acotado. En Play Mode normal cada trace frame se tickea después de `WaitForEndOfFrame`; en batch mode el coordinator usa un fallback del frame siguiente. Los samples de sesión admitidos durante este intervalo incluyen `GraphicsStateTraceId`/`graphics_state_trace_id`; la configuración de la sesión determina cuántos samples correlacionados se conservan.
+4. Consulta `GetGraphicsStateCollectionStatus()` o `perfmeter.graphics.state_collection.status` hasta `Completed` y, si quieres, detén después la sesión. Detenerla durante el trace activo lo cancela y puede dejar `IsBusy`/`is_busy` en true mientras se reintenta el cleanup owned. El artifact `.graphicsstate` owned es relativo al proyecto, está bajo `Temp/PerfMeter/GraphicsStateCollections` y se limita a 64 MiB.
+5. Pasa el path relativo owned indicado a `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` o al comando MCP de prewarm. Prewarm es síncrono, conserva el artifact e informa de los warmups completados y `IsWarmedUp`; un progressive warmup puede terminar con un warning explícito de incompleto.
+
+El coordinator de graphics-state admite un solo flight y también rechaza overlap con external GPU capture, memory snapshot o alert-capture activos. El mismo trace ID activo devuelve `AlreadyActive`; otro ID devuelve `RejectedOverlap`. `CancelGraphicsStateTrace` solo cancela un trace activo/en preparación coincidente y limpia su artifact pendiente. Si no se puede borrar un artifact owned, `HasPendingCleanup`/`has_pending_cleanup` permanece true, se conserva un sidecar adyacente `.delete-pending` y se restaura y reintenta tras un domain reload; `IsBusy`/`is_busy` y el warning siguen visibles hasta que termina. El backend de Unity no admite cache-miss tracing, por lo que no hay evidencia de cache-miss.
+
+## Contexto de integración de render
+
+Usa el snapshot neutral cuando necesites una vista independiente del pipeline sobre la última render integration tipada:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+También puedes leer los mismos datos mediante MCP:
+
+```text
+perfmeter.render.snapshot {}
+```
+
+Estas lecturas no inician la recolección del runtime. Comprueba juntos `State`, `ObservationAgeFrames`, `LastObservedFrame` y `ObservationMatchesCurrentPipeline`. Después de cambiar el pipeline o la configuración del asset, la observation anterior queda stale; conserva el warning y el non-match y no interpretes sus valores de pass, mode, GRD o VRS como actuales. La API legacy `PerformanceMeter.GetRenderGraphSnapshot()` y el comando `perfmeter.rendergraph.snapshot` siguen disponibles.
+
+Para diagnosticar GRD, revisa `DegradedReason`, soporte SRP, configuración del proyecto, soporte compute, compatibilidad del modo URP y `ActivityAvailability`. `IsObservedActive` es el estado enabled global de Unity. Usa `Effectiveness` solo como contexto agregado BRG: `AvailableNoSample`/`Unavailable` no significan carga cero, y contadores BRG positivos no prueban que un renderer concreto usara GRD.
+
+En el bundle de captura, el schema `sgg.perfmeter.capture-context` versión `1` conserva `render` y añade `render_integration`. En un external GPU capture, el contexto se congela en el primer sample de la fase `Capturing`; un bundle de Memory Profiler lo registra cuando termina la solicitud de memoria. Los schemas JSON/CSV de sesión no cambian. La API pública no ofrece un viewer estable de RenderGraph/CustomPass ni pass targets, así que este workflow no promete navegación del Editor.

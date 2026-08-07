@@ -12,6 +12,7 @@ namespace SGG.PerfMeter
 		private const int AlertLifecycleWarmupSamples = 120;
 		private static PerfMeterRuntime _instance;
 		private static PerfMeterCaptureCoordinator _pendingCaptureCleanup;
+		private static PerfMeterGraphicsStateCollectionCoordinator _pendingGraphicsStateCleanup;
 		private static string _pendingAlertCaptureId = string.Empty;
 		private static readonly PerfMeterCaptureBundleCoordinator CaptureBundles = new PerfMeterCaptureBundleCoordinator();
 
@@ -21,6 +22,10 @@ namespace SGG.PerfMeter
 		private readonly PerfMeterOverdrawController _overdrawController = new PerfMeterOverdrawController();
 		private readonly PerfMeterSessionRecorder _sessionRecorder = new PerfMeterSessionRecorder();
 		private PerfMeterCaptureCoordinator _captureCoordinator;
+		private PerfMeterMemorySnapshotCoordinator _memorySnapshotCoordinator;
+		private PerfMeterGraphicsStateCollectionCoordinator _graphicsStateCollectionCoordinator;
+		private readonly PerfMeterMemorySnapshotTriggerEvaluator _memorySnapshotTriggerEvaluator = new PerfMeterMemorySnapshotTriggerEvaluator();
+		private readonly WaitForEndOfFrame _graphicsStateEndOfFrame = new WaitForEndOfFrame();
 		private PerfMeterAlertEngine _alertEngine = new PerfMeterAlertEngine();
 		private PerfMeterStatusSnapshot _status;
 		private PerfMeterMetricsSnapshot _latestMetrics;
@@ -58,18 +63,27 @@ namespace SGG.PerfMeter
 		private string _captureBundleId = string.Empty;
 		private PerfMeterAlertClassification _lastAlertClassification = PerfMeterAlertClassification.Lifecycle;
 		private bool _alertEngineInitialized;
+		private PerfMeterMemorySnapshotTriggerOptions _memorySnapshotTriggers;
+		private bool _memoryAutomaticAttemptBlocked;
+		private string _graphicsStateTraceIdForCurrentFrame = string.Empty;
 
 		internal static PerfMeterRuntime Instance => _instance;
 		internal static PerfMeterCaptureStatusSnapshot PendingCaptureStatus => _pendingCaptureCleanup != null ? _pendingCaptureCleanup.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
+		internal static PerfMeterGraphicsStateCollectionStatusSnapshot PendingGraphicsStateCollectionStatus => _pendingGraphicsStateCleanup != null ? _pendingGraphicsStateCleanup.GetStatus() : PerfMeterGraphicsStateCollectionStatusSnapshot.Idle;
 		internal static string PendingAlertCaptureId => _pendingAlertCaptureId;
 		internal static PerfMeterCaptureBundleStatusSnapshot CaptureBundleStatus(string captureId = null) => CaptureBundles.GetStatus(captureId);
 		internal static PerfMeterCaptureCapabilitiesSnapshot CaptureCapabilities => PerfMeterCaptureBundleExporter.GetCapabilities();
 		internal PerfMeterStatusSnapshot Status => _status.WithSelfOverhead(PerfMeterSelfObservability.GetSnapshot());
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
+		internal PerfMeterProfilerMetricCapabilitySnapshot GetLatestProfilerMetricCapability(PerfMeterProfilerMetricSemantic semantic) => _collector.GetProfilerMetricCapability(semantic);
 		internal PerfMeterPlatformTelemetrySnapshot LatestPlatformTelemetry => _latestPlatformTelemetry;
 		internal PerfMeterProfilerMetricCatalogSnapshot ProfilerMetricCatalog => _collector.GetProfilerMetricCatalog();
 		internal PerfMeterSelfOverheadSnapshot SelfOverhead => PerfMeterSelfObservability.GetSnapshot();
 		internal PerfMeterCaptureStatusSnapshot CaptureStatus => _captureCoordinator != null ? _captureCoordinator.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
+		internal PerfMeterMemorySnapshotStatusSnapshot MemorySnapshotStatus => _memorySnapshotCoordinator != null ? _memorySnapshotCoordinator.GetStatus(Time.realtimeSinceStartupAsDouble) : PerfMeterMemorySnapshotStatusSnapshot.NotRunning;
+		internal PerfMeterMemorySnapshotTriggerOptions MemorySnapshotTriggers => _memorySnapshotTriggers;
+		internal PerfMeterGraphicsStateCollectionStatusSnapshot GraphicsStateCollectionStatus => _graphicsStateCollectionCoordinator != null ? _graphicsStateCollectionCoordinator.GetStatus() : PerfMeterGraphicsStateCollectionStatusSnapshot.Idle;
+		internal PerfMeterGraphicsDiagnosticsSnapshot GraphicsDiagnostics => CreateGraphicsDiagnostics();
 		internal bool IsOverlayVisible => IsRuntimeOverlaySupported && _overlay != null && _overlay.IsVisible;
 		internal PerfMeterOverlayCorner OverlayCorner => _overlayCorner;
 		internal PerfMeterOverlayMode OverlayMode => _overlayMode;
@@ -105,6 +119,27 @@ namespace SGG.PerfMeter
 			if (result.Success)
 			{
 				CaptureBundles.MarkExported(captureId, result.RelativePath, result.Bundle.ExternalArtifactState);
+				if (data.MemorySnapshotArtifact.IsAvailable)
+				{
+					bool deleted;
+					if (_instance != null && _instance._memorySnapshotCoordinator != null)
+					{
+						deleted = _instance._memorySnapshotCoordinator.DiscardArtifact(data.MemorySnapshotArtifact.SourcePath);
+					}
+					else
+					{
+						deleted = new PerfMeterMemorySnapshotStorage(System.IO.Path.Combine(Application.dataPath, "..")).TryDelete(data.MemorySnapshotArtifact.SourcePath);
+					}
+
+					if (deleted)
+					{
+						CaptureBundles.ClearMemorySnapshotArtifact(captureId, data.MemorySnapshotArtifact.SourcePath);
+					}
+					else
+					{
+						return new PerfMeterCaptureBundleExportResult(true, result.Status, result.RelativePath, "memory_snapshot_cleanup_failed", result.Bundle);
+					}
+				}
 			}
 
 			return result;
@@ -129,6 +164,11 @@ namespace SGG.PerfMeter
 
 		internal static bool EnsureRunning()
 		{
+			if (!TryReleasePendingGraphicsStateCleanup())
+			{
+				return false;
+			}
+
 			if (!TryReleasePendingCaptureCleanup())
 			{
 				return false;
@@ -194,6 +234,8 @@ namespace SGG.PerfMeter
 			runtime._cpuCoreSamplingActive = false;
 			runtime._overdrawController.Reset();
 			runtime._sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+			runtime.FinalizeGraphicsStateCollectionForShutdown();
+			runtime.FinalizeMemorySnapshotForShutdown("Runtime stopped during memory snapshot capture.");
 			runtime.FinalizeCaptureBundleForShutdown("Runtime stopped during capture.");
 			bool captureReleased = runtime.TryResetCaptureCoordinator();
 			runtime._alertEngine.Clear();
@@ -239,6 +281,8 @@ namespace SGG.PerfMeter
 
 			_instance = this;
 			EnsureCaptureCoordinator();
+			EnsureMemorySnapshotCoordinator();
+			EnsureGraphicsStateCollectionCoordinator();
 			SetRunningPlaceholders();
 		}
 
@@ -246,7 +290,16 @@ namespace SGG.PerfMeter
 		{
 			if (_instance == this)
 			{
+				if (!TryReleasePendingGraphicsStateCleanup())
+				{
+					return;
+				}
+
+				_memorySnapshotTriggerEvaluator.Reset();
+				_memoryAutomaticAttemptBlocked = false;
 				EnsureCaptureCoordinator();
+				EnsureMemorySnapshotCoordinator();
+				EnsureGraphicsStateCollectionCoordinator();
 				if (!TryResetCaptureCoordinator())
 				{
 					PerfMeterProfilerInstrumentation.Reset();
@@ -266,6 +319,10 @@ namespace SGG.PerfMeter
 
 		private void Update()
 		{
+			PerfMeterGraphicsStateCollectionStatusSnapshot graphicsStateStatus = _graphicsStateCollectionCoordinator != null
+				? _graphicsStateCollectionCoordinator.GetStatus()
+				: PerfMeterGraphicsStateCollectionStatusSnapshot.Idle;
+			_graphicsStateTraceIdForCurrentFrame = graphicsStateStatus.IsActive ? graphicsStateStatus.CaptureId : string.Empty;
 			if (_captureCleanupPending)
 			{
 				return;
@@ -276,6 +333,7 @@ namespace SGG.PerfMeter
 				PerfMeterProfilerInstrumentation.ResetFrameTimings();
 				_lastCollectorWarning = focusWarning;
 				RefreshRunningStatus(Time.frameCount, PerfMeterFrameTimingAvailability.NotCollected, focusWarning);
+				ProcessMemorySnapshotCompletion();
 				TickCaptureAndUpdateBundle();
 				return;
 			}
@@ -287,6 +345,7 @@ namespace SGG.PerfMeter
 			{
 				_lastCollectorWarning = warning;
 				RefreshRunningStatus(frame, frameTimingAvailability, warning);
+				ProcessMemorySnapshotCompletion();
 				TickCaptureAndUpdateBundle();
 				return;
 			}
@@ -299,7 +358,7 @@ namespace SGG.PerfMeter
 			_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Collect();
 			PerfMeterProfilerInstrumentation.RecordThermalAvailability(_latestPlatformTelemetry.IsAvailable && _latestPlatformTelemetry.ThermalWarningLevelAvailable);
 			PerfMeterCaptureStatusSnapshot captureStatus = _captureCoordinator != null ? _captureCoordinator.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
-			PerfMeterSessionSampleSnapshot frameSample = new PerfMeterSessionSampleSnapshot(frame, Time.realtimeSinceStartupAsDouble, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, _latestMetrics, _latestCustomMetrics, _latestPlatformTelemetry);
+			PerfMeterSessionSampleSnapshot frameSample = new PerfMeterSessionSampleSnapshot(frame, Time.realtimeSinceStartupAsDouble, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, _latestMetrics, _latestCustomMetrics, _latestPlatformTelemetry, _graphicsStateTraceIdForCurrentFrame);
 			if (CaptureBundles.IsRecordingCaptureFrame(captureStatus))
 			{
 				bool needsContext = CaptureBundles.NeedsCaptureContext(captureStatus.CaptureId);
@@ -308,11 +367,12 @@ namespace SGG.PerfMeter
 					needsContext ? PerfMeterDeviceInfoProvider.CreateSnapshot() : default,
 					needsContext ? PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null) : default,
 					needsContext ? PerfMeterRenderGraphAnalytics.GetSnapshot() : default,
+					needsContext ? PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot() : default,
 					needsContext ? Status : default);
 			}
 			else
 			{
-				_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics, _latestPlatformTelemetry);
+				_sessionRecorder.Update(_latestMetrics, frame, Time.realtimeSinceStartupAsDouble, _latestCustomMetrics, _latestPlatformTelemetry, _graphicsStateTraceIdForCurrentFrame);
 			}
 			_lastAlertClassification = !string.IsNullOrEmpty(_alertCaptureId)
 				? PerfMeterAlertClassification.Capture
@@ -323,6 +383,8 @@ namespace SGG.PerfMeter
 			_alertSampleCount++;
 			_lastCollectorWarning = warning;
 			RefreshRunningStatus(frame, frameTimingAvailability, warning);
+			ProcessMemorySnapshotCompletion();
+			EvaluateMemorySnapshotTriggers(frame);
 			TickCaptureAndUpdateBundle();
 		}
 
@@ -378,6 +440,13 @@ namespace SGG.PerfMeter
 			}
 
 			EnsureCaptureCoordinator();
+			ProcessMemorySnapshotCompletion();
+			if (!TryReleaseGraphicsStateCollectionCleanup() ||
+				(_memorySnapshotCoordinator != null && _memorySnapshotCoordinator.GetStatus(Time.realtimeSinceStartupAsDouble).IsActive) ||
+				(_graphicsStateCollectionCoordinator != null && _graphicsStateCollectionCoordinator.IsBusy))
+			{
+				return PerfMeterCaptureRequestResult.RejectedOverlap;
+			}
 			if (!_captureCoordinator.Status.IsActive && !string.IsNullOrEmpty(_alertCaptureId))
 			{
 				return PerfMeterCaptureRequestResult.RejectedOverlap;
@@ -392,6 +461,115 @@ namespace SGG.PerfMeter
 			return result;
 		}
 
+		internal PerfMeterMemorySnapshotRequestResult RequestMemorySnapshot(PerfMeterMemorySnapshotOptions options)
+		{
+			if (!CanMutateRuntime)
+			{
+				return PerfMeterMemorySnapshotRequestResult.Unavailable;
+			}
+
+			EnsureMemorySnapshotCoordinator();
+			ProcessMemorySnapshotCompletion();
+			if (!TryReleaseGraphicsStateCollectionCleanup() ||
+				(_captureCoordinator != null && _captureCoordinator.HasActiveResources) ||
+				(_graphicsStateCollectionCoordinator != null && _graphicsStateCollectionCoordinator.IsBusy) ||
+				!string.IsNullOrEmpty(_alertCaptureId))
+			{
+				return PerfMeterMemorySnapshotRequestResult.RejectedOverlap;
+			}
+
+			if (!TryDiscardCaptureBundleMemoryArtifact(true))
+			{
+				return PerfMeterMemorySnapshotRequestResult.RejectedOverlap;
+			}
+
+			double now = Time.realtimeSinceStartupAsDouble;
+			PerfMeterMemorySnapshotRequestResult result = _memorySnapshotCoordinator.Request(options, now);
+			if (result == PerfMeterMemorySnapshotRequestResult.Started ||
+				result == PerfMeterMemorySnapshotRequestResult.Unavailable ||
+				result == PerfMeterMemorySnapshotRequestResult.InsufficientDiskSpace ||
+				result == PerfMeterMemorySnapshotRequestResult.Failed)
+			{
+				PerfMeterMemorySnapshotStatusSnapshot status = _memorySnapshotCoordinator.GetStatus(now);
+				CaptureBundles.StartMemorySnapshot(options, status, _settings, GetEffectiveSettingsSnapshot(_settings));
+				_captureBundleId = CaptureBundles.GetStatus(options.CaptureId).BundleId;
+				ProcessMemorySnapshotCompletion();
+				if (!status.IsActive && CaptureBundles.GetStatus(options.CaptureId).State == PerfMeterCaptureBundleState.Recording)
+				{
+					FinalizeMemorySnapshot(status, default);
+				}
+			}
+
+			return result;
+		}
+
+		internal PerfMeterGraphicsStateCollectionRequestResult RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions options)
+		{
+			if (!CanMutateRuntime)
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.Unavailable;
+			}
+
+			EnsureGraphicsStateCollectionCoordinator();
+			ProcessMemorySnapshotCompletion();
+			if (!_sessionRecorder.IsRecording)
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.InvalidRequest;
+			}
+
+			if ((_captureCoordinator != null && _captureCoordinator.HasActiveResources) ||
+				(_memorySnapshotCoordinator != null && _memorySnapshotCoordinator.GetStatus(Time.realtimeSinceStartupAsDouble).IsActive) ||
+				!string.IsNullOrEmpty(_alertCaptureId))
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.RejectedOverlap;
+			}
+
+			PerfMeterGraphicsStateCollectionRequestResult result = _graphicsStateCollectionCoordinator.RequestTrace(options, out int generation);
+			if (result == PerfMeterGraphicsStateCollectionRequestResult.Started)
+			{
+				StartCoroutine(TickGraphicsStateTraceAtEndOfFrame(options.CaptureId, generation));
+			}
+
+			return result;
+		}
+
+		internal PerfMeterGraphicsStateCollectionRequestResult PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions options)
+		{
+			if (!CanMutateRuntime)
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.Unavailable;
+			}
+
+			EnsureGraphicsStateCollectionCoordinator();
+			ProcessMemorySnapshotCompletion();
+			if ((_captureCoordinator != null && _captureCoordinator.HasActiveResources) ||
+				(_memorySnapshotCoordinator != null && _memorySnapshotCoordinator.GetStatus(Time.realtimeSinceStartupAsDouble).IsActive) ||
+				!string.IsNullOrEmpty(_alertCaptureId))
+			{
+				return PerfMeterGraphicsStateCollectionRequestResult.RejectedOverlap;
+			}
+
+			return _graphicsStateCollectionCoordinator.Prewarm(options);
+		}
+
+		internal bool CancelGraphicsStateTrace(string captureId)
+		{
+			return CanMutateRuntime && _graphicsStateCollectionCoordinator != null && _graphicsStateCollectionCoordinator.CancelTrace(captureId);
+		}
+
+		internal bool ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions options)
+		{
+			if (!CanMutateRuntime)
+			{
+				return false;
+			}
+
+			_memorySnapshotTriggers = options;
+			_memorySnapshotTriggerEvaluator.Reset();
+			_memoryAutomaticAttemptBlocked = false;
+			return true;
+		}
+
 		internal PerfMeterCaptureRequestResult RequestCapture(PerfMeterCaptureOptions options, PerfMeterCaptureBundleOptions bundleOptions)
 		{
 			PerfMeterCaptureRequestResult result = RequestCapture(options);
@@ -402,6 +580,16 @@ namespace SGG.PerfMeter
 
 			if (result == PerfMeterCaptureRequestResult.Started || result == PerfMeterCaptureRequestResult.Unavailable || result == PerfMeterCaptureRequestResult.Failed)
 			{
+				if (!TryDiscardCaptureBundleMemoryArtifact(false))
+				{
+					if (result == PerfMeterCaptureRequestResult.Started && !_captureCoordinator.Cancel(options.CaptureId))
+					{
+						return PerfMeterCaptureRequestResult.Failed;
+					}
+
+					return PerfMeterCaptureRequestResult.RejectedOverlap;
+				}
+
 				PerfMeterCaptureStatusSnapshot captureStatus = _captureCoordinator.Status;
 				CaptureBundles.Start(options, bundleOptions, captureStatus, _settings, GetEffectiveSettingsSnapshot(_settings));
 				_captureBundleId = CaptureBundles.GetStatus(options.CaptureId).BundleId;
@@ -483,6 +671,17 @@ namespace SGG.PerfMeter
 			}
 
 			if (_captureCoordinator != null && _captureCoordinator.Status.IsActive)
+			{
+				return false;
+			}
+
+			if (_memorySnapshotCoordinator != null && _memorySnapshotCoordinator.GetStatus(Time.realtimeSinceStartupAsDouble).IsActive)
+			{
+				return false;
+			}
+
+			if (!TryReleaseGraphicsStateCollectionCleanup() ||
+				(_graphicsStateCollectionCoordinator != null && _graphicsStateCollectionCoordinator.IsBusy))
 			{
 				return false;
 			}
@@ -619,6 +818,12 @@ namespace SGG.PerfMeter
 			if (!CanMutateRuntime)
 			{
 				return;
+			}
+
+			PerfMeterGraphicsStateCollectionStatusSnapshot graphicsStateStatus = GraphicsStateCollectionStatus;
+			if (graphicsStateStatus.IsActive)
+			{
+				_graphicsStateCollectionCoordinator.CancelTrace(graphicsStateStatus.CaptureId);
 			}
 
 			_sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
@@ -1109,6 +1314,8 @@ namespace SGG.PerfMeter
 				_cpuCoreSamplingActive = false;
 				_overdrawController.Reset();
 				_sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+				FinalizeGraphicsStateCollectionForShutdown();
+				FinalizeMemorySnapshotForShutdown("Runtime disabled during memory snapshot capture.");
 				FinalizeCaptureBundleForShutdown("Runtime disabled during capture.");
 				bool captureReleased = TryResetCaptureCoordinator();
 
@@ -1221,7 +1428,20 @@ namespace SGG.PerfMeter
 				0L,
 				0d,
 				_overdrawController.State,
-				_overdrawController.Progress);
+				_overdrawController.Progress,
+				srpBatcherInstances: 0,
+				frameSampleCount: 0,
+				gpuValidSampleCount: 0,
+				averageFps: 0d,
+				onePercentLowFps: 0d,
+				pointOnePercentLowFps: 0d,
+				frameSpikeCount: 0,
+				severeFrameSpikeCount: 0,
+				shaderGpuProgramCreationValue: 0L,
+				graphicsPipelineCreationValue: 0L,
+				profilerMetricCatalogRevision: _collector.ProfilerMetricCatalogRevision,
+				shaderGpuProgramCreationCapability: _collector.GetProfilerMetricCapability(PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation),
+				graphicsPipelineCreationCapability: _collector.GetProfilerMetricCapability(PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation));
 		}
 
 		private static PerfMeterStatusSnapshot CreateStatus(PerfMeterRuntimeState state, int collectionFrame, string warning, string lastError)
@@ -1387,7 +1607,12 @@ namespace SGG.PerfMeter
 				frameStats.OnePercentLowFps,
 				frameStats.PointOnePercentLowFps,
 				frameStats.FrameSpikeCount,
-				frameStats.SevereFrameSpikeCount);
+				frameStats.SevereFrameSpikeCount,
+				metrics.ShaderGpuProgramCreationValue,
+				metrics.GraphicsPipelineCreationValue,
+				metrics.ProfilerMetricCatalogRevision,
+				metrics.ShaderGpuProgramCreationCapability,
+				metrics.GraphicsPipelineCreationCapability);
 		}
 
 		private PerfMeterMetricsSnapshot WithTargetFrameBudget(PerfMeterMetricsSnapshot metrics)
@@ -1424,7 +1649,12 @@ namespace SGG.PerfMeter
 				metrics.OnePercentLowFps,
 				metrics.PointOnePercentLowFps,
 				metrics.FrameSpikeCount,
-				metrics.SevereFrameSpikeCount);
+				metrics.SevereFrameSpikeCount,
+				metrics.ShaderGpuProgramCreationValue,
+				metrics.GraphicsPipelineCreationValue,
+				metrics.ProfilerMetricCatalogRevision,
+				metrics.ShaderGpuProgramCreationCapability,
+				metrics.GraphicsPipelineCreationCapability);
 		}
 
 		private bool TrySkipCollectionForFocusState(out string warning)
@@ -1929,6 +2159,151 @@ namespace SGG.PerfMeter
 			CaptureBundles.CompletePendingScreenshotAsUnavailable(_captureBundleId, warning);
 		}
 
+		private void EvaluateMemorySnapshotTriggers(int frame)
+		{
+			if (_memoryAutomaticAttemptBlocked || !_memorySnapshotTriggerEvaluator.TryEvaluate(_latestMetrics, _memorySnapshotTriggers, out PerfMeterMemorySnapshotTrigger trigger))
+			{
+				return;
+			}
+
+			PerfMeterMemorySnapshotOptions options = new PerfMeterMemorySnapshotOptions(
+				"memory-" + trigger.ToString().ToLowerInvariant() + "-" + frame,
+				trigger,
+				_memorySnapshotTriggers.CaptureFlags,
+				_memorySnapshotTriggers.MinimumFreeDiskBytes,
+				_memorySnapshotTriggers.CooldownSeconds);
+			PerfMeterMemorySnapshotRequestResult result = RequestMemorySnapshot(options);
+			if (result == PerfMeterMemorySnapshotRequestResult.Unavailable ||
+				result == PerfMeterMemorySnapshotRequestResult.InsufficientDiskSpace ||
+				result == PerfMeterMemorySnapshotRequestResult.InvalidRequest ||
+				result == PerfMeterMemorySnapshotRequestResult.Failed ||
+				(result == PerfMeterMemorySnapshotRequestResult.RejectedOverlap && _memorySnapshotCoordinator != null && _memorySnapshotCoordinator.CleanupBlocked))
+			{
+				_memoryAutomaticAttemptBlocked = true;
+			}
+		}
+
+		private void ProcessMemorySnapshotCompletion()
+		{
+			if (_memorySnapshotCoordinator != null && _memorySnapshotCoordinator.TryConsumeCompletion(out PerfMeterMemorySnapshotStatusSnapshot status, out PerfMeterMemorySnapshotArtifact artifact))
+			{
+				FinalizeMemorySnapshot(status, artifact);
+			}
+		}
+
+		private void FinalizeMemorySnapshot(PerfMeterMemorySnapshotStatusSnapshot status, PerfMeterMemorySnapshotArtifact artifact)
+		{
+			PerfMeterCaptureBundleStatusSnapshot bundleStatus = CaptureBundles.GetStatus(status.CaptureId);
+			if (bundleStatus.State != PerfMeterCaptureBundleState.Recording || bundleStatus.RequestedTool != PerfMeterCaptureTool.MemoryProfiler)
+			{
+				if (artifact.IsAvailable)
+				{
+					_memorySnapshotCoordinator?.DiscardArtifact(artifact.SourcePath);
+				}
+
+				return;
+			}
+
+			CaptureBundles.ObserveMemorySnapshot(
+				status,
+				artifact,
+				_sessionRecorder.GetSummary(),
+				_sessionRecorder.GetSamplesCopy(),
+				Status,
+				PerfMeterDeviceInfoProvider.CreateSnapshot(),
+				PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null),
+				PerfMeterRenderGraphAnalytics.GetSnapshot(),
+				PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot());
+		}
+
+		private void FinalizeMemorySnapshotForShutdown(string warning)
+		{
+			if (_memorySnapshotCoordinator == null)
+			{
+				return;
+			}
+
+			_memorySnapshotCoordinator.Shutdown(Time.realtimeSinceStartupAsDouble, warning);
+			ProcessMemorySnapshotCompletion();
+		}
+
+		private void FinalizeGraphicsStateCollectionForShutdown()
+		{
+			if (_graphicsStateCollectionCoordinator == null)
+			{
+				return;
+			}
+
+			_graphicsStateCollectionCoordinator.Shutdown();
+			if (_graphicsStateCollectionCoordinator.HasPendingCleanup)
+			{
+				_pendingGraphicsStateCleanup = _graphicsStateCollectionCoordinator;
+			}
+		}
+
+		private static bool TryReleasePendingGraphicsStateCleanup()
+		{
+			if (_pendingGraphicsStateCleanup == null)
+			{
+				return true;
+			}
+
+			if (!_pendingGraphicsStateCleanup.RetryPendingCleanup() || _pendingGraphicsStateCleanup.HasPendingCleanup)
+			{
+				return false;
+			}
+
+			_pendingGraphicsStateCleanup = null;
+			return true;
+		}
+
+		private System.Collections.IEnumerator TickGraphicsStateTraceAtEndOfFrame(string captureId, int generation)
+		{
+			while (CanMutateRuntime && _graphicsStateCollectionCoordinator != null)
+			{
+				if (!_graphicsStateCollectionCoordinator.IsActiveTrace(captureId, generation))
+				{
+					yield break;
+				}
+
+				yield return Application.isBatchMode ? null : _graphicsStateEndOfFrame;
+				if (_graphicsStateCollectionCoordinator.IsActiveTrace(captureId, generation))
+				{
+					_graphicsStateCollectionCoordinator.Tick(generation);
+				}
+			}
+		}
+
+		private bool TryReleaseGraphicsStateCollectionCleanup()
+		{
+			return _graphicsStateCollectionCoordinator == null ||
+				!_graphicsStateCollectionCoordinator.HasPendingCleanup ||
+				(_graphicsStateCollectionCoordinator.RetryPendingCleanup() && !_graphicsStateCollectionCoordinator.HasPendingCleanup);
+		}
+
+		private bool TryDiscardCaptureBundleMemoryArtifact(bool onlyIfCoordinatorDoesNotOwnArtifact)
+		{
+			if (!CaptureBundles.TryGetMemorySnapshotArtifact(out PerfMeterMemorySnapshotArtifact artifact))
+			{
+				return true;
+			}
+
+			if (onlyIfCoordinatorDoesNotOwnArtifact && _memorySnapshotCoordinator != null && _memorySnapshotCoordinator.HasArtifact(artifact.SourcePath))
+			{
+				return true;
+			}
+
+			bool deleted = _memorySnapshotCoordinator != null && _memorySnapshotCoordinator.HasArtifact(artifact.SourcePath)
+				? _memorySnapshotCoordinator.DiscardArtifact(artifact.SourcePath)
+				: new PerfMeterMemorySnapshotStorage(System.IO.Path.Combine(Application.dataPath, "..")).TryDelete(artifact.SourcePath);
+			if (deleted)
+			{
+				CaptureBundles.ClearMemorySnapshotArtifact(artifact.Status.CaptureId, artifact.SourcePath);
+			}
+
+			return deleted;
+		}
+
 		private void FinalizeCaptureBundle(PerfMeterCaptureStatusSnapshot captureStatus)
 		{
 			PerfMeterCaptureBundleStatusSnapshot bundleStatus = CaptureBundles.GetStatus(captureStatus.CaptureId);
@@ -1946,6 +2321,7 @@ namespace SGG.PerfMeter
 				PerfMeterDeviceInfoProvider.CreateSnapshot(),
 				PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null),
 				PerfMeterRenderGraphAnalytics.GetSnapshot(),
+				PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot(),
 				alerts,
 				alertsTruncated);
 			ScheduleCaptureBundleScreenshot();
@@ -1974,6 +2350,48 @@ namespace SGG.PerfMeter
 				_captureCoordinator = new PerfMeterCaptureCoordinator(new PerfMeterExternalGpuProfilerBackend(), new RuntimeCaptureScope(this));
 			}
 		}
+
+		private void EnsureMemorySnapshotCoordinator()
+		{
+			if (_memorySnapshotCoordinator == null)
+			{
+				_memorySnapshotCoordinator = new PerfMeterMemorySnapshotCoordinator(
+					new PerfMeterMemorySnapshotStorage(System.IO.Path.Combine(Application.dataPath, "..")));
+			}
+		}
+
+		private void EnsureGraphicsStateCollectionCoordinator()
+		{
+			if (_graphicsStateCollectionCoordinator == null)
+			{
+				_graphicsStateCollectionCoordinator = new PerfMeterGraphicsStateCollectionCoordinator(
+					new PerfMeterGraphicsStateCollectionStorage(System.IO.Path.Combine(Application.dataPath, "..")));
+			}
+		}
+
+		private PerfMeterGraphicsDiagnosticsSnapshot CreateGraphicsDiagnostics()
+		{
+			PerfMeterProfilerMetricCapabilitySnapshot shader = _latestMetrics.ShaderGpuProgramCreationCapability;
+			PerfMeterProfilerMetricCapabilitySnapshot pipeline = _latestMetrics.GraphicsPipelineCreationCapability;
+			bool available = shader.IsAvailable || pipeline.IsAvailable;
+			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot stateCollection = PerfMeterGraphicsStateCollectionBackendRegistry.GetCapabilities();
+			return new PerfMeterGraphicsDiagnosticsSnapshot(
+				available ? PerfMeterAvailability.Available : PerfMeterAvailability.Unavailable,
+				_latestMetrics.CollectionFrame,
+				_latestMetrics.ProfilerMetricCatalogRevision,
+				SystemInfo.graphicsDeviceType,
+				SystemInfo.graphicsDeviceName,
+				SystemInfo.graphicsDeviceVendor,
+				SystemInfo.graphicsDeviceVersion,
+				stateCollection.Availability,
+				stateCollection.SupportsParallelPsoCreation,
+				_latestMetrics.ShaderGpuProgramCreationValue,
+				_latestMetrics.GraphicsPipelineCreationValue,
+				shader,
+				pipeline,
+				available ? string.Empty : "Shader and graphics-pipeline creation profiler markers are unavailable on this runtime.");
+		}
+
 
 		private sealed class RuntimeCaptureScope : IPerfMeterCaptureScope
 		{

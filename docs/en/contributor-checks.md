@@ -22,3 +22,7 @@ For maintainer-only release gates or device smoke tests, use the current project
 - Do not commit generated Unity state such as `Library/`, `Logs/`, `Temp/`, `Obj/`, or local build outputs.
 - Do not commit secrets, `.env` files, device dumps, private logs, or unrelated screenshots.
 - If runtime profiler behavior changes, update tests and user-facing docs in the same PR.
+
+## Performance CI
+
+`.github/workflows/performance-ci.yml` runs the full EditMode correctness suite and isolated performance tests on Unity `6000.4.12f1` and `6000.5.6f1` for same-repository pull requests, pushes to `main`, and manual runs. Fork pull requests are skipped because GitHub does not expose Unity license secrets. CI injects `com.unity.test-framework.performance` `3.5.0` only into its ephemeral checkout; the package keeps no hard dependency. Versioned thresholds live in `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`, and CI uploads raw NUnit XML, converted JUnit XML, performance JSON, and logs.

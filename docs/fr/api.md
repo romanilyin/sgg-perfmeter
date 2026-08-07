@@ -190,3 +190,104 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Les diagnostics d'overdraw sont des modes de diagnostic explicites et peuvent ajouter du travail GPU. En HDRP, ces APIs signalent en securite unsupported state pour overdraw et heatmap, sans promettre HDRP heatmap output.
+
+## Snapshots mémoire optionnels
+
+Les snapshots mémoire sont une intégration optionnelle. Sous Unity `6000.4+`, `com.unity.memoryprofiler` `1.1.0+` active l'assembly séparée `SGG.PerfMeter.MemoryProfiler`, qui enregistre automatiquement le backend `MemoryProfiler`. L'assembly core n'a aucune dépendance obligatoire.
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+La surface publique comprend `RegisterMemorySnapshotBackend(...)`, `UnregisterMemorySnapshotBackend(...)`, `GetMemorySnapshotCapabilities()`, `GetMemorySnapshotStatus()`, `RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`, `ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)` et `GetMemorySnapshotTriggers()`. Un backend personnalisé implémente `IPerfMeterMemorySnapshotBackend`; l'assembly optionnelle fournit le backend Unity Memory Profiler.
+
+`PerfMeterMemorySnapshotOptions` utilise par défaut les flags d'objets managed/native, 1 Gio d'espace disque libre minimum et un cooldown de 300 secondes. `RequestMemorySnapshot` est manuel par défaut et renvoie des résultats explicites tels que `Started`, `AlreadyActive`, `RejectedOverlap`, `Cooldown`, `Unavailable`, `InsufficientDiskSpace`, `InvalidRequest` ou `Failed`. Les lectures ne démarrent pas le runtime; une requête valide le fait.
+
+`ConfigureMemorySnapshotTriggers` active explicitement l'heuristique de seuil de mémoire système et de croissance de fuite bornée. `GetMemorySnapshotTriggers()` est désactivé par défaut. Les requêtes déclenchées utilisent les mêmes protections single-flight, cooldown, espace libre et capture-flags que les requêtes manuelles.
+
+## Diagnostic graphique et GraphicsStateCollection
+
+Le diagnostic graphique ajoute des données aux snapshots existants. `PerformanceMeter.GetGraphicsDiagnostics()` renvoie les dernières valeurs des marqueurs de création de programmes GPU de shader et de graphics pipeline, avec le contexte de l'API graphique, la capacité PSO parallèle et la révision du catalogue de métriques du profiler.
+
+```csharp
+PerfMeterGraphicsDiagnosticsSnapshot graphics = PerformanceMeter.GetGraphicsDiagnostics();
+PerfMeterProfilerMetricCapabilitySnapshot shader = graphics.ShaderGpuProgramCreationCapability;
+PerfMeterProfilerMetricCapabilitySnapshot pipeline = graphics.GraphicsPipelineCreationCapability;
+
+UnityEngine.Debug.Log($"Shader marker: {graphics.ShaderGpuProgramCreationValue} {shader.Unit} ({shader.SampleState})");
+UnityEngine.Debug.Log($"Pipeline marker: {graphics.GraphicsPipelineCreationValue} {pipeline.Unit} ({pipeline.SampleState})");
+```
+
+Le catalogue découvre les descripteurs `ProfilerRecorder` de Unity au démarrage du runtime et lors d'un refresh/reconfigure explicite. Pour le shader, il utilise le nom exact `Shader.CreateGPUProgram` et les alias `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` et `Shader.DynamicLoadGPUProgram`. Pour le graphics pipeline, il utilise le nom exact `CreatePSO.Job`. Chaque capability conserve `Resolution` (`None`, `Exact` ou `Alias`), `ResolvedRecorderNames`, `Category`, les valeurs découvertes `Unit` et `DataType`, ainsi que `ResolvedComponentCount` et `SampledComponentCount`. `PerfMeterMetricsSnapshot` et les JSON/CSV de session contiennent les mêmes valeurs de marqueurs, métadonnées de capability et révision du catalogue.
+
+La disponibilité des marqueurs est dynamique. Utilisez `SampleState` (`Unavailable`, `AvailableNoSample` ou `AvailableSampled`) et les métadonnées de capability; une valeur nulle ne prouve pas l'absence du marqueur. Les valeurs sont des valeurs brutes du recorder et conservent l'unité découverte: elles ne sont pas universellement des counts de shaders ou de PSO et PerfMeter ne les convertit pas vers une unité commune.
+
+L'assembly optionnelle `SGG.PerfMeter.GraphicsStateCollection` cible Unity `6000.4+` et enregistre le backend Unity lorsqu'il est disponible. Elle utilise `UnityEngine.Experimental.Rendering.GraphicsStateCollection` sous Unity `6000.4` et `UnityEngine.Rendering.GraphicsStateCollection` sous Unity `6000.5+`. L'assembly core reste indépendante de ce backend.
+
+```csharp
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.25f, 240));
+
+PerfMeterGraphicsStateCollectionRequestResult request =
+    PerformanceMeter.RequestGraphicsStateTrace(
+        new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", traceFrames: 60));
+
+PerfMeterGraphicsStateCollectionStatusSnapshot status =
+    PerformanceMeter.GetGraphicsStateCollectionStatus();
+if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
+{
+    PerformanceMeter.PrewarmGraphicsStateCollection(
+        new PerfMeterGraphicsStatePrewarmOptions(status.ArtifactRelativePath));
+}
+```
+
+La surface publique de state collection comprend `RegisterGraphicsStateCollectionBackend(...)`, `UnregisterGraphicsStateCollectionBackend(...)`, `GetGraphicsStateCollectionCapabilities()`, `GetGraphicsStateCollectionStatus()`, `RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions)`, `PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions)` et `CancelGraphicsStateTrace(string captureId)`. Un backend personnalisé implémente `IPerfMeterGraphicsStateCollectionBackend` et indique ses capacités de trace/prewarm, cache-miss et PSO parallèle.
+
+`PerfMeterGraphicsStateTraceOptions` exige un `CaptureId` non vide, accepte 1–600 trace frames et utilise par défaut 60 frames et 1 Gio d'espace libre minimum. Un trace n'est valide que pendant l'enregistrement d'une session PerfMeter. Les samples de session corrélés portent l'ID de capture actif dans `GraphicsStateTraceId` (`graphics_state_trace_id` dans les exports). Les paramètres de sampling de la session contrôlent la densité des samples corrélés, pas le nombre de trace frames demandé.
+
+`PerfMeterGraphicsStateCollectionStatusSnapshot` expose `IsBusy` et `HasPendingCleanup`. `IsBusy` vaut true pendant la préparation, le trace, la fin du trace, le prewarm, le cleanup ou un cleanup en attente persisté; `HasPendingCleanup` identifie précisément un artefact owned qui attend une nouvelle tentative de cleanup. Si `PerformanceMeter.StopSession()` est appelé pendant un trace actif, il annule ce trace; la session doit donc rester en enregistrement jusqu'à la fin du trace. En cas d'échec de suppression, un sidecar owned `.delete-pending` est créé à côté de l'artefact; après un domain reload, le marker est restauré et le cleanup est retenté. Le status reste visible et busy jusqu'à la suppression de l'artefact et du marker.
+
+Le coordinator n'autorise qu'un seul graphics-state flight. Le même ID actif renvoie `AlreadyActive`; un autre trace ou prewarm pendant la préparation, le trace, la finalisation, le cleanup ou un autre domaine de capture renvoie `RejectedOverlap`. `CancelGraphicsStateTrace` ne correspond qu'à l'ID actif ou en préparation, annule le backend et supprime l'artefact owned en attente. Les échecs de cleanup restent visibles et peuvent bloquer le remplacement jusqu'à une nouvelle tentative réussie.
+
+`PerfMeterGraphicsStatePrewarmOptions` accepte uniquement un chemin `.graphicsstate` owned relatif au projet et un `MaxStateCount` optionnel de 0 à 1 000 000. Le prewarm est synchrone, conserve l'artefact et indique `CompletedWarmupCount` et `IsWarmedUp`; un progressive warmup réussi mais incomplet ajoute un warning. `TraceCacheMisses` est présent pour les backends extensibles, mais le backend Unity ne prend pas en charge l'evidence de cache-miss: cette demande renvoie `Unavailable`.
+
+## Contexte d'intégration du rendu
+
+Le snapshot additif et neutre vis-à-vis de l'intégration est disponible via les deux méthodes:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` expose `RenderPipeline`, `RenderPipelineAssetSource`, `LastObservedFrame`, `ObservationAgeFrames`, `ObservationMatchesCurrentPipeline`, `ObservedCameraEntityId`, `ObservedCameraName`, `ObservedCameraType`, `IntegrationId`, `IntegrationName`, `IntegrationVersion`, `PassKind`, `PassName`, `InjectionPoint`, `PerfMeterPassCount`, `EffectiveRenderingMode`, `GpuResidentDrawer`, `VariableRateShading`, `LegacyRenderGraph` et `Warning`. Les snapshots imbriqués GRD et VRS exposent leur availability, leurs champs de configuration/support, l'activity availability et leurs warnings.
+
+Les lectures sont sûres avant le démarrage du runtime et ne lancent pas la collecte. Un pipeline courant supporté peut être `Available` avec `State = NotObserved`; si la dernière observation appartient à une autre configuration de pipeline, `ObservationMatchesCurrentPipeline` vaut `false`, frame/age restent explicites et le warning signale des données obsolètes. Ne traitez pas ces champs obsolètes comme une observation actuelle.
+
+URP utilise le `UniversalRenderingData.renderingMode` public de la frame courante et indique les passes PerfMeter effectivement planifiés pour cette frame. HDRP indique le `CustomPass` PerfMeter réellement observé, mais le effective rendering mode est indisponible. `GpuResidentDrawer` indique le mode configuré, le support SRP/projet/compute, Forward+ et la compatibilité du mode clustered de la frame URP, ainsi que l'activité runtime globale via `IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled()`. Sous HDRP, les champs Forward+/rendering mode restent `Unknown`. `VariableRateShading` indique le support matériel faisant autorité de `SystemInfo`/`ShadingRateInfo`; configuration et activité restent `Unknown` sauf si un typed adapter les démontre.
+
+`LegacyRenderGraph` est une façade de compatibilité intégrée pour `GetRenderGraphSnapshot()`. La reflection privée/interne des passes et ressources a été supprimée: les legacy counters restent donc à `-1`. L'API publique stable de Unity n'expose pas non plus de viewer RenderGraph/CustomPass ni de pass targets; cette API ne promet pas de navigation dans l'Editor.
+
+`GpuResidentDrawer` ajoute `ProjectConfigurationAvailability`, `IsProjectConfigurationSupported`, `ComputeShaderAvailability`, `SupportsComputeShaders`, `ForwardPlusActivityAvailability`, `IsObservedForwardPlusActive`, `RenderingModeCompatibilityAvailability`, `IsRenderingModeCompatible`, `ActivitySource`, `DegradedReason` et `Effectiveness`. `PerfMeterGpuResidentDrawerReason` fournit des états de fallback structurés. `PerfMeterGpuResidentDrawerEffectivenessSnapshot` contient les draw calls/instances BRG et la provenance des capabilities Profiler; sans sample, les valeurs sont `-1` en C# et `null` en JSON. Ce sont des compteurs BatchRendererGroup agrégés, pas une preuve GRD par renderer.
+
+## Corrélation De Session
+
+`PerformanceMeter.GetSessionSummary().SessionId` est un identifiant hexadécimal en minuscules de 32 caractères. Il est créé par `StartSession`, reste stable après `StopSession`, change au démarrage d'une nouvelle session et est vide lorsqu'aucune session n'existe. Le JSON de session expose la même valeur dans le champ racine `session_id`; le CSV l'ajoute comme dernière colonne `session_id` afin de préserver les positions existantes; `perfmeter.session.summary` la renvoie comme `session_id`.

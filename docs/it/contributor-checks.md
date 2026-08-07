@@ -22,3 +22,7 @@ Per gate di release riservati ai maintainer o smoke test su dispositivo, usa la 
 - Non committare stato Unity generato come `Library/`, `Logs/`, `Temp/`, `Obj/` o output di build locali.
 - Non committare segreti, file `.env`, dump di dispositivi, log privati o screenshot non correlati.
 - Se cambia il comportamento del runtime profiler, aggiorna test e documentazione utente nella stessa PR.
+
+## CI Delle Prestazioni
+
+`.github/workflows/performance-ci.yml` esegue l'intera suite di correttezza EditMode e i test delle prestazioni isolati con Unity `6000.4.12f1` e `6000.5.6f1` per pull request dello stesso repository, push su `main` ed esecuzioni manuali. Le pull request provenienti da fork vengono ignorate perche GitHub non espone i secret della licenza Unity. La CI inietta `com.unity.test-framework.performance` `3.5.0` solo nel checkout effimero; il package non mantiene una dipendenza obbligatoria. Le soglie versionate si trovano in `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`; la CI pubblica XML NUnit grezzo, XML JUnit convertito, JSON delle prestazioni e log.

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SGG.PerfMeter.Editor;
 using SGG.PerfMeter.Editor.Setup;
 using SGG.PerfMeter.Editor.UI.Localization;
 using UnityEditor;
@@ -17,7 +18,6 @@ namespace SGG.PerfMeter.Editor.UI
 		private readonly List<RuntimeButtonBinding> _runtimeButtonBindings = new List<RuntimeButtonBinding>();
 		private readonly List<Button> _settingsButtons = new List<Button>();
 		private readonly List<SettingsButtonBinding> _settingsButtonBindings = new List<SettingsButtonBinding>();
-		private readonly List<OverlayModuleToggle> _settingsModuleToggles = new List<OverlayModuleToggle>();
 		private readonly List<OverlayPresetWidgetBinding> _presetWidgetBindings = new List<OverlayPresetWidgetBinding>();
 		private readonly HashSet<string> _selectedRendererPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		private readonly List<string> _overlayPresetChoiceLabels = new List<string>();
@@ -57,12 +57,12 @@ namespace SGG.PerfMeter.Editor.UI
 		private EnumField _initOverlayLayout;
 		private EnumField _initOverlayFontFamily;
 		private Label _settingsStatus;
+		private Label _settingsSchemaVersion;
 		private Label _settingsPath;
 		private Label _settingsResourcesPath;
 		private Toggle _settingsEnabled;
 		private Toggle _settingsAutoStart;
 		private Toggle _settingsCollectMetrics;
-		private EnumField _settingsCollectionMode;
 		private Toggle _settingsOverlayVisible;
 		private Toggle _settingsOverdrawDiagnostics;
 		private EnumField _settingsTargetFps;
@@ -70,7 +70,9 @@ namespace SGG.PerfMeter.Editor.UI
 		private EnumField _settingsOverlayTheme;
 		private EnumField _settingsOverlayLayout;
 		private EnumField _settingsOverlayFontFamily;
-		private EnumField _settingsActivePreset;
+		private Label _settingsCollectionModeStatus;
+		private Label _settingsLegacyActivePreset;
+		private Label _settingsLegacyOverlayModules;
 		private FloatField _settingsOverlayScale;
 		private FloatField _settingsOverlayOpacity;
 		private FloatField _settingsOverlayFontSize;
@@ -98,6 +100,9 @@ namespace SGG.PerfMeter.Editor.UI
 		private IntegerField _settingsOverdrawMaxFrameCount;
 		private PopupField<string> _settingsVisualPresetField;
 		private Label _visualPresetDescription;
+		private Label _visualPresetTags;
+		private Label _visualPresetSchemaVersion;
+		private Label _visualPresetReservedWidgetMetadata;
 		private Label _visualPresetSource;
 		private Label _visualPresetSummary;
 		private Label _visualPresetStatus;
@@ -117,12 +122,23 @@ namespace SGG.PerfMeter.Editor.UI
 		private Label _runtimeOverlayPreset;
 		private Label _runtimeOverlayModules;
 		private Label _runtimeTargetFps;
-		private Label _runtimeOverlayCorner;
-		private Label _runtimeOverlayTheme;
-		private Label _runtimeOverlayLayout;
-		private Label _runtimeOverlayFontFamily;
+		private Label _runtimeCurrentFps;
+		private Label _runtimeCpuFrame;
+		private Label _runtimeGpuFrame;
+		private Label _runtimeStyleSummary;
 		private Label _runtimeEditorWarnings;
 		private Label _runtimeOverdraw;
+		private Label _runtimeP3SessionState;
+		private Label _runtimeP3SessionId;
+		private Label _runtimeP3SessionSamples;
+		private Label _runtimeP3MemoryCapabilities;
+		private Label _runtimeP3MemoryStatus;
+		private Label _runtimeP3GraphicsStateCapabilities;
+		private Label _runtimeP3GraphicsStateStatus;
+		private Label _runtimeP3GraphicsMarkers;
+		private Label _runtimeP3RenderIntegration;
+		private Label _runtimeP3Grd;
+		private Label _runtimeP3Warnings;
 		private PopupField<string> _runtimeVisualPresetField;
 		private FloatField _runtimeUpdateInterval;
 		private IntegerField _runtimeGraphHistory;
@@ -130,6 +146,70 @@ namespace SGG.PerfMeter.Editor.UI
 		private VisualElement _debugWidgetRows;
 		private PopupField<string> _languageField;
 		private Label _settingsLanguageCurrent;
+
+		internal const string SettingsStatusElementName = "settings-status";
+		internal const string SettingsSchemaVersionElementName = "settings-schema-version";
+		internal const string SettingsJsonPathElementName = "settings-json-path";
+		internal const string SettingsResourcesPathElementName = "settings-resources-path";
+		internal const string SettingsPresetDescriptionElementName = "settings-preset-description";
+		internal const string SettingsPresetTagsElementName = "settings-preset-tags";
+		internal const string SettingsPresetSchemaVersionElementName = "settings-preset-schema-version";
+		internal const string SettingsPresetReservedWidgetMetadataElementName = "settings-preset-reserved-widget-metadata";
+		internal const string SettingsPresetMaxWidthElementName = "settings-preset-max-width";
+		internal const string SettingsPresetGapElementName = "settings-preset-gap";
+		internal const string SettingsWidgetCompositionElementName = "settings-widget-composition";
+		internal const string SettingsEnabledElementName = "settings-enabled";
+		internal const string SettingsAutoStartElementName = "settings-auto-start";
+		internal const string SettingsCollectMetricsElementName = "settings-collect-metrics";
+		internal const string SettingsCollectionModeElementName = "settings-collection-mode";
+		internal const string SettingsOverlayVisibleElementName = "settings-overlay-visible";
+		internal const string SettingsOverdrawDiagnosticsElementName = "settings-overdraw-diagnostics";
+		internal const string SettingsTargetFpsElementName = "settings-target-fps";
+		internal const string SettingsOverlayCornerElementName = "settings-overlay-corner";
+		internal const string SettingsOverlayThemeElementName = "settings-overlay-theme";
+		internal const string SettingsOverlayLayoutElementName = "settings-overlay-layout";
+		internal const string SettingsOverlayFontFamilyElementName = "settings-overlay-font-family";
+		internal const string SettingsOverlayScaleElementName = "settings-overlay-scale";
+		internal const string SettingsOverlayOpacityElementName = "settings-overlay-opacity";
+		internal const string SettingsOverlayFontSizeElementName = "settings-overlay-font-size";
+		internal const string SettingsOverlayRefreshIntervalElementName = "settings-overlay-refresh-interval";
+		internal const string SettingsOverlayGraphHistoryElementName = "settings-overlay-graph-history";
+		internal const string SettingsEditorWarningsEnabledElementName = "settings-editor-warnings-enabled";
+		internal const string SettingsEditorWarningCooldownElementName = "settings-editor-warning-cooldown";
+		internal const string SettingsStructuredLogCooldownElementName = "settings-structured-log-cooldown";
+		internal const string SettingsCallbackCooldownElementName = "settings-callback-cooldown";
+		internal const string SettingsAlertOverdrawThresholdElementName = "settings-alert-overdraw-threshold";
+		internal const string SettingsAlertTimingFramesElementName = "settings-alert-timing-frames";
+		internal const string SettingsAlertFpsFramesElementName = "settings-alert-fps-frames";
+		internal const string SettingsAlertGpuTimingUnavailableFramesElementName = "settings-alert-gpu-timing-unavailable-frames";
+		internal const string SettingsAlertOverdrawFramesElementName = "settings-alert-overdraw-frames";
+		internal const string SettingsSessionWarmupFramesElementName = "settings-session-warmup-frames";
+		internal const string SettingsSessionWarmupSecondsElementName = "settings-session-warmup-seconds";
+		internal const string SettingsSessionSampleIntervalElementName = "settings-session-sample-interval";
+		internal const string SettingsSessionMaxSamplesElementName = "settings-session-max-samples";
+		internal const string SettingsSessionResetOnSceneLoadElementName = "settings-session-reset-on-scene-load";
+		internal const string SettingsSessionSceneLoadIgnoreFramesElementName = "settings-session-scene-load-ignore-frames";
+		internal const string SettingsSessionSceneLoadIgnoreSecondsElementName = "settings-session-scene-load-ignore-seconds";
+		internal const string SettingsOverdrawDefaultFrameCountElementName = "settings-overdraw-default-frame-count";
+		internal const string SettingsOverdrawMaxFrameCountElementName = "settings-overdraw-max-frame-count";
+		internal const string SettingsActiveOverlayPresetElementName = "settings-active-overlay-preset";
+		internal const string SettingsLegacyActivePresetElementName = "settings-legacy-active-preset";
+		internal const string SettingsLegacyOverlayModulesElementName = "settings-legacy-overlay-modules";
+		internal const string RuntimeCollectionModeElementName = "runtime-collection-mode";
+		internal const string RuntimeCurrentFpsElementName = "runtime-current-fps";
+		internal const string RuntimeCpuFrameElementName = "runtime-cpu-frame";
+		internal const string RuntimeGpuFrameElementName = "runtime-gpu-frame";
+		internal const string RuntimeStyleSummaryElementName = "runtime-style-summary";
+		internal const string RuntimeUpdateIntervalElementName = "runtime-update-interval";
+		internal const string RuntimeGraphHistoryElementName = "runtime-graph-history";
+		internal const string RuntimeP3SessionAnalysisButtonName = "runtime-p3-session-analysis";
+		internal const string RuntimeP3ProfileAnalyzerButtonName = "runtime-p3-profile-analyzer";
+		internal const string RuntimeP3RefreshButtonName = "runtime-p3-refresh";
+		internal const string RuntimeP3StartSessionButtonName = "runtime-p3-start-session";
+		internal const string RuntimeP3StopSessionButtonName = "runtime-p3-stop-session";
+		internal const int ProjectDefaultOverdrawRequestFrameCount = 0;
+		internal const float MinPersistedSessionSampleIntervalSeconds = 0.02f;
+		internal const int MaxPersistedSessionSamples = 100000;
 
 		[MenuItem("SGG/Perfmeter/Setup")]
 		public static void Open()
@@ -139,6 +219,17 @@ namespace SGG.PerfMeter.Editor.UI
 			window.Show();
 		}
 
+		private void OnEnable()
+		{
+			EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+			EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+		}
+
+		private void OnDisable()
+		{
+			EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+		}
+
 		public void CreateGUI()
 		{
 			rootVisualElement.Clear();
@@ -146,7 +237,6 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimeButtonBindings.Clear();
 			_settingsButtons.Clear();
 			_settingsButtonBindings.Clear();
-			_settingsModuleToggles.Clear();
 			_presetWidgetBindings.Clear();
 			rootVisualElement.AddToClassList("pm-window");
 
@@ -261,7 +351,7 @@ namespace SGG.PerfMeter.Editor.UI
 			VisualElement section = AddSection(parent, "Project Settings");
 			_projectIndicator = AddStatusLine(section, out _projectStatus);
 			_frameTimingStats = AddRow(section, "Frame Timing Stats");
-			_packagePath = AddCopyRow(section, "Package Path");
+			_packagePath = AddRawCopyRow(section, "Package Path");
 
 			VisualElement actions = AddActions(section);
 			AddButton(actions, "Enable Frame Timing", () => RunAction("Enable Frame Timing", PerfMeterSetupActions.EnableFrameTimingStats));
@@ -331,23 +421,28 @@ namespace SGG.PerfMeter.Editor.UI
 
 			VisualElement statusSection = AddSection(_presetsPanel, "Project settings JSON");
 			AddInfo(statusSection, "Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.");
-			_settingsStatus = AddRow(statusSection, "Status");
-			_settingsPath = AddCopyRow(statusSection, "JSON Path");
-			_settingsResourcesPath = AddCopyRow(statusSection, "Resources Path");
+			_settingsStatus = NameElement(AddRow(statusSection, "Status"), SettingsStatusElementName);
+			_settingsSchemaVersion = NameElement(AddRawRow(statusSection, "Supported schema version"), SettingsSchemaVersionElementName);
+			_settingsSchemaVersion.text = PerfMeterSettingsStore.CurrentSchemaVersion.ToString();
+			_settingsPath = NameElement(AddRawCopyRow(statusSection, "JSON Path"), SettingsJsonPathElementName);
+			_settingsResourcesPath = NameElement(AddRawCopyRow(statusSection, "Resources Path"), SettingsResourcesPathElementName);
+			_settingsCollectionModeStatus = NameElement(AddRawRow(statusSection, "Saved collection mode (derived)"), SettingsCollectionModeElementName);
+			AddInfo(statusSection, "Legacy enum values below are read-only compatibility data. Visual presets and widget composition are authoritative for the current overlay.");
+			_settingsLegacyActivePreset = NameElement(AddRawRow(statusSection, "Legacy active preset (read-only compatibility)"), SettingsLegacyActivePresetElementName);
+			_settingsLegacyOverlayModules = NameElement(AddRawRow(statusSection, "Legacy resolved modules (read-only compatibility)"), SettingsLegacyOverlayModulesElementName);
 
 			VisualElement workModeSection = AddSection(_presetsPanel, "Work mode");
 			AddInfo(workModeSection, "Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.");
 			VisualElement workModeActions = AddActions(workModeSection);
-			_settingsEnabled = AddWorkModeToggle(workModeActions, "Enabled");
-			_settingsAutoStart = AddWorkModeToggle(workModeActions, "Auto Start");
-			_settingsCollectMetrics = AddWorkModeToggle(workModeActions, "Collect Metrics");
-			_settingsOverlayVisible = AddWorkModeToggle(workModeActions, "Show Overlay");
-			_settingsOverdrawDiagnostics = AddWorkModeToggle(workModeActions, "Overdraw diagnostics / heatmap");
-			_settingsCollectionMode = new EnumField(PerfMeterCollectionMode.Overlay);
+			_settingsEnabled = NameElement(AddWorkModeToggle(workModeActions, "Enabled"), SettingsEnabledElementName);
+			_settingsAutoStart = NameElement(AddWorkModeToggle(workModeActions, "Auto Start"), SettingsAutoStartElementName);
+			_settingsCollectMetrics = NameElement(AddWorkModeToggle(workModeActions, "Collect Metrics"), SettingsCollectMetricsElementName);
+			_settingsOverlayVisible = NameElement(AddWorkModeToggle(workModeActions, "Show Overlay"), SettingsOverlayVisibleElementName);
+			_settingsOverdrawDiagnostics = NameElement(AddWorkModeToggle(workModeActions, "Overdraw diagnostics / heatmap"), SettingsOverdrawDiagnosticsElementName);
 
 			VisualElement technicalSection = AddSection(_presetsPanel, "Technical settings");
-			_settingsTargetFps = new EnumField(PerfMeterTargetFps.Fps60);
-			VisualElement targetActions = AddChoiceGroup(technicalSection, "Target FPS");
+			_settingsTargetFps = NameElement(new EnumField(PerfMeterTargetFps.Fps60), SettingsTargetFpsElementName);
+			VisualElement targetActions = NameElement(AddChoiceGroup(technicalSection, "Target FPS"), SettingsTargetFpsElementName);
 			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps15);
 			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps30);
 			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps60);
@@ -355,54 +450,73 @@ namespace SGG.PerfMeter.Editor.UI
 			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps120);
 			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps144);
 			AddSettingsTargetFpsButton(targetActions, PerfMeterTargetFps.Fps240);
-			_settingsOverlayRefreshInterval = new FloatField();
+			_settingsOverlayRefreshInterval = NameElement(new FloatField(), SettingsOverlayRefreshIntervalElementName);
+			ConfigureFloatField(_settingsOverlayRefreshInterval, "Normalized on focus loss to the persisted overlay refresh interval range.", value => Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds, PerfMeterSettingsStore.MaxOverlayRefreshIntervalSeconds));
 			AddControlRow(technicalSection, "Update interval", _settingsOverlayRefreshInterval);
-			_settingsOverlayGraphHistory = new IntegerField();
+			_settingsOverlayGraphHistory = NameElement(new IntegerField(), SettingsOverlayGraphHistoryElementName);
+			ConfigureIntegerField(_settingsOverlayGraphHistory, "Normalized on focus loss to the persisted graph history range.", value => Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength));
 			AddControlRow(technicalSection, "Graph history samples", _settingsOverlayGraphHistory);
 
 			Foldout advanced = new Foldout { text = "Advanced technical settings", value = false };
 			technicalSection.Add(advanced);
-			_settingsEditorWarningsEnabled = new Toggle();
+			_settingsEditorWarningsEnabled = NameElement(new Toggle(), SettingsEditorWarningsEnabledElementName);
 			AddControlRow(advanced, "Warning logs in Editor", _settingsEditorWarningsEnabled);
-			_settingsEditorWarningCooldown = new FloatField();
+			_settingsEditorWarningCooldown = NameElement(new FloatField(), SettingsEditorWarningCooldownElementName);
+			ConfigureFloatField(_settingsEditorWarningCooldown, "Must be at least 1 second; normalized on focus loss.", value => Mathf.Max(1f, value));
 			AddControlRow(advanced, "Editor Warning Cooldown", _settingsEditorWarningCooldown);
-			_settingsStructuredLogCooldown = new FloatField();
+			_settingsStructuredLogCooldown = NameElement(new FloatField(), SettingsStructuredLogCooldownElementName);
+			ConfigureFloatField(_settingsStructuredLogCooldown, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0f, value));
 			AddControlRow(advanced, "Structured Log Cooldown", _settingsStructuredLogCooldown);
-			_settingsCallbackCooldown = new FloatField();
+			_settingsCallbackCooldown = NameElement(new FloatField(), SettingsCallbackCooldownElementName);
+			ConfigureFloatField(_settingsCallbackCooldown, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0f, value));
 			AddControlRow(advanced, "Callback Cooldown", _settingsCallbackCooldown);
-			_settingsAlertOverdrawThreshold = new FloatField();
+			_settingsAlertOverdrawThreshold = NameElement(new FloatField(), SettingsAlertOverdrawThresholdElementName);
+			ConfigureFloatField(_settingsAlertOverdrawThreshold, "Must be at least 0.1; normalized on focus loss.", value => Mathf.Max(0.1f, value));
 			AddControlRow(advanced, "Overdraw Alert Ratio", _settingsAlertOverdrawThreshold);
-			_settingsAlertTimingFrames = new IntegerField();
+			_settingsAlertTimingFrames = NameElement(new IntegerField(), SettingsAlertTimingFramesElementName);
+			ConfigureIntegerField(_settingsAlertTimingFrames, "Must be at least 1 frame; normalized on focus loss.", value => Mathf.Max(1, value));
 			AddControlRow(advanced, "Timing Alert Frames", _settingsAlertTimingFrames);
-			_settingsAlertFpsFrames = new IntegerField();
+			_settingsAlertFpsFrames = NameElement(new IntegerField(), SettingsAlertFpsFramesElementName);
+			ConfigureIntegerField(_settingsAlertFpsFrames, "Must be at least 1 frame; normalized on focus loss.", value => Mathf.Max(1, value));
 			AddControlRow(advanced, "FPS Alert Frames", _settingsAlertFpsFrames);
-			_settingsAlertGpuTimingUnavailableFrames = new IntegerField();
+			_settingsAlertGpuTimingUnavailableFrames = NameElement(new IntegerField(), SettingsAlertGpuTimingUnavailableFramesElementName);
+			ConfigureIntegerField(_settingsAlertGpuTimingUnavailableFrames, "Must be at least 1 frame; normalized on focus loss.", value => Mathf.Max(1, value));
 			AddControlRow(advanced, "GPU Timing Alert Frames", _settingsAlertGpuTimingUnavailableFrames);
-			_settingsAlertOverdrawFrames = new IntegerField();
+			_settingsAlertOverdrawFrames = NameElement(new IntegerField(), SettingsAlertOverdrawFramesElementName);
+			ConfigureIntegerField(_settingsAlertOverdrawFrames, "Must be at least 1 frame; normalized on focus loss.", value => Mathf.Max(1, value));
 			AddControlRow(advanced, "Overdraw Alert Frames", _settingsAlertOverdrawFrames);
-			_settingsSessionWarmupFrames = new IntegerField();
+			_settingsSessionWarmupFrames = NameElement(new IntegerField(), SettingsSessionWarmupFramesElementName);
+			ConfigureIntegerField(_settingsSessionWarmupFrames, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0, value));
 			AddControlRow(advanced, "Session Warmup Frames", _settingsSessionWarmupFrames);
-			_settingsSessionWarmupSeconds = new FloatField();
+			_settingsSessionWarmupSeconds = NameElement(new FloatField(), SettingsSessionWarmupSecondsElementName);
+			ConfigureFloatField(_settingsSessionWarmupSeconds, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0f, value));
 			AddControlRow(advanced, "Session Warmup Seconds", _settingsSessionWarmupSeconds);
-			_settingsSessionSampleInterval = new FloatField();
+			_settingsSessionSampleInterval = NameElement(new FloatField(), SettingsSessionSampleIntervalElementName);
+			ConfigureFloatField(_settingsSessionSampleInterval, "Normalized on focus loss to the persisted minimum sample interval.", NormalizeSessionSampleInterval);
 			AddControlRow(advanced, "Session Sample Interval", _settingsSessionSampleInterval);
-			_settingsSessionMaxSamples = new IntegerField();
+			_settingsSessionMaxSamples = NameElement(new IntegerField(), SettingsSessionMaxSamplesElementName);
+			ConfigureIntegerField(_settingsSessionMaxSamples, "Normalized on focus loss to the persisted session sample range.", NormalizeSessionMaxSamples);
 			AddControlRow(advanced, "Session Max Samples", _settingsSessionMaxSamples);
-			_settingsSessionResetOnSceneLoad = new Toggle();
+			_settingsSessionResetOnSceneLoad = NameElement(new Toggle(), SettingsSessionResetOnSceneLoadElementName);
 			AddControlRow(advanced, "Reset On Scene Load", _settingsSessionResetOnSceneLoad);
-			_settingsSessionSceneLoadIgnoreFrames = new IntegerField();
+			_settingsSessionSceneLoadIgnoreFrames = NameElement(new IntegerField(), SettingsSessionSceneLoadIgnoreFramesElementName);
+			ConfigureIntegerField(_settingsSessionSceneLoadIgnoreFrames, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0, value));
 			AddControlRow(advanced, "Scene Ignore Frames", _settingsSessionSceneLoadIgnoreFrames);
-			_settingsSessionSceneLoadIgnoreSeconds = new FloatField();
+			_settingsSessionSceneLoadIgnoreSeconds = NameElement(new FloatField(), SettingsSessionSceneLoadIgnoreSecondsElementName);
+			ConfigureFloatField(_settingsSessionSceneLoadIgnoreSeconds, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0f, value));
 			AddControlRow(advanced, "Scene Ignore Seconds", _settingsSessionSceneLoadIgnoreSeconds);
-			_settingsOverdrawDefaultFrameCount = new IntegerField();
+			_settingsOverdrawDefaultFrameCount = NameElement(new IntegerField(), SettingsOverdrawDefaultFrameCountElementName);
+			ConfigureIntegerField(_settingsOverdrawDefaultFrameCount, "Normalized to 1..the configured overdraw maximum on focus loss.", value => NormalizeOverdrawDefaultFrameCount(value, _settingsOverdrawMaxFrameCount));
 			AddControlRow(advanced, "Overdraw Default Frames", _settingsOverdrawDefaultFrameCount);
-			_settingsOverdrawMaxFrameCount = new IntegerField();
+			_settingsOverdrawMaxFrameCount = NameElement(new IntegerField(), SettingsOverdrawMaxFrameCountElementName);
+			ConfigureIntegerField(_settingsOverdrawMaxFrameCount, "Normalized to 1..the persisted overdraw maximum limit on focus loss.", value => NormalizeOverdrawMaxFrameCount(value, _settingsOverdrawDefaultFrameCount));
 			AddControlRow(advanced, "Overdraw Max Frames", _settingsOverdrawMaxFrameCount);
-			_settingsOverlayFontSize = new FloatField();
+			_settingsOverlayFontSize = NameElement(new FloatField(), SettingsOverlayFontSizeElementName);
+			ConfigureFloatField(_settingsOverlayFontSize, "Normalized on focus loss to the persisted overlay font size range.", value => Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayFontSize, PerfMeterSettingsStore.MaxOverlayFontSize));
 			AddControlRow(advanced, "Overlay Font Size", _settingsOverlayFontSize);
 
 			VisualElement presetSection = AddSection(_presetsPanel, "Visual preset");
-			_settingsVisualPresetField = new PopupField<string>(string.Empty, new List<string> { "No presets" }, 0);
+			_settingsVisualPresetField = NameElement(new PopupField<string>(string.Empty, new List<string> { "No presets" }, 0), SettingsActiveOverlayPresetElementName);
 			_settingsVisualPresetField.RegisterValueChangedCallback(evt => SelectOverlayPresetByLabel(evt.newValue));
 			AddControlRow(presetSection, "Preset", _settingsVisualPresetField);
 			VisualElement presetActions = AddActions(presetSection);
@@ -411,40 +525,47 @@ namespace SGG.PerfMeter.Editor.UI
 			AddButton(presetActions, "Duplicate", DuplicateCurrentOverlayPreset);
 			_visualPresetReloadButton = AddButton(presetActions, "Reload", ReloadCurrentOverlayPreset);
 			_visualPresetRevealButton = AddButton(presetActions, "Reveal JSON", RevealCurrentOverlayPreset);
-			_visualPresetDescription = AddRow(presetSection, "Description");
-			_visualPresetSource = AddCopyRow(presetSection, "Source");
-			_visualPresetSummary = AddRow(presetSection, "Summary");
-			_visualPresetStatus = AddRow(presetSection, "Status");
+			_visualPresetDescription = NameElement(AddRawRow(presetSection, "Description"), SettingsPresetDescriptionElementName);
+			_visualPresetTags = NameElement(AddRawRow(presetSection, "Tags"), SettingsPresetTagsElementName);
+			_visualPresetSchemaVersion = NameElement(AddRawRow(presetSection, "Preset schema / version"), SettingsPresetSchemaVersionElementName);
+			_visualPresetReservedWidgetMetadata = NameElement(AddRawRow(presetSection, "Reserved widget variant / height (read-only)"), SettingsPresetReservedWidgetMetadataElementName);
+			_visualPresetSource = AddRawCopyRow(presetSection, "Source");
+			_visualPresetSummary = AddRawRow(presetSection, "Summary");
+			_visualPresetStatus = AddRawRow(presetSection, "Status");
 
 			VisualElement styleSection = AddSection(_presetsPanel, "Layout & style");
-			_settingsOverlayCorner = new EnumField(PerfMeterOverlayCorner.TopRight);
+			_settingsOverlayCorner = NameElement(new EnumField(PerfMeterOverlayCorner.TopRight), SettingsOverlayCornerElementName);
 			_settingsOverlayCorner.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Anchor", _settingsOverlayCorner);
-			_settingsOverlayLayout = new EnumField(PerfMeterOverlayLayout.CompactCards);
+			_settingsOverlayLayout = NameElement(new EnumField(PerfMeterOverlayLayout.CompactCards), SettingsOverlayLayoutElementName);
 			_settingsOverlayLayout.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Layout", _settingsOverlayLayout);
-			_settingsOverlayTheme = new EnumField(PerfMeterOverlayTheme.ClassicDark);
+			_settingsOverlayTheme = NameElement(new EnumField(PerfMeterOverlayTheme.ClassicDark), SettingsOverlayThemeElementName);
 			_settingsOverlayTheme.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Theme", _settingsOverlayTheme);
-			_settingsOverlayFontFamily = new EnumField(PerfMeterOverlayFontFamily.Manrope);
+			_settingsOverlayFontFamily = NameElement(new EnumField(PerfMeterOverlayFontFamily.Manrope), SettingsOverlayFontFamilyElementName);
 			_settingsOverlayFontFamily.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Font", _settingsOverlayFontFamily);
-			_settingsOverlayScale = new FloatField();
+			_settingsOverlayScale = NameElement(new FloatField(), SettingsOverlayScaleElementName);
+			ConfigureFloatField(_settingsOverlayScale, "Normalized on focus loss to the persisted overlay scale range.", NormalizeOverlayScale);
 			_settingsOverlayScale.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Scale", _settingsOverlayScale);
-			_settingsOverlayOpacity = new FloatField();
+			_settingsOverlayOpacity = NameElement(new FloatField(), SettingsOverlayOpacityElementName);
+			ConfigureFloatField(_settingsOverlayOpacity, "Normalized on focus loss to the persisted overlay opacity range.", value => Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayOpacity, PerfMeterSettingsStore.MaxOverlayOpacity));
 			_settingsOverlayOpacity.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Opacity", _settingsOverlayOpacity);
-			_settingsPresetMaxWidth = new IntegerField();
+			_settingsPresetMaxWidth = NameElement(new IntegerField(), SettingsPresetMaxWidthElementName);
+			ConfigureIntegerField(_settingsPresetMaxWidth, "Must be at least 1 pixel; normalized on focus loss.", value => Mathf.Max(1, value));
 			_settingsPresetMaxWidth.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Max width", _settingsPresetMaxWidth);
-			_settingsPresetGap = new IntegerField();
+			_settingsPresetGap = NameElement(new IntegerField(), SettingsPresetGapElementName);
+			ConfigureIntegerField(_settingsPresetGap, "Must be zero or greater; normalized on focus loss.", value => Mathf.Max(0, value));
 			_settingsPresetGap.RegisterValueChangedCallback(_ => OnOverlayPresetStyleChanged());
 			AddControlRow(styleSection, "Gap", _settingsPresetGap);
 
 			VisualElement widgetsSection = AddSection(_presetsPanel, "Widget composition");
 			AddInfo(widgetsSection, "Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.");
-			_settingsWidgetCompositionRows = new VisualElement();
+			_settingsWidgetCompositionRows = NameElement(new VisualElement(), SettingsWidgetCompositionElementName);
 			_settingsWidgetCompositionRows.AddToClassList("pm-debug-table");
 			widgetsSection.Add(_settingsWidgetCompositionRows);
 
@@ -455,6 +576,7 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				LoadSettingsIntoControls(PerfMeterSetupActions.LoadSettings());
 				_lastActionLabel.text = PerfMeterWindowLocalization.Text("Load JSON: settings loaded from project JSON or defaults.");
+				ApplyLocalization();
 			});
 			AddButton(actions, "Save JSON", () => RunAction("Save JSON", SaveSettingsFromControls));
 			AddButton(actions, "Apply In Play Mode", () => RunAction("Apply Settings", PerfMeterSetupActions.ApplySettingsToRuntime));
@@ -468,18 +590,18 @@ namespace SGG.PerfMeter.Editor.UI
 			_runtimePlayModeInfo = new Label();
 			_runtimePlayModeInfo.AddToClassList("pm-info");
 			statusSection.Add(_runtimePlayModeInfo);
-			_runtimeStatus = AddRow(statusSection, "State");
-			_runtimeCollectionMode = AddRow(statusSection, "Collection");
-			_runtimeOverlayVisible = AddRow(statusSection, "Overlay");
-			_runtimeOverlayPreset = AddRow(statusSection, "Active visual preset");
-			_runtimeOverlayModules = AddRow(statusSection, "Resolved modules");
-			_runtimeTargetFps = AddRow(statusSection, "Target FPS");
-			_runtimeOverlayCorner = AddRow(statusSection, "Current FPS");
-			_runtimeOverlayTheme = AddRow(statusSection, "CPU frame");
-			_runtimeOverlayLayout = AddRow(statusSection, "GPU frame");
-			_runtimeOverlayFontFamily = AddRow(statusSection, "Style summary");
-			_runtimeEditorWarnings = AddRow(statusSection, "Editor Warning Logs");
-			_runtimeOverdraw = AddRow(statusSection, "Overdraw");
+			_runtimeStatus = AddRawRow(statusSection, "State");
+			_runtimeCollectionMode = NameElement(AddRawRow(statusSection, "Collection"), RuntimeCollectionModeElementName);
+			_runtimeOverlayVisible = AddRawRow(statusSection, "Overlay");
+			_runtimeOverlayPreset = AddRawRow(statusSection, "Active visual preset");
+			_runtimeOverlayModules = AddRawRow(statusSection, "Resolved modules");
+			_runtimeTargetFps = AddRawRow(statusSection, "Target FPS");
+			_runtimeCurrentFps = NameElement(AddRawRow(statusSection, "Current FPS"), RuntimeCurrentFpsElementName);
+			_runtimeCpuFrame = NameElement(AddRawRow(statusSection, "CPU frame"), RuntimeCpuFrameElementName);
+			_runtimeGpuFrame = NameElement(AddRawRow(statusSection, "GPU frame"), RuntimeGpuFrameElementName);
+			_runtimeStyleSummary = NameElement(AddRawRow(statusSection, "Style summary"), RuntimeStyleSummaryElementName);
+			_runtimeEditorWarnings = AddRawRow(statusSection, "Editor Warning Logs");
+			_runtimeOverdraw = AddRawRow(statusSection, "Overdraw");
 
 			VisualElement controlSection = AddSection(_runtimePanel, "Runtime controls");
 			VisualElement controlActions = AddActions(controlSection);
@@ -500,9 +622,11 @@ namespace SGG.PerfMeter.Editor.UI
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps120);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps144);
 			AddTargetFpsButton(targetActions, PerfMeterTargetFps.Fps240);
-			_runtimeUpdateInterval = new FloatField();
+			_runtimeUpdateInterval = NameElement(new FloatField(), RuntimeUpdateIntervalElementName);
+			ConfigureFloatField(_runtimeUpdateInterval, "Normalized on focus loss to the persisted overlay refresh interval range.", value => Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayRefreshIntervalSeconds, PerfMeterSettingsStore.MaxOverlayRefreshIntervalSeconds));
 			AddControlRow(technicalSection, "Update interval", _runtimeUpdateInterval);
-			_runtimeGraphHistory = new IntegerField();
+			_runtimeGraphHistory = NameElement(new IntegerField(), RuntimeGraphHistoryElementName);
+			ConfigureIntegerField(_runtimeGraphHistory, "Normalized on focus loss to the persisted graph history range.", value => Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength));
 			AddControlRow(technicalSection, "Graph history samples", _runtimeGraphHistory);
 			VisualElement technicalActions = AddActions(technicalSection);
 			AddRuntimeButton(technicalActions, "Apply technical overrides", () => RunRuntimeAction("Apply technical overrides", ApplyRuntimeTechnicalOverrides));
@@ -523,12 +647,38 @@ namespace SGG.PerfMeter.Editor.UI
 			AddRuntimeButton(diagnosticsActions, "Reset alert counters", () => RunRuntimeAction("Reset alert counters", RuntimePerformanceMeter.ClearAlerts));
 			AddRuntimeButton(diagnosticsActions, "Dump runtime snapshot", () => RunRuntimeAction("Dump runtime snapshot", DumpRuntimeSnapshot));
 			AddRuntimeButton(diagnosticsActions, "Copy runtime summary", () => RunRuntimeAction("Copy runtime summary", CopyRuntimeSummary));
-			AddRuntimeButton(diagnosticsActions, "Measure Overdraw 30f", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerformanceMeter.RequestOverdrawMeasurement(30)), status => status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring);
+			AddRuntimeButton(diagnosticsActions, "Measure Overdraw (project default)", () => RunRuntimeAction("Measure Overdraw", () => RuntimePerformanceMeter.RequestOverdrawMeasurement(ProjectDefaultOverdrawRequestFrameCount)), status => status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring);
 			AddRuntimeButton(diagnosticsActions, "Cancel Overdraw", () => RunRuntimeAction("Cancel Overdraw", RuntimePerformanceMeter.CancelOverdrawMeasurement), status => status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring);
 			AddRuntimeButton(diagnosticsActions, "Show Heatmap", () => RunRuntimeAction("Show Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(true)), status => status.OverdrawHeatmapVisible);
 			AddRuntimeButton(diagnosticsActions, "Hide Heatmap", () => RunRuntimeAction("Hide Heatmap", () => RuntimePerformanceMeter.SetOverdrawHeatmapVisible(false)), status => !status.OverdrawHeatmapVisible);
 
+			BuildP3IntegrationSection(_runtimePanel);
+
 			ReloadOverlayPresetList(string.Empty);
+		}
+
+		private void BuildP3IntegrationSection(VisualElement parent)
+		{
+			VisualElement section = AddSection(parent, "P3 integrations & analysis");
+			AddInfo(section, "Read-only capability and status discovery for optional P3 integrations. Memory snapshot and graphics-state trace/prewarm request parameters remain runtime-only API/MCP inputs and are not project settings.");
+			_runtimeP3SessionState = NameElement(AddRawRow(section, "Session state"), "runtime-p3-session-state");
+			_runtimeP3SessionId = NameElement(AddRawCopyRow(section, "Session ID"), "runtime-p3-session-id");
+			_runtimeP3SessionSamples = NameElement(AddRawRow(section, "Session samples"), "runtime-p3-session-samples");
+			_runtimeP3MemoryCapabilities = NameElement(AddRawRow(section, "Memory snapshot capabilities"), "runtime-p3-memory-capabilities");
+			_runtimeP3MemoryStatus = NameElement(AddRawRow(section, "Memory snapshot status"), "runtime-p3-memory-status");
+			_runtimeP3GraphicsStateCapabilities = NameElement(AddRawRow(section, "Graphics-state capabilities"), "runtime-p3-graphics-state-capabilities");
+			_runtimeP3GraphicsStateStatus = NameElement(AddRawRow(section, "Graphics-state status"), "runtime-p3-graphics-state-status");
+			_runtimeP3GraphicsMarkers = NameElement(AddRawRow(section, "Graphics creation markers"), "runtime-p3-graphics-markers");
+			_runtimeP3RenderIntegration = NameElement(AddRawRow(section, "Render integration"), "runtime-p3-render-integration");
+			_runtimeP3Grd = NameElement(AddRawRow(section, "GRD / BRG telemetry"), "runtime-p3-grd");
+			_runtimeP3Warnings = NameElement(AddRawRow(section, "Combined warnings"), "runtime-p3-warnings");
+
+			VisualElement actions = AddActions(section);
+			NameElement(AddRuntimeButton(actions, "Start Session", () => RunRuntimeAction("Start Session", RuntimePerformanceMeter.StartSession), status => status.IsSessionRecording), RuntimeP3StartSessionButtonName);
+			NameElement(AddRuntimeButton(actions, "Stop Session", () => RunRuntimeAction("Stop Session", RuntimePerformanceMeter.StopSession), status => !status.IsSessionRecording), RuntimeP3StopSessionButtonName);
+			NameElement(AddButton(actions, "Session Analysis", OpenSessionAnalysis), RuntimeP3SessionAnalysisButtonName);
+			NameElement(AddButton(actions, "Profile Analyzer", OpenProfileAnalyzer), RuntimeP3ProfileAnalyzerButtonName);
+			NameElement(AddButton(actions, "Refresh", RefreshRuntimePanelAndLocalization), RuntimeP3RefreshButtonName);
 		}
 
 		private void BuildDebugPanel()
@@ -581,7 +731,7 @@ namespace SGG.PerfMeter.Editor.UI
 			for (int i = 0; i < widgets.Count; i++)
 			{
 				DebugWidgetInfo widget = widgets[i];
-				_debugWidgetRows.Add(CreateDebugWidgetRow(widget.Source, widget.Name, widget.Type, widget.Module, widget.Details, false));
+				_debugWidgetRows.Add(CreateDebugWidgetRow(widget.Source, widget.Name, widget.Type, widget.Module, widget.Details, false, widget.PreserveIdentity));
 			}
 
 			if (projectCount == 0)
@@ -624,16 +774,16 @@ namespace SGG.PerfMeter.Editor.UI
 				string assetPath = GetScriptAssetPath(type);
 				string source = IsInsideThisPackage(type, assetPath) ? "Inside this package" : "In project";
 				string details = string.IsNullOrEmpty(assetPath) ? type.FullName : assetPath;
-				AddDebugWidget(widgets, source, type.Name, "Custom metric provider", "CustomMetrics", details);
+				AddDebugWidget(widgets, source, type.Name, "Custom metric provider", "CustomMetrics", details, true);
 			}
 		}
 
-		private static void AddDebugWidget(List<DebugWidgetInfo> widgets, string source, string name, string type, string module, string details)
+		private static void AddDebugWidget(List<DebugWidgetInfo> widgets, string source, string name, string type, string module, string details, bool preserveIdentity = false)
 		{
-			widgets.Add(new DebugWidgetInfo(source, name, type, module, details));
+			widgets.Add(new DebugWidgetInfo(source, name, type, module, details, preserveIdentity));
 		}
 
-		private static VisualElement CreateDebugWidgetRow(string source, string name, string type, string module, string details, bool header)
+		internal static VisualElement CreateDebugWidgetRow(string source, string name, string type, string module, string details, bool header, bool preserveIdentity = false)
 		{
 			VisualElement row = new VisualElement();
 			row.AddToClassList("pm-debug-row");
@@ -643,18 +793,23 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			row.Add(CreateDebugCell(source, "pm-debug-cell--source"));
-			row.Add(CreateDebugCell(name, "pm-debug-cell--name"));
+			row.Add(CreateDebugCell(name, "pm-debug-cell--name", preserveIdentity));
 			row.Add(CreateDebugCell(type, "pm-debug-cell--type"));
 			row.Add(CreateDebugCell(module, "pm-debug-cell--module"));
-			row.Add(CreateDebugCell(details, "pm-debug-cell--details"));
+			row.Add(CreateDebugCell(details, "pm-debug-cell--details", preserveIdentity));
 			return row;
 		}
 
-		private static Label CreateDebugCell(string text, string className)
+		private static Label CreateDebugCell(string text, string className, bool raw = false)
 		{
 			Label label = new Label(text);
 			label.AddToClassList("pm-debug-cell");
 			label.AddToClassList(className);
+			if (raw)
+			{
+				label.AddToClassList("pm-no-localize");
+			}
+
 			return label;
 		}
 
@@ -760,9 +915,23 @@ namespace SGG.PerfMeter.Editor.UI
 			return AddInfoRow(parent, key, value, false);
 		}
 
+		private Label AddRawRow(VisualElement parent, string key, string value = "")
+		{
+			Label label = AddRow(parent, key, value);
+			label.AddToClassList("pm-no-localize");
+			return label;
+		}
+
 		private Label AddCopyRow(VisualElement parent, string key, string value = "")
 		{
 			return AddInfoRow(parent, key, value, true);
+		}
+
+		private Label AddRawCopyRow(VisualElement parent, string key, string value = "")
+		{
+			Label label = AddCopyRow(parent, key, value);
+			label.AddToClassList("pm-no-localize");
+			return label;
 		}
 
 		private Label AddInfoRow(VisualElement parent, string key, string value, bool copyable)
@@ -782,6 +951,72 @@ namespace SGG.PerfMeter.Editor.UI
 
 			parent.Add(row);
 			return valueLabel;
+		}
+
+		private static T NameElement<T>(T element, string name) where T : VisualElement
+		{
+			element.name = name;
+			return element;
+		}
+
+		private static void ConfigureFloatField(FloatField field, string tooltip, Func<float, float> normalize)
+		{
+			field.tooltip = tooltip;
+			field.RegisterCallback<FocusOutEvent>(_ =>
+			{
+				float normalized = normalize(field.value);
+				if (!Mathf.Approximately(field.value, normalized))
+				{
+					field.value = normalized;
+				}
+			});
+		}
+
+		private static void ConfigureIntegerField(IntegerField field, string tooltip, Func<int, int> normalize)
+		{
+			field.tooltip = tooltip;
+			field.RegisterCallback<FocusOutEvent>(_ =>
+			{
+				int normalized = normalize(field.value);
+				if (field.value != normalized)
+				{
+					field.value = normalized;
+				}
+			});
+		}
+
+		internal static int NormalizeOverdrawDefaultFrameCount(int value, IntegerField maxFrameCountField)
+		{
+			int maxFrameCount = maxFrameCountField == null
+				? PerfMeterSettingsStore.MaxOverdrawFrameCountLimit
+				: Mathf.Clamp(maxFrameCountField.value, 1, PerfMeterSettingsStore.MaxOverdrawFrameCountLimit);
+			return Mathf.Clamp(value, 1, maxFrameCount);
+		}
+
+		internal static float NormalizeOverlayScale(float value)
+		{
+			return Mathf.Clamp(value, PerfMeterSettingsStore.MinOverlayScale, PerfMeterSettingsStore.MaxOverlayScale);
+		}
+
+		internal static float NormalizeSessionSampleInterval(float value)
+		{
+			return Mathf.Max(MinPersistedSessionSampleIntervalSeconds, value);
+		}
+
+		internal static int NormalizeSessionMaxSamples(int value)
+		{
+			return Mathf.Clamp(value, 1, MaxPersistedSessionSamples);
+		}
+
+		internal static int NormalizeOverdrawMaxFrameCount(int value, IntegerField defaultFrameCountField)
+		{
+			int normalized = Mathf.Clamp(value, 1, PerfMeterSettingsStore.MaxOverdrawFrameCountLimit);
+			if (defaultFrameCountField != null && defaultFrameCountField.value > normalized)
+			{
+				defaultFrameCountField.SetValueWithoutNotify(normalized);
+			}
+
+			return normalized;
 		}
 
 		private void AddControlRow(VisualElement parent, string key, VisualElement control)
@@ -923,71 +1158,14 @@ namespace SGG.PerfMeter.Editor.UI
 			return button;
 		}
 
-		private Button AddSettingsCollectionModeButton(VisualElement parent, PerfMeterCollectionMode mode)
-		{
-			return AddSettingsButton(parent, FormatEnumLabel(mode.ToString()), () => _settingsCollectionMode?.SetValueWithoutNotify(mode), () => _settingsCollectionMode != null && _settingsCollectionMode.value is PerfMeterCollectionMode value && value == mode);
-		}
-
-		private Button AddSettingsPresetButton(VisualElement parent, PerfMeterOverlayPreset preset)
-		{
-			return AddSettingsButton(parent, FormatEnumLabel(preset.ToString()), () => SetSettingsActivePreset(preset), () => _settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset value && value == preset);
-		}
-
 		private Button AddSettingsTargetFpsButton(VisualElement parent, PerfMeterTargetFps targetFps)
 		{
 			return AddSettingsButton(parent, FormatTargetFps(targetFps), () => _settingsTargetFps?.SetValueWithoutNotify(targetFps), () => _settingsTargetFps != null && _settingsTargetFps.value is PerfMeterTargetFps value && value == targetFps);
 		}
 
-		private Button AddSettingsCornerButton(VisualElement parent, PerfMeterOverlayCorner corner)
-		{
-			return AddSettingsButton(parent, FormatEnumLabel(corner.ToString()), () => _settingsOverlayCorner?.SetValueWithoutNotify(corner), () => _settingsOverlayCorner != null && _settingsOverlayCorner.value is PerfMeterOverlayCorner value && value == corner);
-		}
-
-		private Button AddSettingsLayoutButton(VisualElement parent, PerfMeterOverlayLayout layout)
-		{
-			return AddSettingsButton(parent, FormatEnumLabel(layout.ToString()), () => SetSettingsOverlayLayout(layout), () => _settingsOverlayLayout != null && _settingsOverlayLayout.value is PerfMeterOverlayLayout value && value == layout);
-		}
-
-		private Button AddSettingsThemeButton(VisualElement parent, PerfMeterOverlayTheme theme)
-		{
-			return AddSettingsButton(parent, FormatEnumLabel(theme.ToString()), () => _settingsOverlayTheme?.SetValueWithoutNotify(theme), () => _settingsOverlayTheme != null && _settingsOverlayTheme.value is PerfMeterOverlayTheme value && value == theme);
-		}
-
-		private Button AddSettingsFontButton(VisualElement parent, PerfMeterOverlayFontFamily fontFamily)
-		{
-			return AddSettingsButton(parent, FormatOverlayFontLabel(fontFamily), () => _settingsOverlayFontFamily?.SetValueWithoutNotify(fontFamily), () => _settingsOverlayFontFamily != null && _settingsOverlayFontFamily.value is PerfMeterOverlayFontFamily value && value == fontFamily);
-		}
-
 		private Button AddTargetFpsButton(VisualElement parent, PerfMeterTargetFps targetFps)
 		{
 			return AddRuntimeButton(parent, FormatTargetFps(targetFps), () => RunRuntimeAction("Target " + FormatTargetFps(targetFps), () => RuntimePerformanceMeter.SetTargetFps(targetFps)), status => status.TargetFps == targetFps);
-		}
-
-		private Button AddOverlayThemeButton(VisualElement parent, PerfMeterOverlayTheme theme)
-		{
-			return AddRuntimeButton(parent, FormatEnumLabel(theme.ToString()), () => RunRuntimeAction("Theme " + theme, () => RuntimePerformanceMeter.SetOverlayTheme(theme)), status => status.OverlayTheme == theme);
-		}
-
-		private Button AddOverlayLayoutButton(VisualElement parent, PerfMeterOverlayLayout layout)
-		{
-			return AddRuntimeButton(parent, FormatEnumLabel(layout.ToString()), () => RunRuntimeAction("Layout " + layout, () => RuntimePerformanceMeter.SetOverlayLayout(layout)), status => status.OverlayLayout == layout);
-		}
-
-		private Button AddOverlayFontButton(VisualElement parent, PerfMeterOverlayFontFamily fontFamily)
-		{
-			return AddRuntimeButton(parent, FormatOverlayFontLabel(fontFamily), () => RunRuntimeAction("Font " + fontFamily, () => RuntimePerformanceMeter.SetOverlayFontFamily(fontFamily)), status => status.OverlayFontFamily == fontFamily);
-		}
-
-		private static void HideCpuCoreModules()
-		{
-			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCores, false);
-			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreBars, false);
-			RuntimePerformanceMeter.SetOverlayModuleVisible(PerfMeterOverlayModule.CpuCoreGraphs, false);
-		}
-
-		private static void ToggleEditorWarningLogs()
-		{
-			RuntimePerformanceMeter.SetEditorWarningLogsEnabled(!RuntimePerformanceMeter.EditorWarningLogsEnabled);
 		}
 
 		private void RunAction(string title, Func<PerfMeterSetupActionResult> action)
@@ -1025,7 +1203,8 @@ namespace SGG.PerfMeter.Editor.UI
 			_rendererStatus.text = status.RendererMessage;
 			BuildRendererList(status);
 			RefreshRendererButtons(status);
-			SetIndicator(_rendererIndicator, status.AllRenderersConfigured, !status.RendererFeatureSetupSupported || (status.Renderers.Count > 0 && !status.AllRenderersConfigured));
+			bool rendererChecklistActive = IsRendererChecklistActive(status);
+			SetIndicator(_rendererIndicator, rendererChecklistActive, status.HasRendererWarnings || !status.RendererFeatureSetupSupported || (status.Renderers.Count > 0 && !status.AllRenderersConfigured));
 			RefreshSettingsPanel(status);
 			RefreshInitializationCode();
 			RefreshRuntimePanel();
@@ -1070,7 +1249,20 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			_settingsEnabled?.SetValueWithoutNotify(settings.Enabled);
 			_settingsAutoStart?.SetValueWithoutNotify(settings.AutoStart);
-			_settingsCollectionMode?.SetValueWithoutNotify(settings.CollectionMode);
+			if (_settingsCollectionModeStatus != null)
+			{
+				_settingsCollectionModeStatus.text = settings.CollectionMode.ToString();
+			}
+
+			if (_settingsLegacyActivePreset != null)
+			{
+				_settingsLegacyActivePreset.text = settings.ActivePreset;
+			}
+
+			if (_settingsLegacyOverlayModules != null)
+			{
+				_settingsLegacyOverlayModules.text = settings.OverlayModules.ToString();
+			}
 			_settingsCollectMetrics?.SetValueWithoutNotify(settings.CollectionMode != PerfMeterCollectionMode.Stopped && settings.Enabled);
 			_settingsOverlayVisible?.SetValueWithoutNotify(settings.OverlayVisible);
 			_settingsOverdrawDiagnostics?.SetValueWithoutNotify(settings.CollectionMode == PerfMeterCollectionMode.OverdrawDiagnostic);
@@ -1112,13 +1304,20 @@ namespace SGG.PerfMeter.Editor.UI
 			SetChecklist(_checklistFrameTiming, status.FrameTimingStatsEnabled ? "ok" : "warn", status.FrameTimingStatsEnabled ? "Active - Frame Timing Stats enabled." : "Next action - Enable Frame Timing before relying on GPU timing in builds.");
 			SetChecklist(_checklistPackagePath, string.IsNullOrEmpty(status.PackageAssetPath) ? "error" : "ok", string.IsNullOrEmpty(status.PackageAssetPath) ? "Blocked - PerfMeter package folder was not found." : "Active - package path " + status.PackageAssetPath + ".");
 
-			string rendererState = status.AllRenderersConfigured ? "ok" : status.Renderers.Count == 0 || !status.RendererFeatureSetupSupported ? "warn" : "warn";
-			string rendererText = status.AllRenderersConfigured
+			bool rendererChecklistActive = IsRendererChecklistActive(status);
+			string rendererState = rendererChecklistActive ? "ok" : "warn";
+			string rendererText = rendererChecklistActive
 				? "Active - " + status.InstalledRendererCount + " / " + status.Renderers.Count + " renderers have PerfMeter Render Graph feature."
 				: "Warning - " + status.RendererMessage;
 			SetChecklist(_checklistRendererFeature, rendererState, rendererText);
 
-			SetChecklist(_checklistSettingsJson, status.Settings.FileExists ? "ok" : "warn", status.Settings.FileExists ? "Active - " + status.Settings.Message : "Next action - Save JSON settings to enable zero-code setup.");
+			bool settingsJsonActive = IsSettingsJsonActive(status.Settings);
+			string settingsJsonText = settingsJsonActive
+				? "Active - " + status.Settings.Message
+				: status.Settings.FileExists
+					? "Warning - " + status.Settings.Message
+					: "Next action - Save JSON settings to enable zero-code setup.";
+			SetChecklist(_checklistSettingsJson, settingsJsonActive ? "ok" : "warn", settingsJsonText);
 
 			List<PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset> overlayPresets = PerfMeterOverlayPresetEditorUtility.LoadProjectPresets(false);
 			int validPresetCount = 0;
@@ -1131,6 +1330,16 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			SetChecklist(_checklistOverlayPresets, validPresetCount > 0 ? "ok" : "optional", validPresetCount > 0 ? "Active - " + validPresetCount + " visual overlay preset JSON file(s) available." : "Optional - run Ensure Default Overlay Presets when visual preset authoring is needed.");
+		}
+
+		internal static bool IsRendererChecklistActive(PerfMeterSetupUtility.PerfMeterSetupStatus status)
+		{
+			return status != null && status.AllRenderersConfigured && !status.HasRendererWarnings;
+		}
+
+		internal static bool IsSettingsJsonActive(PerfMeterSetupUtility.PerfMeterSettingsSetupStatus settings)
+		{
+			return settings != null && settings.FileExists && settings.Snapshot.LoadState == PerfMeterSettingsLoadState.Loaded;
 		}
 
 		private PerfMeterSetupActionResult SaveSettingsFromControls()
@@ -1281,7 +1490,7 @@ namespace SGG.PerfMeter.Editor.UI
 			return -1;
 		}
 
-		private static string GetOverlayPresetChoiceLabel(PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset asset)
+		internal static string GetOverlayPresetChoiceLabel(PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset asset)
 		{
 			if (asset == null)
 			{
@@ -1290,10 +1499,10 @@ namespace SGG.PerfMeter.Editor.UI
 
 			if (!asset.IsValid || asset.Preset == null)
 			{
-				return PerfMeterWindowLocalization.Format("Invalid: {0}", PerfMeterWindowLocalization.Text(asset.DisplayName));
+				return PerfMeterWindowLocalization.Format("Invalid: {0}", asset.DisplayName);
 			}
 
-			return PerfMeterWindowLocalization.Format("{0} [{1}]", PerfMeterWindowLocalization.Text(asset.Preset.displayName), asset.Preset.id);
+			return PerfMeterWindowLocalization.Format("{0} [{1}]", asset.Preset.displayName, asset.Preset.id);
 		}
 
 		private void SelectOverlayPresetByLabel(string label)
@@ -1304,6 +1513,7 @@ namespace SGG.PerfMeter.Editor.UI
 				{
 					LoadOverlayPresetForEditing(i);
 					ApplyEditingPresetToRuntimePreview();
+					ApplyLocalization();
 					return;
 				}
 			}
@@ -1437,6 +1647,25 @@ namespace SGG.PerfMeter.Editor.UI
 			if (_visualPresetDescription != null)
 			{
 				_visualPresetDescription.text = _editingOverlayPreset != null ? _editingOverlayPreset.description : asset != null ? asset.Warning : "No valid preset selected.";
+			}
+
+			if (_visualPresetTags != null)
+			{
+				_visualPresetTags.text = _editingOverlayPreset != null ? FormatPresetTags(_editingOverlayPreset.tags) : "Unavailable";
+			}
+
+			if (_visualPresetSchemaVersion != null)
+			{
+				_visualPresetSchemaVersion.text = _editingOverlayPreset != null
+					? FormatOptionalValue(_editingOverlayPreset.schema) + " / " + _editingOverlayPreset.version
+					: "Unavailable";
+			}
+
+			if (_visualPresetReservedWidgetMetadata != null)
+			{
+				_visualPresetReservedWidgetMetadata.text = _editingOverlayPreset != null
+					? FormatReservedWidgetMetadata(_editingOverlayPreset.widgets)
+					: "Unavailable";
 			}
 
 			if (_visualPresetSource != null)
@@ -1753,76 +1982,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 			BuildWidgetCompositionRows();
 			MarkOverlayPresetModified();
-		}
-
-		private void AddModuleToggle(VisualElement parent, PerfMeterOverlayModule module, string label)
-		{
-			Toggle toggle = new Toggle(label);
-			toggle.AddToClassList("pm-module-toggle");
-			toggle.RegisterValueChangedCallback(_ => MarkSettingsPresetCustom());
-			_settingsModuleToggles.Add(new OverlayModuleToggle(module, toggle));
-			parent.Add(toggle);
-		}
-
-		private void SetSettingsActivePreset(PerfMeterOverlayPreset preset)
-		{
-			_settingsActivePreset?.SetValueWithoutNotify(preset);
-			ApplyPresetDefaultsToSettingsControls(preset);
-		}
-
-		private void SetSettingsOverlayLayout(PerfMeterOverlayLayout layout)
-		{
-			_settingsOverlayLayout?.SetValueWithoutNotify(layout);
-			if (_settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset && preset != PerfMeterOverlayPreset.Custom && layout != PerfMeterSettingsStore.GetPresetLayout(preset))
-			{
-				_settingsActivePreset.SetValueWithoutNotify(PerfMeterOverlayPreset.Custom);
-			}
-		}
-
-		private void MarkSettingsPresetCustom()
-		{
-			if (_settingsActivePreset != null && _settingsActivePreset.value is PerfMeterOverlayPreset preset && preset != PerfMeterOverlayPreset.Custom)
-			{
-				_settingsActivePreset.SetValueWithoutNotify(PerfMeterOverlayPreset.Custom);
-				RefreshSettingsButtonStates();
-			}
-		}
-
-		private void ApplyPresetDefaultsToSettingsControls(PerfMeterOverlayPreset preset)
-		{
-			if (preset == PerfMeterOverlayPreset.Custom)
-			{
-				return;
-			}
-
-			_settingsOverlayLayout?.SetValueWithoutNotify(PerfMeterSettingsStore.GetPresetLayout(preset));
-			SetModuleToggles(PerfMeterSettingsStore.GetPresetModules(preset));
-			RefreshSettingsButtonStates();
-		}
-
-		private void SetModuleToggles(PerfMeterOverlayModule modules)
-		{
-			PerfMeterOverlayModule normalized = modules == PerfMeterOverlayModule.None ? PerfMeterOverlayModule.All : modules;
-			for (int i = 0; i < _settingsModuleToggles.Count; i++)
-			{
-				OverlayModuleToggle entry = _settingsModuleToggles[i];
-				entry.Toggle.SetValueWithoutNotify((normalized & entry.Module) != 0);
-			}
-		}
-
-		private PerfMeterOverlayModule GetSelectedOverlayModules(PerfMeterOverlayPreset activePreset)
-		{
-			PerfMeterOverlayModule modules = PerfMeterOverlayModule.None;
-			for (int i = 0; i < _settingsModuleToggles.Count; i++)
-			{
-				OverlayModuleToggle entry = _settingsModuleToggles[i];
-				if (entry.Toggle.value)
-				{
-					modules |= entry.Module;
-				}
-			}
-
-			return modules == PerfMeterOverlayModule.None ? PerfMeterSettingsStore.GetPresetModules(activePreset) : modules;
+			ApplyLocalization();
 		}
 
 		private void BuildRendererList(PerfMeterSetupUtility.PerfMeterSetupStatus status)
@@ -1909,8 +2069,14 @@ namespace SGG.PerfMeter.Editor.UI
 			textColumn.AddToClassList("pm-renderer-text");
 			Label nameLabel = new Label(string.IsNullOrEmpty(renderer.Name) ? "Renderer" : renderer.Name);
 			nameLabel.AddToClassList("pm-renderer-name");
+			if (!string.IsNullOrEmpty(renderer.Name))
+			{
+				nameLabel.AddToClassList("pm-no-localize");
+			}
+
 			Label pathLabel = new Label(assetPath);
 			pathLabel.AddToClassList("pm-renderer-path");
+			pathLabel.AddToClassList("pm-no-localize");
 			textColumn.Add(nameLabel);
 			textColumn.Add(pathLabel);
 			string details = GetRendererDetailsText(renderer);
@@ -2423,15 +2589,15 @@ namespace SGG.PerfMeter.Editor.UI
 			SetRuntimeButtonsEnabled(isPlaying);
 			RefreshRuntimeButtonStates(status);
 			_runtimeStatus.text = status.State + " / " + status.Bottleneck;
-			_runtimeCollectionMode.text = status.CollectionMode == PerfMeterCollectionMode.Stopped ? "Disabled" : "Active";
+			_runtimeCollectionMode.text = status.CollectionMode.ToString();
 			_runtimeOverlayVisible.text = status.OverlayVisible ? "Visible" : "Hidden";
 			_runtimeOverlayPreset.text = GetRuntimePresetDisplayName(status);
 			_runtimeOverlayModules.text = status.OverlayModules.ToString();
 			_runtimeTargetFps.text = FormatTargetFps(status.TargetFps) + " / " + (1000d / (int)status.TargetFps).ToString("0.00") + " ms";
-			_runtimeOverlayCorner.text = FormatRuntimeFps(metrics);
-			_runtimeOverlayTheme.text = FormatRuntimeMs(metrics.CpuFrameTimeMs);
-			_runtimeOverlayLayout.text = metrics.GpuFrameTimeAvailable ? FormatRuntimeMs(metrics.GpuFrameTimeMs) : "Unavailable";
-			_runtimeOverlayFontFamily.text = status.OverlayCorner + " · " + status.OverlayLayout + " · " + status.OverlayTheme + " · " + status.OverlayFontFamily;
+			_runtimeCurrentFps.text = FormatRuntimeFps(metrics);
+			_runtimeCpuFrame.text = FormatRuntimeMs(metrics.CpuFrameTimeMs);
+			_runtimeGpuFrame.text = metrics.GpuFrameTimeAvailable ? FormatRuntimeMs(metrics.GpuFrameTimeMs) : "Unavailable";
+			_runtimeStyleSummary.text = status.OverlayCorner + " · " + status.OverlayLayout + " · " + status.OverlayTheme + " · " + status.OverlayFontFamily;
 			_runtimeEditorWarnings.text = status.EditorWarningsEnabled ? "Enabled" : "Disabled";
 			_runtimeOverdraw.text = status.OverdrawState + " " + (status.OverdrawProgress * 100f).ToString("0") + "% / heatmap " + (status.OverdrawHeatmapVisible ? "on" : "off");
 
@@ -2447,6 +2613,238 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			SetRuntimeVisualPresetSelection(status.VisualOverlayPresetId);
+			RefreshP3IntegrationStatus(status);
+		}
+
+		private void RefreshRuntimePanelAndLocalization()
+		{
+			RefreshRuntimePanel();
+			ApplyLocalization();
+		}
+
+		private void OnPlayModeStateChanged(PlayModeStateChange state)
+		{
+			if (_runtimeStatus == null)
+			{
+				return;
+			}
+
+			RefreshRuntimePanel();
+			ApplyLocalization();
+		}
+
+		private void RefreshP3IntegrationStatus(PerfMeterStatusSnapshot runtimeStatus)
+		{
+			if (_runtimeP3SessionState == null)
+			{
+				return;
+			}
+
+			PerfMeterSessionSummarySnapshot session = RuntimePerformanceMeter.GetSessionSummary();
+			PerfMeterMemorySnapshotCapabilitiesSnapshot memoryCapabilities = RuntimePerformanceMeter.GetMemorySnapshotCapabilities();
+			PerfMeterMemorySnapshotStatusSnapshot memoryStatus = RuntimePerformanceMeter.GetMemorySnapshotStatus();
+			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot graphicsStateCapabilities = RuntimePerformanceMeter.GetGraphicsStateCollectionCapabilities();
+			PerfMeterGraphicsStateCollectionStatusSnapshot graphicsStateStatus = RuntimePerformanceMeter.GetGraphicsStateCollectionStatus();
+			PerfMeterGraphicsDiagnosticsSnapshot graphicsDiagnostics = RuntimePerformanceMeter.GetGraphicsDiagnostics();
+			PerfMeterRenderIntegrationSnapshot renderIntegration = RuntimePerformanceMeter.GetRenderIntegrationSnapshot();
+			PerfMeterGpuResidentDrawerContextSnapshot grd = renderIntegration.GpuResidentDrawer;
+
+			_runtimeP3SessionState.text = session.State.ToString();
+			_runtimeP3SessionId.text = string.IsNullOrEmpty(session.SessionId) ? "None" : session.SessionId;
+			_runtimeP3SessionSamples.text = session.State == PerfMeterSessionState.Idle
+				? "No session"
+				: session.SampleCount + " retained / " + session.DroppedSampleCount + " dropped";
+
+			_runtimeP3MemoryCapabilities.text = memoryCapabilities.Availability + " / backend " + FormatOptionalValue(memoryCapabilities.BackendId) + " / flags " + memoryCapabilities.SupportedCaptureFlags + " / max " + FormatBytes(memoryCapabilities.MaxSnapshotBytes);
+			_runtimeP3MemoryStatus.text = FormatMemorySnapshotStatus(memoryStatus);
+
+			_runtimeP3GraphicsStateCapabilities.text = FormatGraphicsStateCollectionCapabilities(graphicsStateCapabilities);
+			_runtimeP3GraphicsStateStatus.text = FormatGraphicsStateCollectionStatus(graphicsStateStatus);
+
+			_runtimeP3GraphicsMarkers.text = FormatGraphicsDiagnostics(graphicsDiagnostics);
+			_runtimeP3RenderIntegration.text = FormatRenderIntegration(renderIntegration);
+			_runtimeP3Grd.text = FormatGrdTelemetry(grd);
+
+			List<string> warnings = new List<string>();
+			AddWarning(warnings, runtimeStatus.Warning);
+			AddWarning(warnings, runtimeStatus.LastError);
+			AddWarning(warnings, session.Warning);
+			AddWarning(warnings, memoryCapabilities.Warning);
+			AddWarning(warnings, memoryStatus.Warning);
+			AddWarning(warnings, graphicsStateCapabilities.Warning);
+			AddWarning(warnings, graphicsStateStatus.Warning);
+			AddWarning(warnings, graphicsDiagnostics.Warning);
+			AddWarning(warnings, renderIntegration.Warning);
+			AddWarning(warnings, grd.Warning);
+			AddWarning(warnings, renderIntegration.VariableRateShading.Warning);
+			_runtimeP3Warnings.text = warnings.Count == 0 ? "None" : string.Join(" | ", warnings.ToArray());
+		}
+
+		private void OpenSessionAnalysis()
+		{
+			PerfMeterSessionAnalysisWindow.Open();
+			_lastActionLabel.text = "Session Analysis: opened.";
+			ApplyLocalization();
+		}
+
+		private void OpenProfileAnalyzer()
+		{
+			bool opened = PerfMeterProfileAnalyzerIntegration.TryOpenProfileAnalyzerForCurrentSession();
+			_lastActionLabel.text = opened
+				? "Profile Analyzer: opened; session ID copied to clipboard."
+				: "Profile Analyzer: unavailable; see Console warning.";
+			ApplyLocalization();
+		}
+
+		private static string FormatOptionalValue(string value)
+		{
+			return string.IsNullOrEmpty(value) ? "None" : value;
+		}
+
+		internal static string FormatMemorySnapshotStatus(PerfMeterMemorySnapshotStatusSnapshot status)
+		{
+			string text = status.State + " / " + status.Availability;
+			if (status.Availability != PerfMeterAvailability.Available)
+			{
+				return text + " / capture unavailable / cooldown unavailable";
+			}
+
+			text += " / capture " + FormatOptionalValue(status.CaptureId);
+			text += status.IsActive || status.CooldownRemainingSeconds > 0d
+				? " / cooldown " + status.CooldownRemainingSeconds.ToString("0.0") + " s"
+				: " / cooldown none";
+			return text;
+		}
+
+		internal static string FormatGraphicsStateCollectionStatus(PerfMeterGraphicsStateCollectionStatusSnapshot status)
+		{
+			string text = status.State + " / " + status.Availability;
+			if (status.Availability != PerfMeterAvailability.Available)
+			{
+				return text + " / trace progress unavailable";
+			}
+
+			return text + " / " + status.CompletedTraceFrames + "/" + status.RequestedTraceFrames + " trace frames" + (status.IsBusy ? " / busy" : string.Empty);
+		}
+
+		internal static string FormatGraphicsStateCollectionCapabilities(PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities)
+		{
+			string text = capabilities.Availability + " / backend " + FormatOptionalValue(capabilities.BackendId);
+			if (capabilities.Availability != PerfMeterAvailability.Available)
+			{
+				return text + " / trace unavailable / prewarm unavailable";
+			}
+
+			return text + " / trace " + (capabilities.SupportsTrace ? "yes" : "no") + " / prewarm " + (capabilities.SupportsPrewarm ? "yes" : "no");
+		}
+
+		internal static string FormatGraphicsDiagnostics(PerfMeterGraphicsDiagnosticsSnapshot diagnostics)
+		{
+			return diagnostics.Availability + " / shader creation " + FormatProfilerMetric(diagnostics.ShaderGpuProgramCreationCapability, diagnostics.ShaderGpuProgramCreationValue) + " / pipeline creation " + FormatProfilerMetric(diagnostics.GraphicsPipelineCreationCapability, diagnostics.GraphicsPipelineCreationValue) + " / device " + FormatOptionalValue(diagnostics.GraphicsDeviceName);
+		}
+
+		internal static string FormatRenderIntegration(PerfMeterRenderIntegrationSnapshot integration)
+		{
+			if (integration.Availability == PerfMeterAvailability.Unavailable)
+			{
+				return integration.State + " / Unavailable / integration unavailable / passes unavailable / mode unavailable";
+			}
+
+			if (integration.Availability != PerfMeterAvailability.Available)
+			{
+				return integration.State + " / " + integration.Availability + " / integration unknown / passes unavailable / mode unavailable";
+			}
+
+			if (integration.State != PerfMeterRenderIntegrationState.Observed)
+			{
+				return integration.State + " / Available / pipeline " + integration.RenderPipeline.Kind + " / no observation yet / passes unavailable / mode unavailable";
+			}
+
+			return integration.State + " / " + integration.Availability + " / " + FormatOptionalValue(integration.IntegrationName) + " / passes " + integration.PerfMeterPassCount + " / mode " + FormatOptionalValue(integration.EffectiveRenderingMode);
+		}
+
+		internal static string FormatGrdTelemetry(PerfMeterGpuResidentDrawerContextSnapshot grd)
+		{
+			string support = FormatAvailabilityBoolean(grd.SupportAvailability, grd.IsSupported, "supported", "unsupported");
+			string activity = FormatAvailabilityBoolean(grd.ActivityAvailability, grd.IsObservedActive, "active", "inactive");
+			return "support " + support + " / activity " + activity + " / BRG draws " + FormatProfilerMetric(grd.Effectiveness.BrgDrawCallsCapability, grd.Effectiveness.BrgDrawCalls) + " / instances " + FormatProfilerMetric(grd.Effectiveness.BrgInstancesCapability, grd.Effectiveness.BrgInstances) + " / reason " + grd.DegradedReason;
+		}
+
+		private static string FormatAvailabilityBoolean(PerfMeterAvailability availability, bool value, string availableText, string unavailableText)
+		{
+			switch (availability)
+			{
+				case PerfMeterAvailability.Available:
+					return value ? availableText : unavailableText;
+				case PerfMeterAvailability.Unavailable:
+					return "unavailable";
+				default:
+					return "unknown";
+			}
+		}
+
+		private static string FormatPresetTags(string[] tags)
+		{
+			if (tags == null || tags.Length == 0)
+			{
+				return "None";
+			}
+
+			List<string> values = new List<string>();
+			for (int i = 0; i < tags.Length; i++)
+			{
+				if (!string.IsNullOrWhiteSpace(tags[i]))
+				{
+					values.Add(tags[i].Trim());
+				}
+			}
+
+			return values.Count == 0 ? "None" : string.Join(", ", values.ToArray());
+		}
+
+		private static string FormatReservedWidgetMetadata(PerfMeterOverlayPresetWidgetJson[] widgets)
+		{
+			int variantCount = 0;
+			int heightCount = 0;
+			PerfMeterOverlayPresetWidgetJson[] source = widgets ?? Array.Empty<PerfMeterOverlayPresetWidgetJson>();
+			for (int index = 0; index < source.Length; index++)
+			{
+				PerfMeterOverlayPresetWidgetJson widget = source[index];
+				if (widget == null)
+				{
+					continue;
+				}
+
+				if (!string.IsNullOrEmpty(widget.variant))
+				{
+					variantCount++;
+				}
+
+				if (widget.height > 0)
+				{
+					heightCount++;
+				}
+			}
+
+			return "Reserved, read-only: variant set on " + variantCount + " widget(s), height set on " + heightCount + " widget(s).";
+		}
+
+		private static string FormatBytes(long bytes)
+		{
+			return bytes > 0L ? bytes.ToString("N0") + " bytes" : "Unavailable";
+		}
+
+		internal static string FormatProfilerMetric(PerfMeterProfilerMetricCapabilitySnapshot capability, long value)
+		{
+			return capability.SampleState == PerfMeterProfilerMetricSampleState.AvailableSampled ? value.ToString() : capability.SampleState.ToString();
+		}
+
+		private static void AddWarning(List<string> warnings, string warning)
+		{
+			if (!string.IsNullOrWhiteSpace(warning) && !warnings.Contains(warning))
+			{
+				warnings.Add(warning);
+			}
 		}
 
 		private void SetRuntimeVisualPresetSelection(string presetId)
@@ -2477,7 +2875,7 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			if (metrics.CpuFrameTimeMs <= 0d)
 			{
-				return "--";
+				return "Unavailable";
 			}
 
 			return (1000d / metrics.CpuFrameTimeMs).ToString("0.0");
@@ -2485,7 +2883,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private static string FormatRuntimeMs(double ms)
 		{
-			return ms > 0d ? ms.ToString("0.00") + " ms" : "--";
+			return ms > 0d ? ms.ToString("0.00") + " ms" : "Unavailable";
 		}
 
 		private void SetRuntimeButtonsEnabled(bool enabled)
@@ -2578,17 +2976,6 @@ namespace SGG.PerfMeter.Editor.UI
 			{
 				button.RemoveFromClassList("pm-button--active");
 			}
-		}
-
-		private static bool StatusHasModule(PerfMeterStatusSnapshot status, PerfMeterOverlayModule module)
-		{
-			return (status.OverlayModules & module) == module;
-		}
-
-		private static bool StatusHasAnyCpuCoreModule(PerfMeterStatusSnapshot status)
-		{
-			PerfMeterOverlayModule cpuCoreModules = PerfMeterOverlayModule.CpuCores | PerfMeterOverlayModule.CpuCoreBars | PerfMeterOverlayModule.CpuCoreGraphs;
-			return (status.OverlayModules & cpuCoreModules) != 0;
 		}
 
 		private static string FormatTargetFps(PerfMeterTargetFps targetFps)
@@ -2736,13 +3123,14 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private readonly struct DebugWidgetInfo
 		{
-			internal DebugWidgetInfo(string source, string name, string type, string module, string details)
+			internal DebugWidgetInfo(string source, string name, string type, string module, string details, bool preserveIdentity)
 			{
 				Source = source;
 				Name = name;
 				Type = type;
 				Module = module;
 				Details = details;
+				PreserveIdentity = preserveIdentity;
 			}
 
 			internal string Source { get; }
@@ -2750,18 +3138,7 @@ namespace SGG.PerfMeter.Editor.UI
 			internal string Type { get; }
 			internal string Module { get; }
 			internal string Details { get; }
-		}
-
-		private readonly struct OverlayModuleToggle
-		{
-			internal OverlayModuleToggle(PerfMeterOverlayModule module, Toggle toggle)
-			{
-				Module = module;
-				Toggle = toggle;
-			}
-
-			internal PerfMeterOverlayModule Module { get; }
-			internal Toggle Toggle { get; }
+			internal bool PreserveIdentity { get; }
 		}
 
 		private readonly struct OverlayPresetWidgetBinding

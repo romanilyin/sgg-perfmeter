@@ -44,6 +44,325 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void BundleExportFreezesNeutralRenderContextAdditivelyBesideLegacyContext()
+		{
+			const string captureId = "render-context";
+			PerfMeterRenderPipelineSnapshot firstPipeline = new PerfMeterRenderPipelineSnapshot(
+				PerfMeterRenderPipelineKind.Universal,
+				"Synthetic Universal Asset",
+				"SyntheticUniversalPipelineAsset",
+				"SyntheticUniversalRuntime");
+			PerfMeterGpuResidentDrawerContextSnapshot firstGrd = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"Enabled",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				"synthetic GRD activity is sampled",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				new PerfMeterGpuResidentDrawerEffectivenessSnapshot(
+					PerfMeterAvailability.Available,
+					73,
+					11,
+					22,
+					new PerfMeterProfilerMetricCapabilitySnapshot(
+						PerfMeterProfilerMetricSemantic.BrgDrawCalls,
+						PerfMeterProfilerMetricSampleState.AvailableSampled,
+						PerfMeterProfilerMetricResolution.Exact,
+						"Render",
+						"BRG Draw Calls Count",
+						"Count",
+						"Int64",
+						1,
+						1),
+					new PerfMeterProfilerMetricCapabilitySnapshot(
+						PerfMeterProfilerMetricSemantic.BrgInstances,
+						PerfMeterProfilerMetricSampleState.AvailableSampled,
+						PerfMeterProfilerMetricResolution.Alias,
+						"Render",
+						"BRG Instances Count",
+						"Count",
+						"Int64",
+						1,
+						1),
+					string.Empty),
+				PerfMeterGpuResidentDrawerReason.None);
+			PerfMeterVariableRateShadingContextSnapshot firstVrs = new PerfMeterVariableRateShadingContextSnapshot(
+				PerfMeterAvailability.Available,
+				true,
+				true,
+				true,
+				16,
+				16,
+				"R8G8B8A8_UNorm",
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				"synthetic VRS configuration and activity are unknown");
+			PerfMeterRenderGraphSnapshot firstLegacyRender = new PerfMeterRenderGraphSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderGraphState.Observed,
+				72,
+				"Legacy Camera First",
+				"Game",
+				2,
+				4,
+				3,
+				5,
+				6,
+				7,
+				"legacy-first-warning",
+				PerfMeterRenderPipelineKind.Universal,
+				"Legacy First Integration",
+				"BeforeRendering");
+			PerfMeterRenderIntegrationSnapshot firstNeutralRender = new PerfMeterRenderIntegrationSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderIntegrationState.Observed,
+				firstPipeline,
+				PerfMeterRenderPipelineAssetSource.GraphicsSettings,
+				73,
+				0,
+				true,
+				9007199254740993UL,
+				"Neutral Camera First",
+				"Game",
+				"neutral.integration.first",
+				"Neutral Integration First",
+				"1.0.0",
+				PerfMeterRenderPassKind.RenderGraphRaster,
+				"Neutral Pass First",
+				"AfterRendering",
+				3,
+				"Deferred+",
+				firstGrd,
+				firstVrs,
+				firstLegacyRender,
+				"neutral-first-warning");
+
+			PerfMeterRenderPipelineSnapshot laterPipeline = new PerfMeterRenderPipelineSnapshot(
+				PerfMeterRenderPipelineKind.HighDefinition,
+				"Later High Definition Asset",
+				"LaterHighDefinitionPipelineAsset",
+				"LaterHighDefinitionRuntime");
+			PerfMeterGpuResidentDrawerContextSnapshot laterGrd = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Unavailable,
+				"Disabled",
+				PerfMeterAvailability.Unavailable,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				"later GRD context");
+			PerfMeterVariableRateShadingContextSnapshot laterVrs = new PerfMeterVariableRateShadingContextSnapshot(
+				PerfMeterAvailability.Unavailable,
+				false,
+				false,
+				false,
+				0,
+				0,
+				string.Empty,
+				PerfMeterAvailability.Unavailable,
+				false,
+				PerfMeterAvailability.Unavailable,
+				false,
+				"later VRS context");
+			PerfMeterRenderGraphSnapshot laterLegacyRender = new PerfMeterRenderGraphSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderGraphState.Observed,
+				99,
+				"Legacy Camera Later",
+				"Preview",
+				9,
+				10,
+				8,
+				11,
+				12,
+				13,
+				"later-legacy-warning",
+				PerfMeterRenderPipelineKind.HighDefinition,
+				"Legacy Later Integration",
+				"AfterRendering");
+			PerfMeterRenderIntegrationSnapshot laterNeutralRender = new PerfMeterRenderIntegrationSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderIntegrationState.Observed,
+				laterPipeline,
+				PerfMeterRenderPipelineAssetSource.QualitySettings,
+				100,
+				0,
+				true,
+				42UL,
+				"Neutral Camera Later",
+				"Preview",
+				"neutral.integration.later",
+				"Neutral Integration Later",
+				"9.9.9",
+				PerfMeterRenderPassKind.CustomPass,
+				"Neutral Pass Later",
+				"BeforeRendering",
+				8,
+				"Forward",
+				laterGrd,
+				laterVrs,
+				laterLegacyRender,
+				"neutral-later-warning");
+
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			coordinator.Start(
+				new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1),
+				new PerfMeterCaptureBundleOptions(includeScreenshot: false),
+				CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
+			coordinator.RecordCaptureFrame(
+				new PerfMeterSessionSampleSnapshot(10, 1d, "Scene", CreateMetrics(10), Array.Empty<PerfMeterCustomMetricSnapshot>(), CreatePlatformTelemetry()),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				firstLegacyRender,
+				firstNeutralRender,
+				PerformanceMeter.GetStatus());
+			coordinator.ObserveCapture(
+				CaptureStatus(captureId, PerfMeterCaptureState.Completed),
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				laterLegacyRender,
+				laterNeutralRender,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+
+			Assert.That(coordinator.GetStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			Assert.That(data.Render.IntegrationName, Is.EqualTo("Legacy First Integration"));
+			Assert.That(data.RenderIntegration.IntegrationId, Is.EqualTo("neutral.integration.first"));
+			Assert.That(data.RenderIntegration.ObservedCameraEntityId, Is.EqualTo(9007199254740993UL));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgDrawCalls, Is.EqualTo(11));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgInstances, Is.EqualTo(22));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgDrawCallsCapability.Resolution, Is.EqualTo(PerfMeterProfilerMetricResolution.Exact));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.Effectiveness.BrgInstancesCapability.Resolution, Is.EqualTo(PerfMeterProfilerMetricResolution.Alias));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.ActivitySource, Is.EqualTo(PerfMeterGpuResidentDrawerContextSnapshot.UnityRuntimeActivitySource));
+			Assert.That(data.RenderIntegration.GpuResidentDrawer.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.None));
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/render-context-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
+			try
+			{
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+				Assert.That(result.Success, Is.True, result.Error);
+				string context = File.ReadAllText(Path.Combine(fullPath, "context.json"));
+
+				Assert.That(context, Does.Contain("\"render\":{\"availability\":\"Available\",\"state\":\"Observed\",\"pipeline\":\"Universal\",\"integration_name\":\"Legacy First Integration\",\"warning\":\"legacy-first-warning\"}"));
+				Assert.That(context, Does.Contain("\"render_integration\":{\"is_available\":true,\"availability\":\"Available\",\"state\":\"Observed\""));
+				Assert.That(context, Does.Contain("\"render_pipeline\":{\"kind\":\"Universal\",\"asset_name\":\"Synthetic Universal Asset\",\"asset_type_name\":\"SyntheticUniversalPipelineAsset\",\"runtime_type_name\":\"SyntheticUniversalRuntime\"}"));
+				Assert.That(context, Does.Contain("\"render_pipeline_asset_source\":\"GraphicsSettings\",\"last_observed_frame\":73"));
+				Assert.That(context, Does.Contain("\"observed_camera_entity_id\":\"9007199254740993\",\"observed_camera_name\":\"Neutral Camera First\",\"observed_camera_type\":\"Game\""));
+				Assert.That(context, Does.Contain("\"integration_id\":\"neutral.integration.first\""));
+				Assert.That(context, Does.Contain("\"pass_kind\":\"RenderGraphRaster\""));
+				Assert.That(context, Does.Contain("\"perfmeter_pass_count\":3,\"effective_rendering_mode\":\"Deferred+\""));
+				Assert.That(context, Does.Contain("\"gpu_resident_drawer\":{\"availability\":\"Available\",\"configured_mode\":\"Enabled\",\"is_configured\":true,\"support_availability\":\"Available\",\"is_supported\":true,\"activity_availability\":\"Available\""));
+				Assert.That(context, Does.Contain("\"activity_source\":\"IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled\""));
+				Assert.That(context, Does.Contain("\"degraded_reason\":\"None\""));
+				Assert.That(context, Does.Contain("\"effectiveness\":{\"availability\":\"Available\",\"collection_frame\":73,\"scope\":\"brg_aggregate\",\"brg_draw_calls\":11,\"brg_instances\":22"));
+				Assert.That(context, Does.Contain("\"brg_draw_calls_capability\":{\"sample_state\":\"AvailableSampled\",\"resolution\":\"Exact\""));
+				Assert.That(context, Does.Contain("\"brg_instances_capability\":{\"sample_state\":\"AvailableSampled\",\"resolution\":\"Alias\""));
+				Assert.That(context, Does.Contain("\"variable_rate_shading\":{\"availability\":\"Available\",\"supports_variable_rate_shading\":true,\"supports_per_draw_call\":true,\"supports_per_image_tile\":true,\"image_tile_width\":16,\"image_tile_height\":16,\"graphics_format\":\"R8G8B8A8_UNorm\",\"configuration_availability\":\"Unknown\",\"is_configured\":false,\"activity_availability\":\"Unknown\""));
+				Assert.That(context, Does.Contain("\"legacy_render_graph\":{\"is_available\":true,\"availability\":\"Available\",\"state\":\"Observed\",\"last_frame\":72,\"observed_camera_name\":\"Legacy Camera First\",\"observed_camera_type\":\"Game\",\"render_pipeline\":\"Universal\",\"integration_name\":\"Legacy First Integration\",\"observed_injection_point\":\"BeforeRendering\",\"perfmeter_pass_count\":2,\"registered_pass_count\":4,\"merged_pass_count\":3"));
+				Assert.That(context, Does.Not.Contain("neutral.integration.later"));
+				Assert.That(context, Does.Not.Contain("Legacy Later Integration"));
+				Assert.That(context, Does.Not.Contain("later-legacy-warning"));
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void MemorySnapshotBundleStreamsOwnedArtifactAndRecordsProvenance()
+		{
+			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+			string snapshotRoot = Path.Combine(projectRoot, PerfMeterMemorySnapshotStorage.RelativeSnapshotRoot);
+			string sourcePath = Path.Combine(snapshotRoot, ".sgg-perfmeter-memory-" + Guid.NewGuid().ToString("N") + ".snap");
+			string externalPath = Path.Combine(snapshotRoot, "unexpected-" + Guid.NewGuid().ToString("N") + ".rdc");
+			string externalRelativePath = externalPath.Substring(projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1).Replace('\\', '/');
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/memory-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(projectRoot, relativePath);
+			byte[] snapshotBytes = { 1, 2, 3, 5, 8, 13 };
+
+			try
+			{
+				Directory.CreateDirectory(snapshotRoot);
+				File.WriteAllBytes(sourcePath, snapshotBytes);
+				File.WriteAllBytes(externalPath, new byte[] { 1 });
+				PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+				PerfMeterMemorySnapshotOptions options = new PerfMeterMemorySnapshotOptions("memory-bundle");
+				PerfMeterMemorySnapshotStatusSnapshot completed = MemoryStatus(options, PerfMeterMemorySnapshotState.Completed, snapshotBytes.LongLength);
+				coordinator.StartMemorySnapshot(options, completed, default, default);
+				coordinator.ObserveMemorySnapshot(
+					completed,
+					new PerfMeterMemorySnapshotArtifact(completed, sourcePath),
+					PerfMeterSessionSummarySnapshot.Empty,
+					Array.Empty<PerfMeterSessionSampleSnapshot>(),
+					PerformanceMeter.GetStatus(),
+					PerformanceMeter.GetDeviceInfo(),
+					default,
+					PerfMeterRenderGraphSnapshot.NotObserved);
+
+				Assert.That(coordinator.GetStatus("memory-bundle").State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+				Assert.That(coordinator.GetStatus("memory-bundle").MemorySnapshotState, Is.EqualTo(PerfMeterMemorySnapshotState.Completed));
+				Assert.That(coordinator.TryGetExportData("memory-bundle", out PerfMeterCaptureBundleExportData data), Is.True);
+				PerfMeterCaptureBundleExportResult rejectedExternal = PerfMeterCaptureBundleExporter.Export(data, relativePath, externalRelativePath, false);
+				Assert.That(rejectedExternal.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+				Assert.That(rejectedExternal.Error, Is.EqualTo("external_artifact_not_supported_for_memory_snapshot"));
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(File.ReadAllBytes(Path.Combine(fullPath, "memory-snapshot.snap")), Is.EqualTo(snapshotBytes));
+				string manifest = File.ReadAllText(Path.Combine(fullPath, "manifest.json"));
+				Assert.That(manifest, Does.Contain("\"requested_tool\":\"MemoryProfiler\""));
+				Assert.That(manifest, Does.Contain("\"memory_snapshot_state\":\"Completed\""));
+				Assert.That(manifest, Does.Contain("\"memory_snapshot_requested_flags\":\"ManagedObjects, NativeObjects\""));
+				Assert.That(manifest, Does.Contain("\"contains_sensitive_memory\":true"));
+				Assert.That(manifest, Does.Contain("Memory snapshot contains sensitive process memory."));
+				Assert.That(manifest, Does.Contain(Sha256(snapshotBytes)));
+				string metadata = File.ReadAllText(Path.Combine(fullPath, "memory-snapshot.json"));
+				Assert.That(metadata, Does.Contain("\"backend_id\":\"fake.memory\""));
+				Assert.That(metadata, Does.Contain("\"capture_flags_confirmed\":false"));
+				Assert.That(metadata, Does.Contain("Memory snapshot contains sensitive process memory."));
+				Assert.That(File.Exists(Path.Combine(fullPath, "external-capture.json")), Is.False);
+				coordinator.MarkExported("memory-bundle", result.RelativePath, result.Bundle.ExternalArtifactState);
+				Assert.That(coordinator.TryGetExportData("memory-bundle", out _), Is.False);
+			}
+			finally
+			{
+				if (File.Exists(sourcePath))
+				{
+					File.Delete(sourcePath);
+				}
+
+				if (File.Exists(externalPath))
+				{
+					File.Delete(externalPath);
+				}
+
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
 		public void ScreenshotRequestStaysPendingUntilExplicitCompletion()
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("screenshot", includeScreenshot: true, completeScreenshot: false);
@@ -414,6 +733,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 				0,
 				state == PerfMeterCaptureState.Completed ? 1 : 0,
 				0,
+				string.Empty);
+		}
+
+		private static PerfMeterMemorySnapshotStatusSnapshot MemoryStatus(PerfMeterMemorySnapshotOptions options, PerfMeterMemorySnapshotState state, long sizeBytes)
+		{
+			return new PerfMeterMemorySnapshotStatusSnapshot(
+				PerfMeterAvailability.Available,
+				state,
+				options.CaptureId,
+				options.Trigger,
+				options.CaptureFlags,
+				"fake.memory",
+				"1.0",
+				1d,
+				2d,
+				sizeBytes,
+				0d,
 				string.Empty);
 		}
 

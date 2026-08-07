@@ -190,3 +190,104 @@ PerformanceMeter.SetOverdrawHeatmapVisible(true);
 ```
 
 Overdraw diagnostics 是显式 diagnostic modes，可能增加 GPU work。在 HDRP 中，这些 API 会安全报告 overdraw 和 heatmap 的 unsupported state，而不会承诺 HDRP heatmap output。
+
+## 可选内存快照
+
+内存快照是可选集成。在 Unity `6000.4+` 中安装并解析 `com.unity.memoryprofiler` `1.1.0+` 后，独立的 `SGG.PerfMeter.MemoryProfiler` assembly 会启用并自动注册 `MemoryProfiler` backend。core assembly 没有 hard dependency。
+
+```csharp
+PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities =
+    PerformanceMeter.GetMemorySnapshotCapabilities();
+
+if (capabilities.Availability == PerfMeterAvailability.Available)
+{
+    PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+        new PerfMeterMemorySnapshotOptions("memory-spike-01"));
+}
+
+PerfMeterMemorySnapshotStatusSnapshot status = PerformanceMeter.GetMemorySnapshotStatus();
+if (status.State == PerfMeterMemorySnapshotState.Completed &&
+    PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).IsExportReady)
+{
+    PerformanceMeter.ExportCaptureBundle(status.CaptureId);
+}
+```
+
+公开 API 包括 `RegisterMemorySnapshotBackend(...)`、`UnregisterMemorySnapshotBackend(...)`、`GetMemorySnapshotCapabilities()`、`GetMemorySnapshotStatus()`、`RequestMemorySnapshot(PerfMeterMemorySnapshotOptions)`、`ConfigureMemorySnapshotTriggers(PerfMeterMemorySnapshotTriggerOptions)` 和 `GetMemorySnapshotTriggers()`。自定义 backend 实现 `IPerfMeterMemorySnapshotBackend`；可选 assembly 提供 Unity Memory Profiler backend。
+
+`PerfMeterMemorySnapshotOptions` 默认使用 managed/native object flags、最低 1 GiB 可用磁盘空间和 300 秒 cooldown。`RequestMemorySnapshot` 默认执行 manual capture，并返回 `Started`、`AlreadyActive`、`RejectedOverlap`、`Cooldown`、`Unavailable`、`InsufficientDiskSpace`、`InvalidRequest` 或 `Failed` 等明确结果。读取 API 不会启动 runtime；有效 request 会启动 runtime。
+
+`ConfigureMemorySnapshotTriggers` 可显式 opt-in system-memory threshold 和 bounded leak-growth heuristic。`GetMemorySnapshotTriggers()` 默认是 disabled。trigger request 与 manual request 使用相同的 single-flight、cooldown、free-space 和 capture-flag guard。
+
+## 图形诊断与 GraphicsStateCollection
+
+图形诊断会在现有 snapshot 上增加信息。`PerformanceMeter.GetGraphicsDiagnostics()` 返回最新的 shader GPU-program creation 与 graphics-pipeline creation marker 值、graphics API context、parallel PSO capability 以及 profiler metric catalog revision。
+
+```csharp
+PerfMeterGraphicsDiagnosticsSnapshot graphics = PerformanceMeter.GetGraphicsDiagnostics();
+PerfMeterProfilerMetricCapabilitySnapshot shader = graphics.ShaderGpuProgramCreationCapability;
+PerfMeterProfilerMetricCapabilitySnapshot pipeline = graphics.GraphicsPipelineCreationCapability;
+
+UnityEngine.Debug.Log($"Shader marker: {graphics.ShaderGpuProgramCreationValue} {shader.Unit} ({shader.SampleState})");
+UnityEngine.Debug.Log($"Pipeline marker: {graphics.GraphicsPipelineCreationValue} {pipeline.Unit} ({pipeline.SampleState})");
+```
+
+catalog 会在 runtime 启动以及显式 refresh/reconfigure 时 discovery Unity `ProfilerRecorder` descriptor。shader semantic 使用 exact name `Shader.CreateGPUProgram` 和 aliases `Shader.CreateGPUPrograms`、`Shader.CompileGPUProgram`、`Shader.DynamicLoadGPUProgram`。graphics-pipeline semantic 使用 exact name `CreatePSO.Job`。每个 capability 都保留 `Resolution`（`None`、`Exact`、`Alias`）、`ResolvedRecorderNames`、`Category`、发现的 `Unit`、`DataType`、`ResolvedComponentCount` 和 `SampledComponentCount`。`PerfMeterMetricsSnapshot` 及 session JSON/CSV 也包含相同的 marker value、capability metadata 和 catalog revision。
+
+marker availability 是动态的。请使用 `SampleState`（`Unavailable`、`AvailableNoSample`、`AvailableSampled`）以及 capability metadata；值为 0 并不表示 marker 不存在。值是 recorder 的 raw value，并保留发现的 unit；它们不一定是 shader 或 PSO count，PerfMeter 也不会转换到统一 unit。
+
+可选的 `SGG.PerfMeter.GraphicsStateCollection` assembly 面向 Unity `6000.4+`，在可用时自动注册 Unity backend。Unity `6000.4` 使用 `UnityEngine.Experimental.Rendering.GraphicsStateCollection`，Unity `6000.5+` 使用 `UnityEngine.Rendering.GraphicsStateCollection`。core assembly 不依赖该 backend。
+
+```csharp
+PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0f, 0.25f, 240));
+
+PerfMeterGraphicsStateCollectionRequestResult request =
+    PerformanceMeter.RequestGraphicsStateTrace(
+        new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", traceFrames: 60));
+
+PerfMeterGraphicsStateCollectionStatusSnapshot status =
+    PerformanceMeter.GetGraphicsStateCollectionStatus();
+if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
+{
+    PerformanceMeter.PrewarmGraphicsStateCollection(
+        new PerfMeterGraphicsStatePrewarmOptions(status.ArtifactRelativePath));
+}
+```
+
+公开的 state-collection API 包括 `RegisterGraphicsStateCollectionBackend(...)`、`UnregisterGraphicsStateCollectionBackend(...)`、`GetGraphicsStateCollectionCapabilities()`、`GetGraphicsStateCollectionStatus()`、`RequestGraphicsStateTrace(PerfMeterGraphicsStateTraceOptions)`、`PrewarmGraphicsStateCollection(PerfMeterGraphicsStatePrewarmOptions)` 和 `CancelGraphicsStateTrace(string captureId)`。自定义 backend 实现 `IPerfMeterGraphicsStateCollectionBackend`，并报告 trace/prewarm、cache-miss 和 parallel-PSO capability。
+
+`PerfMeterGraphicsStateTraceOptions` 要求非空 `CaptureId`，接受 1–600 个 trace frames，默认使用 60 frames 和最低 1 GiB 可用磁盘空间。trace 只有在 PerfMeter session 正在 recording 时才有效。correlated session sample 会在 `GraphicsStateTraceId`（export 中为 `graphics_state_trace_id`）中携带 active capture ID。session sampling 设置控制 correlated sample 的密度，不改变请求的 trace frame 数。
+
+`PerfMeterGraphicsStateCollectionStatusSnapshot` 暴露 `IsBusy` 和 `HasPendingCleanup`。`IsBusy` 在 preparation、trace、trace 结束、prewarm、cleanup 或 persisted pending cleanup 期间保持 true；`HasPendingCleanup` 专门表示正在等待 cleanup retry 的 owned artifact。如果在 active trace 期间调用 `PerformanceMeter.StopSession()`，trace 会被取消，因此 session 必须持续 recording 到 trace 完成。owned artifact 删除失败时，会在旁边创建 owned `.delete-pending` sidecar marker；domain reload 后 marker 会恢复并重新尝试 cleanup。在 artifact 和 marker 清理完成前，status 会保持可见且 busy。
+
+coordinator 一次只允许一个 graphics-state flight。相同的 active ID 返回 `AlreadyActive`；在 preparation、trace、finalization、cleanup 或其他 capture domain 中请求另一个 trace/prewarm 会返回 `RejectedOverlap`。`CancelGraphicsStateTrace` 只匹配 active/preparing ID，会 cancel backend 并删除 pending owned artifact。cleanup failure 会保持可见，并可能阻止替换直到重试成功。
+
+`PerfMeterGraphicsStatePrewarmOptions` 只接受 owned project-relative `.graphicsstate` path，以及 0–1,000,000 范围内可选的 `MaxStateCount`。prewarm 是 synchronous 的，会保留 artifact，并报告 `CompletedWarmupCount` 与 `IsWarmedUp`；成功但 incomplete 的 progressive warmup 会带有 warning。`TraceCacheMisses` 为可扩展 backend 保留，但 Unity backend 不支持 cache-miss evidence，因此指定后返回 `Unavailable`。
+
+## Render integration context
+
+integration-neutral 的 additive snapshot 可通过以下两个 method 读取：
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` 提供 `RenderPipeline`、`RenderPipelineAssetSource`、`LastObservedFrame`、`ObservationAgeFrames`、`ObservationMatchesCurrentPipeline`、`ObservedCameraEntityId`、`ObservedCameraName`、`ObservedCameraType`、`IntegrationId`、`IntegrationName`、`IntegrationVersion`、`PassKind`、`PassName`、`InjectionPoint`、`PerfMeterPassCount`、`EffectiveRenderingMode`、`GpuResidentDrawer`、`VariableRateShading`、`LegacyRenderGraph` 和 `Warning`。嵌套的 GRD/VRS snapshot 包含 availability、configuration/support fields、activity availability 和 warning。
+
+read 在 runtime 启动前也是安全的，不会启动 collection。支持的 current pipeline 可能是 `Available`，但 `State = NotObserved`；如果最新 observation 属于其他 pipeline configuration，`ObservationMatchesCurrentPipeline` 会是 `false`，frame/age 和 warning 会明确标记 stale 数据。不要把 stale fields 当作 current observation。
+
+URP 使用 public current-frame `UniversalRenderingData.renderingMode`，并报告该 frame 实际 schedule 的 PerfMeter passes。HDRP 报告实际观察到的 PerfMeter `CustomPass`，但 effective rendering mode 不可用。`GpuResidentDrawer` 报告 configured mode、SRP/project/compute support、当前 URP frame 的 Forward+ 与 clustered-mode compatibility，以及来自 `IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled()` 的 global runtime activity。HDRP 的 Forward+/rendering-mode fields 保持 `Unknown`。`VariableRateShading` 报告 `SystemInfo`/`ShadingRateInfo` 的 authoritative hardware support。
+
+`LegacyRenderGraph` 是嵌入的 compatibility facade，用于 `GetRenderGraphSnapshot()`。private/internal pass/resource reflection 已移除，因此 legacy counters 保持 `-1`。Unity stable public API 也不提供 RenderGraph/CustomPass viewer 或 pass targets；此 API 不提供也不承诺 Editor navigation。
+
+`GpuResidentDrawer` 还包含 `ProjectConfigurationAvailability`、`IsProjectConfigurationSupported`、`ComputeShaderAvailability`、`SupportsComputeShaders`、`ForwardPlusActivityAvailability`、`IsObservedForwardPlusActive`、`RenderingModeCompatibilityAvailability`、`IsRenderingModeCompatible`、`ActivitySource`、`DegradedReason` 和 `Effectiveness`。`PerfMeterGpuResidentDrawerReason` 提供 structured fallback states。`PerfMeterGpuResidentDrawerEffectivenessSnapshot` 保存 BRG draw calls/instances 和 Profiler capability provenance；未采样值在 C# 中为 `-1`，在 JSON 中为 `null`。这些是 BatchRendererGroup aggregate counters，不是逐 renderer 的 authoritative GRD evidence。
+
+## 会话关联
+
+`PerformanceMeter.GetSessionSummary().SessionId` 是 32 个小写 hexadecimal 字符组成的 identifier。它由 `StartSession` 创建，在 `StopSession` 后保持不变，在新 session 启动时更改，并在没有 session 时为空。session JSON 在根级 `session_id` 字段公开相同值；CSV 将其追加为最后一个 `session_id` column，以保留现有 column 位置；`perfmeter.session.summary` 也返回 `session_id`。

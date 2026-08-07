@@ -1,0 +1,114 @@
+.pm-analysis-list {
+    height: 320px;
+    min-height: 160px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.pm-analysis-horizontal-scroll {
+    height: 360px;
+    min-height: 360px;
+}
+
+.pm-analysis-table--timeline {
+    width: 1240px;
+    min-width: 1240px;
+}
+
+.pm-analysis-table--budget {
+    width: 840px;
+    min-width: 840px;
+}
+
+.pm-analysis-table--scope {
+    width: 1790px;
+    min-width: 1790px;
+}
+
+.pm-analysis-cell--timeline-0,
+.pm-analysis-cell--budget-0,
+.pm-analysis-cell--scope-2 {
+    width: 70px;
+    min-width: 70px;
+}
+
+.pm-analysis-cell--timeline-1,
+.pm-analysis-cell--budget-1,
+.pm-analysis-cell--scope-5 {
+    width: 90px;
+    min-width: 90px;
+}
+
+.pm-analysis-cell--timeline-2,
+.pm-analysis-cell--budget-2,
+.pm-analysis-cell--scope-0,
+.pm-analysis-cell--scope-1 {
+    width: 150px;
+    min-width: 150px;
+}
+
+.pm-analysis-cell--timeline-3,
+.pm-analysis-cell--timeline-4,
+.pm-analysis-cell--timeline-5,
+.pm-analysis-cell--timeline-6,
+.pm-analysis-cell--timeline-7,
+.pm-analysis-cell--timeline-8,
+.pm-analysis-cell--budget-4,
+.pm-analysis-cell--budget-5,
+.pm-analysis-cell--budget-6,
+.pm-analysis-cell--scope-6,
+.pm-analysis-cell--scope-7,
+.pm-analysis-cell--scope-8,
+.pm-analysis-cell--scope-9,
+.pm-analysis-cell--scope-10,
+.pm-analysis-cell--scope-11 {
+    width: 90px;
+    min-width: 90px;
+}
+
+.pm-analysis-cell--timeline-9,
+.pm-analysis-cell--budget-3,
+.pm-analysis-cell--budget-7 {
+    width: 125px;
+    min-width: 125px;
+}
+
+.pm-analysis-cell--timeline-10,
+.pm-analysis-cell--scope-13 {
+    width: 100px;
+    min-width: 100px;
+}
+
+.pm-analysis-cell--timeline-11,
+.pm-analysis-cell--scope-14 {
+    width: 160px;
+    min-width: 160px;
+}
+
+.pm-analysis-cell--scope-3 {
+    width: 120px;
+    min-width: 120px;
+}
+
+.pm-analysis-cell--scope-4 {
+    width: 170px;
+    min-width: 170px;
+}
+
+.pm-analysis-cell--scope-12 {
+    width: 230px;
+    min-width: 230px;
+}
+
+.pm-analysis-inspector {
+    min-width: 420px;
+}
+
+.pm-analysis-copy-button {
+    min-width: 70px;
+    width: 70px;
+}
+
+.pm-analysis-empty {
+    margin-bottom: 4px;
+}

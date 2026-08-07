@@ -1,0 +1,198 @@
+name: PerfMeter Performance CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/performance-ci.yml"
+      - "Assets/Scripts/SGG.PerfMeter/Runtime/**"
+      - "Assets/Scripts/SGG.PerfMeter/Editor/**"
+      - "Assets/Scripts/SGG.PerfMeter/Tests/EditMode/**"
+      - "Assets/Scripts/SGG.PerfMeter/Tests/Performance/**"
+      - "Assets/Scripts/SGG.PerfMeter/package.json"
+      - "Packages/**"
+      - "ProjectSettings/ProjectVersion.txt"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/performance-ci.yml"
+      - "Assets/Scripts/SGG.PerfMeter/Runtime/**"
+      - "Assets/Scripts/SGG.PerfMeter/Editor/**"
+      - "Assets/Scripts/SGG.PerfMeter/Tests/EditMode/**"
+      - "Assets/Scripts/SGG.PerfMeter/Tests/Performance/**"
+      - "Assets/Scripts/SGG.PerfMeter/package.json"
+      - "Packages/**"
+      - "ProjectSettings/ProjectVersion.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  performance:
+    name: EditMode performance (${{ matrix.unityVersion }})
+    # Enable only after the repository has GameCI-compatible Unity credentials.
+    # GitHub does not expose Unity license secrets to pull requests from forks.
+    if: vars.PERFMETER_UNITY_CI_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        unityVersion:
+          - "6000.4.12f1"
+          - "6000.5.6f1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Inject performance package into ephemeral project
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const packageName = 'com.unity.test-framework.performance';
+          const packageVersion = '3.5.0';
+          const manifestPath = 'Packages/manifest.json';
+          function readJson(filePath) {
+            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          }
+
+          function writeJson(filePath, value) {
+            fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n');
+          }
+
+          const manifest = readJson(manifestPath);
+          manifest.dependencies = manifest.dependencies || {};
+          manifest.dependencies[packageName] = packageVersion;
+          writeJson(manifestPath, manifest);
+
+          fs.mkdirSync('TestResults', { recursive: true });
+          NODE
+
+      - name: Run PerfMeter correctness tests
+        uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: editmode
+          artifactsPath: TestResults
+          customParameters: >-
+            -assemblyNames SGG.PerfMeter.Tests.EditMode
+            -testResults TestResults/unity-correctness-${{ matrix.unityVersion }}.xml
+            -logFile TestResults/unity-correctness-${{ matrix.unityVersion }}.log
+
+      - name: Run PerfMeter performance tests
+        uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: editmode
+          artifactsPath: TestResults
+          customParameters: >-
+            -testFilter PerfMeterPerformanceTests
+            -testResults TestResults/unity-performance-${{ matrix.unityVersion }}.xml
+            -perfTestResults TestResults/performance-${{ matrix.unityVersion }}.json
+            -logFile TestResults/unity-performance-${{ matrix.unityVersion }}.log
+
+      - name: Validate and convert test artifacts
+        if: always()
+        shell: bash
+        env:
+          UNITY_VERSION: ${{ matrix.unityVersion }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          version = os.environ["UNITY_VERSION"]
+          results = pathlib.Path("TestResults")
+          unity_paths = (
+              results / f"unity-correctness-{version}.xml",
+              results / f"unity-performance-{version}.xml",
+          )
+          performance_path = results / f"performance-{version}.json"
+          errors = []
+
+          def junit_time(value):
+              return (value or "0").replace(",", ".")
+
+          for unity_path in unity_paths:
+              if not unity_path.is_file() or unity_path.stat().st_size == 0:
+                  errors.append(f"Required test artifact is missing or empty: {unity_path}")
+                  continue
+
+              unity_root = ET.parse(unity_path).getroot()
+              unity_cases = unity_root.findall(".//test-case")
+              if not unity_cases:
+                  errors.append(f"Unity test result has no test cases: {unity_path}")
+                  continue
+
+              skipped_results = {"Skipped", "Inconclusive", "Ignored", "Explicit"}
+              failed_cases = [case for case in unity_cases if case.get("result") == "Failed" and case.get("label") != "Error"]
+              error_cases = [case for case in unity_cases if case.get("result") not in skipped_results | {"Passed", "Failed"} or case.get("label") == "Error"]
+              junit_suite = ET.Element("testsuite", {
+                  "name": unity_root.get("name", unity_path.stem),
+                  "tests": str(len(unity_cases)),
+                  "failures": str(len(failed_cases)),
+                  "errors": str(len(error_cases)),
+                  "skipped": str(sum(case.get("result") in skipped_results for case in unity_cases)),
+                  "time": junit_time(unity_root.get("duration")),
+              })
+              for unity_case in unity_cases:
+                  junit_case = ET.SubElement(junit_suite, "testcase", {
+                      "name": unity_case.get("name", "unknown"),
+                      "classname": unity_case.get("classname", unity_case.get("fullname", "")),
+                      "time": junit_time(unity_case.get("duration")),
+                  })
+                  result = unity_case.get("result")
+                  if unity_case in failed_cases or unity_case in error_cases:
+                      element_name = "error" if unity_case in error_cases else "failure"
+                      failure = ET.SubElement(junit_case, element_name)
+                      failure_node = unity_case.find("failure")
+                      if failure_node is not None:
+                          failure.text = "\n".join(failure_node.itertext())
+                  elif result in skipped_results:
+                      ET.SubElement(junit_case, "skipped")
+
+              junit_path = results / f"junit-{unity_path.stem}.xml"
+              ET.ElementTree(junit_suite).write(junit_path, encoding="utf-8", xml_declaration=True)
+              if junit_path.stat().st_size == 0:
+                  errors.append(f"JUnit conversion produced an empty artifact: {junit_path}")
+
+          if not performance_path.is_file() or performance_path.stat().st_size == 0:
+              errors.append(f"Required performance artifact is missing or empty: {performance_path}")
+          else:
+              with performance_path.open(encoding="utf-8") as stream:
+                  json.load(stream)
+
+          if errors:
+              raise SystemExit("\n".join(errors))
+          PY
+
+      - name: Upload Unity and performance artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: perfmeter-performance-${{ matrix.unityVersion }}
+          if-no-files-found: error
+          path: |
+            TestResults/**/*.xml
+            TestResults/**/*.json
+            TestResults/**/*.log
+            artifacts/**/*.xml
+            artifacts/**/*.json
+            artifacts/**/*.log
+            Logs/**/*.log

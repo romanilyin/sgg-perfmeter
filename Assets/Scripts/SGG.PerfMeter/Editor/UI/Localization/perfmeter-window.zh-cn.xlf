@@ -47,9 +47,13 @@
       <trans-unit id="label.status"><source>Status</source><target>状态</target></trans-unit>
       <trans-unit id="label.json_path"><source>JSON Path</source><target>JSON 路径</target></trans-unit>
       <trans-unit id="label.resources_path"><source>Resources Path</source><target>Resources 路径</target></trans-unit>
+      <trans-unit id="label.supported_schema_version"><source>Supported schema version</source><target>支持的 schema 版本</target></trans-unit>
+      <trans-unit id="label.saved_collection_mode"><source>Saved collection mode (derived)</source><target>已保存的采集模式（派生）</target></trans-unit>
       <trans-unit id="label.enabled"><source>Enabled</source><target>已启用</target></trans-unit>
       <trans-unit id="label.auto_start"><source>Auto Start</source><target>自动启动</target></trans-unit>
       <trans-unit id="label.collection_mode"><source>Collection Mode</source><target>采集模式</target></trans-unit>
+      <trans-unit id="label.legacy_active_preset"><source>Legacy active preset (read-only compatibility)</source><target>旧版活动预设（只读兼容性）</target></trans-unit>
+      <trans-unit id="label.legacy_resolved_modules"><source>Legacy resolved modules (read-only compatibility)</source><target>旧版已解析模块（只读兼容性）</target></trans-unit>
       <trans-unit id="label.active_preset"><source>Active Preset</source><target>活动预设</target></trans-unit>
       <trans-unit id="label.modules"><source>Modules</source><target>模块</target></trans-unit>
       <trans-unit id="label.overlay_scale"><source>Overlay Scale</source><target>叠加层缩放</target></trans-unit>
@@ -114,6 +118,7 @@
       <trans-unit id="button.cpu_core_graphs"><source>CPU Core Graphs</source><target>CPU 核心图表</target></trans-unit>
       <trans-unit id="button.hide_cpu_cores"><source>Hide CPU Cores</source><target>隐藏 CPU 核心</target></trans-unit>
       <trans-unit id="button.measure_overdraw"><source>Measure Overdraw 30f</source><target>测量 过度绘制 30f</target></trans-unit>
+      <trans-unit id="button.measure_overdraw_project_default"><source>Measure Overdraw (project default)</source><target>测量过度绘制（项目默认值）</target></trans-unit>
       <trans-unit id="button.cancel_overdraw"><source>Cancel Overdraw</source><target>取消 过度绘制</target></trans-unit>
       <trans-unit id="button.show_heatmap"><source>Show Heatmap</source><target>显示 热力图</target></trans-unit>
       <trans-unit id="button.hide_heatmap"><source>Hide Heatmap</source><target>隐藏 热力图</target></trans-unit>
@@ -243,10 +248,13 @@
       <trans-unit id="section.runtime_technical_overrides"><source>Runtime technical overrides</source><target>运行时技术覆盖</target></trans-unit>
       <trans-unit id="section.runtime_visual_preset"><source>Runtime visual preset</source><target>运行时视觉预设</target></trans-unit>
       <trans-unit id="section.diagnostics_actions"><source>Diagnostics / actions</source><target>诊断 / 操作</target></trans-unit>
+      <trans-unit id="section.p3_integrations"><source>P3 integrations &amp; analysis</source><target>P3 集成与分析</target></trans-unit>
       <trans-unit id="info.setup_checklist"><source>Required checks connect PerfMeter to Unity/URP runtime data. Recommended and optional checks improve diagnostics but are not needed for every project.</source><target>必需检查会将 PerfMeter 连接到 Unity/URP 运行时 数据。建议和可选检查可改进诊断，但并非每个项目都需要。</target></trans-unit>
       <trans-unit id="info.project_settings_json"><source>Technical/project settings are stored in Resources JSON. Visual overlay presets are project JSON files under Assets/SGG PerfMeter/Presets/Overlay and are baked into Resources JSON for builds.</source><target>技术/项目设置存储在 Resources JSON 中。Visual 叠加层预设是 Assets/SGG PerfMeter/Presets/Overlay 下的项目 JSON 文件，并会为构建烘焙进 Resources JSON。</target></trans-unit>
       <trans-unit id="info.work_mode"><source>Work mode controls whether PerfMeter runs and what it collects. Visual presets below only change overlay appearance and composition.</source><target>工作模式控制 PerfMeter 是否运行以及采集哪些内容。下面的视觉预设只会改变 叠加层 的外观和组合。</target></trans-unit>
       <trans-unit id="info.widget_composition"><source>Only high-level preset blocks are shown here. Low-level rows and metric bars remain visible in Debug.</source><target>此处只显示高级预设块。低级行和指标条仍可在 调试 中看到。</target></trans-unit>
+      <trans-unit id="info.legacy_compatibility"><source>Legacy enum values below are read-only compatibility data. Visual presets and widget composition are authoritative for the current overlay.</source><target>旧版枚举值是只读兼容性数据。当前叠加层以视觉预设和组件组合为准。</target></trans-unit>
+      <trans-unit id="info.p3_integrations"><source>Read-only capability and status discovery for optional P3 integrations. Memory snapshot and graphics-state trace/prewarm request parameters remain runtime-only API/MCP inputs and are not project settings.</source><target>用于可选 P3 集成的只读能力和状态发现。内存快照以及图形状态跟踪/预热请求参数仅作为运行时 API/MCP 输入，不属于项目设置。</target></trans-unit>
       <trans-unit id="label.required"><source>required</source><target>必需</target></trans-unit>
       <trans-unit id="label.recommended"><source>recommended</source><target>建议</target></trans-unit>
       <trans-unit id="label.optional"><source>optional</source><target>可选</target></trans-unit>
@@ -261,6 +269,9 @@
       <trans-unit id="label.warning_logs_editor"><source>Warning logs in Editor</source><target>Editor 中的警告日志</target></trans-unit>
       <trans-unit id="label.preset"><source>Preset</source><target>预设</target></trans-unit>
       <trans-unit id="label.description"><source>Description</source><target>描述</target></trans-unit>
+      <trans-unit id="label.tags"><source>Tags</source><target>标签</target></trans-unit>
+      <trans-unit id="label.preset_schema_version"><source>Preset schema / version</source><target>预设 schema / 版本</target></trans-unit>
+      <trans-unit id="label.reserved_widget_metadata"><source>Reserved widget variant / height (read-only)</source><target>保留的组件变体 / 高度（只读）</target></trans-unit>
       <trans-unit id="label.anchor"><source>Anchor</source><target>锚点</target></trans-unit>
       <trans-unit id="label.font"><source>Font</source><target>字体</target></trans-unit>
       <trans-unit id="label.scale"><source>Scale</source><target>缩放</target></trans-unit>
@@ -273,6 +284,17 @@
       <trans-unit id="label.cpu_frame"><source>CPU frame</source><target>CPU 帧</target></trans-unit>
       <trans-unit id="label.gpu_frame"><source>GPU frame</source><target>GPU 帧</target></trans-unit>
       <trans-unit id="label.style_summary"><source>Style summary</source><target>样式摘要</target></trans-unit>
+      <trans-unit id="label.session_state"><source>Session state</source><target>会话状态</target></trans-unit>
+      <trans-unit id="label.session_id"><source>Session ID</source><target>会话 ID</target></trans-unit>
+      <trans-unit id="label.session_samples"><source>Session samples</source><target>会话样本</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_capabilities"><source>Memory snapshot capabilities</source><target>内存快照能力</target></trans-unit>
+      <trans-unit id="label.memory_snapshot_status"><source>Memory snapshot status</source><target>内存快照状态</target></trans-unit>
+      <trans-unit id="label.graphics_state_capabilities"><source>Graphics-state capabilities</source><target>图形状态能力</target></trans-unit>
+      <trans-unit id="label.graphics_state_status"><source>Graphics-state status</source><target>图形状态状况</target></trans-unit>
+      <trans-unit id="label.graphics_creation_markers"><source>Graphics creation markers</source><target>图形创建标记</target></trans-unit>
+      <trans-unit id="label.render_integration"><source>Render integration</source><target>渲染集成</target></trans-unit>
+      <trans-unit id="label.grd_brg_telemetry"><source>GRD / BRG telemetry</source><target>GRD / BRG 遥测</target></trans-unit>
+      <trans-unit id="label.combined_warnings"><source>Combined warnings</source><target>合并警告</target></trans-unit>
       <trans-unit id="button.ensure_default_presets"><source>Ensure Default Presets</source><target>确保默认预设</target></trans-unit>
       <trans-unit id="button.save"><source>Save</source><target>保存</target></trans-unit>
       <trans-unit id="button.save_as_custom"><source>Save as custom</source><target>另存为自定义</target></trans-unit>
@@ -291,6 +313,10 @@
       <trans-unit id="button.reset_alert_counters"><source>Reset alert counters</source><target>重置警报计数器</target></trans-unit>
       <trans-unit id="button.dump_runtime_snapshot"><source>Dump runtime snapshot</source><target>转储运行时快照</target></trans-unit>
       <trans-unit id="button.copy_runtime_summary"><source>Copy runtime summary</source><target>复制运行时摘要</target></trans-unit>
+      <trans-unit id="button.start_session"><source>Start Session</source><target>开始会话</target></trans-unit>
+      <trans-unit id="button.stop_session"><source>Stop Session</source><target>停止会话</target></trans-unit>
+      <trans-unit id="button.session_analysis"><source>Session Analysis</source><target>会话分析</target></trans-unit>
+      <trans-unit id="button.profile_analyzer"><source>Profile Analyzer</source><target>Profile Analyzer</target></trans-unit>
 
       <trans-unit id="status.disabled"><source>Disabled</source><target>已禁用</target></trans-unit>
       <trans-unit id="status.not_found"><source>Not found</source><target>未找到</target></trans-unit>
@@ -335,6 +361,9 @@
       <trans-unit id="message.runtime_failed"><source>Ensure Runtime Failed</source><target>确保 运行时 失败</target></trans-unit>
       <trans-unit id="message.enter_play_apply"><source>Enter Play Mode to apply PerfMeter settings to the active runtime session.</source><target>进入 Play Mode 以将 PerfMeter 设置应用到活动 运行时 会话。</target></trans-unit>
       <trans-unit id="message.applied_runtime"><source>PerfMeter JSON settings applied to the active Play Mode session.</source><target>PerfMeter JSON 设置已应用到活动 Play Mode 会话。</target></trans-unit>
+      <trans-unit id="message.session_analysis_opened"><source>Session Analysis: opened.</source><target>会话分析：已打开。</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_opened"><source>Profile Analyzer: opened; session ID copied to clipboard.</source><target>Profile Analyzer：已打开；会话 ID 已复制到剪贴板。</target></trans-unit>
+      <trans-unit id="message.profile_analyzer_unavailable"><source>Profile Analyzer: unavailable; see Console warning.</source><target>Profile Analyzer：不可用；请查看 Console 警告。</target></trans-unit>
       <trans-unit id="message.frame_already"><source>Frame Timing Stats is already enabled.</source><target>帧时序统计 已经启用。</target></trans-unit>
       <trans-unit id="message.frame_enabled_action"><source>Frame Timing Stats enabled in Player Settings.</source><target>已在 Player Settings 中启用 帧时序统计。</target></trans-unit>
       <trans-unit id="message.no_selected"><source>No renderer assets selected.</source><target>未选择 渲染器 资源。</target></trans-unit>
@@ -372,6 +401,20 @@
       <trans-unit id="tooltip.warning_attention"><source>Warning / attention</source><target>警告 / 注意</target></trans-unit>
       <trans-unit id="tooltip.optional"><source>Optional</source><target>可选</target></trans-unit>
       <trans-unit id="tooltip.error_danger"><source>Error / danger</source><target>错误 / 危险</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_refresh_range"><source>Normalized on focus loss to the persisted overlay refresh interval range.</source><target>失去焦点时，将规范化为已保存的叠加层刷新间隔范围。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_graph_history_range"><source>Normalized on focus loss to the persisted graph history range.</source><target>失去焦点时，将规范化为已保存的图表历史范围。</target></trans-unit>
+      <trans-unit id="tooltip.min_one_second"><source>Must be at least 1 second; normalized on focus loss.</source><target>必须至少为 1 秒；失去焦点时会规范化。</target></trans-unit>
+      <trans-unit id="tooltip.nonnegative_focus_loss"><source>Must be zero or greater; normalized on focus loss.</source><target>必须大于或等于 0；失去焦点时会规范化。</target></trans-unit>
+      <trans-unit id="tooltip.min_point_one"><source>Must be at least 0.1; normalized on focus loss.</source><target>必须至少为 0.1；失去焦点时会规范化。</target></trans-unit>
+      <trans-unit id="tooltip.min_one_frame"><source>Must be at least 1 frame; normalized on focus loss.</source><target>必须至少为 1 帧；失去焦点时会规范化。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_min_sample_interval"><source>Normalized on focus loss to the persisted minimum sample interval.</source><target>失去焦点时，将规范化为已保存的最小采样间隔。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_session_sample_range"><source>Normalized on focus loss to the persisted session sample range.</source><target>失去焦点时，将规范化为已保存的会话采样范围。</target></trans-unit>
+      <trans-unit id="tooltip.configured_overdraw_max"><source>Normalized to 1..the configured overdraw maximum on focus loss.</source><target>失去焦点时，将规范化为 1 到已配置过度绘制最大值的范围。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overdraw_max"><source>Normalized to 1..the persisted overdraw maximum limit on focus loss.</source><target>失去焦点时，将规范化为 1 到已保存过度绘制最大限制的范围。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_font_size_range"><source>Normalized on focus loss to the persisted overlay font size range.</source><target>失去焦点时，将规范化为已保存的叠加层字体大小范围。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_scale_range"><source>Normalized on focus loss to the persisted overlay scale range.</source><target>失去焦点时，将规范化为已保存的叠加层缩放范围。</target></trans-unit>
+      <trans-unit id="tooltip.persisted_overlay_opacity_range"><source>Normalized on focus loss to the persisted overlay opacity range.</source><target>失去焦点时，将规范化为已保存的叠加层不透明度范围。</target></trans-unit>
+      <trans-unit id="tooltip.min_one_pixel"><source>Must be at least 1 pixel; normalized on focus loss.</source><target>必须至少为 1 像素；失去焦点时会规范化。</target></trans-unit>
 
       <trans-unit id="dynamic.type.card"><source>Card</source><target>卡片</target></trans-unit>
       <trans-unit id="dynamic.type.budget_bar"><source>BudgetBar</source><target>预算条</target></trans-unit>

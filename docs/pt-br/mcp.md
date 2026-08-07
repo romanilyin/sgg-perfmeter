@@ -29,6 +29,7 @@ O objetivo e saida JSON estruturada para agents em vez de parsing de screenshots
 | `perfmeter.device.info` | Ler informacoes de device, graficos, display, monitor, pipeline e ambiente Unity. |
 | `perfmeter.camera.snapshot` | Ler transform/projection da camera e URP/HDRP camera settings. |
 | `perfmeter.rendergraph.snapshot` | Ler os diagnostics de render integration mais recentes para URP Render Graph ou HDRP Custom Pass. |
+| `perfmeter.render.snapshot` | Ler o snapshot neutro de render integration, com freshness, contexto de camera/pass, GRD/VRS e facade legacy do Render Graph. |
 | `perfmeter.overlay.set` | Mostrar/ocultar o overlay e definir preset, modules, corner, mode e target FPS. |
 | `perfmeter.overdraw.start` | Iniciar medicao limitada de overdraw. |
 | `perfmeter.overdraw.cancel` | Cancelar medicao de overdraw ativa. |
@@ -65,3 +66,61 @@ perfmeter.alerts.latest {}
 ```
 
 Use `OverdrawDiagnostic` apenas em janelas diagnosticas URP limitadas porque overdraw numerico e renderizacao de heatmap adicionam trabalho extra de GPU. HDRP reporta overdraw/heatmap como unsupported, enquanto os demais diagnostics continuam disponiveis.
+
+## Comandos de snapshot de memoria
+
+| Comando | Objetivo e principais entradas |
+| --- | --- |
+| `perfmeter.memory.snapshot.request` | Solicitar um snapshot manual com `capture_id`, booleanos opcionais de capture flags, `minimum_free_disk_mb` e `cooldown_seconds`. |
+| `perfmeter.memory.snapshot.status` | Ler o estado do snapshot e do bundle correlacionado sem iniciar o runtime nem expor o source path temporario. |
+| `perfmeter.memory.snapshot.capabilities` | Ler a proveniencia do backend, flags suportadas, limite de 512 MiB e a raiz temporaria pertencente ao PerfMeter. |
+| `perfmeter.memory.snapshot.triggers.configure` | Habilitar ou desabilitar explicitamente triggers de limite de memoria do sistema e crescimento limitado de vazamento, janela de frames, flags, guard de espaco livre e cooldown. |
+
+Os comandos de solicitacao e configuracao de triggers exigem Play Mode. A automacao fica desabilitada por padrao. Sequencia tipica:
+
+```text
+perfmeter.memory.snapshot.capabilities {}
+perfmeter.memory.snapshot.request {"capture_id":"memory-spike-01"}
+perfmeter.memory.snapshot.status {}
+perfmeter.capture.export {"capture_id":"memory-spike-01"}
+```
+
+Aguarde o bundle ficar pronto para exportacao e use o comando existente `perfmeter.capture.export`. Um bundle somente de memoria usa `requested_tool: MemoryProfiler`, inclui `memory-snapshot.json` e proveniencia no manifest e nao produz artefato GPU externo. Uma exportacao bem-sucedida e de uso unico e remove a origem de staging pertencente ao PerfMeter.
+
+## Comandos de diagnostico grafico e GraphicsStateCollection
+
+Os seis comandos a seguir formam a superficie do PM-GFX-001:
+
+| Comando | Objetivo e principais entradas |
+| --- | --- |
+| `perfmeter.graphics.diagnostics` | Ler os valores mais recentes dos markers de criacao de programas GPU de shaders e graphics pipelines, a provenance dinamica das capabilities, a revisao do catalogo e o contexto da graphics API. Sem entradas. |
+| `perfmeter.graphics.state_collection.request` | Iniciar um trace limitado. Requer Play Mode e uma sessao PerfMeter ativa; `capture_id` e obrigatorio, `trace_frames` e 1–600 (padrao 60) e `minimum_free_disk_mb` tem padrao 1024. |
+| `perfmeter.graphics.state_collection.status` | Ler availability, state, progresso, identidade do backend, counts, `is_busy`, `has_pending_cleanup`, warnings e o path relativo ao projeto do artifact owned. Sem entradas. |
+| `perfmeter.graphics.state_collection.capabilities` | Ler provenance do backend, suporte a trace/prewarm, cache-miss e PSO paralelo, requisito de sessao, limites de 600 frames/64 MiB e a raiz dos artifacts owned. Sem entradas. |
+| `perfmeter.graphics.state_collection.cancel` | Cancelar o trace ativo ou em preparacao correspondente e limpar seu artifact pendente. Requer `capture_id`. |
+| `perfmeter.graphics.state_collection.prewarm` | Carregar e executar prewarm sincrono de um artifact owned relativo ao projeto em Play Mode. `relative_path` e obrigatorio; `max_state_count` e 0–1.000.000, padrao 0. |
+
+`perfmeter.graphics.diagnostics` retorna `shader_gpu_program_creation_value` e `graphics_pipeline_creation_value`, alem de `sample_state`, `resolution`, `resolved_recorder_names`, `unit`, `data_type`, `resolved_component_count` e `sampled_component_count` para cada capability. `perfmeter.metrics.latest` e os exports de sessao expoem a mesma metadata dos markers. Os valores mantem a unidade descoberta do recorder e nao sao universalmente counts de shaders ou PSO; use `sample_state` em vez de interpretar zero como unavailable.
+
+A resposta de state inclui `result`, `availability`, `state`, `capture_id`, trace frames solicitados/concluidos, ID/versao do backend, `artifact_relative_path`, `artifact_size_bytes`, `total_graphics_state_count`, `variant_count`, `completed_warmup_count`, `is_warmed_up`, `is_busy`, `has_pending_cleanup` e `warning`. `is_busy` permanece true durante preparacao, trace, finalizacao, prewarm, cleanup ou cleanup persistente; `has_pending_cleanup` indica um artifact owned aguardando retry. Uma exclusao falha e persistida com um sidecar owned `.delete-pending`, restaurado e tentado novamente apos um domain reload. `StopSession` cancela um trace ativo, portanto a sessao deve permanecer ativa ate a conclusao. O trace chega ao estado terminal depois de tickar os frames solicitados no fim do frame; em batch mode usa um fallback no frame seguinte. Samples admitidos por uma sessao ativa incluem `graphics_state_trace_id` igual a `capture_id`.
+
+Sequencia tipica de trace e prewarm:
+
+```text
+perfmeter.session.start {"warmup_seconds":0,"sample_interval_seconds":0.25,"max_samples":240}
+perfmeter.graphics.state_collection.capabilities {}
+perfmeter.graphics.state_collection.request {"capture_id":"shader-stutter-01","trace_frames":60}
+perfmeter.graphics.state_collection.status {}
+perfmeter.session.stop {}
+perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/GraphicsStateCollections/.sgg-perfmeter-graphics-...graphicsstate"}
+```
+
+Apenas um graphics-state flight e admitido. Um ID ativo repetido retorna `AlreadyActive`; outro trace/prewarm em overlap retorna `RejectedOverlap`. Cancel corresponde somente ao ID ativo/em preparacao. O backend do Unity informa `supports_cache_miss_tracing: false`: evidencia de cache-miss nao e suportada e o schema MCP de prewarm nao oferece esse input. Os artifacts pertencem ao PerfMeter, ficam em `Temp/PerfMeter/GraphicsStateCollections` e sao limitados a 64 MiB.
+
+## Snapshot de render integration
+
+`perfmeter.render.snapshot {}` e um comando read-only sem inputs. Ele nao inicia o runtime. A resposta usa `schema_version: 1` e retorna `render_integration` com pipeline/source atuais, frame e age da observation, `observation_matches_current_pipeline`, identidade da camera observada, metadata de integration/pass/injection, quantidade de passes do PerfMeter realmente agendados, effective rendering mode quando disponivel, os contextos aninhados `gpu_resident_drawer` e `variable_rate_shading` e `legacy_render_graph`.
+
+`gpu_resident_drawer` inclui suporte de projeto/compute, atividade global publica com `activity_source`, compatibilidade URP Forward+/clustered, `degraded_reason` e `effectiveness` BRG aninhada. Os valores sao `null` enquanto a capability nao for `AvailableSampled`; recorder names, resolucao exact/alias e component counts preservam a provenance. `scope: "brg_aggregate"` nao prova uso de GRD por renderer.
+
+O comando e o equivalente MCP de `PerformanceMeter.GetRenderIntegrationSnapshot()` e `TryGetRenderIntegrationSnapshot(...)`. Uma observation stale e reportada com non-match e warning explicitos, nao como atual. `perfmeter.rendergraph.snapshot` continua disponivel como facade legacy. O comando nao adiciona navegacao no Editor: as APIs estaveis do Unity nao expoem viewer de RenderGraph/CustomPass nem informacao de pass targets.

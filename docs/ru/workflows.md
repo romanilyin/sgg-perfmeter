@@ -130,3 +130,60 @@ perfmeter.alerts.latest {}
 ```
 
 `perfmeter.profiler.capabilities {}` — это чтение кэшированного состояния; команда не запускает runtime и discovery.
+
+## Workflow опционального снимка памяти
+
+1. Используйте Unity `6000.4+` и установите через Package Manager `com.unity.memoryprofiler` `1.1.0+`. После этого отдельная сборка `SGG.PerfMeter.MemoryProfiler` автоматически регистрирует backend; без этой зависимости core integration остаётся unavailable.
+2. В Play Mode прочитайте `PerformanceMeter.GetMemorySnapshotCapabilities()` или `perfmeter.memory.snapshot.capabilities` и проверьте backend и требуемые capture flags.
+3. Запросите ручной снимок через `RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("memory-spike-01"))` либо вызовите `ConfigureMemorySnapshotTriggers(...)` для явно включённого system-memory threshold или bounded leak-growth window.
+4. Ожидайте через `GetMemorySnapshotStatus()` или `perfmeter.memory.snapshot.status` terminal state снимка и связанного bundle. Готовое evidence экспортируйте через `PerformanceMeter.ExportCaptureBundle(captureId)` или `perfmeter.capture.export`.
+
+Memory-only evidence проходит через существующий capture-bundle API и сохраняется под `Temp/PerfMeter/CaptureBundles`. Bundle записывает `MemoryProfiler` как requested tool, memory-snapshot provenance и streaming SHA-256 для `.snap`; external GPU artifact не создаётся. Source принадлежит PerfMeter и находится под `Temp/PerfMeter/MemorySnapshots`; успешный export использует его один раз.
+
+## Диагностика graphics markers
+
+1. Вызовите `PerformanceMeter.GetGraphicsDiagnostics()` или `perfmeter.graphics.diagnostics`, чтобы получить последние marker values и graphics API context.
+2. Проверьте `SampleState`, `Resolution`, `ResolvedRecorderNames`, `Unit`, `DataType`, resolved/sampled component counts и catalog revision каждой capability. Discovery выполняется динамически: при запуске runtime и при явном profiler-catalog refresh/reconfigure.
+3. Рассматривайте значения как raw recorder values в обнаруженных units. Marker может быть unavailable, available без sample или sampled; numeric zero не является универсальным признаком unavailable, а значение не гарантированно является shader или PSO count.
+
+Shader marker сначала разрешает exact `Shader.CreateGPUProgram`, затем aliases `Shader.CreateGPUPrograms`, `Shader.CompileGPUProgram` и `Shader.DynamicLoadGPUProgram`. Pipeline marker использует exact `CreatePSO.Job`. Те же values и provenance доступны через `perfmeter.metrics.latest` и session JSON/CSV.
+
+## Корреляция сессии с Profile Analyzer
+
+Во время профилирования каждая сессия создаёт мгновенные samples `SGG.PerfMeter.Session.<sessionId>.Begin` и `.End`. Команда `SGG/Perfmeter/Open Profile Analyzer For Session` открывает опциональное окно Profile Analyzer и копирует ID текущей сессии в буфер обмена. Команда не устанавливает Profile Analyzer, не загружает данные Profiler и не применяет фильтр автоматически; после загрузки нужного capture найдите скопированный ID.
+
+## Окно анализа сессии
+
+Откройте `SGG/Perfmeter/Session Analysis` для read-only анализа текущей сессии в памяти Editor. Виртуализированные вкладки показывают timeline сохранённых samples, authoritative worst frame с деталями сохранённого sample, derived нарушения CPU-main/CPU-render/GPU budget и authoritative scopes whole-run/current-scene. Для CPU-main исключается present wait; GPU values и нарушения показываются только при явной доступности GPU timing.
+
+Окно читает только `GetSessionSummary()` и `GetSessionSamples()` и никогда не запускает runtime. Недоступный timing отображается как `Unavailable`, а не числовой ноль. Остановленная сессия видна, пока существует её runtime instance; `PerformanceMeter.Stop()`, domain reload или выход из Play Mode могут удалить эту сессию из памяти.
+
+## Trace и prewarm GraphicsStateCollection
+
+1. В Unity `6000.4+` убедитесь, что доступна опциональная сборка `SGG.PerfMeter.GraphicsStateCollection`. В Unity `6000.4` она использует namespace `UnityEngine.Experimental.Rendering.GraphicsStateCollection`, а в Unity `6000.5+` — `UnityEngine.Rendering.GraphicsStateCollection`.
+2. До trace запустите PerfMeter session. Вызовите `StartSession(...)`, затем `RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("shader-stutter-01", 60))` или соответствующую MCP-команду. Без active session запрос отклоняется; session должна оставаться recording до завершения trace, а `PerformanceMeter.StopSession()` отменяет активный trace.
+3. Оставьте сценарий работающим, пока bounded trace продвигается. В обычном Play Mode каждый trace frame tick-ается после `WaitForEndOfFrame`; в batch mode coordinator использует fallback следующего кадра. Session samples, принятые в этот период, получают `GraphicsStateTraceId`/`graphics_state_trace_id`; session settings определяют, сколько связанных samples будет сохранено.
+4. Опросите `GetGraphicsStateCollectionStatus()` или `perfmeter.graphics.state_collection.status` до `Completed`, затем при необходимости остановите session. Остановка во время active trace отменяет его и может оставить `IsBusy`/`is_busy` true, пока выполняется retry owned cleanup. Owned `.graphicsstate` artifact находится в project-relative root `Temp/PerfMeter/GraphicsStateCollections` и ограничен 64 MiB.
+5. Передайте сообщённый owned relative path в `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` или MCP prewarm. Prewarm синхронный, сохраняет artifact и сообщает completed warmups и `IsWarmedUp`; progressive warmup может завершиться с явным incomplete warning.
+
+Graphics-state coordinator разрешает один flight и также отклоняет overlap с active external GPU capture, memory snapshot или alert-capture work. Повторный active trace ID — `AlreadyActive`, другой ID — `RejectedOverlap`. `CancelGraphicsStateTrace` отменяет только matching active/preparing trace и очищает pending artifact. Если owned artifact не удалён, `HasPendingCleanup`/`has_pending_cleanup` остаётся true, рядом сохраняется sidecar `.delete-pending`, а после domain reload cleanup восстанавливается и повторяется; `IsBusy`/`is_busy` и warning остаются видимыми до успеха. Unity backend не поддерживает cache-miss tracing, поэтому cache-miss evidence недоступно.
+
+## Контекст интеграции рендеринга
+
+Используйте neutral snapshot, когда нужен единый pipeline-independent вид последней typed render integration:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+Или прочитайте те же данные через MCP:
+
+```text
+perfmeter.render.snapshot {}
+```
+
+Эти read-операции не запускают runtime collection. Проверяйте вместе `State`, `ObservationAgeFrames`, `LastObservedFrame` и `ObservationMatchesCurrentPipeline`. После смены pipeline или asset configuration предыдущая observation становится stale; сохраняйте явные warning и non-match и не считайте её pass/mode/GRD/VRS данными текущего кадра. Legacy API `PerformanceMeter.GetRenderGraphSnapshot()` и команда `perfmeter.rendergraph.snapshot` остаются доступны.
+
+Для диагностики GRD проверяйте `DegradedReason`, SRP support, project configuration, compute support, compatibility режима URP и `ActivityAvailability`. `IsObservedActive` — global enabled state Unity. Используйте `Effectiveness` только как aggregate BRG workload context: `AvailableNoSample`/`Unavailable` не означают нулевую нагрузку, а положительные BRG counters не доказывают использование GRD конкретным renderer.
+
+В capture bundle schema `sgg.perfmeter.capture-context` версии `1` сохраняет существующий `render` и добавляет `render_integration`. Для external GPU capture этот context фиксируется на первом sample фазы `Capturing`; Memory Profiler bundle записывает его при завершении memory request. Session JSON/CSV schemas не изменяются. Public API не предоставляет стабильного RenderGraph/CustomPass viewer или pass targets, поэтому workflow не обещает Editor navigation.

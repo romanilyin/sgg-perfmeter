@@ -50,6 +50,7 @@ namespace SGG.PerfMeter
 
 			_overlayMarkerPass ??= new OverlayMarkerPass();
 			ApplySettingsToPass();
+			PerfMeterRenderGraphAnalytics.PrepareObservation(renderingData.cameraData.camera);
 			renderer.EnqueuePass(_overlayMarkerPass);
 		}
 
@@ -114,6 +115,20 @@ namespace SGG.PerfMeter
 			private const string OverdrawHeatmapShaderName = "Hidden/SGG/PerfMeter/OverdrawHeatmap";
 			private const string OverdrawHeatmapShaderResourcePath = "SGGPerfMeterOverdrawHeatmap";
 			private const int OverdrawCounterUavIndex = 1;
+			private const string GpuResidentDrawerDisabledModeName = "Disabled";
+			private const string GpuResidentDrawerInstancedDrawingModeName = "InstancedDrawing";
+			private const string GpuResidentDrawerUnknownModeName = "Unknown";
+			private const string GpuResidentDrawerUnavailableWarning = "The active render pipeline does not expose IGPUResidentRenderPipeline; GPU Resident Drawer context is unavailable.";
+			private const string GpuResidentDrawerSupportErrorWarning = "GPU Resident Drawer support query failed for the active URP asset.";
+			private const string GpuResidentDrawerSupportUnavailableWarning = "GPU Resident Drawer is not supported by the active URP asset.";
+			private const string GpuResidentDrawerSupportExceptionWarningPrefix = "GPU Resident Drawer support query failed for the active URP asset: ";
+
+			private static bool _hasCachedGpuResidentDrawerSnapshot;
+			private static RenderPipelineAsset _cachedRenderPipelineAsset;
+			private static bool _cachedHasGpuResidentRenderPipeline;
+			private static bool _cachedGpuResidentDrawerModeReadFailed;
+			private static GPUResidentDrawerMode _cachedGpuResidentDrawerMode;
+			private static PerfMeterGpuResidentDrawerContextSnapshot _cachedGpuResidentDrawerSnapshot;
 
 			private readonly List<ShaderTagId> _overdrawShaderTagIds = new List<ShaderTagId>
 			{
@@ -128,6 +143,9 @@ namespace SGG.PerfMeter
 			private bool _recordOverlayMarkerPass;
 			private bool _gameCamerasOnly = true;
 			private string _cameraNameFilter = string.Empty;
+			private RenderPassEvent _cachedRenderPassEvent;
+			private string _injectionPoint = string.Empty;
+			private bool _hasCachedRenderPassEvent;
 			private ProfilingSampler _overdrawProfilingSampler = new ProfilingSampler(DefaultOverdrawMarkerName);
 			private ProfilingSampler _overdrawHeatmapProfilingSampler = new ProfilingSampler(DefaultOverdrawHeatmapMarkerName);
 			private Material _overdrawMaterial;
@@ -139,6 +157,13 @@ namespace SGG.PerfMeter
 				_recordOverlayMarkerPass = recordOverlayMarkerPass;
 				_gameCamerasOnly = gameCamerasOnly;
 				_cameraNameFilter = cameraNameFilter ?? string.Empty;
+
+				if (!_hasCachedRenderPassEvent || _cachedRenderPassEvent != passEvent)
+				{
+					_cachedRenderPassEvent = passEvent;
+					_injectionPoint = passEvent.ToString();
+					_hasCachedRenderPassEvent = true;
+				}
 
 				if (_currentMarkerName == markerName)
 				{
@@ -153,16 +178,15 @@ namespace SGG.PerfMeter
 			{
 				using PerfMeterSelfObservability.MeasurementScope selfOverheadScope = PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.UrpRenderIntegration);
 				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
-				string cameraName = cameraData.camera != null ? cameraData.camera.name : string.Empty;
-				string cameraType = cameraData.camera != null ? cameraData.camera.cameraType.ToString() : string.Empty;
-				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(renderGraph, cameraName, cameraType, _recordOverlayMarkerPass, PerfMeterRuntime.IsOverdrawMeasurementActive, PerfMeterRuntime.IsOverdrawHeatmapVisible);
-
 				UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 				if (!resourceData.activeColorTexture.IsValid())
 				{
 					return;
 				}
 
+				UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
+				bool shouldMeasureCamera = (PerfMeterRuntime.IsOverdrawMeasurementActive || PerfMeterRuntime.IsOverdrawHeatmapVisible) && ShouldMeasureCamera(cameraData);
+				bool recordsOverlayMarkerPass = false;
 				if (_recordOverlayMarkerPass)
 				{
 					using (IRasterRenderGraphBuilder builder = renderGraph.AddRasterRenderPass<MarkerPassData>(_currentMarkerName, out MarkerPassData passData, profilingSampler))
@@ -174,14 +198,36 @@ namespace SGG.PerfMeter
 							// Intentionally empty: opt-in diagnostic marker for measuring PerfMeter overhead.
 						});
 					}
+
+					recordsOverlayMarkerPass = true;
 				}
 
-				if (!PerfMeterRuntime.IsOverdrawMeasurementActive && !PerfMeterRuntime.IsOverdrawHeatmapVisible)
+				bool recordsOverdrawCounterPass = false;
+				bool recordsOverdrawHeatmapPass = false;
+				if (PerfMeterRuntime.IsOverdrawMeasurementActive || PerfMeterRuntime.IsOverdrawHeatmapVisible)
 				{
-					return;
+					RecordOverdrawPass(
+						renderGraph,
+						frameData,
+						resourceData,
+						cameraData,
+						shouldMeasureCamera,
+						out recordsOverdrawCounterPass,
+						out recordsOverdrawHeatmapPass);
 				}
 
-				RecordOverdrawPass(renderGraph, frameData, resourceData);
+				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
+					cameraData.camera,
+					GetEffectiveRenderingMode(renderingData.renderingMode),
+					_injectionPoint,
+					GetGpuResidentDrawerSnapshot(),
+					recordsOverlayMarkerPass,
+					recordsOverdrawCounterPass,
+					recordsOverdrawHeatmapPass,
+					PerfMeterAvailability.Available,
+					renderingData.renderingMode == RenderingMode.ForwardPlus,
+					PerfMeterAvailability.Available,
+					renderingData.renderingMode == RenderingMode.ForwardPlus || renderingData.renderingMode == RenderingMode.DeferredPlus);
 			}
 
 			internal void Dispose()
@@ -192,26 +238,34 @@ namespace SGG.PerfMeter
 				_overdrawHeatmapMaterial = null;
 			}
 
-			private void RecordOverdrawPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData)
+			private void RecordOverdrawPass(
+				RenderGraph renderGraph,
+				ContextContainer frameData,
+				UniversalResourceData resourceData,
+				UniversalCameraData cameraData,
+				bool shouldMeasureCamera,
+				out bool recordsOverdrawCounterPass,
+				out bool recordsOverdrawHeatmapPass)
 			{
-				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
-				if (!ShouldMeasureCamera(cameraData))
+				recordsOverdrawCounterPass = false;
+				recordsOverdrawHeatmapPass = false;
+				if (!shouldMeasureCamera)
 				{
 					return;
 				}
 
 				if (PerfMeterRuntime.IsOverdrawMeasurementActive)
 				{
-					RecordOverdrawCounterPass(renderGraph, frameData, resourceData, cameraData);
+					recordsOverdrawCounterPass = RecordOverdrawCounterPass(renderGraph, frameData, resourceData, cameraData);
 				}
 
 				if (PerfMeterRuntime.IsOverdrawHeatmapVisible)
 				{
-					RecordOverdrawHeatmapPass(renderGraph, frameData, resourceData, cameraData);
+					recordsOverdrawHeatmapPass = RecordOverdrawHeatmapPass(renderGraph, frameData, resourceData, cameraData);
 				}
 			}
 
-			private void RecordOverdrawCounterPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData, UniversalCameraData cameraData)
+			private bool RecordOverdrawCounterPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData, UniversalCameraData cameraData)
 			{
 				Material overdrawMaterial = GetOverdrawMaterial(out string materialError, out bool unsupported);
 				if (overdrawMaterial == null)
@@ -225,20 +279,20 @@ namespace SGG.PerfMeter
 						PerfMeterRuntime.FailOverdrawMeasurement(materialError);
 					}
 
-					return;
+					return false;
 				}
 
 				RendererListHandle rendererListHandle = CreateOverdrawRendererList(renderGraph, frameData, cameraData, overdrawMaterial);
 				if (!rendererListHandle.IsValid())
 				{
 					PerfMeterRuntime.FailOverdrawMeasurement("PerfMeter overdraw renderer list could not be created.");
-					return;
+					return false;
 				}
 
 				int screenPixelCount = GetScreenPixelCount(cameraData);
 				if (!PerfMeterRuntime.TryBeginOverdrawRenderGraphFrame(Time.frameCount, screenPixelCount, out GraphicsBuffer counterBuffer, out int measurementId))
 				{
-					return;
+					return false;
 				}
 
 				BufferHandle counterBufferHandle = renderGraph.ImportBuffer(counterBuffer);
@@ -270,20 +324,22 @@ namespace SGG.PerfMeter
 						context.cmd.RequestAsyncReadback(data.CounterBufferHandle, request => PerfMeterRuntime.CompleteOverdrawCounterReadback(callbackMeasurementId, request));
 					});
 				}
+
+				return true;
 			}
 
-			private void RecordOverdrawHeatmapPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData, UniversalCameraData cameraData)
+			private bool RecordOverdrawHeatmapPass(RenderGraph renderGraph, ContextContainer frameData, UniversalResourceData resourceData, UniversalCameraData cameraData)
 			{
 				Material heatmapMaterial = GetOverdrawHeatmapMaterial();
 				if (heatmapMaterial == null)
 				{
-					return;
+					return false;
 				}
 
 				RendererListHandle rendererListHandle = CreateOverdrawRendererList(renderGraph, frameData, cameraData, heatmapMaterial);
 				if (!rendererListHandle.IsValid())
 				{
-					return;
+					return false;
 				}
 
 				using (IRasterRenderGraphBuilder builder = renderGraph.AddRasterRenderPass<OverdrawHeatmapPassData>(DefaultOverdrawHeatmapMarkerName, out OverdrawHeatmapPassData passData, _overdrawHeatmapProfilingSampler))
@@ -297,6 +353,8 @@ namespace SGG.PerfMeter
 						context.cmd.DrawRendererList(data.RendererListHandle);
 					});
 				}
+
+				return true;
 			}
 
 			private RendererListHandle CreateOverdrawRendererList(RenderGraph renderGraph, ContextContainer frameData, UniversalCameraData cameraData, Material overdrawMaterial)
@@ -337,6 +395,205 @@ namespace SGG.PerfMeter
 				}
 
 				return string.IsNullOrWhiteSpace(_cameraNameFilter) || camera.name.IndexOf(_cameraNameFilter, StringComparison.OrdinalIgnoreCase) >= 0;
+			}
+
+			private static PerfMeterGpuResidentDrawerContextSnapshot GetGpuResidentDrawerSnapshot()
+			{
+				try
+				{
+					PerfMeterGpuResidentDrawerContextSnapshot supportSnapshot = GetGpuResidentDrawerSupportSnapshot();
+					PerfMeterAvailability projectConfigurationAvailability = PerfMeterAvailability.Unknown;
+					bool isProjectConfigurationSupported = false;
+					PerfMeterAvailability activityAvailability = supportSnapshot.ActivityAvailability;
+					bool isObservedActive = supportSnapshot.IsObservedActive;
+					string warning = supportSnapshot.Warning;
+					if (supportSnapshot.Availability != PerfMeterAvailability.Unavailable)
+					{
+						try
+						{
+							isProjectConfigurationSupported = IGPUResidentRenderPipeline.IsGPUResidentDrawerSupportedByProjectConfiguration(false);
+							projectConfigurationAvailability = PerfMeterAvailability.Available;
+						}
+						catch (Exception exception)
+						{
+							projectConfigurationAvailability = PerfMeterAvailability.Unavailable;
+							warning = PerfMeterRenderGraphAnalytics.CombineWarnings(warning, "GPU Resident Drawer project-configuration query failed: " + exception.GetType().Name + ".");
+						}
+
+						try
+						{
+							isObservedActive = IGPUResidentRenderPipeline.IsGPUResidentDrawerEnabled();
+							activityAvailability = PerfMeterAvailability.Available;
+						}
+						catch (Exception exception)
+						{
+							activityAvailability = PerfMeterAvailability.Unavailable;
+							warning = PerfMeterRenderGraphAnalytics.CombineWarnings(warning, "GPU Resident Drawer runtime activity query failed: " + exception.GetType().Name + ".");
+						}
+					}
+
+					PerfMeterGpuResidentDrawerContextSnapshot primitiveObservation = new PerfMeterGpuResidentDrawerContextSnapshot(
+						supportSnapshot.Availability,
+						supportSnapshot.ConfiguredMode,
+						supportSnapshot.SupportAvailability,
+						supportSnapshot.IsSupported,
+						activityAvailability,
+						isObservedActive,
+						warning,
+						projectConfigurationAvailability,
+						isProjectConfigurationSupported,
+						PerfMeterAvailability.Unknown,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+						PerfMeterGpuResidentDrawerReason.Unknown);
+					return primitiveObservation;
+				}
+				catch (Exception exception)
+				{
+					return new PerfMeterGpuResidentDrawerContextSnapshot(
+						PerfMeterAvailability.Available,
+						string.Empty,
+						PerfMeterAvailability.Unavailable,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						GpuResidentDrawerSupportExceptionWarningPrefix + exception.GetType().Name + ".");
+				}
+			}
+
+			private static PerfMeterGpuResidentDrawerContextSnapshot GetGpuResidentDrawerSupportSnapshot()
+			{
+				RenderPipelineAsset renderPipelineAsset = GraphicsSettings.currentRenderPipeline;
+				IGPUResidentRenderPipeline gpuResidentRenderPipeline = renderPipelineAsset as IGPUResidentRenderPipeline;
+				bool hasGpuResidentRenderPipeline = gpuResidentRenderPipeline != null;
+				if (_hasCachedGpuResidentDrawerSnapshot &&
+					_cachedGpuResidentDrawerModeReadFailed &&
+					object.ReferenceEquals(_cachedRenderPipelineAsset, renderPipelineAsset) &&
+					_cachedHasGpuResidentRenderPipeline == hasGpuResidentRenderPipeline)
+				{
+					return _cachedGpuResidentDrawerSnapshot;
+				}
+
+				GPUResidentDrawerMode configuredMode = default;
+				if (hasGpuResidentRenderPipeline)
+				{
+					try
+					{
+						configuredMode = gpuResidentRenderPipeline.gpuResidentDrawerMode;
+					}
+					catch (Exception exception)
+					{
+						_cachedRenderPipelineAsset = renderPipelineAsset;
+						_cachedHasGpuResidentRenderPipeline = true;
+						_cachedGpuResidentDrawerModeReadFailed = true;
+						_cachedGpuResidentDrawerSnapshot = new PerfMeterGpuResidentDrawerContextSnapshot(
+							PerfMeterAvailability.Available,
+							string.Empty,
+							PerfMeterAvailability.Unavailable,
+							false,
+							PerfMeterAvailability.Unknown,
+							false,
+							GpuResidentDrawerSupportExceptionWarningPrefix + exception.GetType().Name + ".");
+						_hasCachedGpuResidentDrawerSnapshot = true;
+						return _cachedGpuResidentDrawerSnapshot;
+					}
+				}
+
+				_hasCachedGpuResidentDrawerSnapshot = true;
+				_cachedRenderPipelineAsset = renderPipelineAsset;
+				_cachedHasGpuResidentRenderPipeline = hasGpuResidentRenderPipeline;
+				_cachedGpuResidentDrawerModeReadFailed = false;
+				_cachedGpuResidentDrawerMode = configuredMode;
+
+				if (!hasGpuResidentRenderPipeline)
+				{
+					_cachedGpuResidentDrawerSnapshot = new PerfMeterGpuResidentDrawerContextSnapshot(
+						PerfMeterAvailability.Unavailable,
+						string.Empty,
+						PerfMeterAvailability.Unavailable,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						GpuResidentDrawerUnavailableWarning);
+					return _cachedGpuResidentDrawerSnapshot;
+				}
+
+				try
+				{
+					bool isSupported = gpuResidentRenderPipeline.IsGPUResidentDrawerSupportedBySRP(out string supportReason, out LogType supportSeverity);
+					_cachedGpuResidentDrawerSnapshot = new PerfMeterGpuResidentDrawerContextSnapshot(
+						PerfMeterAvailability.Available,
+						GetGpuResidentDrawerModeName(configuredMode),
+						PerfMeterAvailability.Available,
+						isSupported,
+						PerfMeterAvailability.Unknown,
+						false,
+						GetGpuResidentDrawerWarning(isSupported, supportReason, supportSeverity));
+				}
+				catch (Exception exception)
+				{
+					_cachedGpuResidentDrawerSnapshot = new PerfMeterGpuResidentDrawerContextSnapshot(
+						PerfMeterAvailability.Available,
+						GetGpuResidentDrawerModeName(configuredMode),
+						PerfMeterAvailability.Unavailable,
+						false,
+						PerfMeterAvailability.Unknown,
+						false,
+						GpuResidentDrawerSupportExceptionWarningPrefix + exception.GetType().Name + ".");
+				}
+
+				return _cachedGpuResidentDrawerSnapshot;
+			}
+
+			private static string GetEffectiveRenderingMode(RenderingMode renderingMode)
+			{
+				switch (renderingMode)
+				{
+					case RenderingMode.Forward:
+						return "Forward";
+					case RenderingMode.Deferred:
+						return "Deferred";
+					case RenderingMode.ForwardPlus:
+						return "ForwardPlus";
+					case RenderingMode.DeferredPlus:
+						return "DeferredPlus";
+					default:
+						return "Unknown";
+				}
+			}
+
+			private static string GetGpuResidentDrawerModeName(GPUResidentDrawerMode mode)
+			{
+				switch (mode)
+				{
+					case GPUResidentDrawerMode.Disabled:
+						return GpuResidentDrawerDisabledModeName;
+					case GPUResidentDrawerMode.InstancedDrawing:
+						return GpuResidentDrawerInstancedDrawingModeName;
+					default:
+						return GpuResidentDrawerUnknownModeName;
+				}
+			}
+
+			private static string GetGpuResidentDrawerWarning(bool isSupported, string reason, LogType severity)
+			{
+				if (isSupported)
+				{
+					return string.Empty;
+				}
+
+				if (!string.IsNullOrEmpty(reason))
+				{
+					return reason;
+				}
+
+				return severity == LogType.Error
+					? GpuResidentDrawerSupportErrorWarning
+					: GpuResidentDrawerSupportUnavailableWarning;
 			}
 
 			private Material GetOverdrawMaterial(out string error, out bool unsupported)

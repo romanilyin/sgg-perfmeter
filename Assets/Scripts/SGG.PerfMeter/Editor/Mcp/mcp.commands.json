@@ -354,6 +354,205 @@
       }
     },
     {
+      "id": "perfmeter.memory.snapshot.request",
+      "title": "Request PerfMeter memory snapshot",
+      "description": "Request one optional Memory Profiler snapshot with cooldown, free-space guard, requested capture flags, and a correlated evidence bundle. The binary snapshot can contain sensitive process memory.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotRequest",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "bundle"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "managed_objects": { "type": "boolean" },
+          "native_objects": { "type": "boolean" },
+          "native_allocations": { "type": "boolean" },
+          "native_allocation_sites": { "type": "boolean" },
+          "native_stack_traces": { "type": "boolean" },
+          "minimum_free_disk_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "cooldown_seconds": { "type": "integer", "minimum": 0, "maximum": 86400 }
+        },
+        "required": ["capture_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.memory.snapshot.status",
+      "title": "Read PerfMeter memory snapshot status",
+      "description": "Read memory snapshot and correlated bundle state without starting the runtime or exposing the temporary snapshot path.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "bundle"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.memory.snapshot.capabilities",
+      "title": "Read PerfMeter memory snapshot capabilities",
+      "description": "Read optional backend provenance, supported capture flags, snapshot size limit, and owned temporary root without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotCapabilities",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "capabilities"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.memory.snapshot.triggers.configure",
+      "title": "Configure PerfMeter memory snapshot triggers",
+      "description": "Opt in or out of bounded system-memory threshold and leak-growth heuristic triggers. Triggered snapshots use the same cooldown, free-space, sensitivity, and bundle policies as manual requests.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.MemorySnapshotTriggersConfigure",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "memory", "capture", "configuration"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "system_memory_threshold_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "leak_growth_threshold_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "leak_window_frames": { "type": "integer", "minimum": 30, "maximum": 36000 },
+          "managed_objects": { "type": "boolean" },
+          "native_objects": { "type": "boolean" },
+          "native_allocations": { "type": "boolean" },
+          "native_allocation_sites": { "type": "boolean" },
+          "native_stack_traces": { "type": "boolean" },
+          "minimum_free_disk_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "cooldown_seconds": { "type": "integer", "minimum": 0, "maximum": 86400 }
+        },
+        "required": ["enabled"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.graphics.diagnostics",
+      "title": "Read PerfMeter graphics diagnostics",
+      "description": "Read shader GPU-program and graphics-pipeline creation marker values with exact/alias capability provenance and graphics API context. Values retain the discovered recorder unit and are unavailable when Unity does not expose a matching marker.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.GraphicsDiagnostics",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "graphics", "shader", "pso", "diagnostics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.graphics.state_collection.request",
+      "title": "Trace Unity graphics states",
+      "description": "Start one bounded Unity GraphicsStateCollection trace during an active PerfMeter session and save an owned project-local .graphicsstate artifact. Session settings control correlated sample density.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.GraphicsStateTraceRequest",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "graphics", "shader", "pso", "trace"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "required": ["capture_id"],
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "trace_frames": { "type": "integer", "minimum": 1, "maximum": 600 },
+          "minimum_free_disk_mb": { "type": "integer", "minimum": 0, "maximum": 1048576 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.graphics.state_collection.status",
+      "title": "Read graphics-state trace status",
+      "description": "Read bounded trace/prewarm state, backend provenance, progress, and the owned project-relative artifact path without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.GraphicsStateCollectionStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "graphics", "pso", "status"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.graphics.state_collection.capabilities",
+      "title": "Read graphics-state capabilities",
+      "description": "Read Unity GraphicsStateCollection trace/prewarm support, backend provenance, limits, cache-miss support, and parallel PSO creation capability.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.GraphicsStateCollectionCapabilities",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "graphics", "pso", "capabilities"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.graphics.state_collection.cancel",
+      "title": "Cancel graphics-state trace",
+      "description": "Cancel the matching active Unity GraphicsStateCollection trace and clean its owned pending artifact.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.GraphicsStateTraceCancel",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "graphics", "pso", "trace", "cancel"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "required": ["capture_id"],
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.graphics.state_collection.prewarm",
+      "title": "Prewarm Unity graphics states",
+      "description": "Load and synchronously prewarm one owned project-local .graphicsstate artifact. Cache-miss evidence is not currently exposed.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.GraphicsStateCollectionPrewarm",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 120000,
+      "tags": ["perfmeter", "graphics", "shader", "pso", "prewarm"],
+      "capability": "perfmeter",
+      "requires_editor_status": ["playing"],
+      "schema": {
+        "type": "object",
+        "required": ["relative_path"],
+        "properties": {
+          "relative_path": { "type": "string", "minLength": 1 },
+          "max_state_count": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.device.info",
       "title": "PerfMeter device and environment info",
       "description": "Read Unity device, graphics, display, render pipeline, and environment information.",
@@ -400,6 +599,22 @@
       "idempotency": "safe",
       "timeout_ms": 10000,
       "tags": ["perfmeter", "rendergraph", "diagnostics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.render.snapshot",
+      "title": "PerfMeter render integration snapshot",
+      "description": "Read the latest neutral SGG PerfMeter render integration snapshot, including pipeline, observation freshness, camera, pass, GPU Resident Drawer, VRS, and legacy Render Graph compatibility context without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderIntegrationSnapshot",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "render", "diagnostics"],
       "capability": "perfmeter",
       "schema": {
         "type": "object",

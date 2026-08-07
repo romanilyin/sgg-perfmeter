@@ -22,3 +22,7 @@ git diff --check
 - Не коммитьте сгенерированное состояние Unity: `Library/`, `Logs/`, `Temp/`, `Obj/` или локальные результаты сборки.
 - Не коммитьте секреты, файлы `.env`, дампы устройств, приватные логи или несвязанные скриншоты.
 - Если меняется поведение профайлера во время выполнения, обновите тесты и пользовательскую документацию в том же PR.
+
+## Performance CI
+
+`.github/workflows/performance-ci.yml` запускает полный EditMode correctness suite и изолированные performance tests на Unity `6000.4.12f1` и `6000.5.6f1` для pull request из этого репозитория, push в `main` и ручных запусков. Pull request из fork пропускаются, поскольку GitHub не передаёт Unity license secrets. CI добавляет `com.unity.test-framework.performance` `3.5.0` только в ephemeral checkout; у пакета нет hard dependency. Версионируемые пороги находятся в `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`; CI сохраняет raw NUnit XML, преобразованный JUnit XML, performance JSON и логи.

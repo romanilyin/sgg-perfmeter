@@ -1,0 +1,30 @@
+{
+    "name": "SGG.PerfMeter.Tests.Performance",
+    "rootNamespace": "SGG.PerfMeter.Tests.Performance",
+    "references": [
+        "SGG.PerfMeter",
+        "Unity.PerformanceTesting"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "SGG_PERFMETER_PERFORMANCE_TESTS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.test-framework.performance",
+            "expression": "3.5.0",
+            "define": "SGG_PERFMETER_PERFORMANCE_TESTS"
+        }
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

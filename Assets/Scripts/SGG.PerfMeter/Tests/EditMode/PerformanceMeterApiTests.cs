@@ -5,6 +5,7 @@ using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
 using UnityEditor.PackageManager;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
@@ -24,6 +25,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			_mcpOverlayVisibility = UnityEditor.SessionState.GetBool(McpOverlayVisibilityKey, false);
 			PerformanceMeter.ClearCustomMetricProviders();
 			PerformanceMeter.Stop();
+			PerfMeterRenderGraphAnalytics.ResetForTests();
 		}
 
 		[TearDown]
@@ -31,6 +33,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			PerformanceMeter.Stop();
 			PerformanceMeter.ClearCustomMetricProviders();
+			PerfMeterRenderGraphAnalytics.ResetForTests();
 			if (_hadMcpOverlayVisibility)
 			{
 				UnityEditor.SessionState.SetBool(HasMcpOverlayVisibilityKey, true);
@@ -521,6 +524,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"id\":\"combat.active_units\""));
 			Assert.That(json, Does.Contain("\"value\":42"));
 			Assert.That(csv, Does.StartWith("frame,time_seconds,scene,bottleneck,cpu_frame_ms"));
+			Assert.That(csv.Split('\n')[0].TrimEnd('\r'), Does.EndWith(",session_id"));
 			Assert.That(csv, Does.Contain("GpuBound"));
 			Assert.That(csv, Does.Contain("overdraw_ratio"));
 			Assert.That(csv, Does.Contain("session_focus_loss_count"));
@@ -749,6 +753,579 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"observed_injection_point\":\"\""));
 			Assert.That(json, Does.Contain("\"registered_pass_count\":-1"));
 			Assert.That(json, Does.Contain("\"is_playing\""));
+		}
+
+		[Test]
+		public void RenderIntegrationSnapshotBeforeObservationIsSafeAndReportsCurrentPipeline()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+
+			Assert.That(QualitySettings.renderPipeline, Is.Not.Null);
+			PerfMeterRenderPipelineSnapshot expectedPipeline = PerfMeterRenderPipelineDetector.CreateSnapshot(out PerfMeterRenderPipelineAssetSource expectedSource);
+			Assert.That(expectedPipeline.Kind == PerfMeterRenderPipelineKind.Universal || expectedPipeline.Kind == PerfMeterRenderPipelineKind.HighDefinition, Is.True);
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+
+			PerfMeterRenderIntegrationSnapshot snapshot = default;
+			Assert.DoesNotThrow(() => snapshot = PerformanceMeter.GetRenderIntegrationSnapshot());
+
+			Assert.That(snapshot.IsAvailable, Is.True);
+			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.NotObserved));
+			Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(expectedPipeline.Kind));
+			Assert.That(snapshot.RenderPipelineAssetSource, Is.EqualTo(expectedSource));
+			Assert.That(snapshot.RenderPipeline.AssetName, Is.EqualTo(QualitySettings.renderPipeline.name));
+			Assert.That(snapshot.RenderPipeline.AssetTypeName, Is.EqualTo(QualitySettings.renderPipeline.GetType().FullName));
+			Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.False);
+			Assert.That(snapshot.LastObservedFrame, Is.EqualTo(-1));
+			Assert.That(snapshot.ObservationAgeFrames, Is.EqualTo(-1));
+			Assert.That(snapshot.GpuResidentDrawer.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
+
+			PerfMeterVariableRateShadingContextSnapshot vrs = snapshot.VariableRateShading;
+			Assert.That(vrs.Availability, Is.Not.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(vrs.SupportsVariableRateShading, Is.EqualTo(SystemInfo.supportsVariableRateShading));
+			Assert.That(vrs.ConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(vrs.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(vrs.IsConfigured, Is.False);
+			Assert.That(vrs.IsObservedActive, Is.False);
+
+			Assert.That(PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot trySnapshot), Is.True);
+			Assert.That(trySnapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.NotObserved));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+		}
+
+		[Test]
+		public void TypedUrpRenderIntegrationObservationReportsCameraPassAndCapabilitySemantics()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+			if (PerfMeterRenderPipelineDetector.CreateSnapshot().Kind != PerfMeterRenderPipelineKind.Universal)
+			{
+				Assert.Pass("URP-specific observation coverage is not applicable to the active render pipeline.");
+			}
+
+			GameObject cameraObject = null;
+
+			try
+			{
+				cameraObject = new GameObject("PerfMeter Synthetic URP Camera");
+				Camera camera = cameraObject.AddComponent<Camera>();
+				camera.cameraType = CameraType.Game;
+				PerfMeterGpuResidentDrawerContextSnapshot gpuResidentDrawer = new PerfMeterGpuResidentDrawerContextSnapshot(
+					PerfMeterAvailability.Available,
+					"InstancedDrawing",
+					PerfMeterAvailability.Available,
+					true,
+					PerfMeterAvailability.Unknown,
+					false,
+					"GPU Resident Drawer activity was not reported by the synthetic observation.");
+
+				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
+					camera,
+					"ForwardPlus",
+					"AfterRenderingPostProcessing",
+					gpuResidentDrawer,
+					true,
+					true,
+					false);
+
+				PerfMeterRenderIntegrationSnapshot snapshot = PerformanceMeter.GetRenderIntegrationSnapshot();
+				Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.Observed));
+				Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.True);
+				Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(PerfMeterRenderPipelineKind.Universal));
+				Assert.That(snapshot.RenderPipelineAssetSource, Is.EqualTo(PerfMeterRenderPipelineAssetSource.QualitySettings));
+				Assert.That(snapshot.ObservedCameraEntityId, Is.GreaterThan(0UL));
+				Assert.That(snapshot.ObservedCameraName, Is.EqualTo(cameraObject.name));
+				Assert.That(snapshot.ObservedCameraType, Is.EqualTo("Game"));
+				Assert.That(snapshot.EffectiveRenderingMode, Is.EqualTo("ForwardPlus"));
+				Assert.That(snapshot.InjectionPoint, Is.EqualTo("AfterRenderingPostProcessing"));
+				Assert.That(snapshot.PassKind, Is.EqualTo(PerfMeterRenderPassKind.RenderGraphRaster));
+				Assert.That(snapshot.PassName, Is.EqualTo("SGG PerfMeter Render Graph Pass"));
+				Assert.That(snapshot.PerfMeterPassCount, Is.EqualTo(3));
+
+				Assert.That(snapshot.GpuResidentDrawer.Availability, Is.EqualTo(PerfMeterAvailability.Available));
+				Assert.That(snapshot.GpuResidentDrawer.ConfiguredMode, Is.EqualTo("InstancedDrawing"));
+				Assert.That(snapshot.GpuResidentDrawer.IsConfigured, Is.True);
+				Assert.That(snapshot.GpuResidentDrawer.SupportAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+				Assert.That(snapshot.GpuResidentDrawer.IsSupported, Is.True);
+				Assert.That(snapshot.GpuResidentDrawer.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(snapshot.GpuResidentDrawer.IsObservedActive, Is.False);
+
+				Assert.That(snapshot.VariableRateShading.Availability, Is.Not.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(snapshot.VariableRateShading.ConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(snapshot.VariableRateShading.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(snapshot.VariableRateShading.IsConfigured, Is.False);
+				Assert.That(snapshot.VariableRateShading.IsObservedActive, Is.False);
+
+				Assert.That(snapshot.LegacyRenderGraph.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
+				Assert.That(snapshot.LegacyRenderGraph.RenderPipeline, Is.EqualTo(PerfMeterRenderPipelineKind.Universal));
+				Assert.That(snapshot.LegacyRenderGraph.IntegrationName, Is.EqualTo("URP Render Graph Feature"));
+				Assert.That(snapshot.LegacyRenderGraph.PerfMeterPassCount, Is.EqualTo(3));
+				Assert.That(snapshot.LegacyRenderGraph.RegisteredPassCount, Is.EqualTo(-1));
+				Assert.That(snapshot.LegacyRenderGraph.MergedPassCount, Is.EqualTo(-1));
+				Assert.That(snapshot.LegacyRenderGraph.TransientResourceCount, Is.EqualTo(-1));
+				Assert.That(snapshot.LegacyRenderGraph.ImportedResourceCount, Is.EqualTo(-1));
+				Assert.That(snapshot.LegacyRenderGraph.AliasedResourceCount, Is.EqualTo(-1));
+
+				Assert.That(PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot trySnapshot), Is.True);
+				Assert.That(trySnapshot.ObservedCameraName, Is.EqualTo(cameraObject.name));
+			}
+			finally
+			{
+				if (cameraObject != null)
+				{
+					UnityEngine.Object.DestroyImmediate(cameraObject);
+				}
+
+				PerfMeterRenderGraphAnalytics.ResetForTests();
+			}
+		}
+
+		[Test]
+		public void GpuResidentDrawerLegacyConstructorPreservesExistingFieldsAndDefaultsTelemetry()
+		{
+			PerfMeterGpuResidentDrawerContextSnapshot snapshot = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"InstancedDrawing",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				"legacy warning");
+
+			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.ConfiguredMode, Is.EqualTo("InstancedDrawing"));
+			Assert.That(snapshot.SupportAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.IsSupported, Is.True);
+			Assert.That(snapshot.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.IsObservedActive, Is.True);
+			Assert.That(snapshot.ActivitySource, Is.Empty);
+			Assert.That(snapshot.ProjectConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.ComputeShaderAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.ForwardPlusActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.RenderingModeCompatibilityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.Unknown));
+			Assert.That(snapshot.Effectiveness.BrgDrawCalls, Is.EqualTo(PerfMeterGpuResidentDrawerEffectivenessSnapshot.UnavailableCount));
+			Assert.That(snapshot.Effectiveness.BrgInstances, Is.EqualTo(PerfMeterGpuResidentDrawerEffectivenessSnapshot.UnavailableCount));
+
+			Assert.That(PerfMeterGpuResidentDrawerContextSnapshot.Unknown.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.NotObserved));
+			Assert.That(PerfMeterGpuResidentDrawerContextSnapshot.Unknown.ActivitySource, Is.Empty);
+		}
+
+		[Test]
+		public void GpuResidentDrawerCompositionReportsStructuredReasonAndRuntimeActivity()
+		{
+			PerfMeterGpuResidentDrawerContextSnapshot primitiveObservation = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"InstancedDrawing",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				string.Empty,
+				PerfMeterAvailability.Available,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+				PerfMeterGpuResidentDrawerReason.Unknown);
+
+			PerfMeterGpuResidentDrawerContextSnapshot snapshot = PerfMeterRenderGraphAnalytics.ComposeGpuResidentDrawerSnapshot(
+				primitiveObservation,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true);
+
+			Assert.That(snapshot.ProjectConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.IsProjectConfigurationSupported, Is.False);
+			Assert.That(snapshot.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.IsObservedActive, Is.True);
+			Assert.That(snapshot.ActivitySource, Is.EqualTo(PerfMeterGpuResidentDrawerContextSnapshot.UnityRuntimeActivitySource));
+			Assert.That(snapshot.ForwardPlusActivityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.IsObservedForwardPlusActive, Is.True);
+			Assert.That(snapshot.RenderingModeCompatibilityAvailability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(snapshot.IsRenderingModeCompatible, Is.True);
+			Assert.That(snapshot.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.ProjectConfigurationUnsupported));
+			Assert.That(snapshot.Warning, Does.Contain("project configuration"));
+		}
+
+		[Test]
+		public void GpuResidentDrawerObservedActiveStateOverridesDisabledConfiguredMode()
+		{
+			PerfMeterGpuResidentDrawerContextSnapshot primitiveObservation = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"Disabled",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				string.Empty,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+				PerfMeterGpuResidentDrawerReason.Unknown);
+
+			PerfMeterGpuResidentDrawerContextSnapshot snapshot = PerfMeterRenderGraphAnalytics.ComposeGpuResidentDrawerSnapshot(
+				primitiveObservation,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true);
+
+			Assert.That(snapshot.IsObservedActive, Is.True);
+			Assert.That(snapshot.DegradedReason, Is.Not.EqualTo(PerfMeterGpuResidentDrawerReason.ModeDisabled));
+			Assert.That(snapshot.DegradedReason, Is.Not.EqualTo(PerfMeterGpuResidentDrawerReason.RuntimeInactive));
+		}
+
+		[Test]
+		public void GpuResidentDrawerQueryFailureIsDistinctFromUnavailablePipeline()
+		{
+			PerfMeterGpuResidentDrawerContextSnapshot queryFailure = PerfMeterRenderGraphAnalytics.ComposeGpuResidentDrawerSnapshot(
+				new PerfMeterGpuResidentDrawerContextSnapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterAvailability.Unavailable,
+					false,
+					PerfMeterAvailability.Unknown,
+					false,
+					"Synthetic mode query failed."));
+			PerfMeterGpuResidentDrawerContextSnapshot missingInterface = PerfMeterRenderGraphAnalytics.ComposeGpuResidentDrawerSnapshot(
+				new PerfMeterGpuResidentDrawerContextSnapshot(
+					PerfMeterAvailability.Unavailable,
+					string.Empty,
+					PerfMeterAvailability.Unavailable,
+					false,
+					PerfMeterAvailability.Unknown,
+					false,
+					"Synthetic pipeline interface is unavailable."));
+
+			Assert.That(queryFailure.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.QueryFailed));
+			Assert.That(missingInterface.DegradedReason, Is.EqualTo(PerfMeterGpuResidentDrawerReason.PipelineUnavailable));
+		}
+
+		[Test]
+		public void GpuResidentDrawerEffectivenessNormalizesSampleStateAndSerializesUnavailableValuesAsNull()
+		{
+			PerfMeterProfilerMetricCapabilitySnapshot sampledDrawCalls = CreateBrgCapability(
+				PerfMeterProfilerMetricSemantic.BrgDrawCalls,
+				PerfMeterProfilerMetricSampleState.AvailableSampled,
+				"BRG Draw Calls Count");
+			PerfMeterProfilerMetricCapabilitySnapshot sampledInstances = CreateBrgCapability(
+				PerfMeterProfilerMetricSemantic.BrgInstances,
+				PerfMeterProfilerMetricSampleState.AvailableSampled,
+				"BRG Instances Count");
+			PerfMeterGpuResidentDrawerEffectivenessSnapshot sampled = new PerfMeterGpuResidentDrawerEffectivenessSnapshot(
+				PerfMeterAvailability.Available,
+				42,
+				7,
+				12,
+				sampledDrawCalls,
+				sampledInstances,
+				string.Empty);
+			Assert.That(sampled.BrgDrawCalls, Is.EqualTo(7));
+			Assert.That(sampled.BrgInstances, Is.EqualTo(12));
+			Assert.That(sampled.HasSample, Is.True);
+			Assert.That(sampled.HasObservedBrgWorkload, Is.True);
+			Assert.That(sampled.Warning, Does.Contain("aggregate BatchRendererGroup"));
+
+			PerfMeterProfilerMetricCapabilitySnapshot unsampledDrawCalls = CreateBrgCapability(
+				PerfMeterProfilerMetricSemantic.BrgDrawCalls,
+				PerfMeterProfilerMetricSampleState.AvailableNoSample,
+				"BRG Draw Calls Count");
+			PerfMeterProfilerMetricCapabilitySnapshot unsampledInstances = CreateBrgCapability(
+				PerfMeterProfilerMetricSemantic.BrgInstances,
+				PerfMeterProfilerMetricSampleState.AvailableNoSample,
+				"BRG Instances Count");
+			PerfMeterGpuResidentDrawerEffectivenessSnapshot unsampled = new PerfMeterGpuResidentDrawerEffectivenessSnapshot(
+				PerfMeterAvailability.Available,
+				43,
+				100,
+				200,
+				unsampledDrawCalls,
+				unsampledInstances,
+				"unsampled synthetic counters");
+			Assert.That(unsampled.BrgDrawCalls, Is.EqualTo(PerfMeterGpuResidentDrawerEffectivenessSnapshot.UnavailableCount));
+			Assert.That(unsampled.BrgInstances, Is.EqualTo(PerfMeterGpuResidentDrawerEffectivenessSnapshot.UnavailableCount));
+			Assert.That(unsampled.HasSample, Is.False);
+			Assert.That(unsampled.HasObservedBrgWorkload, Is.False);
+
+			StringBuilder sampledJson = new StringBuilder();
+			PerfMeterSessionExporter.AppendRenderIntegration(sampledJson, CreateRenderIntegrationSnapshot(new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"InstancedDrawing",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				string.Empty,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				sampled,
+				PerfMeterGpuResidentDrawerReason.None)));
+			Assert.That(sampledJson.ToString(), Does.Contain("\"brg_draw_calls\":7"));
+			Assert.That(sampledJson.ToString(), Does.Contain("\"brg_instances\":12"));
+			Assert.That(sampledJson.ToString(), Does.Contain("\"sample_state\":\"AvailableSampled\""));
+			Assert.That(sampledJson.ToString(), Does.Contain("\"scope\":\"brg_aggregate\""));
+
+			StringBuilder unsampledJson = new StringBuilder();
+			PerfMeterSessionExporter.AppendRenderIntegration(unsampledJson, CreateRenderIntegrationSnapshot(new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"InstancedDrawing",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				string.Empty,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				unsampled,
+				PerfMeterGpuResidentDrawerReason.None)));
+			Assert.That(unsampledJson.ToString(), Does.Contain("\"brg_draw_calls\":null"));
+			Assert.That(unsampledJson.ToString(), Does.Contain("\"brg_instances\":null"));
+			Assert.That(unsampledJson.ToString(), Does.Contain("\"sample_state\":\"AvailableNoSample\""));
+		}
+
+		[Test]
+		public void RenderIntegrationObservationUsesPipelineAssetIdentityBeyondNameAndType()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+			RenderPipelineAsset originalAsset = QualitySettings.renderPipeline;
+			SyntheticUniversalRenderPipelineAsset firstAsset = null;
+			SyntheticUniversalRenderPipelineAsset secondAsset = null;
+
+			try
+			{
+				firstAsset = ScriptableObject.CreateInstance<SyntheticUniversalRenderPipelineAsset>();
+				secondAsset = ScriptableObject.CreateInstance<SyntheticUniversalRenderPipelineAsset>();
+				Assert.That(firstAsset, Is.Not.SameAs(secondAsset));
+				firstAsset.name = "Synthetic Universal Collision Asset";
+				secondAsset.name = firstAsset.name;
+				Assert.That(firstAsset.name, Is.EqualTo(secondAsset.name));
+				Assert.That(firstAsset.GetType().FullName, Is.EqualTo(secondAsset.GetType().FullName));
+
+				QualitySettings.renderPipeline = firstAsset;
+				PerfMeterRenderGraphAnalytics.PrepareObservation(null);
+				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
+					null,
+					"ForwardPlus",
+					"AfterRenderingPostProcessing",
+					new PerfMeterGpuResidentDrawerContextSnapshot(
+						PerfMeterAvailability.Available,
+						"InstancedDrawing",
+						PerfMeterAvailability.Available,
+						true,
+						PerfMeterAvailability.Unknown,
+						false,
+						"Synthetic activity is unknown."),
+					true,
+					true,
+					false);
+				PerfMeterRenderIntegrationSnapshot firstSnapshot = PerformanceMeter.GetRenderIntegrationSnapshot();
+				Assert.That(firstSnapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.Observed));
+				Assert.That(firstSnapshot.ObservationMatchesCurrentPipeline, Is.True);
+
+				QualitySettings.renderPipeline = secondAsset;
+				PerfMeterRenderIntegrationSnapshot snapshot = PerformanceMeter.GetRenderIntegrationSnapshot();
+				Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(PerfMeterRenderPipelineKind.Universal));
+				Assert.That(snapshot.RenderPipeline.AssetName, Is.EqualTo(secondAsset.name));
+				Assert.That(snapshot.RenderPipeline.AssetTypeName, Is.EqualTo(secondAsset.GetType().FullName));
+				Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderIntegrationState.NotObserved));
+				Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.False);
+				Assert.That(snapshot.Warning, Does.Contain("different render pipeline"));
+			}
+			finally
+			{
+				QualitySettings.renderPipeline = originalAsset;
+				if (firstAsset != null)
+				{
+					UnityEngine.Object.DestroyImmediate(firstAsset);
+				}
+
+				if (secondAsset != null)
+				{
+					UnityEngine.Object.DestroyImmediate(secondAsset);
+				}
+
+				PerfMeterRenderGraphAnalytics.ResetForTests();
+			}
+		}
+
+		[Test]
+		public void PreparedRenderIntegrationObservationRecordDoesNotAllocate()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+			const string effectiveRenderingMode = "ForwardPlus";
+			const string injectionPoint = "AfterRenderingPostProcessing";
+			PerfMeterGpuResidentDrawerContextSnapshot gpuResidentDrawer = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"InstancedDrawing",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Unknown,
+				false,
+				"Synthetic activity is known through the typed observations.",
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterGpuResidentDrawerEffectivenessSnapshot.Unknown,
+				PerfMeterGpuResidentDrawerReason.Unknown);
+			GameObject cameraObject = null;
+
+			try
+			{
+				cameraObject = new GameObject("PerfMeter Allocation Camera");
+				Camera camera = cameraObject.AddComponent<Camera>();
+				camera.cameraType = CameraType.Game;
+
+				PerfMeterRenderGraphAnalytics.PrepareObservation(camera);
+				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
+					camera,
+					effectiveRenderingMode,
+					injectionPoint,
+					gpuResidentDrawer,
+					true,
+					true,
+					false,
+					PerfMeterAvailability.Available,
+					true,
+					PerfMeterAvailability.Available,
+					true);
+				PerfMeterRenderGraphAnalytics.PrepareObservation(camera);
+
+				long before = System.GC.GetAllocatedBytesForCurrentThread();
+				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
+					camera,
+					effectiveRenderingMode,
+					injectionPoint,
+					gpuResidentDrawer,
+					true,
+					true,
+					false,
+					PerfMeterAvailability.Available,
+					true,
+					PerfMeterAvailability.Available,
+					true);
+				long allocatedBytes = System.GC.GetAllocatedBytesForCurrentThread() - before;
+
+				Assert.That(allocatedBytes, Is.EqualTo(0L));
+			}
+			finally
+			{
+				if (cameraObject != null)
+				{
+					UnityEngine.Object.DestroyImmediate(cameraObject);
+				}
+
+				PerfMeterRenderGraphAnalytics.ResetForTests();
+			}
+		}
+
+		[Test]
+		public void HdrpCompatibilityFacadeReflectsCurrentPipelineFreshness()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+
+			try
+			{
+				Assert.That(QualitySettings.renderPipeline, Is.Not.Null);
+				PerfMeterRenderPipelineKind currentKind = PerfMeterRenderPipelineDetector.CreateSnapshot().Kind;
+				bool observationMatches = currentKind == PerfMeterRenderPipelineKind.HighDefinition;
+				PerfMeterRenderGraphAnalytics.RecordHdrpCustomPassSnapshot(
+					"Synthetic HDRP Camera",
+					"Game",
+					"BeforePostProcess");
+
+				PerfMeterRenderIntegrationSnapshot snapshot = PerformanceMeter.GetRenderIntegrationSnapshot();
+				Assert.That(snapshot.RenderPipeline.Kind, Is.EqualTo(currentKind));
+				Assert.That(snapshot.State, Is.EqualTo(observationMatches ? PerfMeterRenderIntegrationState.Observed : PerfMeterRenderIntegrationState.NotObserved));
+				Assert.That(snapshot.ObservationMatchesCurrentPipeline, Is.EqualTo(observationMatches));
+				Assert.That(snapshot.LastObservedFrame, Is.GreaterThanOrEqualTo(0));
+				Assert.That(snapshot.ObservationAgeFrames, Is.GreaterThanOrEqualTo(0));
+				Assert.That(snapshot.IntegrationId, Is.EqualTo("sgg.perfmeter.hdrp.custom-pass"));
+				Assert.That(snapshot.PassKind, Is.EqualTo(PerfMeterRenderPassKind.CustomPass));
+				if (!observationMatches)
+				{
+					Assert.That(snapshot.Warning, Does.Contain("different render pipeline"));
+				}
+
+				PerfMeterRenderGraphSnapshot legacy = PerformanceMeter.GetRenderGraphSnapshot();
+				Assert.That(legacy.IsAvailable, Is.True);
+				Assert.That(legacy.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
+				Assert.That(legacy.RenderPipeline, Is.EqualTo(PerfMeterRenderPipelineKind.HighDefinition));
+				Assert.That(legacy.IntegrationName, Is.EqualTo("HDRP Custom Pass"));
+				Assert.That(legacy.ObservedCameraName, Is.EqualTo("Synthetic HDRP Camera"));
+				Assert.That(legacy.ObservedCameraType, Is.EqualTo("Game"));
+				Assert.That(legacy.ObservedInjectionPoint, Is.EqualTo("BeforePostProcess"));
+				Assert.That(legacy.PerfMeterPassCount, Is.EqualTo(1));
+				Assert.That(legacy.RegisteredPassCount, Is.EqualTo(-1));
+				Assert.That(PerformanceMeter.TryGetRenderGraphSnapshot(out PerfMeterRenderGraphSnapshot tryLegacy), Is.True);
+				Assert.That(tryLegacy.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
+			}
+			finally
+			{
+				PerfMeterRenderGraphAnalytics.ResetForTests();
+			}
+		}
+
+		[Test]
+		public void McpRenderIntegrationSnapshotExposesMetadataAndNestedOutputWithoutStartingRuntime()
+		{
+			PerfMeterRenderGraphAnalytics.ResetForTests();
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
+
+			Assert.That(metadata, Does.Contain("perfmeter.render.snapshot"));
+			Assert.That(metadata, Does.Contain("SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderIntegrationSnapshot"));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+
+			PerfMeterRenderPipelineKind currentKind = PerfMeterRenderPipelineDetector.CreateSnapshot().Kind;
+			string json = PerfMeterMcpCommands.RenderIntegrationSnapshot();
+			Assert.That(json, Does.Contain("\"schema_version\":1"));
+			Assert.That(json, Does.Contain("\"render_integration\":{"));
+			Assert.That(json, Does.Contain("\"render_pipeline\":{"));
+			Assert.That(json, Does.Contain("\"kind\":\"" + currentKind + "\""));
+			Assert.That(json, Does.Contain("\"gpu_resident_drawer\":{"));
+			Assert.That(json, Does.Contain("\"support_availability\""));
+			Assert.That(json, Does.Contain("\"project_configuration_availability\""));
+			Assert.That(json, Does.Contain("\"compute_shader_availability\""));
+			Assert.That(json, Does.Contain("\"effectiveness\":{"));
+			Assert.That(json, Does.Contain("\"activity_source\":\"\""));
+			Assert.That(json, Does.Contain("\"degraded_reason\":\"NotObserved\""));
+			Assert.That(json, Does.Contain("\"variable_rate_shading\":{"));
+			Assert.That(json, Does.Contain("\"configuration_availability\""));
+			Assert.That(json, Does.Contain("\"activity_availability\""));
+			Assert.That(json, Does.Contain("\"legacy_render_graph\":{"));
+			Assert.That(json, Does.Contain("\"registered_pass_count\":-1"));
+			Assert.That(json, Does.Contain("\"is_playing\""));
+			Assert.That(json, Does.Contain("\"is_paused\""));
+			Assert.That(json, Does.Contain("\"is_compiling\""));
+			Assert.That(json, Does.Contain("\"state\":\"NotObserved\""));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
 		}
 
 		[Test]
@@ -1212,6 +1789,54 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That((actual & expected) == 0, Is.True);
 		}
 
+		private static PerfMeterProfilerMetricCapabilitySnapshot CreateBrgCapability(
+			PerfMeterProfilerMetricSemantic semantic,
+			PerfMeterProfilerMetricSampleState sampleState,
+			string recorderName)
+		{
+			return new PerfMeterProfilerMetricCapabilitySnapshot(
+				semantic,
+				sampleState,
+				PerfMeterProfilerMetricResolution.Exact,
+				"Render",
+				recorderName,
+				"Count",
+				"Int64",
+				1,
+				sampleState == PerfMeterProfilerMetricSampleState.AvailableSampled ? 1 : 0);
+		}
+
+		private static PerfMeterRenderIntegrationSnapshot CreateRenderIntegrationSnapshot(PerfMeterGpuResidentDrawerContextSnapshot gpuResidentDrawer)
+		{
+			return new PerfMeterRenderIntegrationSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderIntegrationState.Observed,
+				new PerfMeterRenderPipelineSnapshot(
+					PerfMeterRenderPipelineKind.Universal,
+					"Synthetic Universal",
+					"SyntheticUniversal",
+					"SyntheticUniversalRuntime"),
+				PerfMeterRenderPipelineAssetSource.QualitySettings,
+				42,
+				0,
+				true,
+				0UL,
+				"Synthetic Camera",
+				"Game",
+				"synthetic.integration",
+				"Synthetic Integration",
+				"1.0",
+				PerfMeterRenderPassKind.RenderGraphRaster,
+				"Synthetic Pass",
+				"AfterRendering",
+				1,
+				"ForwardPlus",
+				gpuResidentDrawer,
+				PerfMeterVariableRateShadingContextSnapshot.Unknown,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				string.Empty);
+		}
+
 		private sealed class TestCustomMetricProvider : IPerfMeterCustomMetricProvider
 		{
 			private readonly string _id;
@@ -1240,6 +1865,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			{
 				metric = default;
 				throw new System.InvalidOperationException("Provider failed.");
+			}
+		}
+
+		private sealed class SyntheticUniversalRenderPipelineAsset : RenderPipelineAsset
+		{
+			protected override RenderPipeline CreatePipeline()
+			{
+				return null;
 			}
 		}
 	}

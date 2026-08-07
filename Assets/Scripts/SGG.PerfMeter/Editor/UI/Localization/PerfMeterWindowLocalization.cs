@@ -177,6 +177,11 @@ namespace SGG.PerfMeter.Editor.UI.Localization
 
 		private static void ApplyElement(VisualElement element)
 		{
+			if (element.ClassListContains("pm-no-localize"))
+			{
+				return;
+			}
+
 			if (!string.IsNullOrEmpty(element.tooltip))
 			{
 				element.tooltip = Text(element.tooltip);

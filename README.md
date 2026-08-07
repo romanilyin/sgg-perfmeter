@@ -61,13 +61,15 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
 - Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
+- Optionally capture sensitive memory snapshots through the separate Memory Profiler integration and correlate them with the existing evidence-bundle surface.
+- Inspect dynamic shader GPU-program and graphics-pipeline creation markers with their discovered units and provenance, then correlate an optional GraphicsStateCollection trace with session samples.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
 - Give tools and agents structured data for comparisons, A/B tests, and hotspot search instead of relying on screenshots or Console scraping.
 
 ## How It Exposes The Data
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
-- **Public C# API**: immutable snapshots for status, metrics, device, camera, Render Graph, alerts, sessions, and custom metrics.
+- **Public C# API**: immutable snapshots for status, metrics, device, camera, integration-neutral render context (with a legacy Render Graph facade), alerts, sessions, and custom metrics.
 - **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools with atomic correlated bundles and truthful artifact provenance.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
@@ -80,7 +82,9 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - ProfilerRecorder render counters: draw calls, SetPass, batches, vertices, SRP Batcher, BRG/GRD, upload bytes, memory, and GPU memory when available.
 - Bottleneck classification for GPU, CPU main thread, CPU render thread, present/VSync, balanced, or unknown frames.
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
+- Dynamic `ProfilerRecorder` shader GPU-program and graphics-pipeline creation markers when Unity exposes them; values keep their discovered units and are not assumed to be shader or PSO counts.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
+- Integration-neutral render context: current pipeline/source, observed camera and frame freshness, integration/pass/injection details, actual PerfMeter pass count, effective mode where Unity exposes it, typed GRD support/activity/effectiveness, and explicit VRS availability.
 
 ## Optional Platform Telemetry
 
@@ -90,6 +94,32 @@ PerfMeter can collect optional thermal and Adaptive Performance signals through 
 - **Collection and exports**: the runtime samples the provider once per collected frame. Session JSON/CSV and capture samples preserve the snapshot and provider provenance. MCP command `perfmeter.platform.telemetry` exposes the current structured snapshot.
 - **Profiler and alerts**: `SGG.PerfMeter.Thermal.Sample` and `SGG.PerfMeter.Thermal.Available` expose the thermal collection marker and availability counter. The default `thermal.throttling` alert uses the `ThermalWarningLevel` metric when an imminent or active throttling level is available.
 - **Unavailable is explicit**: unsupported providers and fields stay unavailable; JSON serializes unavailable numeric values as `null` and CSV uses empty fields, with availability flags instead of fake zero readings. Real Adaptive Performance package and target-device validation remain release-matrix/release-candidate gates; no device result is implied here.
+
+## Optional Memory Snapshots
+
+Memory snapshots are an opt-in extension, not a core-package dependency. On Unity `6000.4+`, installing `com.unity.memoryprofiler` `1.1.0+` enables the separate `SGG.PerfMeter.MemoryProfiler` assembly, which auto-registers the Memory Profiler backend. Check `PerformanceMeter.GetMemorySnapshotCapabilities()` before requesting a snapshot.
+
+- Manual requests use `RequestMemorySnapshot(...)`; system-memory threshold and bounded leak-growth triggers are disabled by default and must be explicitly configured.
+- `GetMemorySnapshotStatus()` reports single-flight, cooldown, free-space, and capture-flag decisions. Memory-only evidence uses the existing capture-bundle API and is exported below `Temp/PerfMeter/CaptureBundles` with `MemoryProfiler` provenance; it does not create an external GPU artifact.
+- A `.snap` source is owned under `Temp/PerfMeter/MemorySnapshots`, limited to 512 MiB, and copied with a streaming SHA-256 into the bundle. The total bundle retention quota is 2 GiB. Treat snapshots as sensitive process-memory data and protect/review them before sharing.
+
+See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](./docs/en/workflows.md), and [Limitations](./docs/en/limitations.md) pages for the optional integration details.
+
+## Optional Graphics-State Diagnostics
+
+`PerformanceMeter.GetGraphicsDiagnostics()` reports dynamic shader GPU-program and graphics-pipeline creation markers, their exact/alias recorder provenance, discovered units and data types, and graphics API context. Values are raw recorder values; availability is explicit and can change by Unity version, platform, and runtime catalog refresh.
+
+The optional `SGG.PerfMeter.GraphicsStateCollection` assembly supports a bounded trace and synchronous prewarm workflow on Unity `6000.4+`. Start and keep a PerfMeter session recording through the trace; `StopSession()` cancels an active trace. The owned `.graphicsstate` artifact is written below `Temp/PerfMeter/GraphicsStateCollections`, limited to 64 MiB, and correlated session samples carry `graphics_state_trace_id`. Cache-miss evidence is not supported by the Unity backend.
+
+See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](./docs/en/workflows.md), and [Limitations](./docs/en/limitations.md) pages for the graphics diagnostics and trace workflow.
+
+## Render Integration Context
+
+`PerformanceMeter.GetRenderIntegrationSnapshot()` and `TryGetRenderIntegrationSnapshot(...)` expose the additive `PerfMeterRenderIntegrationSnapshot` for URP Render Graph and HDRP Custom Pass integrations. The snapshot includes the current pipeline and asset source, the observed camera identity, observation frame/age and current-pipeline match, integration/pass/injection metadata, scheduled PerfMeter pass count, effective rendering mode where a stable public API provides it, and nested GRD/VRS context. `perfmeter.render.snapshot` exposes the same read-only data; `perfmeter.rendergraph.snapshot` remains available as the legacy facade.
+
+Reads do not start runtime collection. A stale observation is marked as not matching the current pipeline instead of being presented as current. Capture context schema v1 preserves `render` and adds `render_integration`; session schemas are unchanged. Unity does not expose a stable public RenderGraph/CustomPass viewer or pass-target API for navigation, so PerfMeter does not promise Editor navigation or private pass/resource counters.
+
+The nested GRD context reports public SRP/project/compute support, Unity's global runtime-enabled result, current-frame URP Forward+/clustered compatibility, structured degraded reasons, and provenance-rich BRG effectiveness counters. BRG values are aggregate `BatchRendererGroup` evidence, not proof that a particular renderer used GRD; unavailable or unsampled JSON values are `null`.
 
 ## Quick Start
 

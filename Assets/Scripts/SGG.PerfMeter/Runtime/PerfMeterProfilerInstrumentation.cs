@@ -20,6 +20,9 @@ namespace SGG.PerfMeter
 		internal const string ExportJsonMarkerName = "SGG.PerfMeter.Export.Json";
 		internal const string ExportCsvMarkerName = "SGG.PerfMeter.Export.Csv";
 		internal const string ThermalSampleMarkerName = "SGG.PerfMeter.Thermal.Sample";
+		internal const string SessionMarkerPrefix = "SGG.PerfMeter.Session.";
+		internal const string SessionBeginMarkerSuffix = ".Begin";
+		internal const string SessionEndMarkerSuffix = ".End";
 
 		internal const string CpuFrameTimeCounterName = "SGG.PerfMeter.CPU.FrameTime";
 		internal const string CpuMainThreadTimeCounterName = "SGG.PerfMeter.CPU.MainThreadTime";
@@ -65,6 +68,9 @@ namespace SGG.PerfMeter
 		private static readonly PerfMeterProfilerCounterInt OverdrawStateCounter = CreateCountCounter(OverdrawStateCounterName);
 		private static readonly PerfMeterProfilerCounterInt CaptureStateCounter = CreateCountCounter(CaptureStateCounterName);
 		private static readonly PerfMeterProfilerCounterInt ThermalAvailableCounter = CreateCountCounter(ThermalAvailableCounterName);
+		private static string _sessionMarkerId = string.Empty;
+		private static ProfilerMarker _sessionBeginMarker;
+		private static ProfilerMarker _sessionEndMarker;
 
 		internal static long CpuFrameTimeNanoseconds => CpuFrameTimeCounter.Value;
 		internal static long CpuMainThreadTimeNanoseconds => CpuMainThreadTimeCounter.Value;
@@ -120,6 +126,26 @@ namespace SGG.PerfMeter
 			SessionStateCounter.Value = (int)state;
 		}
 
+		internal static string GetSessionBoundaryMarkerName(string sessionId, bool isBegin)
+		{
+			if (string.IsNullOrEmpty(sessionId))
+			{
+				return string.Empty;
+			}
+
+			return SessionMarkerPrefix + sessionId + (isBegin ? SessionBeginMarkerSuffix : SessionEndMarkerSuffix);
+		}
+
+		internal static void RecordSessionBegin(string sessionId)
+		{
+			RecordSessionBoundary(sessionId, true);
+		}
+
+		internal static void RecordSessionEnd(string sessionId)
+		{
+			RecordSessionBoundary(sessionId, false);
+		}
+
 		internal static void RecordAlertScopeActive(bool active)
 		{
 			AlertScopeActiveCounter.Value = active ? 1 : 0;
@@ -152,6 +178,9 @@ namespace SGG.PerfMeter
 			RecordOverdrawState(PerfMeterOverdrawMeasurementState.Off);
 			RecordCaptureState(PerfMeterCaptureState.Idle);
 			ThermalAvailableCounter.Value = 0;
+			_sessionMarkerId = string.Empty;
+			_sessionBeginMarker = default;
+			_sessionEndMarker = default;
 		}
 
 		internal static long MillisecondsToNanoseconds(double milliseconds)
@@ -163,6 +192,25 @@ namespace SGG.PerfMeter
 
 			double nanoseconds = milliseconds * 1000000d;
 			return nanoseconds >= long.MaxValue ? long.MaxValue : (long)Math.Round(nanoseconds);
+		}
+
+		private static void RecordSessionBoundary(string sessionId, bool isBegin)
+		{
+			if (string.IsNullOrEmpty(sessionId))
+			{
+				return;
+			}
+
+			if (!string.Equals(_sessionMarkerId, sessionId, StringComparison.Ordinal))
+			{
+				_sessionMarkerId = sessionId;
+				_sessionBeginMarker = new ProfilerMarker(GetSessionBoundaryMarkerName(sessionId, true));
+				_sessionEndMarker = new ProfilerMarker(GetSessionBoundaryMarkerName(sessionId, false));
+			}
+
+			ProfilerMarker marker = isBegin ? _sessionBeginMarker : _sessionEndMarker;
+			marker.Begin();
+			marker.End();
 		}
 
 		private static PerfMeterProfilerCounterLong CreateTimeCounter(string name)

@@ -21,6 +21,8 @@ namespace SGG.PerfMeter
 		internal PerfMeterCounterAvailability AvailableCounters => _profilerMetricCatalog.AvailableCounters;
 		internal PerfMeterCounterAvailability UnavailableCounters => _profilerMetricCatalog.UnavailableCounters;
 		internal string LastError => _profilerMetricCatalog.LastError;
+		internal int ProfilerMetricCatalogRevision => _profilerMetricCatalog.Revision;
+		internal PerfMeterProfilerMetricCapabilitySnapshot GetProfilerMetricCapability(PerfMeterProfilerMetricSemantic semantic) => _profilerMetricCatalog.GetCapability(semantic);
 
 		internal void Start()
 		{
@@ -135,7 +137,21 @@ namespace SGG.PerfMeter
 				ReadLongCounter(PerfMeterCounterAvailability.GcReservedMemory),
 				ReadLongCounter(PerfMeterCounterAvailability.GpuMemory),
 				0d,
-				srpBatcherInstances: ReadCounter(PerfMeterCounterAvailability.SrpBatcherInstances));
+				overdrawState: PerfMeterOverdrawMeasurementState.Off,
+				overdrawProgress: 0f,
+				srpBatcherInstances: ReadCounter(PerfMeterCounterAvailability.SrpBatcherInstances),
+				frameSampleCount: 0,
+				gpuValidSampleCount: 0,
+				averageFps: 0d,
+				onePercentLowFps: 0d,
+				pointOnePercentLowFps: 0d,
+				frameSpikeCount: 0,
+				severeFrameSpikeCount: 0,
+				shaderGpuProgramCreationValue: ReadLongCounter(PerfMeterCounterAvailability.ShaderGpuProgramCreation),
+				graphicsPipelineCreationValue: ReadLongCounter(PerfMeterCounterAvailability.GraphicsPipelineCreation),
+				profilerMetricCatalogRevision: _profilerMetricCatalog.Revision,
+				shaderGpuProgramCreationCapability: _profilerMetricCatalog.GetCapability(PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation),
+				graphicsPipelineCreationCapability: _profilerMetricCatalog.GetCapability(PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation));
 		}
 
 		private int ReadCounter(PerfMeterCounterAvailability counter)

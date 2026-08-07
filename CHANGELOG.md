@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.8.7-1
+
+- Added optional Memory Profiler snapshot triggers for manual, threshold, and leak workflows with cooldown, free-space guards, capture flags, and bundle manifest metadata.
+- Added shader/PSO and graphics-pipeline diagnostics plus optional `GraphicsStateCollection` trace/prewarm lifecycle handling with capability provenance, session correlation, cancellation, and owned cleanup.
+- Added an integration-neutral render context snapshot for camera, SRP/pass, freshness, GRD, and VRS context while keeping URP/HDRP public-API boundaries explicit.
+- Added truthful GRD/Forward+/compute support, global activity, and aggregate BRG effectiveness telemetry with provenance and degraded reasons rather than per-renderer claims.
+- Added session IDs, Profiler correlation markers, an optional Profile Analyzer opener without a hard dependency, and versioned performance baseline/CI artifact surfaces.
+- Added a read-only virtualized UI Toolkit Session Analysis window with retained-sample timeline, worst-frame inspection, derived budget violations, and whole-run/current-scene scopes.
+- Completed Setup-window presentation for persisted settings, optional integrations, analysis entry points, and read-only compatibility/schema/diagnostic states with runtime-only boundaries.
+
 ## 2026.8.6-2
 
 - Added an opt-in external GPU capture coordinator with deterministic pre/capture/post-roll states, overlap protection, explicit capability failures, fake-backend coverage, and a guarded Unity `ExternalGPUProfiler` backend for attached RenderDoc/PIX tools in Editor or Development Builds.

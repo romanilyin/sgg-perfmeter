@@ -104,6 +104,31 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return ProfilerCapabilitiesJson(RuntimePerformanceMeter.GetProfilerMetricCatalog());
 		}
 
+		public static string GraphicsDiagnostics()
+		{
+			PerfMeterGraphicsDiagnosticsSnapshot snapshot = RuntimePerformanceMeter.GetGraphicsDiagnostics();
+			StringBuilder builder = new StringBuilder(1024);
+			builder.Append("{\"availability\":").Append(JsonString(snapshot.Availability.ToString()));
+			builder.Append(",\"collection_frame\":").Append(snapshot.CollectionFrame);
+			builder.Append(",\"profiler_metric_catalog_revision\":").Append(snapshot.ProfilerMetricCatalogRevision);
+			builder.Append(",\"graphics_device_type\":").Append(JsonString(snapshot.GraphicsDeviceType.ToString()));
+			builder.Append(",\"graphics_device_name\":").Append(JsonString(snapshot.GraphicsDeviceName));
+			builder.Append(",\"graphics_device_vendor\":").Append(JsonString(snapshot.GraphicsDeviceVendor));
+			builder.Append(",\"graphics_device_version\":").Append(JsonString(snapshot.GraphicsDeviceVersion));
+			builder.Append(",\"parallel_pso_creation_availability\":").Append(JsonString(snapshot.ParallelPsoCreationAvailability.ToString()));
+			builder.Append(",\"supports_parallel_pso_creation\":").Append(JsonBool(snapshot.SupportsParallelPsoCreation));
+			builder.Append(",\"shader_gpu_program_creation_value\":").Append(snapshot.ShaderGpuProgramCreationValue);
+			builder.Append(",\"graphics_pipeline_creation_value\":").Append(snapshot.GraphicsPipelineCreationValue);
+			builder.Append(",\"shader_gpu_program_creation_capability\":");
+			AppendProfilerMetricCapability(builder, snapshot.ShaderGpuProgramCreationCapability);
+			builder.Append(",\"graphics_pipeline_creation_capability\":");
+			AppendProfilerMetricCapability(builder, snapshot.GraphicsPipelineCreationCapability);
+			builder.Append(",\"warning\":").Append(JsonString(snapshot.Warning));
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		public static string AlertsLatest()
 		{
 			return AlertsJson(false);
@@ -201,6 +226,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"max_roll_frames\":").Append(capabilities.MaxRollFrames);
 			builder.Append(",\"max_bundle_bytes\":").Append(capabilities.MaxBundleBytes);
 			builder.Append(",\"max_screenshot_bytes\":").Append(capabilities.MaxScreenshotBytes);
+			builder.Append(",\"max_memory_snapshot_bytes\":").Append(capabilities.MaxMemorySnapshotBytes);
 			builder.Append(",\"total_quota_bytes\":").Append(capabilities.TotalQuotaBytes);
 			builder.Append(",\"max_committed_bundles\":").Append(capabilities.MaxCommittedBundles);
 			builder.Append(",\"retention_days\":").Append(capabilities.RetentionDays);
@@ -211,6 +237,120 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		public static string MemorySnapshotRequest(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			PerfMeterMemoryCaptureFlags flags = ParseMemoryCaptureFlags(argsJson);
+			int minimumFreeDiskMb = RequireRange(ExtractInt(argsJson, "minimum_free_disk_mb", 1024), 0, 1048576, "minimum_free_disk_mb");
+			int cooldownSeconds = RequireRange(ExtractInt(argsJson, "cooldown_seconds", 300), 0, 86400, "cooldown_seconds");
+			PerfMeterMemorySnapshotRequestResult result = RuntimePerformanceMeter.RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions(
+				captureId,
+				flags,
+				minimumFreeDiskMb * 1024L * 1024L,
+				cooldownSeconds));
+			return MemorySnapshotCommandJson(result.ToString(), RuntimePerformanceMeter.GetMemorySnapshotStatus(), RuntimePerformanceMeter.GetCaptureBundleStatus(captureId));
+		}
+
+		public static string MemorySnapshotStatus()
+		{
+			PerfMeterMemorySnapshotStatusSnapshot status = RuntimePerformanceMeter.GetMemorySnapshotStatus();
+			return MemorySnapshotCommandJson("status", status, RuntimePerformanceMeter.GetCaptureBundleStatus(status.CaptureId));
+		}
+
+		public static string MemorySnapshotCapabilities()
+		{
+			PerfMeterMemorySnapshotCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetMemorySnapshotCapabilities();
+			StringBuilder builder = new StringBuilder(640);
+			builder.Append("{\"availability\":").Append(JsonString(capabilities.Availability.ToString()));
+			builder.Append(",\"backend_id\":").Append(JsonString(capabilities.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(capabilities.BackendVersion));
+			builder.Append(",\"supported_capture_flags\":").Append(JsonString(capabilities.SupportedCaptureFlags.ToString()));
+			builder.Append(",\"max_snapshot_bytes\":").Append(capabilities.MaxSnapshotBytes);
+			builder.Append(",\"snapshot_root\":").Append(JsonString(capabilities.SnapshotRoot));
+			builder.Append(",\"warning\":").Append(JsonString(capabilities.Warning));
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		public static string MemorySnapshotTriggersConfigure(string argsJson)
+		{
+			bool enabled = RequireBool(argsJson, "enabled");
+			int thresholdMb = RequireRange(ExtractInt(argsJson, "system_memory_threshold_mb", 0), 0, 1048576, "system_memory_threshold_mb");
+			int growthMb = RequireRange(ExtractInt(argsJson, "leak_growth_threshold_mb", 0), 0, 1048576, "leak_growth_threshold_mb");
+			int windowFrames = RequireRange(ExtractInt(argsJson, "leak_window_frames", 300), 30, 36000, "leak_window_frames");
+			int minimumFreeDiskMb = RequireRange(ExtractInt(argsJson, "minimum_free_disk_mb", 1024), 0, 1048576, "minimum_free_disk_mb");
+			int cooldownSeconds = RequireRange(ExtractInt(argsJson, "cooldown_seconds", 300), 0, 86400, "cooldown_seconds");
+			PerfMeterMemorySnapshotTriggerOptions options = new PerfMeterMemorySnapshotTriggerOptions(
+				enabled,
+				thresholdMb * 1024L * 1024L,
+				growthMb * 1024L * 1024L,
+				windowFrames,
+				ParseMemoryCaptureFlags(argsJson),
+				minimumFreeDiskMb * 1024L * 1024L,
+				cooldownSeconds);
+			bool configured = RuntimePerformanceMeter.ConfigureMemorySnapshotTriggers(options);
+			StringBuilder builder = new StringBuilder(512);
+			builder.Append("{\"configured\":").Append(JsonBool(configured));
+			builder.Append(",\"triggers\":");
+			AppendMemorySnapshotTriggers(builder, RuntimePerformanceMeter.GetMemorySnapshotTriggers());
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		public static string GraphicsStateTraceRequest(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			int traceFrames = RequireRange(ExtractInt(argsJson, "trace_frames", PerfMeterGraphicsStateTraceOptions.DefaultTraceFrames), 1, PerfMeterGraphicsStateCollectionCoordinator.MaxTraceFrames, "trace_frames");
+			int minimumFreeDiskMb = RequireRange(ExtractInt(argsJson, "minimum_free_disk_mb", 1024), 0, 1048576, "minimum_free_disk_mb");
+			PerfMeterGraphicsStateCollectionRequestResult result = RuntimePerformanceMeter.RequestGraphicsStateTrace(
+				new PerfMeterGraphicsStateTraceOptions(captureId, traceFrames, minimumFreeDiskMb * 1024L * 1024L));
+			return GraphicsStateCollectionCommandJson(result.ToString(), RuntimePerformanceMeter.GetGraphicsStateCollectionStatus());
+		}
+
+		public static string GraphicsStateCollectionStatus()
+		{
+			return GraphicsStateCollectionCommandJson("status", RuntimePerformanceMeter.GetGraphicsStateCollectionStatus());
+		}
+
+		public static string GraphicsStateCollectionCapabilities()
+		{
+			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetGraphicsStateCollectionCapabilities();
+			StringBuilder builder = new StringBuilder(640);
+			builder.Append("{\"availability\":").Append(JsonString(capabilities.Availability.ToString()));
+			builder.Append(",\"backend_id\":").Append(JsonString(capabilities.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(capabilities.BackendVersion));
+			builder.Append(",\"supports_trace\":").Append(JsonBool(capabilities.SupportsTrace));
+			builder.Append(",\"supports_prewarm\":").Append(JsonBool(capabilities.SupportsPrewarm));
+			builder.Append(",\"supports_cache_miss_tracing\":").Append(JsonBool(capabilities.SupportsCacheMissTracing));
+			builder.Append(",\"supports_parallel_pso_creation\":").Append(JsonBool(capabilities.SupportsParallelPsoCreation));
+			builder.Append(",\"requires_session_recording\":").Append(JsonBool(capabilities.RequiresSessionRecording));
+			builder.Append(",\"max_trace_frames\":").Append(capabilities.MaxTraceFrames);
+			builder.Append(",\"max_artifact_bytes\":").Append(capabilities.MaxArtifactBytes);
+			builder.Append(",\"artifact_root\":").Append(JsonString(capabilities.ArtifactRoot));
+			builder.Append(",\"warning\":").Append(JsonString(capabilities.Warning));
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
+		public static string GraphicsStateTraceCancel(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			bool canceled = RuntimePerformanceMeter.CancelGraphicsStateTrace(captureId);
+			return GraphicsStateCollectionCommandJson(canceled ? "canceled" : "not_canceled", RuntimePerformanceMeter.GetGraphicsStateCollectionStatus());
+		}
+
+		public static string GraphicsStateCollectionPrewarm(string argsJson)
+		{
+			string relativePath = RequireString(argsJson, "relative_path");
+			int maxStateCount = RequireRange(ExtractInt(argsJson, "max_state_count", 0), 0, PerfMeterGraphicsStateCollectionCoordinator.MaxPrewarmStateCount, "max_state_count");
+			PerfMeterGraphicsStateCollectionRequestResult result = RuntimePerformanceMeter.PrewarmGraphicsStateCollection(
+				new PerfMeterGraphicsStatePrewarmOptions(relativePath, maxStateCount));
+			return GraphicsStateCollectionCommandJson(result.ToString(), RuntimePerformanceMeter.GetGraphicsStateCollectionStatus());
 		}
 
 		public static string DeviceInfo()
@@ -233,6 +373,16 @@ namespace SGG.PerfMeter.Editor.Mcp
 		public static string RenderGraphSnapshot()
 		{
 			return RenderGraphSnapshotJson(RuntimePerformanceMeter.GetRenderGraphSnapshot());
+		}
+
+		public static string RenderIntegrationSnapshot()
+		{
+			StringBuilder builder = new StringBuilder(2048);
+			builder.Append("{\"schema_version\":1,\"render_integration\":");
+			PerfMeterSessionExporter.AppendRenderIntegration(builder, RuntimePerformanceMeter.GetRenderIntegrationSnapshot());
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
 		}
 
 		public static string OverlaySet(string argsJson)
@@ -487,6 +637,19 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return builder.ToString();
 		}
 
+		private static string MemorySnapshotCommandJson(string result, PerfMeterMemorySnapshotStatusSnapshot status, PerfMeterCaptureBundleStatusSnapshot bundle)
+		{
+			StringBuilder builder = new StringBuilder(1024);
+			builder.Append("{\"result\":").Append(JsonString(result));
+			builder.Append(",\"memory_snapshot\":");
+			AppendMemorySnapshotStatus(builder, status);
+			builder.Append(",\"bundle\":");
+			AppendCaptureBundleStatus(builder, bundle);
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		private static void AppendCompatibilityStatus(StringBuilder builder, PerfMeterCompatibilityStatus status)
 		{
 			builder.Append("{\"import_compatible\":").Append(JsonBool(status.ImportCompatible));
@@ -572,8 +735,38 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"alert_events_truncated\":").Append(JsonBool(status.AlertEventsTruncated));
 			builder.Append(",\"screenshot_state\":").Append(JsonString(status.ScreenshotState.ToString()));
 			builder.Append(",\"external_artifact_state\":").Append(JsonString(status.ExternalArtifactState.ToString()));
+			builder.Append(",\"memory_snapshot_state\":").Append(JsonString(status.MemorySnapshotState.ToString()));
 			builder.Append(",\"committed_relative_path\":").Append(JsonString(status.CommittedRelativePath));
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendMemorySnapshotStatus(StringBuilder builder, PerfMeterMemorySnapshotStatusSnapshot status)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
+			builder.Append(",\"capture_id\":").Append(JsonString(status.CaptureId));
+			builder.Append(",\"trigger\":").Append(JsonString(status.Trigger.ToString()));
+			builder.Append(",\"requested_capture_flags\":").Append(JsonString(status.RequestedCaptureFlags.ToString()));
+			builder.Append(",\"backend_id\":").Append(JsonString(status.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(status.BackendVersion));
+			builder.Append(",\"started_time_seconds\":").Append(JsonNumber(status.StartedTimeSeconds));
+			builder.Append(",\"completed_time_seconds\":").Append(JsonNumber(status.CompletedTimeSeconds));
+			builder.Append(",\"artifact_size_bytes\":").Append(status.ArtifactSizeBytes);
+			builder.Append(",\"cooldown_remaining_seconds\":").Append(JsonNumber(status.CooldownRemainingSeconds));
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendMemorySnapshotTriggers(StringBuilder builder, PerfMeterMemorySnapshotTriggerOptions options)
+		{
+			builder.Append("{\"enabled\":").Append(JsonBool(options.Enabled));
+			builder.Append(",\"system_memory_threshold_bytes\":").Append(options.SystemMemoryThresholdBytes);
+			builder.Append(",\"leak_growth_threshold_bytes\":").Append(options.LeakGrowthThresholdBytes);
+			builder.Append(",\"leak_window_frames\":").Append(options.LeakWindowFrames);
+			builder.Append(",\"capture_flags\":").Append(JsonString(options.CaptureFlags.ToString()));
+			builder.Append(",\"minimum_free_disk_bytes\":").Append(options.MinimumFreeDiskBytes);
+			builder.Append(",\"cooldown_seconds\":").Append(JsonNumber(options.CooldownSeconds));
 			builder.Append('}');
 		}
 
@@ -594,7 +787,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 		private static void AppendSessionSummary(StringBuilder builder, PerfMeterSessionSummarySnapshot summary)
 		{
 			builder.Append('{');
-			builder.Append("\"state\":").Append(JsonString(summary.State.ToString()));
+			builder.Append("\"session_id\":").Append(JsonString(summary.SessionId));
+			builder.Append(",\"state\":").Append(JsonString(summary.State.ToString()));
 			builder.Append(",\"sample_count\":").Append(summary.SampleCount);
 			builder.Append(",\"dropped_sample_count\":").Append(summary.DroppedSampleCount);
 			builder.Append(",\"first_frame\":").Append(summary.FirstFrame);
@@ -706,6 +900,13 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"system_used_memory_bytes\":").Append(metrics.SystemUsedMemoryBytes);
 			builder.Append(",\"gc_reserved_memory_bytes\":").Append(metrics.GcReservedMemoryBytes);
 			builder.Append(",\"gpu_memory_bytes\":").Append(metrics.GpuMemoryBytes);
+			builder.Append(",\"shader_gpu_program_creation_value\":").Append(metrics.ShaderGpuProgramCreationValue);
+			builder.Append(",\"graphics_pipeline_creation_value\":").Append(metrics.GraphicsPipelineCreationValue);
+			builder.Append(",\"graphics_profiler_catalog_revision\":").Append(metrics.ProfilerMetricCatalogRevision);
+			builder.Append(",\"shader_gpu_program_creation_capability\":");
+			AppendProfilerMetricCapability(builder, metrics.ShaderGpuProgramCreationCapability);
+			builder.Append(",\"graphics_pipeline_creation_capability\":");
+			AppendProfilerMetricCapability(builder, metrics.GraphicsPipelineCreationCapability);
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(metrics.OverdrawRatio));
 			builder.Append(",\"overdraw_state\":").Append(JsonString(metrics.OverdrawState.ToString()));
 			builder.Append(",\"overdraw_progress\":").Append(JsonNumber(metrics.OverdrawProgress));
@@ -731,20 +932,49 @@ namespace SGG.PerfMeter.Editor.Mcp
 					builder.Append(',');
 				}
 
-				PerfMeterProfilerMetricCapabilitySnapshot capability = capabilities[i];
-				builder.Append("{\"semantic\":").Append(JsonString(capability.Semantic.ToString()));
-				builder.Append(",\"sample_state\":").Append(JsonString(capability.SampleState.ToString()));
-				builder.Append(",\"resolution\":").Append(JsonString(capability.Resolution.ToString()));
-				builder.Append(",\"category\":").Append(JsonString(capability.Category));
-				builder.Append(",\"resolved_recorder_names\":").Append(JsonString(capability.ResolvedRecorderNames));
-				builder.Append(",\"unit\":").Append(JsonString(capability.Unit));
-				builder.Append(",\"data_type\":").Append(JsonString(capability.DataType));
-				builder.Append(",\"resolved_component_count\":").Append(capability.ResolvedComponentCount);
-				builder.Append(",\"sampled_component_count\":").Append(capability.SampledComponentCount);
-				builder.Append('}');
+				AppendProfilerMetricCapability(builder, capabilities[i]);
 			}
 
 			builder.Append("]}");
+			return builder.ToString();
+		}
+
+		private static void AppendProfilerMetricCapability(StringBuilder builder, PerfMeterProfilerMetricCapabilitySnapshot capability)
+		{
+			builder.Append("{\"semantic\":").Append(JsonString(capability.Semantic.ToString()));
+			builder.Append(",\"sample_state\":").Append(JsonString(capability.SampleState.ToString()));
+			builder.Append(",\"resolution\":").Append(JsonString(capability.Resolution.ToString()));
+			builder.Append(",\"category\":").Append(JsonString(capability.Category));
+			builder.Append(",\"resolved_recorder_names\":").Append(JsonString(capability.ResolvedRecorderNames));
+			builder.Append(",\"unit\":").Append(JsonString(capability.Unit));
+			builder.Append(",\"data_type\":").Append(JsonString(capability.DataType));
+			builder.Append(",\"resolved_component_count\":").Append(capability.ResolvedComponentCount);
+			builder.Append(",\"sampled_component_count\":").Append(capability.SampledComponentCount);
+			builder.Append('}');
+		}
+
+		private static string GraphicsStateCollectionCommandJson(string result, PerfMeterGraphicsStateCollectionStatusSnapshot status)
+		{
+			StringBuilder builder = new StringBuilder(768);
+			builder.Append("{\"result\":").Append(JsonString(result));
+			builder.Append(",\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
+			builder.Append(",\"capture_id\":").Append(JsonString(status.CaptureId));
+			builder.Append(",\"requested_trace_frames\":").Append(status.RequestedTraceFrames);
+			builder.Append(",\"completed_trace_frames\":").Append(status.CompletedTraceFrames);
+			builder.Append(",\"backend_id\":").Append(JsonString(status.BackendId));
+			builder.Append(",\"backend_version\":").Append(JsonString(status.BackendVersion));
+			builder.Append(",\"artifact_relative_path\":").Append(JsonString(status.ArtifactRelativePath));
+			builder.Append(",\"artifact_size_bytes\":").Append(status.ArtifactSizeBytes);
+			builder.Append(",\"total_graphics_state_count\":").Append(status.TotalGraphicsStateCount);
+			builder.Append(",\"variant_count\":").Append(status.VariantCount);
+			builder.Append(",\"completed_warmup_count\":").Append(status.CompletedWarmupCount);
+			builder.Append(",\"is_warmed_up\":").Append(JsonBool(status.IsWarmedUp));
+			builder.Append(",\"is_busy\":").Append(JsonBool(status.IsBusy));
+			builder.Append(",\"has_pending_cleanup\":").Append(JsonBool(status.HasPendingCleanup));
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			AppendEditorState(builder);
+			builder.Append('}');
 			return builder.ToString();
 		}
 
@@ -1356,6 +1586,39 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument tool must be RenderDoc or Pix");
+		}
+
+		private static PerfMeterMemoryCaptureFlags ParseMemoryCaptureFlags(string argsJson)
+		{
+			PerfMeterMemoryCaptureFlags flags = PerfMeterMemoryCaptureFlags.None;
+			bool managedObjects = !TryExtractBool(argsJson, "managed_objects", out bool managed) || managed;
+			bool nativeObjects = !TryExtractBool(argsJson, "native_objects", out bool native) || native;
+			if (managedObjects)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.ManagedObjects;
+			}
+
+			if (nativeObjects)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeObjects;
+			}
+
+			if (TryExtractBool(argsJson, "native_allocations", out bool allocations) && allocations)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeAllocations;
+			}
+
+			if (TryExtractBool(argsJson, "native_allocation_sites", out bool sites) && sites)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeAllocationSites;
+			}
+
+			if (TryExtractBool(argsJson, "native_stack_traces", out bool stacks) && stacks)
+			{
+				flags |= PerfMeterMemoryCaptureFlags.NativeStackTraces;
+			}
+
+			return flags;
 		}
 
 		private static int RequireRange(int value, int minimum, int maximum, string property)

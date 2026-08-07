@@ -109,6 +109,32 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void GraphicsCreationMarkersKeepExactAliasAndUnavailableProvenance()
+		{
+			List<PerfMeterProfilerMetricDescriptor> availableMetrics = new List<PerfMeterProfilerMetricDescriptor>
+			{
+				new PerfMeterProfilerMetricDescriptor("Render", "Shader.CompileGPUProgram", "Nanoseconds", "Int64"),
+				new PerfMeterProfilerMetricDescriptor("Render", "CreatePSO.Job", "Nanoseconds", "Int64")
+			};
+
+			Assert.That(
+				PerfMeterProfilerMetricCatalog.ResolveMetricName(
+					"Render",
+					"Shader.CreateGPUProgram",
+					new[] { "Shader.CreateGPUPrograms", "Shader.CompileGPUProgram", "Shader.DynamicLoadGPUProgram" },
+					availableMetrics,
+					out PerfMeterProfilerMetricDescriptor shader),
+				Is.EqualTo(PerfMeterProfilerMetricResolution.Alias));
+			Assert.That(shader.Name, Is.EqualTo("Shader.CompileGPUProgram"));
+			Assert.That(
+				PerfMeterProfilerMetricCatalog.ResolveMetricName("Render", "CreatePSO.Job", Array.Empty<string>(), availableMetrics, out _),
+				Is.EqualTo(PerfMeterProfilerMetricResolution.Exact));
+			Assert.That(
+				PerfMeterProfilerMetricCatalog.ResolveMetricName("Render", "MissingPSO", Array.Empty<string>(), availableMetrics, out _),
+				Is.EqualTo(PerfMeterProfilerMetricResolution.None));
+		}
+
+		[Test]
 		public void GetSampleStateDistinguishesUnavailableNoSampleAndSampled()
 		{
 			Assert.That(
@@ -220,7 +246,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(snapshot.Revision, Is.Zero);
 				Assert.That(snapshot.DiscoveryCount, Is.EqualTo(1));
 				Assert.That(snapshot.LastError, Is.EqualTo("Discovery failed."));
-				Assert.That(snapshot.Capabilities, Has.Length.EqualTo(11));
+				Assert.That(snapshot.Capabilities, Has.Length.EqualTo(13));
 				Assert.That(snapshot.Capabilities, Has.All.Property("SampleState").EqualTo(PerfMeterProfilerMetricSampleState.Unavailable));
 				Assert.That(catalog.UnavailableCounters & PerfMeterCounterAvailability.DrawCalls,
 					Is.EqualTo(PerfMeterCounterAvailability.DrawCalls));
