@@ -157,3 +157,21 @@ Le shader marker résout d'abord exactement `Shader.CreateGPUProgram`, puis les 
 5. Passez le chemin relatif owned indiqué à `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` ou à la commande MCP de prewarm. Le prewarm est synchrone, conserve l'artefact et indique les warmups terminés et `IsWarmedUp`; un progressive warmup peut se terminer avec un warning explicite d'incomplétude.
 
 Le coordinator graphics-state n'admet qu'un flight et rejette aussi l'overlap avec un external GPU capture, un memory snapshot ou un alert-capture actifs. Le même trace ID actif renvoie `AlreadyActive`; un autre ID renvoie `RejectedOverlap`. `CancelGraphicsStateTrace` n'annule qu'un trace actif/en préparation correspondant et nettoie son artefact en attente. Si l'artefact owned ne peut pas être supprimé, `HasPendingCleanup`/`has_pending_cleanup` reste true, un sidecar voisin `.delete-pending` est conservé puis restauré et retenté après un domain reload; `IsBusy`/`is_busy` et le warning restent visibles jusqu'à la réussite. Le backend Unity ne prend pas en charge le cache-miss tracing: aucune evidence de cache-miss n'est disponible.
+
+## Contexte d'intégration du rendu
+
+Utilisez le snapshot neutre lorsqu'une vue indépendante du pipeline sur la dernière render integration typée est nécessaire:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+Les mêmes données sont accessibles par MCP:
+
+```text
+perfmeter.render.snapshot {}
+```
+
+Ces lectures ne démarrent pas la collecte du runtime. Vérifiez ensemble `State`, `ObservationAgeFrames`, `LastObservedFrame` et `ObservationMatchesCurrentPipeline`. Après un changement de pipeline ou de configuration d'asset, l'observation précédente est obsolète; conservez le warning et le non-match et ne considérez pas ses valeurs de pass, mode, GRD ou VRS comme actuelles. L'API legacy `PerformanceMeter.GetRenderGraphSnapshot()` et la commande `perfmeter.rendergraph.snapshot` restent disponibles.
+
+Dans le bundle de capture, le schema `sgg.perfmeter.capture-context` version `1` conserve `render` et ajoute `render_integration`. Pour un external GPU capture, le contexte est figé au premier sample de la phase `Capturing`; un bundle Memory Profiler l'enregistre à la fin de la requête mémoire. Les schemas JSON/CSV de session ne changent pas. L'API publique ne fournit pas de viewer stable RenderGraph/CustomPass ni de pass targets; ce workflow ne promet donc pas de navigation dans l'Editor.

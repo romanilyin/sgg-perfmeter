@@ -21,6 +21,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerfMeterPlatformTelemetryRegistry.ClearForTests();
 			PerfMeterMemorySnapshotBackendRegistry.ClearForTests();
 			PerfMeterGraphicsStateCollectionBackendRegistry.ClearForTests();
+			PerfMeterRenderGraphAnalytics.ResetForTests();
 		}
 
 		[TearDown]
@@ -31,6 +32,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerfMeterPlatformTelemetryRegistry.ClearForTests();
 			PerfMeterMemorySnapshotBackendRegistry.ClearForTests();
 			PerfMeterGraphicsStateCollectionBackendRegistry.ClearForTests();
+			PerfMeterRenderGraphAnalytics.ResetForTests();
 		}
 
 		[UnityTest]
@@ -530,6 +532,23 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			Assert.That(terminalState || waitingForRendererFeature, Is.True, status.Warning);
 			Assert.That(status.OverdrawState, Is.Not.EqualTo(PerfMeterOverdrawMeasurementState.Error));
+			PerfMeterRenderIntegrationSnapshot renderIntegration = PerformanceMeter.GetRenderIntegrationSnapshot();
+			if (renderIntegration.State != PerfMeterRenderIntegrationState.Observed)
+			{
+				Assert.That(renderIntegration.State, Is.EqualTo(PerfMeterRenderIntegrationState.NotObserved));
+				Assert.That(waitingForRendererFeature || status.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported, Is.True, status.Warning);
+			}
+			else
+			{
+				Assert.That(renderIntegration.State, Is.EqualTo(PerfMeterRenderIntegrationState.Observed));
+				Assert.That(renderIntegration.RenderPipeline.Kind, Is.EqualTo(PerfMeterRenderPipelineKind.Universal));
+				Assert.That(renderIntegration.ObservationMatchesCurrentPipeline, Is.True);
+				Assert.That(renderIntegration.PassKind, Is.EqualTo(PerfMeterRenderPassKind.RenderGraphRaster));
+				Assert.That(renderIntegration.IntegrationId, Is.EqualTo("sgg.perfmeter.urp.render-graph"));
+				Assert.That(renderIntegration.GpuResidentDrawer.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(renderIntegration.VariableRateShading.ConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
+				Assert.That(renderIntegration.LegacyRenderGraph.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
+			}
 
 			if (status.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring)
 			{

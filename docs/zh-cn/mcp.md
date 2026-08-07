@@ -29,6 +29,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.device.info` | 读取 device、graphics、display、monitor、pipeline 和 Unity environment info。 |
 | `perfmeter.camera.snapshot` | 读取 camera transform/projection 和 URP/HDRP camera settings。 |
 | `perfmeter.rendergraph.snapshot` | 读取 URP Render Graph 或 HDRP Custom Pass 的最新 observed render integration diagnostics。 |
+| `perfmeter.render.snapshot` | 读取包含 freshness、camera/pass context、GRD/VRS 和 legacy Render Graph facade 的 neutral render integration snapshot。 |
 | `perfmeter.overlay.set` | 显示/隐藏 overlay，并设置 preset、modules、corner、mode 和 target FPS。 |
 | `perfmeter.overdraw.start` | 启动有边界的 overdraw measurement。 |
 | `perfmeter.overdraw.cancel` | 取消 active overdraw measurement。 |
@@ -115,3 +116,9 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 ```
 
 只允许一个 graphics-state flight。重复的 active ID 返回 `AlreadyActive`；其他 overlapping trace/prewarm 返回 `RejectedOverlap`。cancel 只匹配 active/preparing ID。Unity backend 报告 `supports_cache_miss_tracing: false`，因此 cache-miss evidence 不受支持，MCP prewarm schema 也不提供该 input。artifact 由 PerfMeter owned，位于 `Temp/PerfMeter/GraphicsStateCollections` 下，最大 64 MiB。
+
+## Render integration snapshot
+
+`perfmeter.render.snapshot {}` 是无 input 的 read-only command，不会启动 runtime。response 使用 `schema_version: 1`，并在 `render_integration` 中返回 current pipeline/source、observation frame/age、`observation_matches_current_pipeline`、observed camera identity、integration/pass/injection metadata、实际 schedule 的 PerfMeter pass count、可用时的 effective rendering mode、嵌套的 `gpu_resident_drawer` 与 `variable_rate_shading`，以及 `legacy_render_graph`。
+
+该 command 对应 `PerformanceMeter.GetRenderIntegrationSnapshot()` 和 `TryGetRenderIntegrationSnapshot(...)`。stale observation 会通过明确的 non-match 和 warning 报告，而不会伪装成 current。`perfmeter.rendergraph.snapshot` 作为 legacy facade 保留。稳定的 Unity API 不提供 RenderGraph/CustomPass viewer 或 pass-target 信息，因此不会增加 Editor navigation。

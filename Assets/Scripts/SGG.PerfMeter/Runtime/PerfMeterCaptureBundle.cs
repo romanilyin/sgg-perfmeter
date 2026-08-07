@@ -244,6 +244,29 @@ namespace SGG.PerfMeter
 			PerfMeterCameraSnapshot camera,
 			PerfMeterRenderGraphSnapshot render)
 		{
+			ObserveMemorySnapshot(
+				memoryStatus,
+				artifact,
+				sessionSummary,
+				baselineSamples,
+				runtimeStatus,
+				device,
+				camera,
+				render,
+				PerfMeterRenderIntegrationSnapshot.NotObserved);
+		}
+
+		internal void ObserveMemorySnapshot(
+			PerfMeterMemorySnapshotStatusSnapshot memoryStatus,
+			PerfMeterMemorySnapshotArtifact artifact,
+			PerfMeterSessionSummarySnapshot sessionSummary,
+			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterStatusSnapshot runtimeStatus,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration)
+		{
 			if (_record == null || _record.CaptureOptions.Tool != PerfMeterCaptureTool.MemoryProfiler || !string.Equals(_record.CaptureOptions.CaptureId, memoryStatus.CaptureId, StringComparison.Ordinal))
 			{
 				return;
@@ -256,7 +279,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			_record.CaptureContext(device, camera, render, runtimeStatus);
+			_record.CaptureContext(device, camera, render, renderIntegration, runtimeStatus);
 			_record.Freeze(sessionSummary, baselineSamples, runtimeStatus, Array.Empty<PerfMeterAlertSnapshot>(), false);
 			_record.MemorySnapshotArtifact = artifact;
 			_record.Warning = string.Empty;
@@ -299,12 +322,23 @@ namespace SGG.PerfMeter
 			PerfMeterRenderGraphSnapshot render,
 			PerfMeterStatusSnapshot runtimeStatus)
 		{
+			RecordCaptureFrame(sample, device, camera, render, PerfMeterRenderIntegrationSnapshot.NotObserved, runtimeStatus);
+		}
+
+		internal void RecordCaptureFrame(
+			PerfMeterSessionSampleSnapshot sample,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration,
+			PerfMeterStatusSnapshot runtimeStatus)
+		{
 			if (_record == null || _record.State != PerfMeterCaptureBundleState.Recording)
 			{
 				return;
 			}
 
-			_record.CaptureContext(device, camera, render, runtimeStatus);
+			_record.CaptureContext(device, camera, render, renderIntegration, runtimeStatus);
 			_record.AddCaptureSample(sample);
 		}
 
@@ -319,6 +353,31 @@ namespace SGG.PerfMeter
 			PerfMeterAlertSnapshot[] alerts,
 			bool alertsTruncated)
 		{
+			ObserveCapture(
+				captureStatus,
+				sessionSummary,
+				baselineSamples,
+				runtimeStatus,
+				device,
+				camera,
+				render,
+				PerfMeterRenderIntegrationSnapshot.NotObserved,
+				alerts,
+				alertsTruncated);
+		}
+
+		internal void ObserveCapture(
+			PerfMeterCaptureStatusSnapshot captureStatus,
+			PerfMeterSessionSummarySnapshot sessionSummary,
+			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterStatusSnapshot runtimeStatus,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration,
+			PerfMeterAlertSnapshot[] alerts,
+			bool alertsTruncated)
+		{
 			if (_record == null || !string.Equals(_record.CaptureOptions.CaptureId, captureStatus.CaptureId, StringComparison.Ordinal))
 			{
 				return;
@@ -330,7 +389,7 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			_record.CaptureContext(device, camera, render, runtimeStatus);
+			_record.CaptureContext(device, camera, render, renderIntegration, runtimeStatus);
 			_record.Freeze(sessionSummary, baselineSamples, runtimeStatus, alerts, alertsTruncated);
 			switch (captureStatus.State)
 			{
@@ -484,6 +543,7 @@ namespace SGG.PerfMeter
 				CaptureStatus = captureStatus;
 				ConfiguredSettings = configuredSettings;
 				EffectiveSettings = effectiveSettings;
+				RenderIntegration = PerfMeterRenderIntegrationSnapshot.NotObserved;
 				State = PerfMeterCaptureBundleState.Recording;
 				ScreenshotState = bundleOptions.IncludeScreenshot ? PerfMeterCaptureScreenshotState.Pending : PerfMeterCaptureScreenshotState.NotRequested;
 				StartedUtc = DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
@@ -509,6 +569,7 @@ namespace SGG.PerfMeter
 			internal PerfMeterDeviceSnapshot Device { get; private set; }
 			internal PerfMeterCameraSnapshot Camera { get; private set; }
 			internal PerfMeterRenderGraphSnapshot Render { get; private set; }
+			internal PerfMeterRenderIntegrationSnapshot RenderIntegration { get; private set; }
 			internal PerfMeterStatusSnapshot RuntimeStatus { get; private set; }
 			internal PerfMeterSessionSummarySnapshot SessionSummary { get; private set; }
 			internal PerfMeterSessionSampleSnapshot[] BaselineSamples { get; private set; } = Array.Empty<PerfMeterSessionSampleSnapshot>();
@@ -517,6 +578,11 @@ namespace SGG.PerfMeter
 			internal bool ContextCaptured => _contextCaptured;
 
 			internal void CaptureContext(PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterRenderGraphSnapshot render, PerfMeterStatusSnapshot runtimeStatus)
+			{
+				CaptureContext(device, camera, render, PerfMeterRenderIntegrationSnapshot.NotObserved, runtimeStatus);
+			}
+
+			internal void CaptureContext(PerfMeterDeviceSnapshot device, PerfMeterCameraSnapshot camera, PerfMeterRenderGraphSnapshot render, PerfMeterRenderIntegrationSnapshot renderIntegration, PerfMeterStatusSnapshot runtimeStatus)
 			{
 				if (_contextCaptured)
 				{
@@ -527,6 +593,7 @@ namespace SGG.PerfMeter
 				Device = device;
 				Camera = camera;
 				Render = render;
+				RenderIntegration = renderIntegration;
 				RuntimeStatus = runtimeStatus;
 			}
 
@@ -604,6 +671,7 @@ namespace SGG.PerfMeter
 					Device,
 					Camera,
 					Render,
+					RenderIntegration,
 					(PerfMeterAlertSnapshot[])AlertEvents.Clone(),
 					AlertEventsTruncated,
 					screenshot,
@@ -701,6 +769,49 @@ namespace SGG.PerfMeter
 			bool alertEventsTruncated,
 			byte[] screenshotBytes,
 			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact)
+			: this(
+				status,
+				captureOptions,
+				bundleOptions,
+				startedUtc,
+				completedUtc,
+				sessionSummary,
+				baselineSamples,
+				captureSamples,
+				configuredSettings,
+				effectiveSettings,
+				runtimeStatus,
+				device,
+				camera,
+				render,
+				PerfMeterRenderIntegrationSnapshot.NotObserved,
+				alertEvents,
+				alertEventsTruncated,
+				screenshotBytes,
+				memorySnapshotArtifact)
+		{
+		}
+
+		internal PerfMeterCaptureBundleExportData(
+			PerfMeterCaptureBundleStatusSnapshot status,
+			PerfMeterCaptureOptions captureOptions,
+			PerfMeterCaptureBundleOptions bundleOptions,
+			string startedUtc,
+			string completedUtc,
+			PerfMeterSessionSummarySnapshot sessionSummary,
+			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterSessionSampleSnapshot[] captureSamples,
+			PerfMeterSettingsSnapshot configuredSettings,
+			PerfMeterSettingsSnapshot effectiveSettings,
+			PerfMeterStatusSnapshot runtimeStatus,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration,
+			PerfMeterAlertSnapshot[] alertEvents,
+			bool alertEventsTruncated,
+			byte[] screenshotBytes,
+			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact)
 		{
 			Status = status;
 			CaptureOptions = captureOptions;
@@ -716,6 +827,7 @@ namespace SGG.PerfMeter
 			Device = device;
 			Camera = camera;
 			Render = render;
+			RenderIntegration = renderIntegration;
 			AlertEvents = alertEvents ?? Array.Empty<PerfMeterAlertSnapshot>();
 			AlertEventsTruncated = alertEventsTruncated;
 			ScreenshotBytes = screenshotBytes;
@@ -736,6 +848,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterDeviceSnapshot Device { get; }
 		internal PerfMeterCameraSnapshot Camera { get; }
 		internal PerfMeterRenderGraphSnapshot Render { get; }
+		internal PerfMeterRenderIntegrationSnapshot RenderIntegration { get; }
 		internal PerfMeterAlertSnapshot[] AlertEvents { get; }
 		internal bool AlertEventsTruncated { get; }
 		internal byte[] ScreenshotBytes { get; }

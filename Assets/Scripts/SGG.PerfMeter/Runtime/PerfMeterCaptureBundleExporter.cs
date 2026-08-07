@@ -375,6 +375,8 @@ namespace SGG.PerfMeter
 			builder.Append(",\"integration_name\":").Append(JsonString(render.IntegrationName));
 			builder.Append(",\"warning\":").Append(JsonString(RedactSensitivePaths(render.Warning)));
 			builder.Append('}');
+			builder.Append(",\"render_integration\":");
+			PerfMeterSessionExporter.AppendRenderIntegration(builder, data.RenderIntegration);
 			builder.Append(",\"runtime\":{");
 			builder.Append("\"state\":").Append(JsonString(runtime.State.ToString()));
 			builder.Append(",\"collection_frame\":").Append(runtime.CollectionFrame);

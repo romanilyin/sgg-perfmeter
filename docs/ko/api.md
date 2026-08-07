@@ -263,3 +263,27 @@ public state-collection surface는 `RegisterGraphicsStateCollectionBackend(...)`
 coordinator는 한 번에 하나의 graphics-state flight만 허용합니다. 같은 active ID는 `AlreadyActive`, preparation/trace/finalization/cleanup 중 또는 다른 capture domain에서 다른 trace/prewarm을 요청하면 `RejectedOverlap`입니다. `CancelGraphicsStateTrace`는 일치하는 active/preparing ID만 취소하고 backend를 cancel한 뒤 pending owned artifact를 삭제합니다. cleanup failure는 표시되며 재시도가 성공할 때까지 replacement를 막을 수 있습니다.
 
 `PerfMeterGraphicsStatePrewarmOptions`는 owned project-relative `.graphicsstate` path와 0–1,000,000 범위의 선택적 `MaxStateCount`를 받습니다. prewarm은 synchronous하게 실행되고 artifact를 보존하며 `CompletedWarmupCount`와 `IsWarmedUp`를 보고합니다. 성공했지만 incomplete한 progressive warmup에는 warning이 포함됩니다. `TraceCacheMisses`는 확장 backend를 위해 존재하지만 Unity backend는 cache-miss evidence를 지원하지 않으므로 지정하면 `Unavailable`을 반환합니다.
+
+## Render integration context
+
+통합 방식에 중립적인 additive snapshot은 다음 두 method로 읽을 수 있습니다.
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot`은 `RenderPipeline`, `RenderPipelineAssetSource`, `LastObservedFrame`, `ObservationAgeFrames`, `ObservationMatchesCurrentPipeline`, `ObservedCameraEntityId`, `ObservedCameraName`, `ObservedCameraType`, `IntegrationId`, `IntegrationName`, `IntegrationVersion`, `PassKind`, `PassName`, `InjectionPoint`, `PerfMeterPassCount`, `EffectiveRenderingMode`, `GpuResidentDrawer`, `VariableRateShading`, `LegacyRenderGraph`, `Warning`을 제공합니다. 중첩된 GRD/VRS snapshot은 availability, configuration/support field, activity availability와 warning을 포함합니다.
+
+read는 runtime 시작 전에도 안전하며 collection을 시작하지 않습니다. 지원되는 current pipeline은 `State = NotObserved`인 상태에서도 `Available`일 수 있습니다. 마지막 observation이 다른 pipeline configuration에 속하면 `ObservationMatchesCurrentPipeline`은 `false`가 되고 frame/age와 warning으로 stale 상태가 표시됩니다. stale field를 current observation으로 해석하지 마십시오.
+
+URP는 public current-frame `UniversalRenderingData.renderingMode`와 해당 frame에 실제로 schedule된 PerfMeter pass를 보고합니다. HDRP는 실제로 관찰된 PerfMeter `CustomPass`를 보고하지만 effective rendering mode는 사용할 수 없습니다. `GpuResidentDrawer`는 configured mode와 public SRP support를 보고하고 activity는 `Unknown`입니다. `VariableRateShading`은 `SystemInfo`/`ShadingRateInfo`의 authoritative hardware support를 보고하지만 typed adapter가 입증하지 않는 한 configuration/activity는 `Unknown`입니다.
+
+`LegacyRenderGraph`는 `GetRenderGraphSnapshot()`을 위한 embedded compatibility facade입니다. private/internal pass/resource reflection은 제거되었으므로 legacy counter는 `-1`로 유지됩니다. 안정적인 Unity public API는 RenderGraph/CustomPass viewer나 pass target도 제공하지 않으므로 이 API는 Editor navigation을 제공하거나 약속하지 않습니다.
+
+`RenderPipeline`은 `Kind`, `AssetName`, `AssetTypeName`, `RuntimeTypeName`을 포함하며 `RenderPipelineAssetSource`는 `GraphicsSettings`, `QualitySettings`, `None` 중 하나입니다. `GpuResidentDrawer`는 `Availability`, `ConfiguredMode`, `IsConfigured`, `SupportAvailability`, `IsSupported`, `ActivityAvailability`, `IsObservedActive`, `Warning`을 제공합니다. `VariableRateShading`은 hardware field(`SupportsVariableRateShading`, `SupportsPerDrawCall`, `SupportsPerImageTile`, `ImageTileWidth`, `ImageTileHeight`, `GraphicsFormat`)와 `ConfigurationAvailability`, `IsConfigured`, `ActivityAvailability`, `IsObservedActive`, `Warning`을 제공합니다.

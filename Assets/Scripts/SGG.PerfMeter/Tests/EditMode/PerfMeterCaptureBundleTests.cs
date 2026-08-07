@@ -44,6 +44,204 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void BundleExportFreezesNeutralRenderContextAdditivelyBesideLegacyContext()
+		{
+			const string captureId = "render-context";
+			PerfMeterRenderPipelineSnapshot firstPipeline = new PerfMeterRenderPipelineSnapshot(
+				PerfMeterRenderPipelineKind.Universal,
+				"Synthetic Universal Asset",
+				"SyntheticUniversalPipelineAsset",
+				"SyntheticUniversalRuntime");
+			PerfMeterGpuResidentDrawerContextSnapshot firstGrd = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Available,
+				"Enabled",
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Unknown,
+				false,
+				"synthetic GRD activity is unknown");
+			PerfMeterVariableRateShadingContextSnapshot firstVrs = new PerfMeterVariableRateShadingContextSnapshot(
+				PerfMeterAvailability.Available,
+				true,
+				true,
+				true,
+				16,
+				16,
+				"R8G8B8A8_UNorm",
+				PerfMeterAvailability.Unknown,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				"synthetic VRS configuration and activity are unknown");
+			PerfMeterRenderGraphSnapshot firstLegacyRender = new PerfMeterRenderGraphSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderGraphState.Observed,
+				72,
+				"Legacy Camera First",
+				"Game",
+				2,
+				4,
+				3,
+				5,
+				6,
+				7,
+				"legacy-first-warning",
+				PerfMeterRenderPipelineKind.Universal,
+				"Legacy First Integration",
+				"BeforeRendering");
+			PerfMeterRenderIntegrationSnapshot firstNeutralRender = new PerfMeterRenderIntegrationSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderIntegrationState.Observed,
+				firstPipeline,
+				PerfMeterRenderPipelineAssetSource.GraphicsSettings,
+				73,
+				0,
+				true,
+				9007199254740993UL,
+				"Neutral Camera First",
+				"Game",
+				"neutral.integration.first",
+				"Neutral Integration First",
+				"1.0.0",
+				PerfMeterRenderPassKind.RenderGraphRaster,
+				"Neutral Pass First",
+				"AfterRendering",
+				3,
+				"Deferred+",
+				firstGrd,
+				firstVrs,
+				firstLegacyRender,
+				"neutral-first-warning");
+
+			PerfMeterRenderPipelineSnapshot laterPipeline = new PerfMeterRenderPipelineSnapshot(
+				PerfMeterRenderPipelineKind.HighDefinition,
+				"Later High Definition Asset",
+				"LaterHighDefinitionPipelineAsset",
+				"LaterHighDefinitionRuntime");
+			PerfMeterGpuResidentDrawerContextSnapshot laterGrd = new PerfMeterGpuResidentDrawerContextSnapshot(
+				PerfMeterAvailability.Unavailable,
+				"Disabled",
+				PerfMeterAvailability.Unavailable,
+				false,
+				PerfMeterAvailability.Unknown,
+				false,
+				"later GRD context");
+			PerfMeterVariableRateShadingContextSnapshot laterVrs = new PerfMeterVariableRateShadingContextSnapshot(
+				PerfMeterAvailability.Unavailable,
+				false,
+				false,
+				false,
+				0,
+				0,
+				string.Empty,
+				PerfMeterAvailability.Unavailable,
+				false,
+				PerfMeterAvailability.Unavailable,
+				false,
+				"later VRS context");
+			PerfMeterRenderGraphSnapshot laterLegacyRender = new PerfMeterRenderGraphSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderGraphState.Observed,
+				99,
+				"Legacy Camera Later",
+				"Preview",
+				9,
+				10,
+				8,
+				11,
+				12,
+				13,
+				"later-legacy-warning",
+				PerfMeterRenderPipelineKind.HighDefinition,
+				"Legacy Later Integration",
+				"AfterRendering");
+			PerfMeterRenderIntegrationSnapshot laterNeutralRender = new PerfMeterRenderIntegrationSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterRenderIntegrationState.Observed,
+				laterPipeline,
+				PerfMeterRenderPipelineAssetSource.QualitySettings,
+				100,
+				0,
+				true,
+				42UL,
+				"Neutral Camera Later",
+				"Preview",
+				"neutral.integration.later",
+				"Neutral Integration Later",
+				"9.9.9",
+				PerfMeterRenderPassKind.CustomPass,
+				"Neutral Pass Later",
+				"BeforeRendering",
+				8,
+				"Forward",
+				laterGrd,
+				laterVrs,
+				laterLegacyRender,
+				"neutral-later-warning");
+
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			coordinator.Start(
+				new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1),
+				new PerfMeterCaptureBundleOptions(includeScreenshot: false),
+				CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
+			coordinator.RecordCaptureFrame(
+				new PerfMeterSessionSampleSnapshot(10, 1d, "Scene", CreateMetrics(10), Array.Empty<PerfMeterCustomMetricSnapshot>(), CreatePlatformTelemetry()),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				firstLegacyRender,
+				firstNeutralRender,
+				PerformanceMeter.GetStatus());
+			coordinator.ObserveCapture(
+				CaptureStatus(captureId, PerfMeterCaptureState.Completed),
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				laterLegacyRender,
+				laterNeutralRender,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+
+			Assert.That(coordinator.GetStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			Assert.That(data.Render.IntegrationName, Is.EqualTo("Legacy First Integration"));
+			Assert.That(data.RenderIntegration.IntegrationId, Is.EqualTo("neutral.integration.first"));
+			Assert.That(data.RenderIntegration.ObservedCameraEntityId, Is.EqualTo(9007199254740993UL));
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/render-context-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
+			try
+			{
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+				Assert.That(result.Success, Is.True, result.Error);
+				string context = File.ReadAllText(Path.Combine(fullPath, "context.json"));
+
+				Assert.That(context, Does.Contain("\"render\":{\"availability\":\"Available\",\"state\":\"Observed\",\"pipeline\":\"Universal\",\"integration_name\":\"Legacy First Integration\",\"warning\":\"legacy-first-warning\"}"));
+				Assert.That(context, Does.Contain("\"render_integration\":{\"is_available\":true,\"availability\":\"Available\",\"state\":\"Observed\""));
+				Assert.That(context, Does.Contain("\"render_pipeline\":{\"kind\":\"Universal\",\"asset_name\":\"Synthetic Universal Asset\",\"asset_type_name\":\"SyntheticUniversalPipelineAsset\",\"runtime_type_name\":\"SyntheticUniversalRuntime\"}"));
+				Assert.That(context, Does.Contain("\"render_pipeline_asset_source\":\"GraphicsSettings\",\"last_observed_frame\":73"));
+				Assert.That(context, Does.Contain("\"observed_camera_entity_id\":\"9007199254740993\",\"observed_camera_name\":\"Neutral Camera First\",\"observed_camera_type\":\"Game\""));
+				Assert.That(context, Does.Contain("\"integration_id\":\"neutral.integration.first\""));
+				Assert.That(context, Does.Contain("\"pass_kind\":\"RenderGraphRaster\""));
+				Assert.That(context, Does.Contain("\"perfmeter_pass_count\":3,\"effective_rendering_mode\":\"Deferred+\""));
+				Assert.That(context, Does.Contain("\"gpu_resident_drawer\":{\"availability\":\"Available\",\"configured_mode\":\"Enabled\",\"is_configured\":true,\"support_availability\":\"Available\",\"is_supported\":true,\"activity_availability\":\"Unknown\""));
+				Assert.That(context, Does.Contain("\"variable_rate_shading\":{\"availability\":\"Available\",\"supports_variable_rate_shading\":true,\"supports_per_draw_call\":true,\"supports_per_image_tile\":true,\"image_tile_width\":16,\"image_tile_height\":16,\"graphics_format\":\"R8G8B8A8_UNorm\",\"configuration_availability\":\"Unknown\",\"is_configured\":false,\"activity_availability\":\"Unknown\""));
+				Assert.That(context, Does.Contain("\"legacy_render_graph\":{\"is_available\":true,\"availability\":\"Available\",\"state\":\"Observed\",\"last_frame\":72,\"observed_camera_name\":\"Legacy Camera First\",\"observed_camera_type\":\"Game\",\"render_pipeline\":\"Universal\",\"integration_name\":\"Legacy First Integration\",\"observed_injection_point\":\"BeforeRendering\",\"perfmeter_pass_count\":2,\"registered_pass_count\":4,\"merged_pass_count\":3"));
+				Assert.That(context, Does.Not.Contain("neutral.integration.later"));
+				Assert.That(context, Does.Not.Contain("Legacy Later Integration"));
+				Assert.That(context, Does.Not.Contain("later-legacy-warning"));
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
 		public void MemorySnapshotBundleStreamsOwnedArtifactAndRecordsProvenance()
 		{
 			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));

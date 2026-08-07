@@ -70,3 +70,14 @@ Overlay 会注意 allocation 并进行 throttling，但变化的数值和 graph 
 - prewarm 只接受 owned project-relative artifact，以 synchronous 方式执行并保留 artifact；progressive warmup 可能 incomplete。Unity backend 不支持 cache-miss tracing，因此 request 返回 `Unavailable`，不会暴露 cache-miss evidence。
 - owned `.graphicsstate` artifact 存储在 `Temp/PerfMeter/GraphicsStateCollections` 下，必须是 regular non-empty file，最大 64 MiB。trace 上限为 600 frames，progressive prewarm 上限为 1,000,000 states，同时应用 minimum-free-disk 和 project-local path guard。
 - 最终 evidence：Unity `6000.4.12f1` compile passed；GSC EditMode targeted `25/25`、`PerformanceMeter` API EditMode `47/47`、capture-bundle EditMode `14/14`、PlayMode smoke `12/12`、full post-fix EditMode `208/208`、full post-fix PlayMode `16/16` 均通过。Unity `6000.5.6f1` optional consumer compile 也已 isolated passed。Unity `6000.5` full tests、release-player 和 target-device behavior 仍是 release gate，本文不声称已验证。
+
+## Render integration context 的限制
+
+- `PerfMeterRenderIntegrationSnapshot` 是 integration-neutral observation contract，不是深度 Render Graph 或 Custom Pass capture。read 不会启动 runtime；第一次 observation 之前，支持的 current pipeline 可能是 `Available`/`NotObserved`。pipeline/configuration 改变后，会通过 `ObservationMatchesCurrentPipeline: false`、明确的 frame/age 和 warning 标记 stale observation。
+- URP 使用 public current-frame `UniversalRenderingData.renderingMode`，并报告实际 schedule 的 PerfMeter pass。HDRP 报告实际的 PerfMeter `CustomPass`，但 effective rendering mode 仍 unavailable。
+- private/internal Render Graph pass/resource reflection 已移除。由于没有 stable public API，legacy facade 的 `registered_pass_count`、`merged_pass_count`、`transient_resource_count`、`imported_resource_count`、`aliased_resource_count` 保持 `-1`。
+- GRD 提供 configured mode 和 public SRP support，但 Unity 17.4 与 17.5 的 enabled semantics 不同，因此 activity 为 `Unknown`。更深的 GRD telemetry 属于 `PM-GRD-001`；此 snapshot 不声称 GRD activity。
+- VRS 提供 `SystemInfo`/`ShadingRateInfo` 的 authoritative hardware support。除非未来 typed adapter 能证明，否则 configuration/activity 为 `Unknown`；不声称 VRS activity。
+- Unity stable public API 不提供 RenderGraph/CustomPass viewer 或 pass-target API。因此 PerfMeter 不增加也不承诺 Editor navigation。
+- capture context schema v1 保留 `render` 并添加 `render_integration`；session JSON/CSV schema 不变。external capture context 在第一个 `Capturing` sample 冻结，不会被后续 read 替换。
+- PM-REN-001 最终 evidence：Unity `6000.4.12f1` main compile passed；targeted `PerformanceMeterApiTests` `53/53`、`PerfMeterCaptureBundleTests` `15/15`、`PerformanceMeterPlayModeSmokeTests` `12/12`；final full EditMode `215/215` 和 full PlayMode `16/16` passed。Focused review P1/P2 resolved。isolated compile matrix 已通过：Unity `6000.4.12f1` URP `17.4` 和 HDRP `17.4`，以及 Unity `6000.5.6f1` URP `17.5` 和 HDRP `17.5`。release-player/device validation 仍 pending；不声称 release。

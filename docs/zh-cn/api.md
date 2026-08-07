@@ -263,3 +263,27 @@ if (status.State == PerfMeterGraphicsStateCollectionState.Completed)
 coordinator 一次只允许一个 graphics-state flight。相同的 active ID 返回 `AlreadyActive`；在 preparation、trace、finalization、cleanup 或其他 capture domain 中请求另一个 trace/prewarm 会返回 `RejectedOverlap`。`CancelGraphicsStateTrace` 只匹配 active/preparing ID，会 cancel backend 并删除 pending owned artifact。cleanup failure 会保持可见，并可能阻止替换直到重试成功。
 
 `PerfMeterGraphicsStatePrewarmOptions` 只接受 owned project-relative `.graphicsstate` path，以及 0–1,000,000 范围内可选的 `MaxStateCount`。prewarm 是 synchronous 的，会保留 artifact，并报告 `CompletedWarmupCount` 与 `IsWarmedUp`；成功但 incomplete 的 progressive warmup 会带有 warning。`TraceCacheMisses` 为可扩展 backend 保留，但 Unity backend 不支持 cache-miss evidence，因此指定后返回 `Unavailable`。
+
+## Render integration context
+
+integration-neutral 的 additive snapshot 可通过以下两个 method 读取：
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` 提供 `RenderPipeline`、`RenderPipelineAssetSource`、`LastObservedFrame`、`ObservationAgeFrames`、`ObservationMatchesCurrentPipeline`、`ObservedCameraEntityId`、`ObservedCameraName`、`ObservedCameraType`、`IntegrationId`、`IntegrationName`、`IntegrationVersion`、`PassKind`、`PassName`、`InjectionPoint`、`PerfMeterPassCount`、`EffectiveRenderingMode`、`GpuResidentDrawer`、`VariableRateShading`、`LegacyRenderGraph` 和 `Warning`。嵌套的 GRD/VRS snapshot 包含 availability、configuration/support fields、activity availability 和 warning。
+
+read 在 runtime 启动前也是安全的，不会启动 collection。支持的 current pipeline 可能是 `Available`，但 `State = NotObserved`；如果最新 observation 属于其他 pipeline configuration，`ObservationMatchesCurrentPipeline` 会是 `false`，frame/age 和 warning 会明确标记 stale 数据。不要把 stale fields 当作 current observation。
+
+URP 使用 public current-frame `UniversalRenderingData.renderingMode`，并报告该 frame 实际 schedule 的 PerfMeter passes。HDRP 报告实际观察到的 PerfMeter `CustomPass`，但 effective rendering mode 不可用。`GpuResidentDrawer` 报告 configured mode 和 public SRP support，activity 为 `Unknown`。`VariableRateShading` 报告 `SystemInfo`/`ShadingRateInfo` 的 authoritative hardware support；除非 typed adapter 能证明，否则 configuration/activity 保持 `Unknown`。
+
+`LegacyRenderGraph` 是嵌入的 compatibility facade，用于 `GetRenderGraphSnapshot()`。private/internal pass/resource reflection 已移除，因此 legacy counters 保持 `-1`。Unity stable public API 也不提供 RenderGraph/CustomPass viewer 或 pass targets；此 API 不提供也不承诺 Editor navigation。
+
+`RenderPipeline` 包含 `Kind`、`AssetName`、`AssetTypeName`、`RuntimeTypeName`；`RenderPipelineAssetSource` 可以是 `GraphicsSettings`、`QualitySettings` 或 `None`。`GpuResidentDrawer` 包含 `Availability`、`ConfiguredMode`、`IsConfigured`、`SupportAvailability`、`IsSupported`、`ActivityAvailability`、`IsObservedActive` 和 `Warning`。`VariableRateShading` 包含 hardware fields（`SupportsVariableRateShading`、`SupportsPerDrawCall`、`SupportsPerImageTile`、`ImageTileWidth`、`ImageTileHeight`、`GraphicsFormat`），以及 `ConfigurationAvailability`、`IsConfigured`、`ActivityAvailability`、`IsObservedActive` 和 `Warning`。

@@ -29,6 +29,7 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.device.info` | Read device, graphics, display, monitor, pipeline, and Unity environment info. |
 | `perfmeter.camera.snapshot` | Read camera transform/projection and URP/HDRP camera settings. |
 | `perfmeter.rendergraph.snapshot` | Read latest observed PerfMeter render integration diagnostics for URP Render Graph or HDRP Custom Pass. |
+| `perfmeter.render.snapshot` | Read the neutral render integration snapshot, including freshness, camera/pass context, GRD/VRS context, and the legacy Render Graph facade. |
 | `perfmeter.overlay.set` | Show/hide overlay and set preset, modules, corner, mode, and target FPS. |
 | `perfmeter.overdraw.start` | Start bounded overdraw measurement. |
 | `perfmeter.overdraw.cancel` | Cancel active overdraw measurement. |
@@ -121,3 +122,9 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 ```
 
 Only one graphics-state flight is admitted. A repeated active ID returns `AlreadyActive`; a different overlapping trace/prewarm returns `RejectedOverlap`. Cancellation matches the active/preparing ID only. The Unity backend reports `supports_cache_miss_tracing: false`; cache-miss evidence is unsupported, and the MCP prewarm schema does not expose a cache-miss option. Artifacts are owned below `Temp/PerfMeter/GraphicsStateCollections` and are limited to 64 MiB.
+
+## Render Integration Snapshot
+
+`perfmeter.render.snapshot {}` is a read-only command with no inputs. It does not start the runtime. The response uses `schema_version: 1` and returns `render_integration` with the current pipeline/source, observation frame and age, `observation_matches_current_pipeline`, observed camera identity, integration/pass/injection metadata, scheduled PerfMeter pass count, effective rendering mode where available, nested `gpu_resident_drawer` and `variable_rate_shading` context, and `legacy_render_graph`.
+
+The command is the MCP equivalent of `PerformanceMeter.GetRenderIntegrationSnapshot()` and `TryGetRenderIntegrationSnapshot(...)`. A stale observation is reported with an explicit non-match and warning rather than presented as current. `perfmeter.rendergraph.snapshot` remains available for the legacy facade. The command does not add Editor navigation: stable Unity APIs do not expose RenderGraph/CustomPass viewer or pass-target information.

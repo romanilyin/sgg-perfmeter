@@ -70,3 +70,14 @@ overlay에는 두 가지 UI Toolkit backend path가 있습니다. Unity `6000.4`
 - prewarm은 owned project-relative artifact만 받아 synchronous하게 실행하고 artifact를 보존합니다. progressive warmup은 incomplete일 수 있습니다. Unity backend는 cache-miss tracing을 지원하지 않으므로 request는 `Unavailable`이고 cache-miss evidence는 노출되지 않습니다.
 - owned `.graphicsstate` artifact는 `Temp/PerfMeter/GraphicsStateCollections` 아래에 저장되고 regular non-empty file이어야 하며 64 MiB로 제한됩니다. trace는 600 frames, progressive prewarm은 1,000,000 states로 제한되고 minimum-free-disk 및 project-local path guard가 적용됩니다.
 - 최종 evidence는 Unity `6000.4.12f1` compile passed, GSC EditMode targeted `25/25`, `PerformanceMeter` API EditMode `47/47`, capture-bundle EditMode `14/14`, PlayMode smoke `12/12`, full post-fix EditMode `208/208`, full post-fix PlayMode `16/16`입니다. Unity `6000.5.6f1` optional consumer compile도 isolated하게 passed했습니다. Unity `6000.5` full tests, release-player 및 target-device behavior는 release gate로 남아 있으며 여기서 검증되었다고 주장하지 않습니다.
+
+## Render integration context 제한
+
+- `PerfMeterRenderIntegrationSnapshot`은 integration-neutral observation contract이며 deep Render Graph/Custom Pass capture가 아닙니다. read는 runtime collection을 시작하지 않습니다. 첫 observation 전에는 지원되는 current pipeline이 `Available`/`NotObserved`일 수 있고, pipeline/configuration 변경 후에는 `ObservationMatchesCurrentPipeline: false`, 명시적인 frame/age와 warning으로 stale observation을 표시합니다.
+- URP는 public current-frame `UniversalRenderingData.renderingMode`와 실제로 schedule된 PerfMeter pass를 보고합니다. HDRP는 실제 PerfMeter `CustomPass`를 보고하지만 effective rendering mode는 unavailable입니다.
+- private/internal Render Graph pass/resource reflection은 제거되었습니다. stable public API가 없기 때문에 legacy facade의 `registered_pass_count`, `merged_pass_count`, `transient_resource_count`, `imported_resource_count`, `aliased_resource_count`는 `-1`로 유지됩니다.
+- GRD는 configured mode와 public SRP support를 제공하지만 Unity 17.4와 17.5의 enabled semantics가 다르므로 activity는 `Unknown`입니다. 더 깊은 GRD telemetry는 `PM-GRD-001` 범위이며 이 snapshot은 GRD activity를 주장하지 않습니다.
+- VRS는 `SystemInfo`/`ShadingRateInfo`의 authoritative hardware support를 제공합니다. future typed adapter가 증명하지 않는 한 configuration/activity는 `Unknown`이며 VRS activity를 주장하지 않습니다.
+- Unity의 stable public API는 RenderGraph/CustomPass viewer나 pass-target API를 공개하지 않습니다. 따라서 PerfMeter는 Editor navigation을 추가하지 않고 약속하지도 않습니다.
+- capture context schema v1은 `render`를 유지하고 `render_integration`을 추가하며 session JSON/CSV schema는 변경하지 않습니다. external capture context는 첫 `Capturing` sample에서 freeze되고 이후 read로 교체되지 않습니다.
+- PM-REN-001 최종 evidence는 Unity `6000.4.12f1` main compile passed, targeted `PerformanceMeterApiTests` `53/53`, `PerfMeterCaptureBundleTests` `15/15`, `PerformanceMeterPlayModeSmokeTests` `12/12`, final full EditMode `215/215`, full PlayMode `16/16`입니다. Focused review P1/P2 resolved. Isolated compile matrix는 Unity `6000.4.12f1` URP `17.4`/HDRP `17.4` 및 Unity `6000.5.6f1` URP `17.5`/HDRP `17.5`에서 passed했습니다. Release-player/device validation은 pending이며 release를 주장하지 않습니다.

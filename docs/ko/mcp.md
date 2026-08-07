@@ -29,6 +29,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.device.info` | device, graphics, display, monitor, pipeline, Unity environment info를 읽습니다. |
 | `perfmeter.camera.snapshot` | camera transform/projection 및 URP/HDRP camera settings를 읽습니다. |
 | `perfmeter.rendergraph.snapshot` | URP Render Graph 또는 HDRP Custom Pass의 최신 observed render integration diagnostics를 읽습니다. |
+| `perfmeter.render.snapshot` | freshness, camera/pass context, GRD/VRS와 legacy Render Graph facade를 포함한 neutral render integration snapshot을 읽습니다. |
 | `perfmeter.overlay.set` | overlay 표시/숨김 및 preset, modules, corner, mode, target FPS를 설정합니다. |
 | `perfmeter.overdraw.start` | bounded overdraw measurement를 시작합니다. |
 | `perfmeter.overdraw.cancel` | active overdraw measurement를 취소합니다. |
@@ -115,3 +116,9 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 ```
 
 graphics-state flight는 하나만 허용됩니다. 동일한 active ID는 `AlreadyActive`, 다른 overlapping trace/prewarm은 `RejectedOverlap`을 반환합니다. cancel은 matching active/preparing ID에만 적용됩니다. Unity backend는 `supports_cache_miss_tracing: false`를 보고하므로 cache-miss evidence는 지원되지 않으며 MCP prewarm schema에도 해당 input이 없습니다. artifact는 PerfMeter 소유이고 `Temp/PerfMeter/GraphicsStateCollections` 아래에 저장되며 64 MiB로 제한됩니다.
+
+## Render integration snapshot
+
+`perfmeter.render.snapshot {}`은 input이 없는 read-only command입니다. runtime을 시작하지 않습니다. response는 `schema_version: 1`을 사용하며 `render_integration`에 current pipeline/source, observation frame/age, `observation_matches_current_pipeline`, observed camera identity, integration/pass/injection metadata, 실제로 schedule된 PerfMeter pass count, 가능한 경우 effective rendering mode, 중첩된 `gpu_resident_drawer`와 `variable_rate_shading`, `legacy_render_graph`를 포함합니다.
+
+이 command는 `PerformanceMeter.GetRenderIntegrationSnapshot()` 및 `TryGetRenderIntegrationSnapshot(...)`에 대응하는 MCP surface입니다. stale observation은 current로 표시하지 않고 명시적인 non-match와 warning으로 보고합니다. `perfmeter.rendergraph.snapshot`은 legacy facade로 유지됩니다. 안정적인 Unity API가 RenderGraph/CustomPass viewer나 pass-target 정보를 공개하지 않으므로 Editor navigation은 추가되지 않습니다.

@@ -366,6 +366,7 @@ namespace SGG.PerfMeter
 					needsContext ? PerfMeterDeviceInfoProvider.CreateSnapshot() : default,
 					needsContext ? PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null) : default,
 					needsContext ? PerfMeterRenderGraphAnalytics.GetSnapshot() : default,
+					needsContext ? PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot() : default,
 					needsContext ? Status : default);
 			}
 			else
@@ -2210,7 +2211,8 @@ namespace SGG.PerfMeter
 				Status,
 				PerfMeterDeviceInfoProvider.CreateSnapshot(),
 				PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null),
-				PerfMeterRenderGraphAnalytics.GetSnapshot());
+				PerfMeterRenderGraphAnalytics.GetSnapshot(),
+				PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot());
 		}
 
 		private void FinalizeMemorySnapshotForShutdown(string warning)
@@ -2318,6 +2320,7 @@ namespace SGG.PerfMeter
 				PerfMeterDeviceInfoProvider.CreateSnapshot(),
 				PerfMeterCameraSnapshotProvider.CreateSnapshot(PerfMeterCameraSource.Auto, null),
 				PerfMeterRenderGraphAnalytics.GetSnapshot(),
+				PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot(),
 				alerts,
 				alertsTruncated);
 			ScheduleCaptureBundleScreenshot();

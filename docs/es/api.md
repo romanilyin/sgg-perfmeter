@@ -262,4 +262,28 @@ La superficie pública de state collection es `RegisterGraphicsStateCollectionBa
 
 El coordinator permite un solo graphics-state flight. El mismo ID activo devuelve `AlreadyActive`; otro trace o prewarm durante preparación, trace, finalización, cleanup o cualquier otro capture domain devuelve `RejectedOverlap`. `CancelGraphicsStateTrace` solo coincide con el ID activo o en preparación, cancela el backend y elimina el artifact owned pendiente. Los fallos de cleanup permanecen visibles y pueden bloquear un reemplazo hasta que se reintente la limpieza.
 
+## Contexto de integración de render
+
+El snapshot aditivo y neutral respecto a la integración está disponible mediante ambos métodos:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` expone `RenderPipeline`, `RenderPipelineAssetSource`, `LastObservedFrame`, `ObservationAgeFrames`, `ObservationMatchesCurrentPipeline`, `ObservedCameraEntityId`, `ObservedCameraName`, `ObservedCameraType`, `IntegrationId`, `IntegrationName`, `IntegrationVersion`, `PassKind`, `PassName`, `InjectionPoint`, `PerfMeterPassCount`, `EffectiveRenderingMode`, `GpuResidentDrawer`, `VariableRateShading`, `LegacyRenderGraph` y `Warning`. Los snapshots anidados de GRD y VRS incluyen availability, campos de configuración/support, activity availability y warnings.
+
+Las lecturas son seguras antes de iniciar el runtime y no comienzan la recolección. Un pipeline actual soportado puede ser `Available` con `State = NotObserved`; si la última observation pertenece a otra configuración del pipeline, `ObservationMatchesCurrentPipeline` es `false`, frame/age siguen explícitos y el warning identifica los datos stale. No trates esos campos stale como una observación actual.
+
+URP usa el `UniversalRenderingData.renderingMode` público del frame actual e informa de los passes de PerfMeter realmente programados para ese frame. HDRP informa del `CustomPass` real de PerfMeter, pero el effective rendering mode no está disponible. `GpuResidentDrawer` informa del modo configurado y del soporte SRP público; la actividad es `Unknown`. `VariableRateShading` informa del soporte de hardware autoritativo de `SystemInfo`/`ShadingRateInfo`; configuration y activity siguen en `Unknown` salvo que un typed adapter las demuestre.
+
+`LegacyRenderGraph` es una facade de compatibilidad incluida para `GetRenderGraphSnapshot()`. Se eliminó la reflection privada/interna de passes y recursos, por lo que los legacy counters permanecen en `-1`. La API pública estable de Unity tampoco expone un viewer de RenderGraph/CustomPass ni pass targets; esta API no promete navegación en el Editor.
+
+`RenderPipeline` contiene `Kind`, `AssetName`, `AssetTypeName` y `RuntimeTypeName`; `RenderPipelineAssetSource` puede ser `GraphicsSettings`, `QualitySettings` o `None`. `GpuResidentDrawer` contiene `Availability`, `ConfiguredMode`, `IsConfigured`, `SupportAvailability`, `IsSupported`, `ActivityAvailability`, `IsObservedActive` y `Warning`. `VariableRateShading` contiene campos de hardware (`SupportsVariableRateShading`, `SupportsPerDrawCall`, `SupportsPerImageTile`, `ImageTileWidth`, `ImageTileHeight`, `GraphicsFormat`) además de `ConfigurationAvailability`, `IsConfigured`, `ActivityAvailability`, `IsObservedActive` y `Warning`.
+
 `PerfMeterGraphicsStatePrewarmOptions` acepta únicamente un path `.graphicsstate` owned y relativo al proyecto, además de un `MaxStateCount` opcional entre 0 y 1.000.000. Prewarm es síncrono, conserva el artifact e informa de `CompletedWarmupCount` y `IsWarmedUp`; un progressive warmup correcto pero incompleto incluye un warning. `TraceCacheMisses` existe para backends extensibles, pero el backend de Unity no admite evidencia de cache-miss, por lo que esa solicitud devuelve `Unavailable`.

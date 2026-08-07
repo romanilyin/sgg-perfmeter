@@ -157,3 +157,21 @@ Shader marker сначала разрешает exact `Shader.CreateGPUProgram`,
 5. Передайте сообщённый owned relative path в `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` или MCP prewarm. Prewarm синхронный, сохраняет artifact и сообщает completed warmups и `IsWarmedUp`; progressive warmup может завершиться с явным incomplete warning.
 
 Graphics-state coordinator разрешает один flight и также отклоняет overlap с active external GPU capture, memory snapshot или alert-capture work. Повторный active trace ID — `AlreadyActive`, другой ID — `RejectedOverlap`. `CancelGraphicsStateTrace` отменяет только matching active/preparing trace и очищает pending artifact. Если owned artifact не удалён, `HasPendingCleanup`/`has_pending_cleanup` остаётся true, рядом сохраняется sidecar `.delete-pending`, а после domain reload cleanup восстанавливается и повторяется; `IsBusy`/`is_busy` и warning остаются видимыми до успеха. Unity backend не поддерживает cache-miss tracing, поэтому cache-miss evidence недоступно.
+
+## Контекст интеграции рендеринга
+
+Используйте neutral snapshot, когда нужен единый pipeline-independent вид последней typed render integration:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+Или прочитайте те же данные через MCP:
+
+```text
+perfmeter.render.snapshot {}
+```
+
+Эти read-операции не запускают runtime collection. Проверяйте вместе `State`, `ObservationAgeFrames`, `LastObservedFrame` и `ObservationMatchesCurrentPipeline`. После смены pipeline или asset configuration предыдущая observation становится stale; сохраняйте явные warning и non-match и не считайте её pass/mode/GRD/VRS данными текущего кадра. Legacy API `PerformanceMeter.GetRenderGraphSnapshot()` и команда `perfmeter.rendergraph.snapshot` остаются доступны.
+
+В capture bundle schema `sgg.perfmeter.capture-context` версии `1` сохраняет существующий `render` и добавляет `render_integration`. Для external GPU capture этот context фиксируется на первом sample фазы `Capturing`; Memory Profiler bundle записывает его при завершении memory request. Session JSON/CSV schemas не изменяются. Public API не предоставляет стабильного RenderGraph/CustomPass viewer или pass targets, поэтому workflow не обещает Editor navigation.

@@ -253,4 +253,28 @@ Die oeffentliche State-Collection-Oberflaeche umfasst `RegisterGraphicsStateColl
 
 Der Coordinator erlaubt jeweils nur einen Graphics-State-Flight. Dieselbe aktive ID liefert `AlreadyActive`; ein anderer Trace oder Prewarm waehrend Vorbereitung, Trace, Abschluss, Cleanup oder einer anderen Capture-Domaene liefert `RejectedOverlap`. `CancelGraphicsStateTrace` trifft nur die passende aktive oder vorbereitende ID, bricht das Backend ab und entfernt das ausstehende eigene Artefakt. Cleanup-Fehler bleiben sichtbar und koennen einen Ersatz blockieren, bis die Bereinigung erneut gelingt.
 
+## Render-Integrationskontext
+
+Der additive, integrationsneutrale Snapshot ist ueber beide Methoden verfuegbar:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` stellt `RenderPipeline`, `RenderPipelineAssetSource`, `LastObservedFrame`, `ObservationAgeFrames`, `ObservationMatchesCurrentPipeline`, `ObservedCameraEntityId`, `ObservedCameraName`, `ObservedCameraType`, `IntegrationId`, `IntegrationName`, `IntegrationVersion`, `PassKind`, `PassName`, `InjectionPoint`, `PerfMeterPassCount`, `EffectiveRenderingMode`, `GpuResidentDrawer`, `VariableRateShading`, `LegacyRenderGraph` und `Warning` bereit. Die verschachtelten GRD- und VRS-Snapshots enthalten Availability, Konfigurations-/Support-Felder, Activity-Availability und Warnungen.
+
+Lesen ist vor dem Runtime-Start sicher und startet keine Sammlung. Eine unterstuetzte aktuelle Pipeline kann `Available` bei `State = NotObserved` sein. Gehoert die letzte Observation zu einer anderen Pipeline-Konfiguration, ist `ObservationMatchesCurrentPipeline` `false`; Frame/Age bleiben explizit und die Warnung kennzeichnet veraltete Daten. Veraltete Felder duerfen nicht als aktuelle Observation behandelt werden.
+
+URP verwendet das oeffentliche aktuelle `UniversalRenderingData.renderingMode` und meldet die in diesem Frame tatsaechlich geplanten PerfMeter-Passes. HDRP meldet den tatsaechlich beobachteten PerfMeter-`CustomPass`, aber der effektive Rendering-Modus ist nicht verfuegbar. `GpuResidentDrawer` meldet konfigurierten Modus und oeffentlichen SRP-Support; die Aktivitaet ist `Unknown`. `VariableRateShading` meldet autoritativen Hardware-Support aus `SystemInfo`/`ShadingRateInfo`; Konfiguration und Aktivitaet bleiben `Unknown`, sofern kein typisiertes Adapter sie meldet.
+
+`LegacyRenderGraph` ist eine eingebettete Compatibility-Fassade fuer `GetRenderGraphSnapshot()`. Private/interne Pass-/Ressourcen-Reflection wurde entfernt; daher bleiben die Legacy-Counter `-1`. Die stabile oeffentliche Unity-API bietet ausserdem keinen RenderGraph-/CustomPass-Viewer und keine Pass-Ziele; Editor-Navigation wird von dieser API nicht versprochen.
+
+`RenderPipeline` enthaelt `Kind`, `AssetName`, `AssetTypeName` und `RuntimeTypeName`; `RenderPipelineAssetSource` kann `GraphicsSettings`, `QualitySettings` oder `None` sein. `GpuResidentDrawer` enthaelt `Availability`, `ConfiguredMode`, `IsConfigured`, `SupportAvailability`, `IsSupported`, `ActivityAvailability`, `IsObservedActive` und `Warning`. `VariableRateShading` enthaelt Hardware-Felder (`SupportsVariableRateShading`, `SupportsPerDrawCall`, `SupportsPerImageTile`, `ImageTileWidth`, `ImageTileHeight`, `GraphicsFormat`) sowie `ConfigurationAvailability`, `IsConfigured`, `ActivityAvailability`, `IsObservedActive` und `Warning`.
+
 `PerfMeterGraphicsStatePrewarmOptions` akzeptiert nur einen eigenen project-relativen `.graphicsstate`-Pfad und einen optionalen `MaxStateCount` von 0 bis 1.000.000. Prewarm laeuft synchron, bewahrt das Artefakt und meldet `CompletedWarmupCount` und `IsWarmedUp`; ein erfolgreiches, aber unvollstaendiges progressives Warmup enthaelt eine Warnung. `TraceCacheMisses` bleibt fuer erweiterbare Backends vorhanden, aber das Unity-Backend unterstuetzt keine Cache-Miss-Evidence; eine solche Anfrage liefert `Unavailable`.

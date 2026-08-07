@@ -436,6 +436,17 @@ namespace SGG.PerfMeter
 			return renderGraphSnapshot.IsAvailable;
 		}
 
+		public static PerfMeterRenderIntegrationSnapshot GetRenderIntegrationSnapshot()
+		{
+			return PerfMeterRenderGraphAnalytics.GetRenderIntegrationSnapshot();
+		}
+
+		public static bool TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot renderIntegrationSnapshot)
+		{
+			renderIntegrationSnapshot = GetRenderIntegrationSnapshot();
+			return renderIntegrationSnapshot.IsAvailable;
+		}
+
 		public static PerfMeterSettingsSnapshot GetSettings()
 		{
 			return PerfMeterSettingsStore.LoadFromResources();

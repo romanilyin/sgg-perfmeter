@@ -29,6 +29,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.device.info` | device、graphics、display、monitor、pipeline、Unity environment info を読み取ります。 |
 | `perfmeter.camera.snapshot` | camera transform/projection と URP/HDRP camera settings を読み取ります。 |
 | `perfmeter.rendergraph.snapshot` | URP Render Graph または HDRP Custom Pass の最新 observed render integration diagnostics を読み取ります。 |
+| `perfmeter.render.snapshot` | freshness、camera/pass context、GRD/VRS、legacy Render Graph facade を含む neutral render integration snapshot を読み取ります。 |
 | `perfmeter.overlay.set` | overlay の show/hide と preset、modules、corner、mode、target FPS を設定します。 |
 | `perfmeter.overdraw.start` | bounded overdraw measurement を開始します。 |
 | `perfmeter.overdraw.cancel` | active overdraw measurement をキャンセルします。 |
@@ -115,3 +116,9 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 ```
 
 graphics-state flight は一つだけです。同じ active ID は `AlreadyActive`、別の overlapping trace/prewarm は `RejectedOverlap` を返します。cancel は matching active/preparing ID にだけ適用されます。Unity backend の `supports_cache_miss_tracing: false` のため cache-miss evidence は未対応で、MCP prewarm schema にもその input はありません。artifact は PerfMeter が所有し、`Temp/PerfMeter/GraphicsStateCollections` 以下に置かれ、64 MiB に制限されます。
+
+## Render integration snapshot
+
+`perfmeter.render.snapshot {}` は input のない read-only command です。runtime は起動しません。response は `schema_version: 1` を使用し、`render_integration` に current pipeline/source、observation frame/age、`observation_matches_current_pipeline`、observed camera identity、integration/pass/injection metadata、実際に schedule された PerfMeter pass count、利用可能な場合の effective rendering mode、nested `gpu_resident_drawer` と `variable_rate_shading`、`legacy_render_graph` を含めます。
+
+これは `PerformanceMeter.GetRenderIntegrationSnapshot()` と `TryGetRenderIntegrationSnapshot(...)` に対応する MCP command です。stale observation は current として返さず、明示的な non-match と warning で示します。`perfmeter.rendergraph.snapshot` は legacy facade として残ります。安定した Unity API に RenderGraph/CustomPass viewer や pass-target 情報がないため、Editor navigation は追加されません。

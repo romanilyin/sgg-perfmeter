@@ -157,3 +157,21 @@ shader marker は exact `Shader.CreateGPUProgram` を優先し、その後 alias
 5. status の owned relative path を `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` または MCP prewarm command に渡します。prewarm は synchronous で artifact を保持し、completed warmup と `IsWarmedUp` を報告します。progressive warmup は explicit incomplete warning 付きで終了する場合があります。
 
 graphics-state coordinator は一つの flight だけを許可し、active external GPU capture、memory snapshot、alert-capture との overlap も reject します。同じ active trace ID は `AlreadyActive`、別の ID は `RejectedOverlap` です。`CancelGraphicsStateTrace` は一致する active/preparing trace だけを cancel して pending artifact を cleanup します。owned artifact の削除に失敗すると `HasPendingCleanup`/`has_pending_cleanup` が true のままとなり、隣接する `.delete-pending` sidecar が domain reload 後に復元・再試行されます。`IsBusy`/`is_busy` と warning は成功まで visible です。Unity backend は cache-miss tracing をサポートしないため、cache-miss evidence はありません。
+
+## Render integration context
+
+pipeline に依存しない最新の typed render integration を読むには neutral snapshot を使います。
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+同じ情報は MCP からも読めます。
+
+```text
+perfmeter.render.snapshot {}
+```
+
+これらの read は runtime collection を開始しません。`State`、`ObservationAgeFrames`、`LastObservedFrame`、`ObservationMatchesCurrentPipeline` を一緒に確認してください。pipeline または asset configuration が変わると以前の observation は stale になります。warning と non-match を尊重し、その pass、mode、GRD、VRS の値を current frame の値として扱わないでください。legacy API `PerformanceMeter.GetRenderGraphSnapshot()` と `perfmeter.rendergraph.snapshot` は引き続き利用できます。
+
+capture bundle の schema `sgg.perfmeter.capture-context` version `1` は既存の `render` を保持し、`render_integration` を追加します。external GPU capture では `Capturing` phase の最初の sample で context を freeze し、Memory Profiler bundle では memory request の完了時に記録します。session JSON/CSV schema は変更されません。public API に安定した RenderGraph/CustomPass viewer や pass target はないため、この workflow は Editor navigation を約束しません。

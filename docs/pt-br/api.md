@@ -263,3 +263,27 @@ A superficie publica de state collection inclui `RegisterGraphicsStateCollection
 O coordinator permite apenas um graphics-state flight. O mesmo ID ativo retorna `AlreadyActive`; outro trace ou prewarm durante preparacao, trace, finalizacao, cleanup ou outro capture domain retorna `RejectedOverlap`. `CancelGraphicsStateTrace` corresponde somente ao ID ativo ou em preparacao, cancela o backend e remove o artifact owned pendente. Falhas de cleanup ficam visiveis e podem bloquear uma substituicao ate uma nova tentativa bem-sucedida.
 
 `PerfMeterGraphicsStatePrewarmOptions` aceita somente um path `.graphicsstate` owned relativo ao projeto e um `MaxStateCount` opcional de 0 a 1.000.000. O prewarm e sincrono, preserva o artifact e informa `CompletedWarmupCount` e `IsWarmedUp`; um progressive warmup bem-sucedido mas incompleto inclui um warning. `TraceCacheMisses` existe para backends extensíveis, mas o backend do Unity nao suporta evidencia de cache-miss; essa solicitacao retorna `Unavailable`.
+
+## Contexto de render integration
+
+O snapshot aditivo e neutro em relacao a integracao esta disponivel pelos dois metodos:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` expoe `RenderPipeline`, `RenderPipelineAssetSource`, `LastObservedFrame`, `ObservationAgeFrames`, `ObservationMatchesCurrentPipeline`, `ObservedCameraEntityId`, `ObservedCameraName`, `ObservedCameraType`, `IntegrationId`, `IntegrationName`, `IntegrationVersion`, `PassKind`, `PassName`, `InjectionPoint`, `PerfMeterPassCount`, `EffectiveRenderingMode`, `GpuResidentDrawer`, `VariableRateShading`, `LegacyRenderGraph` e `Warning`. Os snapshots aninhados de GRD e VRS expoem availability, campos de configuracao/support, activity availability e warnings.
+
+As leituras sao seguras antes do runtime iniciar e nao iniciam a coleta. Um pipeline atual suportado pode estar `Available` com `State = NotObserved`; se a ultima observation pertencer a outra configuracao de pipeline, `ObservationMatchesCurrentPipeline` sera `false`, frame/age permanecerao explicitos e o warning indicara dados stale. Nao trate campos stale como observation atual.
+
+URP usa o `UniversalRenderingData.renderingMode` publico do frame atual e informa os passes do PerfMeter realmente agendados nesse frame. HDRP informa o `CustomPass` real do PerfMeter, mas o effective rendering mode nao esta disponivel. `GpuResidentDrawer` informa o modo configurado e o suporte SRP publico; a atividade e `Unknown`. `VariableRateShading` informa o suporte de hardware autoritativo de `SystemInfo`/`ShadingRateInfo`; configuration e activity continuam `Unknown` ate que um typed adapter as comprove.
+
+`LegacyRenderGraph` e uma facade de compatibilidade incorporada para `GetRenderGraphSnapshot()`. A reflection privada/interna de passes e recursos foi removida, portanto os legacy counters permanecem em `-1`. A API publica estavel do Unity tambem nao expoe viewer de RenderGraph/CustomPass nem pass targets; esta API nao promete navegacao no Editor.
+
+`RenderPipeline` contem `Kind`, `AssetName`, `AssetTypeName` e `RuntimeTypeName`; `RenderPipelineAssetSource` pode ser `GraphicsSettings`, `QualitySettings` ou `None`. `GpuResidentDrawer` contem `Availability`, `ConfiguredMode`, `IsConfigured`, `SupportAvailability`, `IsSupported`, `ActivityAvailability`, `IsObservedActive` e `Warning`. `VariableRateShading` contem campos de hardware (`SupportsVariableRateShading`, `SupportsPerDrawCall`, `SupportsPerImageTile`, `ImageTileWidth`, `ImageTileHeight`, `GraphicsFormat`), alem de `ConfigurationAvailability`, `IsConfigured`, `ActivityAvailability`, `IsObservedActive` e `Warning`.

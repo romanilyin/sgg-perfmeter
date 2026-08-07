@@ -263,3 +263,27 @@ La surface publique de state collection comprend `RegisterGraphicsStateCollectio
 Le coordinator n'autorise qu'un seul graphics-state flight. Le même ID actif renvoie `AlreadyActive`; un autre trace ou prewarm pendant la préparation, le trace, la finalisation, le cleanup ou un autre domaine de capture renvoie `RejectedOverlap`. `CancelGraphicsStateTrace` ne correspond qu'à l'ID actif ou en préparation, annule le backend et supprime l'artefact owned en attente. Les échecs de cleanup restent visibles et peuvent bloquer le remplacement jusqu'à une nouvelle tentative réussie.
 
 `PerfMeterGraphicsStatePrewarmOptions` accepte uniquement un chemin `.graphicsstate` owned relatif au projet et un `MaxStateCount` optionnel de 0 à 1 000 000. Le prewarm est synchrone, conserve l'artefact et indique `CompletedWarmupCount` et `IsWarmedUp`; un progressive warmup réussi mais incomplet ajoute un warning. `TraceCacheMisses` est présent pour les backends extensibles, mais le backend Unity ne prend pas en charge l'evidence de cache-miss: cette demande renvoie `Unavailable`.
+
+## Contexte d'intégration du rendu
+
+Le snapshot additif et neutre vis-à-vis de l'intégration est disponible via les deux méthodes:
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` expose `RenderPipeline`, `RenderPipelineAssetSource`, `LastObservedFrame`, `ObservationAgeFrames`, `ObservationMatchesCurrentPipeline`, `ObservedCameraEntityId`, `ObservedCameraName`, `ObservedCameraType`, `IntegrationId`, `IntegrationName`, `IntegrationVersion`, `PassKind`, `PassName`, `InjectionPoint`, `PerfMeterPassCount`, `EffectiveRenderingMode`, `GpuResidentDrawer`, `VariableRateShading`, `LegacyRenderGraph` et `Warning`. Les snapshots imbriqués GRD et VRS exposent leur availability, leurs champs de configuration/support, l'activity availability et leurs warnings.
+
+Les lectures sont sûres avant le démarrage du runtime et ne lancent pas la collecte. Un pipeline courant supporté peut être `Available` avec `State = NotObserved`; si la dernière observation appartient à une autre configuration de pipeline, `ObservationMatchesCurrentPipeline` vaut `false`, frame/age restent explicites et le warning signale des données obsolètes. Ne traitez pas ces champs obsolètes comme une observation actuelle.
+
+URP utilise le `UniversalRenderingData.renderingMode` public de la frame courante et indique les passes PerfMeter effectivement planifiés pour cette frame. HDRP indique le `CustomPass` PerfMeter réellement observé, mais le effective rendering mode est indisponible. `GpuResidentDrawer` indique le mode configuré et le support SRP public; l'activité est `Unknown`. `VariableRateShading` indique le support matériel faisant autorité de `SystemInfo`/`ShadingRateInfo`; configuration et activité restent `Unknown` sauf si un typed adapter les démontre.
+
+`LegacyRenderGraph` est une façade de compatibilité intégrée pour `GetRenderGraphSnapshot()`. La reflection privée/interne des passes et ressources a été supprimée: les legacy counters restent donc à `-1`. L'API publique stable de Unity n'expose pas non plus de viewer RenderGraph/CustomPass ni de pass targets; cette API ne promet pas de navigation dans l'Editor.
+
+`RenderPipeline` contient `Kind`, `AssetName`, `AssetTypeName` et `RuntimeTypeName`; `RenderPipelineAssetSource` vaut `GraphicsSettings`, `QualitySettings` ou `None`. `GpuResidentDrawer` contient `Availability`, `ConfiguredMode`, `IsConfigured`, `SupportAvailability`, `IsSupported`, `ActivityAvailability`, `IsObservedActive` et `Warning`. `VariableRateShading` contient les champs matériels (`SupportsVariableRateShading`, `SupportsPerDrawCall`, `SupportsPerImageTile`, `ImageTileWidth`, `ImageTileHeight`, `GraphicsFormat`) ainsi que `ConfigurationAvailability`, `IsConfigured`, `ActivityAvailability`, `IsObservedActive` et `Warning`.

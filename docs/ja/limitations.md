@@ -70,3 +70,14 @@ overlay には 2 つの UI Toolkit backend path があります。Unity `6000.4`
 - prewarm は owned project-relative artifact のみを受け付け、synchronous に実行し、artifact を保持します。progressive warmup が incomplete になる場合があります。Unity backend は cache-miss tracing をサポートしないため、request は `Unavailable` となり cache-miss evidence は公開されません。
 - owned `.graphicsstate` artifact は `Temp/PerfMeter/GraphicsStateCollections` 以下に保存され、regular non-empty file である必要があり、64 MiB に制限されます。trace は 600 frames、progressive prewarm は 1,000,000 states に制限されます。minimum-free-disk と project-local path guard も適用されます。
 - final evidence は Unity `6000.4.12f1` compile passed、GSC EditMode targeted `25/25`、`PerformanceMeter` API EditMode `47/47`、capture-bundle EditMode `14/14`、PlayMode smoke `12/12`、full post-fix EditMode `208/208`、full post-fix PlayMode `16/16` です。Unity `6000.5.6f1` の optional consumer compile も isolated に passed しました。Unity `6000.5` の full tests、release-player、target-device behavior は release gate のままで、検証済みとは主張しません。
+
+## Render integration context の制限
+
+- `PerfMeterRenderIntegrationSnapshot` は integration-neutral な observation contract であり、deep Render Graph/Custom Pass capture ではありません。read は runtime collection を開始しません。最初の observation 前は supported current pipeline が `Available`/`NotObserved` になる場合があり、pipeline/configuration の変更後は `ObservationMatchesCurrentPipeline: false`、明示的な frame/age、warning で stale observation を示します。
+- URP は public current-frame `UniversalRenderingData.renderingMode` と実際に schedule された PerfMeter pass を報告します。HDRP は実際の PerfMeter `CustomPass` を報告しますが、effective rendering mode は unavailable です。
+- private/internal な Render Graph pass/resource reflection は削除されました。stable public API がないため、legacy facade の `registered_pass_count`、`merged_pass_count`、`transient_resource_count`、`imported_resource_count`、`aliased_resource_count` は `-1` のままです。
+- GRD は configured mode と public SRP support を報告しますが、Unity 17.4 と 17.5 で enabled semantics が異なるため activity は `Unknown` です。深い GRD telemetry は `PM-GRD-001` の範囲であり、この snapshot は GRD activity を主張しません。
+- VRS は `SystemInfo`/`ShadingRateInfo` の authoritative hardware support を報告します。future typed adapter が証明しない限り configuration/activity は `Unknown` で、VRS activity は主張しません。
+- Unity の stable public API は RenderGraph/CustomPass viewer や pass-target API を公開しません。そのため PerfMeter は Editor navigation を追加せず、約束もしません。
+- capture context schema v1 は `render` を保持して `render_integration` を追加し、session JSON/CSV schema は変更しません。external capture context は最初の `Capturing` sample で freeze され、後続の read で置き換えられません。
+- PM-REN-001 の最終 evidence は Unity `6000.4.12f1` main compile passed、targeted `PerformanceMeterApiTests` `53/53`、`PerfMeterCaptureBundleTests` `15/15`、`PerformanceMeterPlayModeSmokeTests` `12/12`、final full EditMode `215/215`、full PlayMode `16/16` です。Focused review P1/P2 resolved。isolated compile matrix は Unity `6000.4.12f1` URP `17.4`/HDRP `17.4` と Unity `6000.5.6f1` URP `17.5`/HDRP `17.5` で passed しました。release-player/device validation は pending のままで、release は主張しません。

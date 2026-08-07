@@ -364,6 +364,103 @@ namespace SGG.PerfMeter
 			builder.Append('}');
 		}
 
+		internal static void AppendRenderIntegration(StringBuilder builder, PerfMeterRenderIntegrationSnapshot snapshot)
+		{
+			builder.Append('{');
+			builder.Append("\"is_available\":").Append(JsonBool(snapshot.IsAvailable));
+			builder.Append(",\"availability\":").Append(JsonString(snapshot.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(snapshot.State.ToString()));
+			builder.Append(",\"render_pipeline\":");
+			AppendRenderPipeline(builder, snapshot.RenderPipeline);
+			builder.Append(",\"render_pipeline_asset_source\":").Append(JsonString(snapshot.RenderPipelineAssetSource.ToString()));
+			builder.Append(",\"last_observed_frame\":").Append(snapshot.LastObservedFrame);
+			builder.Append(",\"observation_age_frames\":").Append(snapshot.ObservationAgeFrames);
+			builder.Append(",\"observation_matches_current_pipeline\":").Append(JsonBool(snapshot.ObservationMatchesCurrentPipeline));
+			builder.Append(",\"observed_camera_entity_id\":").Append(JsonString(snapshot.ObservedCameraEntityId.ToString(CultureInfo.InvariantCulture)));
+			builder.Append(",\"observed_camera_name\":").Append(JsonString(snapshot.ObservedCameraName));
+			builder.Append(",\"observed_camera_type\":").Append(JsonString(snapshot.ObservedCameraType));
+			builder.Append(",\"integration_id\":").Append(JsonString(snapshot.IntegrationId));
+			builder.Append(",\"integration_name\":").Append(JsonString(snapshot.IntegrationName));
+			builder.Append(",\"integration_version\":").Append(JsonString(snapshot.IntegrationVersion));
+			builder.Append(",\"pass_kind\":").Append(JsonString(snapshot.PassKind.ToString()));
+			builder.Append(",\"pass_name\":").Append(JsonString(snapshot.PassName));
+			builder.Append(",\"injection_point\":").Append(JsonString(snapshot.InjectionPoint));
+			builder.Append(",\"perfmeter_pass_count\":").Append(snapshot.PerfMeterPassCount);
+			builder.Append(",\"effective_rendering_mode\":").Append(JsonString(snapshot.EffectiveRenderingMode));
+			builder.Append(",\"gpu_resident_drawer\":");
+			AppendGpuResidentDrawer(builder, snapshot.GpuResidentDrawer);
+			builder.Append(",\"variable_rate_shading\":");
+			AppendVariableRateShading(builder, snapshot.VariableRateShading);
+			builder.Append(",\"legacy_render_graph\":");
+			AppendLegacyRenderGraph(builder, snapshot.LegacyRenderGraph);
+			builder.Append(",\"warning\":").Append(JsonString(snapshot.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendRenderPipeline(StringBuilder builder, PerfMeterRenderPipelineSnapshot pipeline)
+		{
+			builder.Append('{');
+			builder.Append("\"kind\":").Append(JsonString(pipeline.Kind.ToString()));
+			builder.Append(",\"asset_name\":").Append(JsonString(pipeline.AssetName));
+			builder.Append(",\"asset_type_name\":").Append(JsonString(pipeline.AssetTypeName));
+			builder.Append(",\"runtime_type_name\":").Append(JsonString(pipeline.RuntimeTypeName));
+			builder.Append('}');
+		}
+
+		private static void AppendGpuResidentDrawer(StringBuilder builder, PerfMeterGpuResidentDrawerContextSnapshot gpuResidentDrawer)
+		{
+			builder.Append('{');
+			builder.Append("\"availability\":").Append(JsonString(gpuResidentDrawer.Availability.ToString()));
+			builder.Append(",\"configured_mode\":").Append(JsonString(gpuResidentDrawer.ConfiguredMode));
+			builder.Append(",\"is_configured\":").Append(JsonBool(gpuResidentDrawer.IsConfigured));
+			builder.Append(",\"support_availability\":").Append(JsonString(gpuResidentDrawer.SupportAvailability.ToString()));
+			builder.Append(",\"is_supported\":").Append(JsonBool(gpuResidentDrawer.IsSupported));
+			builder.Append(",\"activity_availability\":").Append(JsonString(gpuResidentDrawer.ActivityAvailability.ToString()));
+			builder.Append(",\"is_observed_active\":").Append(JsonBool(gpuResidentDrawer.IsObservedActive));
+			builder.Append(",\"warning\":").Append(JsonString(gpuResidentDrawer.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendVariableRateShading(StringBuilder builder, PerfMeterVariableRateShadingContextSnapshot variableRateShading)
+		{
+			builder.Append('{');
+			builder.Append("\"availability\":").Append(JsonString(variableRateShading.Availability.ToString()));
+			builder.Append(",\"supports_variable_rate_shading\":").Append(JsonBool(variableRateShading.SupportsVariableRateShading));
+			builder.Append(",\"supports_per_draw_call\":").Append(JsonBool(variableRateShading.SupportsPerDrawCall));
+			builder.Append(",\"supports_per_image_tile\":").Append(JsonBool(variableRateShading.SupportsPerImageTile));
+			builder.Append(",\"image_tile_width\":").Append(variableRateShading.ImageTileWidth);
+			builder.Append(",\"image_tile_height\":").Append(variableRateShading.ImageTileHeight);
+			builder.Append(",\"graphics_format\":").Append(JsonString(variableRateShading.GraphicsFormat));
+			builder.Append(",\"configuration_availability\":").Append(JsonString(variableRateShading.ConfigurationAvailability.ToString()));
+			builder.Append(",\"is_configured\":").Append(JsonBool(variableRateShading.IsConfigured));
+			builder.Append(",\"activity_availability\":").Append(JsonString(variableRateShading.ActivityAvailability.ToString()));
+			builder.Append(",\"is_observed_active\":").Append(JsonBool(variableRateShading.IsObservedActive));
+			builder.Append(",\"warning\":").Append(JsonString(variableRateShading.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendLegacyRenderGraph(StringBuilder builder, PerfMeterRenderGraphSnapshot renderGraph)
+		{
+			builder.Append('{');
+			builder.Append("\"is_available\":").Append(JsonBool(renderGraph.IsAvailable));
+			builder.Append(",\"availability\":").Append(JsonString(renderGraph.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(renderGraph.State.ToString()));
+			builder.Append(",\"last_frame\":").Append(renderGraph.LastFrame);
+			builder.Append(",\"observed_camera_name\":").Append(JsonString(renderGraph.ObservedCameraName));
+			builder.Append(",\"observed_camera_type\":").Append(JsonString(renderGraph.ObservedCameraType));
+			builder.Append(",\"render_pipeline\":").Append(JsonString(renderGraph.RenderPipeline.ToString()));
+			builder.Append(",\"integration_name\":").Append(JsonString(renderGraph.IntegrationName));
+			builder.Append(",\"observed_injection_point\":").Append(JsonString(renderGraph.ObservedInjectionPoint));
+			builder.Append(",\"perfmeter_pass_count\":").Append(renderGraph.PerfMeterPassCount);
+			builder.Append(",\"registered_pass_count\":").Append(renderGraph.RegisteredPassCount);
+			builder.Append(",\"merged_pass_count\":").Append(renderGraph.MergedPassCount);
+			builder.Append(",\"transient_resource_count\":").Append(renderGraph.TransientResourceCount);
+			builder.Append(",\"imported_resource_count\":").Append(renderGraph.ImportedResourceCount);
+			builder.Append(",\"aliased_resource_count\":").Append(renderGraph.AliasedResourceCount);
+			builder.Append(",\"warning\":").Append(JsonString(renderGraph.Warning));
+			builder.Append('}');
+		}
+
 		internal static void AppendSettings(StringBuilder builder, PerfMeterSettingsSnapshot settings)
 		{
 			builder.Append('{');

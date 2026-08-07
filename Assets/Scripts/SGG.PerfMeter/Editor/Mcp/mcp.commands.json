@@ -607,6 +607,22 @@
       }
     },
     {
+      "id": "perfmeter.render.snapshot",
+      "title": "PerfMeter render integration snapshot",
+      "description": "Read the latest neutral SGG PerfMeter render integration snapshot, including pipeline, observation freshness, camera, pass, GPU Resident Drawer, VRS, and legacy Render Graph compatibility context without starting the runtime.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.RenderIntegrationSnapshot",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "render", "diagnostics"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.overlay.set",
       "title": "Set PerfMeter overlay",
       "description": "Show or hide the SGG PerfMeter overlay and optionally set its preset, modules, screen corner, theme, display layout, font family, and target FPS. Visibility persists across Play Mode transitions for the current Editor session; rendered_visibility remains unknown until an external capture observes a repainted frame.",

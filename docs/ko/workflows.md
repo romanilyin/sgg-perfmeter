@@ -157,3 +157,21 @@ shader marker는 exact `Shader.CreateGPUProgram`을 먼저 해석하고 aliases 
 5. status가 반환한 owned relative path를 `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` 또는 MCP prewarm command에 전달합니다. prewarm은 synchronous하고 artifact를 보존하며 completed warmup과 `IsWarmedUp`를 보고합니다. progressive warmup은 explicit incomplete warning과 함께 끝날 수 있습니다.
 
 graphics-state coordinator는 하나의 flight만 허용하며 active external GPU capture, memory snapshot, alert-capture와의 overlap도 reject합니다. 같은 active trace ID는 `AlreadyActive`, 다른 ID는 `RejectedOverlap`입니다. `CancelGraphicsStateTrace`는 일치하는 active/preparing trace만 cancel하고 pending artifact를 cleanup합니다. owned artifact 삭제에 실패하면 `HasPendingCleanup`/`has_pending_cleanup`이 true로 남고 인접한 `.delete-pending` sidecar가 domain reload 후 복원·재시도됩니다. `IsBusy`/`is_busy`와 warning은 성공할 때까지 표시됩니다. Unity backend는 cache-miss tracing을 지원하지 않으므로 cache-miss evidence는 없습니다.
+
+## Render integration context
+
+pipeline에 중립적인 최신 typed render integration을 읽으려면 neutral snapshot을 사용합니다.
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+같은 데이터는 MCP로도 읽을 수 있습니다.
+
+```text
+perfmeter.render.snapshot {}
+```
+
+이 read들은 runtime collection을 시작하지 않습니다. `State`, `ObservationAgeFrames`, `LastObservedFrame`, `ObservationMatchesCurrentPipeline`을 함께 확인하십시오. pipeline이나 asset configuration이 바뀌면 이전 observation은 stale이 됩니다. warning과 non-match를 유지하고 pass, mode, GRD, VRS 값을 current frame 값으로 취급하지 마십시오. legacy API `PerformanceMeter.GetRenderGraphSnapshot()`과 `perfmeter.rendergraph.snapshot`은 계속 사용할 수 있습니다.
+
+capture bundle의 schema `sgg.perfmeter.capture-context` version `1`은 기존 `render`를 유지하고 `render_integration`을 추가합니다. external GPU capture에서는 `Capturing` phase의 첫 sample에서 context를 freeze하고, Memory Profiler bundle에서는 memory request 완료 시 기록합니다. session JSON/CSV schema는 변경되지 않습니다. public API에 안정적인 RenderGraph/CustomPass viewer나 pass target이 없으므로 이 workflow는 Editor navigation을 약속하지 않습니다.

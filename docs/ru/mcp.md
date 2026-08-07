@@ -29,6 +29,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.device.info` | Прочитать информацию об устройстве, graphics, display, monitor, pipeline и Unity environment. |
 | `perfmeter.camera.snapshot` | Прочитать transform/projection камеры и настройки URP/HDRP camera. |
 | `perfmeter.rendergraph.snapshot` | Прочитать последние наблюдаемые diagnostics render integration для URP Render Graph или HDRP Custom Pass. |
+| `perfmeter.render.snapshot` | Прочитать neutral render integration snapshot: freshness, camera/pass context, GRD/VRS и legacy Render Graph facade. |
 | `perfmeter.overlay.set` | Показать/скрыть оверлей и задать preset, modules, corner, mode и целевой FPS. |
 | `perfmeter.overdraw.start` | Запустить ограниченное измерение overdraw. |
 | `perfmeter.overdraw.cancel` | Отменить активное измерение overdraw. |
@@ -115,3 +116,9 @@ perfmeter.graphics.state_collection.prewarm {"relative_path":"Temp/PerfMeter/Gra
 ```
 
 Допускается только один graphics-state flight. Повторный active ID возвращает `AlreadyActive`, а другой overlapping trace/prewarm — `RejectedOverlap`. Cancel работает только для matching active/preparing ID. Unity backend сообщает `supports_cache_miss_tracing: false`: cache-miss evidence не поддерживается, и MCP prewarm schema не содержит такого input. Artifacts принадлежат PerfMeter, находятся под `Temp/PerfMeter/GraphicsStateCollections` и ограничены 64 MiB.
+
+## Snapshot интеграции рендеринга
+
+`perfmeter.render.snapshot {}` — read-only команда без inputs. Она не запускает runtime. Ответ содержит `schema_version: 1` и `render_integration` с current pipeline/source, observation frame и age, `observation_matches_current_pipeline`, observed camera identity, integration/pass/injection metadata, scheduled PerfMeter pass count, effective rendering mode (если доступен), вложенные `gpu_resident_drawer` и `variable_rate_shading`, а также `legacy_render_graph`.
+
+Это MCP-эквивалент `PerformanceMeter.GetRenderIntegrationSnapshot()` и `TryGetRenderIntegrationSnapshot(...)`. Stale observation отмечается явным non-match и warning, а не выдаётся за current. `perfmeter.rendergraph.snapshot` сохраняется для legacy facade. Команда не добавляет Editor navigation: стабильные Unity API не раскрывают RenderGraph/CustomPass viewer или pass targets.

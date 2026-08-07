@@ -157,3 +157,21 @@ shader marker 先解析 exact `Shader.CreateGPUProgram`，再解析 aliases `Sha
 5. 将 status 返回的 owned relative path 传给 `PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions(path, maxStateCount))` 或 MCP prewarm command。prewarm 是 synchronous 的，会保留 artifact，并报告 completed warmup 与 `IsWarmedUp`；progressive warmup 可能以 explicit incomplete warning 结束。
 
 graphics-state coordinator 只允许一个 flight，也会拒绝与 active external GPU capture、memory snapshot 或 alert-capture 的 overlap。相同的 active trace ID 返回 `AlreadyActive`，其他 ID 返回 `RejectedOverlap`。`CancelGraphicsStateTrace` 只 cancel 匹配的 active/preparing trace 并清理 pending artifact。如果 owned artifact 删除失败，`HasPendingCleanup`/`has_pending_cleanup` 会保持 true，旁边的 `.delete-pending` sidecar 会在 domain reload 后恢复并重试；`IsBusy`/`is_busy` 和 warning 会保持可见直到成功。Unity backend 不支持 cache-miss tracing，因此没有 cache-miss evidence。
+
+## Render integration context
+
+当需要查看最新 typed render integration 的 pipeline-neutral 信息时，使用 neutral snapshot：
+
+```csharp
+PerfMeterRenderIntegrationSnapshot context = PerformanceMeter.GetRenderIntegrationSnapshot();
+```
+
+也可以通过 MCP 读取相同数据：
+
+```text
+perfmeter.render.snapshot {}
+```
+
+这些 read 不会启动 runtime collection。请一起检查 `State`、`ObservationAgeFrames`、`LastObservedFrame` 和 `ObservationMatchesCurrentPipeline`。pipeline 或 asset configuration 改变后，之前的 observation 会变成 stale；保留 warning 和 non-match，不要把其 pass、mode、GRD 或 VRS 值当作当前 frame 数据。legacy API `PerformanceMeter.GetRenderGraphSnapshot()` 和 `perfmeter.rendergraph.snapshot` 仍然可用。
+
+capture bundle 的 schema `sgg.perfmeter.capture-context` version `1` 保留已有的 `render` 并添加 `render_integration`。external GPU capture 在 `Capturing` phase 的第一个 sample 冻结 context；Memory Profiler bundle 在 memory request 完成时记录 context。session JSON/CSV schema 不变。public API 没有稳定的 RenderGraph/CustomPass viewer 或 pass target，因此该 workflow 不承诺 Editor navigation。

@@ -69,7 +69,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 ## How It Exposes The Data
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
-- **Public C# API**: immutable snapshots for status, metrics, device, camera, Render Graph, alerts, sessions, and custom metrics.
+- **Public C# API**: immutable snapshots for status, metrics, device, camera, integration-neutral render context (with a legacy Render Graph facade), alerts, sessions, and custom metrics.
 - **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools with atomic correlated bundles and truthful artifact provenance.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
@@ -84,6 +84,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Opt-in numerical overdraw measurement and visual overdraw heatmap through URP Render Graph; HDRP overdraw and heatmap are reported as unsupported while core diagnostics remain available.
 - Dynamic `ProfilerRecorder` shader GPU-program and graphics-pipeline creation markers when Unity exposes them; values keep their discovered units and are not assumed to be shader or PSO counts.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
+- Integration-neutral render context: current pipeline/source, observed camera and frame freshness, integration/pass/injection details, actual PerfMeter pass count, effective mode where Unity exposes it, plus explicit GRD/VRS availability and unknown activity states.
 
 ## Optional Platform Telemetry
 
@@ -111,6 +112,12 @@ See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](
 The optional `SGG.PerfMeter.GraphicsStateCollection` assembly supports a bounded trace and synchronous prewarm workflow on Unity `6000.4+`. Start and keep a PerfMeter session recording through the trace; `StopSession()` cancels an active trace. The owned `.graphicsstate` artifact is written below `Temp/PerfMeter/GraphicsStateCollections`, limited to 64 MiB, and correlated session samples carry `graphics_state_trace_id`. Cache-miss evidence is not supported by the Unity backend.
 
 See the localized [API](./docs/en/api.md), [MCP](./docs/en/mcp.md), [Workflows](./docs/en/workflows.md), and [Limitations](./docs/en/limitations.md) pages for the graphics diagnostics and trace workflow.
+
+## Render Integration Context
+
+`PerformanceMeter.GetRenderIntegrationSnapshot()` and `TryGetRenderIntegrationSnapshot(...)` expose the additive `PerfMeterRenderIntegrationSnapshot` for URP Render Graph and HDRP Custom Pass integrations. The snapshot includes the current pipeline and asset source, the observed camera identity, observation frame/age and current-pipeline match, integration/pass/injection metadata, scheduled PerfMeter pass count, effective rendering mode where a stable public API provides it, and nested GRD/VRS context. `perfmeter.render.snapshot` exposes the same read-only data; `perfmeter.rendergraph.snapshot` remains available as the legacy facade.
+
+Reads do not start runtime collection. A stale observation is marked as not matching the current pipeline instead of being presented as current. Capture context schema v1 preserves `render` and adds `render_integration`; session schemas are unchanged. Unity does not expose a stable public RenderGraph/CustomPass viewer or pass-target API for navigation, so PerfMeter does not promise Editor navigation or private pass/resource counters.
 
 ## Quick Start
 

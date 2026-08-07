@@ -375,6 +375,16 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return RenderGraphSnapshotJson(RuntimePerformanceMeter.GetRenderGraphSnapshot());
 		}
 
+		public static string RenderIntegrationSnapshot()
+		{
+			StringBuilder builder = new StringBuilder(2048);
+			builder.Append("{\"schema_version\":1,\"render_integration\":");
+			PerfMeterSessionExporter.AppendRenderIntegration(builder, RuntimePerformanceMeter.GetRenderIntegrationSnapshot());
+			AppendEditorState(builder);
+			builder.Append('}');
+			return builder.ToString();
+		}
+
 		public static string OverlaySet(string argsJson)
 		{
 			bool visible = RequireBool(argsJson, "visible");

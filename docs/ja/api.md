@@ -263,3 +263,27 @@ public state-collection API は `RegisterGraphicsStateCollectionBackend(...)`、
 coordinator は一度に一つの graphics-state flight だけを許可します。同じ active ID は `AlreadyActive`、準備中・trace 中・終了中・cleanup 中、または別の capture domain で別の trace/prewarm を行うと `RejectedOverlap` です。`CancelGraphicsStateTrace` は一致する active/preparing ID だけを対象にし、backend を cancel して pending owned artifact を削除します。cleanup failure は表示され、再試行が成功するまで置き換えを妨げる場合があります。
 
 `PerfMeterGraphicsStatePrewarmOptions` は owned project-relative `.graphicsstate` path と、0–1,000,000 の任意の `MaxStateCount` を受け付けます。prewarm は synchronous に実行され、artifact を保持し、`CompletedWarmupCount` と `IsWarmedUp` を報告します。successful でも incomplete な progressive warmup には warning が付きます。`TraceCacheMisses` は拡張 backend のために存在しますが、Unity backend は cache-miss evidence をサポートしないため、指定すると `Unavailable` になります。
+
+## Render integration context
+
+integration-neutral な additive snapshot は次の両方の method から取得できます。
+
+```csharp
+PerfMeterRenderIntegrationSnapshot renderIntegration =
+    PerformanceMeter.GetRenderIntegrationSnapshot();
+
+if (PerformanceMeter.TryGetRenderIntegrationSnapshot(out PerfMeterRenderIntegrationSnapshot safeRenderIntegration))
+{
+    UnityEngine.Debug.Log($"{safeRenderIntegration.RenderPipeline.Kind}: {safeRenderIntegration.State}");
+}
+```
+
+`PerfMeterRenderIntegrationSnapshot` は `RenderPipeline`、`RenderPipelineAssetSource`、`LastObservedFrame`、`ObservationAgeFrames`、`ObservationMatchesCurrentPipeline`、`ObservedCameraEntityId`、`ObservedCameraName`、`ObservedCameraType`、`IntegrationId`、`IntegrationName`、`IntegrationVersion`、`PassKind`、`PassName`、`InjectionPoint`、`PerfMeterPassCount`、`EffectiveRenderingMode`、`GpuResidentDrawer`、`VariableRateShading`、`LegacyRenderGraph`、`Warning` を公開します。nested GRD/VRS snapshot は availability、configuration/support field、activity availability、warning を持ちます。
+
+read は runtime start 前でも安全で、collection を開始しません。supported な current pipeline は `State = NotObserved` のまま `Available` になる場合があります。最後の observation が別の pipeline configuration に属する場合、`ObservationMatchesCurrentPipeline` は `false` になり、frame/age と warning に stale 状態が明示されます。stale な field を current observation として扱わないでください。
+
+URP は public な current-frame `UniversalRenderingData.renderingMode` と、その frame で実際に schedule された PerfMeter pass を報告します。HDRP は実際に観測された PerfMeter `CustomPass` を報告しますが、effective rendering mode は利用できません。`GpuResidentDrawer` は configured mode と public SRP support を報告し、activity は `Unknown` です。`VariableRateShading` は `SystemInfo`/`ShadingRateInfo` の authoritative hardware support を報告しますが、typed adapter が証明しない限り configuration/activity は `Unknown` です。
+
+`LegacyRenderGraph` は `GetRenderGraphSnapshot()` のための embedded compatibility facade です。private/internal な pass/resource reflection は削除され、legacy counter は `-1` のままです。安定した Unity public API は RenderGraph/CustomPass viewer や pass target も公開しないため、この API は Editor navigation を提供・約束しません。
+
+`RenderPipeline` は `Kind`、`AssetName`、`AssetTypeName`、`RuntimeTypeName` を持ち、`RenderPipelineAssetSource` は `GraphicsSettings`、`QualitySettings`、`None` のいずれかです。`GpuResidentDrawer` は `Availability`、`ConfiguredMode`、`IsConfigured`、`SupportAvailability`、`IsSupported`、`ActivityAvailability`、`IsObservedActive`、`Warning` を持ちます。`VariableRateShading` は hardware field（`SupportsVariableRateShading`、`SupportsPerDrawCall`、`SupportsPerImageTile`、`ImageTileWidth`、`ImageTileHeight`、`GraphicsFormat`）と `ConfigurationAvailability`、`IsConfigured`、`ActivityAvailability`、`IsObservedActive`、`Warning` を持ちます。
