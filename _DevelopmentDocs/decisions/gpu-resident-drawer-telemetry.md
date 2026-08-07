@@ -1,6 +1,6 @@
 # GPU Resident Drawer Telemetry Decision
 
-Status: implemented for `PM-GRD-001`; pending release.
+Status: implemented for `PM-GRD-001`; released `2026.8.7-1`.
 
 ## Decision
 

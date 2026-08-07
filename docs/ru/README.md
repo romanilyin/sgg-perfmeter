@@ -107,7 +107,7 @@ PerfMeter может собирать опциональные thermal- и Adapt
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.6-2"
+    "com.sungeargames.perfmeter": "2026.8.7-1"
   }
 }
 ```
