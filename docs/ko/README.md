@@ -55,7 +55,7 @@ PerfMeter는 하나의 provider를 통해 thermal 및 Adaptive Performance 신�
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.7-2"
+    "com.sungeargames.perfmeter": "2026.8.8-1"
   }
 }
 ```
