@@ -652,15 +652,19 @@ namespace SGG.PerfMeter
 				activeOverlayPreset: activeOverlayPreset);
 		}
 
-		internal static void ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
+		internal static bool ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
 		{
-			if (settings.CollectionMode == PerfMeterCollectionMode.Stopped)
+			if (!settings.Enabled || settings.CollectionMode == PerfMeterCollectionMode.Stopped)
 			{
 				PerformanceMeter.Stop();
-				return;
+				return PerfMeterRuntime.Instance == null;
 			}
 
-			PerformanceMeter.EnsureRunning();
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				return false;
+			}
+
 			PerformanceMeter.ApplyOverlayTuning(settings);
 			if (settings.ActiveOverlayPreset != null)
 			{
@@ -681,6 +685,8 @@ namespace SGG.PerfMeter
 			{
 				PerformanceMeter.SetOverlayVisible(settings.OverlayVisible);
 			}
+
+			return true;
 		}
 
 		internal static PerfMeterOverlayPreset ParseOverlayPreset(string value)
@@ -1235,11 +1241,29 @@ namespace SGG.PerfMeter
 
 	internal static class PerfMeterSettingsBootstrap
 	{
+		private static bool _explicitSettingsApplied;
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		internal static void ResetExplicitSettingsApplication()
+		{
+			_explicitSettingsApplied = false;
+		}
+
+		internal static void MarkExplicitSettingsApplied()
+		{
+			_explicitSettingsApplied = true;
+		}
+
+		internal static bool ShouldAutoStartFromSettings(PerfMeterSettingsSnapshot settings)
+		{
+			return !_explicitSettingsApplied && settings.LoadState == PerfMeterSettingsLoadState.Loaded && settings.Enabled && settings.AutoStart;
+		}
+
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
 		private static void AutoStartFromSettings()
 		{
 			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
-			if (settings.LoadState == PerfMeterSettingsLoadState.Loaded && settings.Enabled && settings.AutoStart)
+			if (ShouldAutoStartFromSettings(settings))
 			{
 				PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
 			}

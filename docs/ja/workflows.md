@@ -1,5 +1,84 @@
 # ワークフロー
 
+## FTUE のセットアップと継続
+
+`SGG/Perfmeter/Setup` を開き、**FTUE** タブを選択します。必須チェックでは、互換性、render integration、Frame Timing Stats、package path、読み込まれた settings JSON を確認します。オプションの行はインストールまたはスキップできます。インストール済みの行は workflow が完了したと黙って表示するのではなく、次の action を表示します。
+
+### Memory Profiler
+
+`com.unity.memoryprofiler` のインストール後、**Memory Profiler** 行には、管理対象フォルダーが存在すると **Open Window/Analysis/Memory Profiler**、**Copy RequestMemorySnapshot Snippet**、**Copy Memory Trigger Snippet**、**Open Runtime**、**Reveal Snapshots** が表示されます。コピーされた snippet は project が呼び出す runtime code です。FTUE 自身は snapshot を要求せず、trigger も設定しません。one-shot の `.snap` ファイルは `Temp/PerfMeter/MemorySnapshots` の下に staging されます。後続の request または runtime cleanup によって管理対象の source が削除される前に、結果を開くかコピーしてください。
+
+one-shot snippet は次のとおりです。
+
+```csharp
+PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+    new PerfMeterMemorySnapshotOptions("ftue-memory-snapshot"));
+```
+
+opt-in trigger snippet は次のとおりです。
+
+```csharp
+bool configured = PerformanceMeter.ConfigureMemorySnapshotTriggers(
+    new PerfMeterMemorySnapshotTriggerOptions(
+        enabled: true,
+        systemMemoryThresholdBytes: 2L * 1024L * 1024L * 1024L,
+        leakGrowthThresholdBytes: 256L * 1024L * 1024L));
+```
+
+**Open Runtime** で capability/status snapshot を確認します。手動 capture がデフォルトです。trigger threshold は明示的に設定するまで無効のままです。
+
+### Profile Analyzer
+
+インストール済みの **Profile Analyzer** 行には **Open Profile Analyzer** と **Open Runtime** が表示されます。最初に Unity Profiler で recording を開始し、その recording の中で PerfMeter session を start して stop します。opener は `PerfMeterProfileAnalyzerIntegration.TryOpenProfileAnalyzerForCurrentSession()` を使用して Profile Analyzer を開き、session ID をコピーします。recording した Profiler data をロードして、その ID を検索してください。Profile Analyzer のインストール、Profiler data のロード、filter の自動適用は行いません。
+
+### Adaptive Performance
+
+インストール済みの **Adaptive Performance** 行には **Open Runtime** があり、optional telemetry provider の現在の status を確認できます。FTUE action は session を開始せず、capture も行いません。
+
+### RenderDoc
+
+RenderDoc は external tool であり、PerfMeter には同梱されません。Unity の公式 integration flow に従ってください。
+
+1. 公式 download page から RenderDoc をインストールします: <https://renderdoc.org/builds>。
+2. project の変更を保存し、Game View または Scene View の tab menu から **Load RenderDoc** を使用します。別の方法として、RenderDoc から Unity Editor または Development Build を起動できます。インストール後に Unity が attachment を表示しない場合は Unity を再起動してください。公式 Unity guide は <https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html> です。
+3. FTUE で **Check Attachment** をクリックします。これは Unity の shared external-profiler signal だけを refresh します。FTUE は RenderDoc のインストールを検出できず、Unity もその signal から RenderDoc と PIX を識別できません。
+4. **Copy Capture Snippet** をクリックし、Play Mode に入り、コピーした code を project runtime code から invoke します。
+
+   ```csharp
+   PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+       new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
+   ```
+
+5. capture status には **Open Runtime** を使用します。コピーした request は persist されず、自動的にも invoke されません。Editor/Development Build、attached-tool、desktop platform、graphics API の要件が適用されます。`Completed` は Unity wrapper lifecycle の完了だけを確認します。attached tool を識別せず、`.rdc` artifact を authenticate せず、artifact path も返しません。
+
+### GraphicsStateCollection
+
+同梱される optional の **GraphicsStateCollection** 行には package install は必要ありません。**Open Runtime**、**Copy Trace Snippet**、**Copy Prewarm Snippet**、**Reveal Artifacts** が提供されます。FTUE は trace や prewarm を自動的に request しません。次の sequence を使用してください。
+
+1. Play Mode で `PerformanceMeter.StartSession(...)` により recording 中の PerfMeter session を開始し、維持します。
+2. コピーした trace code を project runtime code から invoke します。
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.RequestGraphicsStateTrace(
+       new PerfMeterGraphicsStateTraceOptions("ftue-graphics-state-trace", 60));
+   ```
+
+3. `State == PerfMeterGraphicsStateCollectionState.Completed` になるまで `PerformanceMeter.GetGraphicsStateCollectionStatus()` を poll します。`ArtifactRelativePath` を prewarm の input に使用します。この path は `Temp/PerfMeter/GraphicsStateCollections` の下を指します。tracing 中に session を stop すると trace は cancel されます。
+4. コピーした prewarm snippet の `<trace-artifact-file>` を、返された path に置き換えます。
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.PrewarmGraphicsStateCollection(
+       new PerfMeterGraphicsStatePrewarmOptions("Temp/PerfMeter/GraphicsStateCollections/<trace-artifact-file>"));
+   ```
+
+5. trace 後に **Reveal Artifacts** をクリックすると、project-local artifact folder が表示されます。prewarm は synchronous で artifact を保持し、不完全な progressive warmup を報告する場合があります。trace length は 600 frames、管理対象 artifact は 64 MiB に制限されています。Unity backend は cache-miss evidence を提供しません。
+
+## Full Initialization Bootstrap
+
+**Setup > Initialization Code** で **Refresh from Project Settings** をクリックし、続けて **Copy Init Code** をクリックします。生成された `PerfMeterBootstrap` は、project settings の完全な normalized snapshot を埋め込み、scene load 後に `PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning)` を呼び出します。overlay、logging、alert、session-default、overdraw settings を保持し、`enabled` と `collectionMode: Stopped` を尊重します。`StartSession` や capture request は実行しません。
+
+code-owned startup を選ぶ場合は、Resources の zero-code settings path の代わりにこの explicit bootstrap を使用します。両方が存在する場合、正常に parse された explicit call は current domain の Resources auto-start callback を抑制します。Resources が先に start していた場合は、explicit snapshot が後から適用され、authoritative になります。invalid な explicit JSON は current runtime を変更せず、後続の Resources auto-start も抑制しません。session と default overdraw の operation は active explicit runtime snapshot を使用します。
+
 ## Runtime Overlay
 
 ゲーム内で即時に確認したい場合は overlay を使用します。

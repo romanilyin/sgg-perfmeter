@@ -566,6 +566,7 @@
 
 .pm-ftue-checklist-row {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-start;
 }
 
@@ -591,6 +592,15 @@
 
 .pm-ftue-button {
     min-width: 145px;
+    margin-left: 4px;
+    margin-bottom: 4px;
+}
+
+.pm-ftue-guidance {
+    width: 100%;
+    white-space: normal;
+    color: var(--pm-text-muted);
+    margin-top: 4px;
 }
 
 .pm-ftue-toggle {

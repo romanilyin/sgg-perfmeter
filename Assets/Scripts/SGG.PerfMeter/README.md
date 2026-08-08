@@ -75,7 +75,7 @@ The current npm registry package version is `2026.8.7-2`.
 1. Open `SGG/Perfmeter/Setup`.
 2. Enable Frame Timing Stats.
 3. Install `PerfMeterRenderGraphFeature` into editable active URP renderer assets, or use HDRP where the package Custom Pass is registered at runtime.
-4. Save JSON settings from the `Presets` tab for zero-code setup, or copy the generated initialization snippet.
+4. Save JSON settings from the `Presets` tab for zero-code setup, or copy the generated initialization snippet from `Setup > Initialization Code`; choose one startup path.
 5. Enter Play Mode and verify the overlay.
 
 Minimal runtime API:
@@ -91,6 +91,16 @@ PerformanceMeter.SetOverlayVisible(true);
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
 ```
+
+The generated initialization snippet embeds the complete normalized project settings snapshot and calls the public JSON bootstrap API:
+
+```csharp
+public static bool TryApplySettingsJson(string json, out string warning);
+```
+
+It includes overlay, logging, alert, session-default, and overdraw settings, honors `enabled` and `collectionMode: "Stopped"`, and does not start sessions or captures. Use it instead of the Resources zero-code file at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`. If both are present, a valid explicit application suppresses Resources auto-start for the current domain and becomes authoritative; invalid explicit JSON leaves the runtime unchanged.
+
+The Setup FTUE tab continues available optional integrations: Memory Profiler exposes its window plus one-shot and runtime-trigger snippets, Profile Analyzer opens the session-ID integration, Adaptive Performance opens Runtime, RenderDoc provides official integration guidance plus attachment/capture actions, and GraphicsStateCollection provides trace/prewarm snippets and artifact reveal. These actions do not auto-load Profile Analyzer data, identify RenderDoc versus PIX, or automatically run capture/trace/prewarm parameters. See the [English workflows](https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/workflows.md) for the required session and artifact steps.
 
 ## Samples
 

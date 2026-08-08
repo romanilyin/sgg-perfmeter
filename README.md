@@ -146,6 +146,26 @@ The nested GRD context reports public SRP/project/compute support, Unity's globa
 
 For Git UPM and local-copy options, see [Installation](./docs/en/installation.md) and [Quick Start](./docs/en/quick-start.md).
 
+## First-Time Setup And Bootstrap
+
+Open `SGG/Perfmeter/Setup` and use the **FTUE** tab for required setup checks and optional continuations. Optional rows provide focused next actions when their package, backend, or external tool is available:
+
+- **Memory Profiler**: open the Unity window, copy a one-shot `RequestMemorySnapshot(...)` snippet or an explicitly enabled runtime-trigger snippet, and open Runtime.
+- **Profile Analyzer**: open the existing session integration or Runtime. It copies a PerfMeter session ID for manual search after the relevant Unity Profiler data is recorded or loaded; it does not load or filter that data automatically.
+- **Adaptive Performance**: open Runtime to inspect optional telemetry status.
+- **RenderDoc**: follow Unity's official integration flow, check the shared attachment signal, copy a `RequestCapture(...)` snippet, and open Runtime. FTUE does not detect RenderDoc installation, Unity cannot identify RenderDoc versus PIX from the attachment signal, and completion does not provide an external artifact path.
+- **GraphicsStateCollection**: copy trace/prewarm snippets, use Runtime, and reveal the owned artifact under `Temp/PerfMeter/GraphicsStateCollections`. Keep a PerfMeter session recording through the trace, then prewarm the returned artifact path; FTUE does not request either operation automatically.
+
+The Setup **Initialization Code** section generates a complete normalized project-settings snapshot and applies it after scene load through the public API:
+
+```csharp
+public static bool TryApplySettingsJson(string json, out string warning);
+```
+
+The generated bootstrap includes overlay, logging, alert, session-default, and overdraw settings, honors `enabled` and `collectionMode: "Stopped"`, and does not start sessions or captures. It is an alternative to the Resources zero-code file at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`. If both are present, a valid explicit application suppresses Resources auto-start for the current domain and becomes authoritative; invalid explicit JSON leaves the runtime unchanged.
+
+See [Workflows](./docs/en/workflows.md), [API](./docs/en/api.md), and [Setup Window Screenshots](./docs/en/setup-window-screenshots.md) for the exact continuation steps and limitations.
+
 ## Common Workflows
 
 - **Zero-code overlay**: create `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` from the setup window and let PerfMeter auto-start.

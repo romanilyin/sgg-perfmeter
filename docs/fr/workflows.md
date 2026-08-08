@@ -1,5 +1,84 @@
 # Workflows
 
+## Configuration FTUE Et Continuations
+
+Ouvrez `SGG/Perfmeter/Setup` et selectionnez l'onglet **FTUE**. Les verifications requises couvrent la compatibilite, l'integration de rendu, Frame Timing Stats, le chemin du package et un JSON de reglages charge. Les lignes optionnelles peuvent etre installees ou ignorees ; une ligne installee affiche l'action suivante au lieu d'affirmer silencieusement que le workflow est termine.
+
+### Memory Profiler
+
+Apres l'installation de `com.unity.memoryprofiler`, la ligne **Memory Profiler** propose **Open Window/Analysis/Memory Profiler**, **Copy RequestMemorySnapshot Snippet**, **Copy Memory Trigger Snippet**, **Open Runtime** et **Reveal Snapshots** une fois que le dossier gere existe. Les snippets copies sont du code runtime que le projet doit appeler ; FTUE ne demande pas lui-meme de snapshot et ne configure pas les triggers. Les fichiers `.snap` one-shot sont places sous `Temp/PerfMeter/MemorySnapshots` ; ouvrez ou copiez le resultat avant qu'une requete ulterieure ou le nettoyage runtime ne supprime la source geree.
+
+Le snippet one-shot est :
+
+```csharp
+PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+    new PerfMeterMemorySnapshotOptions("ftue-memory-snapshot"));
+```
+
+Le snippet de trigger opt-in est :
+
+```csharp
+bool configured = PerformanceMeter.ConfigureMemorySnapshotTriggers(
+    new PerfMeterMemorySnapshotTriggerOptions(
+        enabled: true,
+        systemMemoryThresholdBytes: 2L * 1024L * 1024L * 1024L,
+        leakGrowthThresholdBytes: 256L * 1024L * 1024L));
+```
+
+Utilisez **Open Runtime** pour examiner le snapshot de capacites/statut. La capture manuelle est le comportement par defaut ; les seuils de trigger restent desactives jusqu'a leur configuration explicite.
+
+### Profile Analyzer
+
+La ligne **Profile Analyzer** installee propose **Open Profile Analyzer** et **Open Runtime**. Commencez d'abord l'enregistrement dans Unity Profiler, puis demarrez et arretez une session PerfMeter dans cet enregistrement. L'ouvreur utilise `PerfMeterProfileAnalyzerIntegration.TryOpenProfileAnalyzerForCurrentSession()` pour ouvrir Profile Analyzer et copier l'ID de session ; chargez les donnees Profiler enregistrees et recherchez cet ID. Il n'installe pas Profile Analyzer, ne charge pas les donnees Profiler et n'applique pas automatiquement de filtre.
+
+### Adaptive Performance
+
+La ligne **Adaptive Performance** installee propose **Open Runtime** pour examiner le statut actuel du provider de telemetrie optionnel. L'action FTUE ne demarre aucune session et ne capture rien.
+
+### RenderDoc
+
+RenderDoc est un outil externe et n'est pas fourni avec PerfMeter. Suivez le flux d'integration officiel de Unity :
+
+1. Installez RenderDoc depuis la page officielle de telechargement : <https://renderdoc.org/builds>.
+2. Enregistrez les modifications du projet, puis utilisez **Load RenderDoc** dans le menu de l'onglet Game View ou Scene View. Vous pouvez aussi lancer l'Unity Editor ou un Development Build via RenderDoc ; redemarrez Unity si Unity n'expose pas l'attachement apres l'installation. Le guide officiel Unity est <https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html>.
+3. Cliquez sur **Check Attachment** dans FTUE. Cela actualise uniquement le signal partage des external profilers de Unity ; FTUE ne peut pas detecter l'installation de RenderDoc et Unity ne peut pas distinguer RenderDoc de PIX avec ce signal.
+4. Cliquez sur **Copy Capture Snippet**, passez en Play Mode et appelez le code copie depuis le code runtime du projet :
+
+   ```csharp
+   PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+       new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
+   ```
+
+5. Utilisez **Open Runtime** pour le statut de capture. La requete copiee n'est ni conservee ni appelee automatiquement. Elle depend des exigences Editor/Development Build, outil attache, plateforme desktop et graphics API. `Completed` confirme uniquement le wrapper lifecycle Unity ; il n'identifie pas l'outil attache, n'authentifie pas un artefact `.rdc` et ne renvoie pas de chemin d'artefact.
+
+### GraphicsStateCollection
+
+La ligne optionnelle **GraphicsStateCollection** incluse ne necessite aucune installation de package. Elle propose **Open Runtime**, **Copy Trace Snippet**, **Copy Prewarm Snippet** et **Reveal Artifacts**. FTUE ne demande automatiquement ni trace ni prewarm. Suivez cette sequence :
+
+1. En Play Mode, demarrez et laissez active une session PerfMeter avec `PerformanceMeter.StartSession(...)`.
+2. Appelez le code de trace copie depuis le code runtime du projet :
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.RequestGraphicsStateTrace(
+       new PerfMeterGraphicsStateTraceOptions("ftue-graphics-state-trace", 60));
+   ```
+
+3. Interrogez `PerformanceMeter.GetGraphicsStateCollectionStatus()` jusqu'a `State == PerfMeterGraphicsStateCollectionState.Completed`. Utilisez son `ArtifactRelativePath`, qui pointe sous `Temp/PerfMeter/GraphicsStateCollections`, comme entree du prewarm. Arreter la session pendant le tracing annule le trace.
+4. Remplacez `<trace-artifact-file>` dans le snippet de prewarm copie par le chemin renvoye :
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.PrewarmGraphicsStateCollection(
+       new PerfMeterGraphicsStatePrewarmOptions("Temp/PerfMeter/GraphicsStateCollections/<trace-artifact-file>"));
+   ```
+
+5. Cliquez sur **Reveal Artifacts** apres un trace pour afficher le dossier d'artefacts local au projet. Le prewarm est synchrone, conserve l'artefact et peut signaler un rechauffement progressif incomplet. La longueur du trace est limitee a 600 frames et les artefacts geres a 64 MiB ; le backend Unity ne fournit pas de preuve de cache misses.
+
+## Bootstrap D'initialisation Complet
+
+Dans **Setup > Initialization Code**, cliquez sur **Refresh from Project Settings**, puis sur **Copy Init Code**. Le `PerfMeterBootstrap` genere integre le snapshot complet et normalise des reglages du projet et appelle `PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning)` apres le chargement de la scene. Il transporte les reglages d'overlay, de logs, d'alertes, de session par defaut et d'overdraw, respecte `enabled` et `collectionMode: Stopped`, et n'effectue ni `StartSession` ni requete de capture.
+
+Utilisez ce bootstrap explicite plutot que le chemin Resources de reglages sans code lorsque le demarrage gere par le code est prefere. Si les deux sont presents, un appel explicite parse avec succes supprime le callback Resources auto-start pour le domaine courant ; si Resources a deja demarre en premier, le snapshot explicite est applique ensuite et devient authoritative. Un JSON explicite invalide laisse le runtime courant inchange et ne supprime pas un Resources auto-start ulterieur. Les operations de session et d'overdraw par defaut utilisent le snapshot runtime explicite actif.
+
 ## Overlay Runtime
 
 Utilisez l'overlay lorsque vous avez besoin d'une visibilite immediate dans le jeu.

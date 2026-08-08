@@ -25,7 +25,7 @@ namespace SGG.PerfMeter.Editor.Setup
 		private const string PerfMeterHdrpCustomPassFullName = "SGG.PerfMeter.PerfMeterHdrpCustomPass";
 		private const string PerfMeterHdrpCustomPassAssemblyName = "SGG.PerfMeter.HDRP";
 
-		internal static string InitializationSnippet => BuildInitializationSnippet(true, PerfMeterOverlayCorner.TopRight, PerfMeterTargetFps.Fps60, PerfMeterOverlayTheme.ClassicDark, PerfMeterOverlayLayout.MetricBars, PerfMeterOverlayFontFamily.Manrope);
+		internal static string InitializationSnippet => BuildInitializationSnippet(PerfMeterSettingsStore.Defaults);
 
 		internal static bool IsOfficialUnityVersionSupported
 		{
@@ -41,23 +41,25 @@ namespace SGG.PerfMeter.Editor.Setup
 
 		internal static bool IsHdrpCustomPassAvailable => GetHdrpCustomPassType() != null;
 
-		internal static string BuildInitializationSnippet(bool overlayVisible, PerfMeterOverlayCorner overlayCorner, PerfMeterTargetFps targetFps, PerfMeterOverlayTheme overlayTheme, PerfMeterOverlayLayout overlayLayout, PerfMeterOverlayFontFamily overlayFontFamily)
+		internal static string BuildInitializationSnippet(PerfMeterSettingsSnapshot settings)
 		{
+			string json = PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateFromSnapshot(settings));
+			string verbatimJson = json.Replace("\"", "\"\"");
 			return @"using SGG.PerfMeter;
 using UnityEngine;
 
 public static class PerfMeterBootstrap
 {
+	private const string SettingsJson = @""" + verbatimJson + @""";
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void StartPerfMeter()
     {
-        PerformanceMeter.EnsureRunning();
-        PerformanceMeter.SetTargetFps(PerfMeterTargetFps." + targetFps + @");
-        PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner." + overlayCorner + @");
-        PerformanceMeter.SetOverlayTheme(PerfMeterOverlayTheme." + overlayTheme + @");
-        PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout." + overlayLayout + @");
-        PerformanceMeter.SetOverlayFontFamily(PerfMeterOverlayFontFamily." + overlayFontFamily + @");
-        PerformanceMeter.SetOverlayVisible(" + (overlayVisible ? "true" : "false") + @");
+		// Applies collection, overlay, logging, alert, session, and overdraw settings.
+		if (!PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning))
+		{
+			Debug.LogWarning(""[SGG.PerfMeter] Bootstrap settings were rejected: "" + warning);
+		}
     }
 }
 ";
@@ -211,8 +213,9 @@ public static class PerfMeterBootstrap
 			}
 
 			PerfMeterSettingsSnapshot settings = LoadSettingsSnapshot();
-			RuntimePerformanceMeter.ApplySettings(settings);
-			return InstallResult.Ok("PerfMeter JSON settings applied to the active Play Mode session.");
+			return RuntimePerformanceMeter.ApplySettings(settings)
+				? InstallResult.Ok("PerfMeter JSON settings applied to the active Play Mode session.")
+				: InstallResult.Fail("PerfMeter JSON settings are valid, but the active runtime could not apply them while cleanup or shutdown is pending.");
 		}
 
 		internal static InstallResult EnableFrameTimingStats()

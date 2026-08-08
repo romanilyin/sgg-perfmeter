@@ -53,12 +53,6 @@ namespace SGG.PerfMeter.Editor.UI
 		private Button _selectMissingRendererButton;
 
 		private TextField _initCode;
-		private Toggle _initOverlayVisible;
-		private EnumField _initTargetFps;
-		private EnumField _initOverlayCorner;
-		private EnumField _initOverlayTheme;
-		private EnumField _initOverlayLayout;
-		private EnumField _initOverlayFontFamily;
 		private Label _settingsStatus;
 		private Label _settingsSchemaVersion;
 		private Label _settingsPath;
@@ -215,6 +209,8 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string RuntimeP3StopSessionButtonName = "runtime-p3-stop-session";
 		internal const string FtueTabElementName = "ftue-tab";
 		internal const string ReviewFtueButtonElementName = "review-ftue";
+		internal const string RefreshInitializationCodeButtonElementName = "refresh-initialization-code";
+		internal const string CopyInitializationCodeButtonElementName = "copy-initialization-code";
 		internal const int ProjectDefaultOverdrawRequestFrameCount = 0;
 		internal const float MinPersistedSessionSampleIntervalSeconds = 0.02f;
 		internal const int MaxPersistedSessionSamples = 100000;
@@ -420,31 +416,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void BuildInitializationSection(VisualElement parent)
 		{
 			VisualElement section = AddSection(parent, "Initialization Code");
-			AddInfo(section, "Manual bootstrap code remains available for projects that do not want JSON zero-code setup. Use the Presets tab to save project-owned JSON settings that auto-start PerfMeter without writing code.");
-
-			_initOverlayVisible = new Toggle { value = true };
-			_initOverlayVisible.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Overlay Visible", _initOverlayVisible);
-
-			_initTargetFps = new EnumField(PerfMeterTargetFps.Fps60);
-			_initTargetFps.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Target FPS", _initTargetFps);
-
-			_initOverlayCorner = new EnumField(PerfMeterOverlayCorner.TopRight);
-			_initOverlayCorner.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Overlay Corner", _initOverlayCorner);
-
-			_initOverlayTheme = new EnumField(PerfMeterOverlayTheme.ClassicDark);
-			_initOverlayTheme.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Overlay Theme", _initOverlayTheme);
-
-			_initOverlayLayout = new EnumField(PerfMeterOverlayLayout.MetricBars);
-			_initOverlayLayout.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Overlay Layout", _initOverlayLayout);
-
-			_initOverlayFontFamily = new EnumField(PerfMeterOverlayFontFamily.Manrope);
-			_initOverlayFontFamily.RegisterValueChangedCallback(_ => RefreshInitializationCode());
-			AddControlRow(section, "Overlay Font", _initOverlayFontFamily);
+			AddInfo(section, "This self-contained bootstrap embeds the complete normalized Project Settings snapshot, including overlay, logging, alert, session, and overdraw values. Edit settings on Presets, then refresh this code. Capture and profiling requests remain explicit runtime operations.");
 
 			_initCode = new TextField
 			{
@@ -456,7 +428,10 @@ namespace SGG.PerfMeter.Editor.UI
 			section.Add(_initCode);
 
 			VisualElement actions = AddActions(section);
-			AddButton(actions, "Copy Init Code", CopyInitializationCode);
+			Button refreshButton = AddButton(actions, "Refresh from Project Settings", RefreshInitializationCode);
+			refreshButton.name = RefreshInitializationCodeButtonElementName;
+			Button copyButton = AddButton(actions, "Copy Init Code", CopyInitializationCode);
+			copyButton.name = CopyInitializationCodeButtonElementName;
 		}
 
 		private void BuildPresetsPanel()
@@ -657,8 +632,8 @@ namespace SGG.PerfMeter.Editor.UI
 			AddRuntimeButton(controlActions, "Stop Collection", () => RunRuntimeAction("Stop Collection", () => RuntimePerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Stopped)), status => status.CollectionMode == PerfMeterCollectionMode.Stopped);
 			AddRuntimeButton(controlActions, "Show Overlay", () => RunRuntimeAction("Show Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(true)), status => status.OverlayVisible);
 			AddRuntimeButton(controlActions, "Hide Overlay", () => RunRuntimeAction("Hide Overlay", () => RuntimePerformanceMeter.SetOverlayVisible(false)), status => !status.OverlayVisible);
-			AddRuntimeButton(controlActions, "Apply project defaults", () => RunRuntimeAction("Apply project defaults", () => RuntimePerformanceMeter.ApplySettings(PerfMeterSetupActions.LoadSettings())));
-			AddRuntimeButton(controlActions, "Reset runtime overrides", () => RunRuntimeAction("Reset runtime overrides", () => RuntimePerformanceMeter.ApplySettings(PerfMeterSetupActions.LoadSettings())));
+			AddRuntimeButton(controlActions, "Apply project defaults", () => RunRuntimeAction("Apply project defaults", ApplyRuntimeProjectSettings));
+			AddRuntimeButton(controlActions, "Reset runtime overrides", () => RunRuntimeAction("Reset runtime overrides", ApplyRuntimeProjectSettings));
 
 			VisualElement technicalSection = AddSection(_runtimePanel, "Runtime technical overrides");
 			VisualElement targetActions = AddChoiceGroup(technicalSection, "Target FPS");
@@ -2269,23 +2244,7 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private string BuildInitializationSnippetFromOptions()
 		{
-			bool visible = _initOverlayVisible == null || _initOverlayVisible.value;
-			PerfMeterOverlayCorner corner = _initOverlayCorner != null && _initOverlayCorner.value is PerfMeterOverlayCorner cornerValue
-				? cornerValue
-				: PerfMeterOverlayCorner.TopRight;
-			PerfMeterOverlayTheme theme = _initOverlayTheme != null && _initOverlayTheme.value is PerfMeterOverlayTheme themeValue
-				? themeValue
-				: PerfMeterOverlayTheme.ClassicDark;
-			PerfMeterOverlayLayout layout = _initOverlayLayout != null && _initOverlayLayout.value is PerfMeterOverlayLayout layoutValue
-				? layoutValue
-				: PerfMeterOverlayLayout.MetricBars;
-			PerfMeterOverlayFontFamily fontFamily = _initOverlayFontFamily != null && _initOverlayFontFamily.value is PerfMeterOverlayFontFamily fontFamilyValue
-				? fontFamilyValue
-				: PerfMeterOverlayFontFamily.Manrope;
-			PerfMeterTargetFps targetFps = _initTargetFps != null && _initTargetFps.value is PerfMeterTargetFps targetFpsValue
-				? targetFpsValue
-				: PerfMeterTargetFps.Fps60;
-			return PerfMeterSetupUtility.BuildInitializationSnippet(visible, corner, targetFps, theme, layout, fontFamily);
+			return PerfMeterSetupUtility.BuildInitializationSnippet(PerfMeterSetupUtility.LoadSettingsSnapshot());
 		}
 
 		private void SelectCurrentTab()
@@ -2606,6 +2565,14 @@ namespace SGG.PerfMeter.Editor.UI
 			float updateInterval = _runtimeUpdateInterval != null ? _runtimeUpdateInterval.value : PerfMeterSetupActions.LoadSettings().OverlayRefreshIntervalSeconds;
 			int graphHistory = _runtimeGraphHistory != null ? _runtimeGraphHistory.value : PerfMeterSetupActions.LoadSettings().OverlayGraphHistoryLength;
 			RuntimePerformanceMeter.SetOverlayUpdateOptions(updateInterval, graphHistory);
+		}
+
+		private static void ApplyRuntimeProjectSettings()
+		{
+			if (!RuntimePerformanceMeter.ApplySettings(PerfMeterSetupActions.LoadSettings()))
+			{
+				throw new InvalidOperationException("Project settings are valid, but the runtime could not apply them while cleanup or shutdown is pending.");
+			}
 		}
 
 		private void SaveRuntimeTechnicalSettingsToProject()

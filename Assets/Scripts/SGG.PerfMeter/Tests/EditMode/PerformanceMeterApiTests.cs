@@ -25,6 +25,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			_mcpOverlayVisibility = UnityEditor.SessionState.GetBool(McpOverlayVisibilityKey, false);
 			PerformanceMeter.ClearCustomMetricProviders();
 			PerformanceMeter.Stop();
+			PerfMeterSettingsBootstrap.ResetExplicitSettingsApplication();
 			PerfMeterRenderGraphAnalytics.ResetForTests();
 		}
 
@@ -32,6 +33,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterSettingsBootstrap.ResetExplicitSettingsApplication();
 			PerformanceMeter.ClearCustomMetricProviders();
 			PerfMeterRenderGraphAnalytics.ResetForTests();
 			if (_hadMcpOverlayVisibility)
@@ -226,6 +228,122 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			PerformanceMeter.Stop();
 			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+		}
+
+		[Test]
+		public void TryApplySettingsJsonAppliesNormalizedRuntimeSettings()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.collectionMode = nameof(PerfMeterCollectionMode.Background);
+			settings.targetFps = (int)PerfMeterTargetFps.Fps120;
+			settings.overlay.refreshIntervalSeconds = 0.5f;
+			settings.overlay.graphHistoryLength = 64;
+			settings.ruleDefaults.editorWarningsEnabled = false;
+			settings.ruleDefaults.structuredLogsEnabled = false;
+			settings.ruleDefaults.editorWarningCooldownSeconds = 17f;
+			settings.session.warmupFrames = 7;
+			settings.session.warmupSeconds = 1.5f;
+			settings.session.sampleIntervalSeconds = 0.75f;
+			settings.session.maxSamples = 23;
+			settings.overdraw.defaultFrameCount = 9;
+			settings.overdraw.maxFrameCount = 12;
+
+			bool applied = PerformanceMeter.TryApplySettingsJson(PerfMeterSettingsStore.ToJson(settings), out string warning);
+
+			Assert.That(applied, Is.True);
+			Assert.That(warning, Is.Empty);
+			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
+			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
+			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.False);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
+
+			PerformanceMeter.StartSession();
+			PerfMeterSessionOptions sessionOptions = PerformanceMeter.GetSessionSummary().Options;
+			Assert.That(sessionOptions.WarmupFrames, Is.EqualTo(7));
+			Assert.That(sessionOptions.WarmupSeconds, Is.EqualTo(1.5f).Within(0.0001f));
+			Assert.That(sessionOptions.SampleIntervalSeconds, Is.EqualTo(0.75f).Within(0.0001f));
+			Assert.That(sessionOptions.MaxSamples, Is.EqualTo(23));
+			PerformanceMeter.StopSession();
+
+			PerformanceMeter.RequestOverdrawMeasurement();
+			Assert.That(PerfMeterRuntime.Instance.OverdrawRequestedFrameCount, Is.EqualTo(9));
+			PerformanceMeter.CancelOverdrawMeasurement();
+		}
+
+		[Test]
+		public void TryApplySettingsJsonRejectsInvalidJsonWithoutStartingRuntime()
+		{
+			bool applied = PerformanceMeter.TryApplySettingsJson("{not-json", out string warning);
+
+			Assert.That(applied, Is.False);
+			Assert.That(warning, Is.Not.Empty);
+			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void TryApplySettingsJsonRejectsInvalidJsonWithoutMutatingRunningRuntime()
+		{
+			PerformanceMeter.EnsureRunning();
+			PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps120);
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+
+			bool applied = PerformanceMeter.TryApplySettingsJson("{not-json", out string warning);
+
+			Assert.That(applied, Is.False);
+			Assert.That(warning, Is.Not.Empty);
+			Assert.That(PerfMeterRuntime.Instance, Is.SameAs(runtime));
+			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
+		}
+
+		[Test]
+		public void ExplicitSettingsSuppressResourcesAutoStartForCurrentDomain()
+		{
+			PerfMeterSettingsSnapshot loaded = PerfMeterSettingsStore.ToSnapshot(
+				PerfMeterSettingsStore.CreateDefault(),
+				PerfMeterSettingsLoadState.Loaded,
+				string.Empty);
+			Assert.That(PerfMeterSettingsBootstrap.ShouldAutoStartFromSettings(loaded), Is.True);
+
+			Assert.That(PerformanceMeter.TryApplySettingsJson(PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateDefault()), out _), Is.True);
+
+			Assert.That(PerfMeterSettingsBootstrap.ShouldAutoStartFromSettings(loaded), Is.False);
+		}
+
+		[Test]
+		public void TryApplySettingsJsonHonorsDisabledSetting()
+		{
+			PerformanceMeter.EnsureRunning();
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.enabled = false;
+
+			Assert.That(PerformanceMeter.TryApplySettingsJson(PerfMeterSettingsStore.ToJson(settings), out string warning), Is.True);
+			Assert.That(warning, Is.Empty);
+			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void TryApplySettingsJsonDoesNotSuppressResourcesWhenRuntimeCannotApply()
+		{
+			PerformanceMeter.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			runtime.enabled = false;
+			PerfMeterSettingsSnapshot loaded = PerfMeterSettingsStore.ToSnapshot(
+				PerfMeterSettingsStore.CreateDefault(),
+				PerfMeterSettingsLoadState.Loaded,
+				string.Empty);
+
+			try
+			{
+				bool applied = PerformanceMeter.TryApplySettingsJson(PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateDefault()), out string warning);
+
+				Assert.That(applied, Is.False);
+				Assert.That(warning, Does.Contain("could not be applied"));
+				Assert.That(PerfMeterSettingsBootstrap.ShouldAutoStartFromSettings(loaded), Is.True);
+			}
+			finally
+			{
+				runtime.enabled = true;
+			}
 		}
 
 		[Test]

@@ -1,21 +1,28 @@
 using System.Reflection;
 using NUnit.Framework;
+using SGG.PerfMeter.Editor.UI;
+using SGG.PerfMeter.Editor.UI.Localization;
 using SGG.PerfMeter.Editor.Setup;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
 	public sealed class PerfMeterFtueTests
 	{
+		private string _previousLanguage;
+
 		[SetUp]
 		public void SetUp()
 		{
 			PerfMeterFtueState.ResetChoices();
+			_previousLanguage = PerfMeterWindowLocalization.CurrentLanguage;
+			PerfMeterWindowLocalization.CurrentLanguage = PerfMeterWindowLocalization.DefaultLanguage;
 		}
 
 		[TearDown]
 		public void TearDown()
 		{
 			PerfMeterFtueState.ResetChoices();
+			PerfMeterWindowLocalization.CurrentLanguage = _previousLanguage;
 		}
 
 		[Test]
@@ -88,7 +95,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(metadataVersion, Is.Not.Empty);
 			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo(metadataVersion));
-			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo("2026.8.7-2"));
+			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo("2026.8.8-1"));
 			Assert.That(PerfMeterFtueState.ProjectKey, Is.Not.Empty);
 		}
 
@@ -110,6 +117,93 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterFtueState.ResetChoices();
 			Assert.That(PerfMeterFtueState.IsSkipped(PerfMeterFtueState.MemoryProfilerId), Is.False);
 			Assert.That(PerfMeterFtueState.IsSkipped(PerfMeterFtueState.PixId), Is.False);
+		}
+
+		[Test]
+		public void OptionalContinuationSnippetsUsePublicOneShotApis()
+		{
+			string memorySnippet = PerfMeterFtuePage.BuildMemorySnapshotSnippet();
+			Assert.That(memorySnippet, Does.Contain("PerformanceMeter.RequestMemorySnapshot("));
+			Assert.That(memorySnippet, Does.Contain("new PerfMeterMemorySnapshotOptions(\"ftue-memory-snapshot\")"));
+			Assert.That(memorySnippet, Does.Not.Contain("ConfigureMemorySnapshotTriggers"));
+			string triggerSnippet = PerfMeterFtuePage.BuildMemorySnapshotTriggerSnippet();
+			Assert.That(triggerSnippet, Does.Contain("PerformanceMeter.ConfigureMemorySnapshotTriggers("));
+			Assert.That(triggerSnippet, Does.Contain("new PerfMeterMemorySnapshotTriggerOptions("));
+			Assert.That(triggerSnippet, Does.Contain("systemMemoryThresholdBytes:"));
+
+			string traceSnippet = PerfMeterFtuePage.BuildGraphicsStateTraceSnippet();
+			Assert.That(traceSnippet, Does.Contain("PerformanceMeter.RequestGraphicsStateTrace("));
+			Assert.That(traceSnippet, Does.Contain("new PerfMeterGraphicsStateTraceOptions(\"ftue-graphics-state-trace\", 60)"));
+
+			string prewarmSnippet = PerfMeterFtuePage.BuildGraphicsStatePrewarmSnippet();
+			Assert.That(prewarmSnippet, Does.Contain("PerformanceMeter.PrewarmGraphicsStateCollection("));
+			Assert.That(prewarmSnippet, Does.Contain("new PerfMeterGraphicsStatePrewarmOptions(\"Temp/PerfMeter/GraphicsStateCollections/<trace-artifact-file>\")"));
+
+			string renderDocSnippet = PerfMeterFtuePage.BuildRenderDocCaptureSnippet();
+			Assert.That(renderDocSnippet, Does.Contain("PerformanceMeter.RequestCapture("));
+			Assert.That(renderDocSnippet, Does.Contain("new PerfMeterCaptureOptions(\"ftue-renderdoc-capture\", PerfMeterCaptureTool.RenderDoc, 1)"));
+		}
+
+		[Test]
+		public void InstalledOptionalStatusesDescribeContinuationWorkflows()
+		{
+			Assert.That(PerfMeterFtuePage.FormatMemoryProfilerInstalledStatus("1.1.12", "1.1.12"), Does.StartWith("Installed/Ready"));
+			Assert.That(PerfMeterFtuePage.FormatMemoryProfilerInstalledStatus("1.1.12", "1.1.12"), Does.Contain("Memory Profiler 1.1.12"));
+
+			string profileAnalyzerStatus = PerfMeterFtuePage.FormatProfileAnalyzerInstalledStatus("1.4.0", "1.4.0");
+			Assert.That(profileAnalyzerStatus, Does.StartWith("Installed/Ready"));
+			Assert.That(PerfMeterFtuePage.ProfileAnalyzerGuidance, Does.Contain("begin recording in Unity Profiler"));
+			Assert.That(PerfMeterFtuePage.ProfileAnalyzerGuidance, Does.Contain("start and stop a PerfMeter session while recording"));
+
+			Assert.That(PerfMeterFtuePage.FormatAdaptivePerformanceInstalledStatus("5.1.6", "5.1.6"), Does.Contain("Adaptive Performance 5.1.6"));
+		}
+
+		[Test]
+		public void GraphicsStateCollectionStatusDescribesArtifactWorkflow()
+		{
+			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities = new PerfMeterGraphicsStateCollectionCapabilitiesSnapshot(
+				PerfMeterAvailability.Available,
+				"fake-backend",
+				"1.0",
+				true,
+				true,
+				false,
+				false,
+				600,
+				1024L,
+				"Temp/PerfMeter/GraphicsStateCollections",
+				string.Empty);
+
+			string status = PerfMeterFtuePage.FormatGraphicsStateCollectionReadyStatus(capabilities);
+			Assert.That(status, Does.StartWith("Installed/Ready"));
+			Assert.That(status, Does.Contain("trace Available, prewarm Available"));
+			Assert.That(PerfMeterFtuePage.GraphicsStateCollectionGuidance, Does.Contain("Temp/PerfMeter/GraphicsStateCollections"));
+			Assert.That(PerfMeterFtuePage.GraphicsStateCollectionGuidance, Does.Contain("never starts trace or prewarm automatically"));
+		}
+
+		[Test]
+		public void RenderDocStatusesAvoidInstallationAndArtifactClaims()
+		{
+			string unattached = PerfMeterFtuePage.FormatRenderDocUnattachedStatus("not attached");
+			Assert.That(unattached, Does.StartWith("Not attached"));
+			Assert.That(unattached, Does.Contain("not attached"));
+			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("Load RenderDoc from the Game or Scene View tab menu"));
+			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("Check attachment"));
+
+			string attached = PerfMeterFtuePage.FormatRenderDocAttachedStatus();
+			Assert.That(attached, Does.StartWith("Attached"));
+			Assert.That(attached, Does.Contain("cannot identify RenderDoc versus PIX"));
+			Assert.That(attached, Does.Contain("artifact path"));
+		}
+
+		[Test]
+		public void AttachedExternalToolsHideDownloadAndSkipActions()
+		{
+			Assert.That(PerfMeterFtuePage.ShouldShowExternalDownload(false, false), Is.True);
+			Assert.That(PerfMeterFtuePage.ShouldShowExternalDownload(true, false), Is.False);
+			Assert.That(PerfMeterFtuePage.ShouldShowExternalDownload(false, true), Is.False);
+			Assert.That(PerfMeterFtuePage.ShouldShowExternalSkip(false), Is.True);
+			Assert.That(PerfMeterFtuePage.ShouldShowExternalSkip(true), Is.False);
 		}
 	}
 }
