@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using SGG.PerfMeter.Editor;
 using SGG.PerfMeter.Editor.Setup;
 using SGG.PerfMeter.Editor.UI.Localization;
 using UnityEditor;
@@ -18,6 +20,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private const string ErrorState = "error";
 		private const string OptionalState = "optional";
 		internal const string RenderDocDownloadUrl = "https://renderdoc.org/builds";
+		internal const string RenderDocIntegrationGuideUrl = "https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html";
 		internal const string PixDownloadUrl = "https://devblogs.microsoft.com/pix/download/";
 
 		internal const string FtueRootElementName = "ftue-root";
@@ -36,7 +39,36 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string OptionalGraphicsStateCollectionElementName = "ftue-optional-graphics-state-collection";
 		internal const string OptionalRenderDocElementName = "ftue-optional-renderdoc";
 		internal const string OptionalPixElementName = "ftue-optional-pix";
+		internal const string OptionalMemoryProfilerOpenWindowButtonElementName = "ftue-optional-memory-profiler-open-window";
+		internal const string OptionalMemoryProfilerCopySnippetButtonElementName = "ftue-optional-memory-profiler-copy-snippet";
+		internal const string OptionalMemoryProfilerCopyTriggerSnippetButtonElementName = "ftue-optional-memory-profiler-copy-trigger-snippet";
+		internal const string OptionalMemoryProfilerOpenRuntimeButtonElementName = "ftue-optional-memory-profiler-open-runtime";
+		internal const string OptionalMemoryProfilerRevealSnapshotsButtonElementName = "ftue-optional-memory-profiler-reveal-snapshots";
+		internal const string OptionalMemoryProfilerGuidanceElementName = "ftue-optional-memory-profiler-guidance";
+		internal const string OptionalProfileAnalyzerOpenButtonElementName = "ftue-optional-profile-analyzer-open";
+		internal const string OptionalProfileAnalyzerOpenRuntimeButtonElementName = "ftue-optional-profile-analyzer-open-runtime";
+		internal const string OptionalProfileAnalyzerGuidanceElementName = "ftue-optional-profile-analyzer-guidance";
+		internal const string OptionalAdaptivePerformanceOpenRuntimeButtonElementName = "ftue-optional-adaptive-performance-open-runtime";
+		internal const string OptionalGraphicsStateCollectionCopyTraceButtonElementName = "ftue-optional-graphics-state-collection-copy-trace";
+		internal const string OptionalGraphicsStateCollectionCopyPrewarmButtonElementName = "ftue-optional-graphics-state-collection-copy-prewarm";
+		internal const string OptionalGraphicsStateCollectionOpenRuntimeButtonElementName = OptionalGraphicsStateCollectionElementName + "-open";
+		internal const string OptionalGraphicsStateCollectionRevealArtifactsButtonElementName = "ftue-optional-graphics-state-collection-reveal-artifacts";
+		internal const string OptionalGraphicsStateCollectionGuidanceElementName = "ftue-optional-graphics-state-collection-guidance";
+		internal const string OptionalRenderDocCheckAttachmentButtonElementName = "ftue-optional-renderdoc-check-attachment";
+		internal const string OptionalRenderDocCopySnippetButtonElementName = "ftue-optional-renderdoc-copy-snippet";
+		internal const string OptionalRenderDocGuideButtonElementName = "ftue-optional-renderdoc-guide";
+		internal const string OptionalRenderDocOpenRuntimeButtonElementName = "ftue-optional-renderdoc-open-runtime";
+		internal const string OptionalRenderDocGuidanceElementName = "ftue-optional-renderdoc-guidance";
 		internal const string SaveLoggingSettingsButtonElementName = "ftue-save-logging-settings";
+
+		internal const string MemoryProfilerMenuItem = "Window/Analysis/Memory Profiler";
+		internal const string MemoryProfilerSnapshotRoot = "Temp/PerfMeter/MemorySnapshots";
+		internal const string GraphicsStateCollectionArtifactRoot = "Temp/PerfMeter/GraphicsStateCollections";
+		internal const string GraphicsStateCollectionPrewarmPathPlaceholder = GraphicsStateCollectionArtifactRoot + "/<trace-artifact-file>";
+		internal const string MemoryProfilerGuidance = "Workflow: enter Play Mode, request a one-shot snapshot or configure an explicit runtime trigger, monitor Runtime status, then open the resulting .snap file from Temp/PerfMeter/MemorySnapshots in Memory Profiler. A later request or runtime cleanup can remove the owned source snapshot.";
+		internal const string ProfileAnalyzerGuidance = "Workflow: begin recording in Unity Profiler, start and stop a PerfMeter session while recording, then load that Profiler data in Profile Analyzer and search for the copied session ID. PerfMeter does not load or filter Profiler data automatically.";
+		internal const string GraphicsStateCollectionGuidance = "Workflow: keep the PerfMeter session active, trace Play Mode frames, wait for the artifact under Temp/PerfMeter/GraphicsStateCollections, then copy its reported relative path into the prewarm request. FTUE never starts trace or prewarm automatically.";
+		internal const string RenderDocGuidance = "Workflow: install RenderDoc, then use Load RenderDoc from the Game or Scene View tab menu, or launch the Editor or Development Build through RenderDoc. Check attachment, enter Play Mode, and request capture. Unity cannot identify the attached external profiler, and PerfMeter does not return the external capture path.";
 
 		private readonly VisualElement _root;
 		private readonly Action _selectSetup;
@@ -259,6 +291,7 @@ namespace SGG.PerfMeter.Editor.UI
 				PerfMeterFtueState.RenderDocId,
 				() => OpenExternalTool("RenderDoc", RenderDocDownloadUrl),
 				"Download RenderDoc");
+			AddRenderDocContinuationActions(_renderDocRow);
 			_pixRow = AddCapabilityRow(
 				section,
 				"PIX (Optional, external, not bundled)",
@@ -295,7 +328,50 @@ namespace SGG.PerfMeter.Editor.UI
 			row.SkipButton = row.Checklist.SecondaryButton;
 			row.InstallButton.name = elementName + "-install";
 			row.SkipButton.name = elementName + "-skip";
+			AddPackageContinuationActions(row);
 			return row;
+		}
+
+		private void AddPackageContinuationActions(PackageRow row)
+		{
+			if (row == null)
+			{
+				return;
+			}
+
+			if (row.OptionalId == PerfMeterFtueState.MemoryProfilerId)
+			{
+				row.OpenButton = AddButton(row.Checklist.Row, "Open Window/Analysis/Memory Profiler", OpenMemoryProfiler);
+				row.OpenButton.name = OptionalMemoryProfilerOpenWindowButtonElementName;
+				row.CopySnippetButton = AddButton(row.Checklist.Row, "Copy RequestMemorySnapshot Snippet", CopyMemorySnapshotSnippet);
+				row.CopySnippetButton.name = OptionalMemoryProfilerCopySnippetButtonElementName;
+				row.CopyTriggerSnippetButton = AddButton(row.Checklist.Row, "Copy Memory Trigger Snippet", CopyMemorySnapshotTriggerSnippet);
+				row.CopyTriggerSnippetButton.name = OptionalMemoryProfilerCopyTriggerSnippetButtonElementName;
+				row.RuntimeButton = AddButton(row.Checklist.Row, "Open Runtime", OpenRuntime);
+				row.RuntimeButton.name = OptionalMemoryProfilerOpenRuntimeButtonElementName;
+				row.RevealArtifactsButton = AddButton(row.Checklist.Row, "Reveal Snapshots", RevealMemoryProfilerSnapshots);
+				row.RevealArtifactsButton.name = OptionalMemoryProfilerRevealSnapshotsButtonElementName;
+				row.Guidance = AddGuidance(row.Checklist.Row, MemoryProfilerGuidance);
+				row.Guidance.name = OptionalMemoryProfilerGuidanceElementName;
+				return;
+			}
+
+			if (row.OptionalId == PerfMeterFtueState.ProfileAnalyzerId)
+			{
+				row.OpenButton = AddButton(row.Checklist.Row, "Open Profile Analyzer", OpenProfileAnalyzer);
+				row.OpenButton.name = OptionalProfileAnalyzerOpenButtonElementName;
+				row.RuntimeButton = AddButton(row.Checklist.Row, "Open Runtime", OpenRuntime);
+				row.RuntimeButton.name = OptionalProfileAnalyzerOpenRuntimeButtonElementName;
+				row.Guidance = AddGuidance(row.Checklist.Row, ProfileAnalyzerGuidance);
+				row.Guidance.name = OptionalProfileAnalyzerGuidanceElementName;
+				return;
+			}
+
+			if (row.OptionalId == PerfMeterFtueState.AdaptivePerformanceId)
+			{
+				row.RuntimeButton = AddButton(row.Checklist.Row, "Open Runtime", OpenRuntime);
+				row.RuntimeButton.name = OptionalAdaptivePerformanceOpenRuntimeButtonElementName;
+			}
 		}
 
 		private OptionalCapabilityRow AddCapabilityRow(
@@ -319,7 +395,46 @@ namespace SGG.PerfMeter.Editor.UI
 			row.SkipButton = row.Checklist.SecondaryButton;
 			row.OpenButton.name = elementName + "-open";
 			row.SkipButton.name = elementName + "-skip";
+			if (optionalId == PerfMeterFtueState.GraphicsStateCollectionId)
+			{
+				row.OpenButton.name = OptionalGraphicsStateCollectionOpenRuntimeButtonElementName;
+				AddGraphicsStateCollectionContinuationActions(row);
+			}
 			return row;
+		}
+
+		private void AddGraphicsStateCollectionContinuationActions(OptionalCapabilityRow row)
+		{
+			row.CopyTraceButton = AddButton(row.Checklist.Row, "Copy Trace Snippet", CopyGraphicsStateTraceSnippet);
+			row.CopyTraceButton.name = OptionalGraphicsStateCollectionCopyTraceButtonElementName;
+			row.CopyPrewarmButton = AddButton(row.Checklist.Row, "Copy Prewarm Snippet", CopyGraphicsStatePrewarmSnippet);
+			row.CopyPrewarmButton.name = OptionalGraphicsStateCollectionCopyPrewarmButtonElementName;
+			row.RevealArtifactsButton = AddButton(row.Checklist.Row, "Reveal Artifacts", RevealGraphicsStateCollectionArtifacts);
+			row.RevealArtifactsButton.name = OptionalGraphicsStateCollectionRevealArtifactsButtonElementName;
+			row.Guidance = AddGuidance(row.Checklist.Row, GraphicsStateCollectionGuidance);
+			row.Guidance.name = OptionalGraphicsStateCollectionGuidanceElementName;
+		}
+
+		private void AddRenderDocContinuationActions(OptionalCapabilityRow row)
+		{
+			row.CheckAttachmentButton = AddButton(row.Checklist.Row, "Check Attachment", CheckRenderDocAttachment);
+			row.CheckAttachmentButton.name = OptionalRenderDocCheckAttachmentButtonElementName;
+			row.CopySnippetButton = AddButton(row.Checklist.Row, "Copy Capture Snippet", CopyRenderDocCaptureSnippet);
+			row.CopySnippetButton.name = OptionalRenderDocCopySnippetButtonElementName;
+			row.GuideButton = AddButton(row.Checklist.Row, "Open RenderDoc Guide", () => OpenExternalTool("Unity RenderDoc integration guide", RenderDocIntegrationGuideUrl));
+			row.GuideButton.name = OptionalRenderDocGuideButtonElementName;
+			row.RuntimeButton = AddButton(row.Checklist.Row, "Open Runtime", OpenRuntime);
+			row.RuntimeButton.name = OptionalRenderDocOpenRuntimeButtonElementName;
+			row.Guidance = AddGuidance(row.Checklist.Row, RenderDocGuidance);
+			row.Guidance.name = OptionalRenderDocGuidanceElementName;
+		}
+
+		private Label AddGuidance(VisualElement parent, string text)
+		{
+			Label guidance = new Label(text);
+			guidance.AddToClassList("pm-ftue-guidance");
+			parent.Add(guidance);
+			return guidance;
 		}
 
 		private VisualElement AddSection(VisualElement parent, string caption)
@@ -660,7 +775,7 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 			else if (row.IsAvailable)
 			{
-				SetChecklist(row.Checklist, OkState, "Available - " + row.DisplayName + " " + version + " meets the " + row.MinimumVersion + "+ floor.");
+				SetChecklist(row.Checklist, OkState, FormatInstalledPackageStatus(row, version));
 			}
 			else if (PerfMeterOptionalDependencyInstaller.TryGetLastError(row.PackageId, out string error))
 			{
@@ -676,6 +791,9 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			bool packageActionEnabled = !PerfMeterOptionalDependencyInstaller.HasActiveInstall && !skipped && !row.IsAvailable;
+			SetButtonVisible(row.InstallButton, !row.IsAvailable);
+			SetButtonVisible(row.SkipButton, !row.IsAvailable);
+			SetPackageContinuationVisibility(row, row.IsAvailable && !skipped);
 			row.InstallButton.text = PerfMeterWindowLocalization.Text(PerfMeterOptionalDependencyInstaller.IsInstalling(row.PackageId) ? "Installing..." : "Install");
 			row.InstallButton.SetEnabled(packageActionEnabled);
 			row.SkipButton.text = PerfMeterWindowLocalization.Text(skipped ? "Skipped" : "Skip");
@@ -697,7 +815,7 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 			else if (row.IsAvailable)
 			{
-				SetChecklist(row.Checklist, OkState, "Available - bundled GraphicsStateCollection backend " + FormatOptionalValue(capabilities.BackendId) + "; trace " + (capabilities.SupportsTrace ? "yes" : "no") + ", prewarm " + (capabilities.SupportsPrewarm ? "yes" : "no") + ".");
+				SetChecklist(row.Checklist, OkState, FormatGraphicsStateCollectionReadyStatus(capabilities));
 			}
 			else
 			{
@@ -705,7 +823,13 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 
 			row.SkipButton.text = PerfMeterWindowLocalization.Text(skipped ? "Skipped" : "Skip");
-			row.SkipButton.SetEnabled(!skipped);
+			SetButtonVisible(row.OpenButton, !skipped);
+			SetButtonVisible(row.SkipButton, !row.IsAvailable);
+			row.SkipButton.SetEnabled(!skipped && !row.IsAvailable);
+			SetButtonVisible(row.CopyTraceButton, row.IsAvailable && !skipped && capabilities.SupportsTrace);
+			SetButtonVisible(row.CopyPrewarmButton, row.IsAvailable && !skipped && capabilities.SupportsPrewarm);
+			SetButtonVisible(row.RevealArtifactsButton, !skipped && HasMeaningfulGraphicsStateCollectionArtifacts(capabilities));
+			SetElementVisible(row.Guidance, !skipped);
 		}
 
 		private void RefreshExternalRows()
@@ -759,19 +883,42 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 			else if (row.IsAvailable)
 			{
-				SetChecklist(row.Checklist, OkState, "Available - " + displayName + " is attached. The tool is external and not bundled with PerfMeter.");
+				SetChecklist(
+					row.Checklist,
+					OkState,
+					displayName == "RenderDoc" ? FormatRenderDocAttachedStatus() : "Available - " + displayName + " is attached. The tool is external and not bundled with PerfMeter.");
 			}
 			else if (ambiguousAttachment)
 			{
-				SetChecklist(row.Checklist, OptionalState, "Optional - Unity reports an external GPU profiler is attached but cannot identify RenderDoc versus PIX. Skip the tool you are not using.");
+				SetChecklist(
+					row.Checklist,
+					OptionalState,
+					displayName == "RenderDoc"
+						? FormatRenderDocAmbiguousStatus()
+						: "Optional - Unity reports an external GPU profiler is attached but cannot identify RenderDoc versus PIX. Skip the tool you are not using.");
 			}
 			else
 			{
-				SetChecklist(row.Checklist, OptionalState, "Optional - " + displayName + " is external and not bundled. " + FormatOptionalValue(capability.Warning));
+				SetChecklist(
+					row.Checklist,
+					OptionalState,
+					displayName == "RenderDoc"
+						? FormatRenderDocUnattachedStatus(capability.Warning)
+						: "Optional - " + displayName + " is external and not bundled. " + FormatOptionalValue(capability.Warning));
 			}
 
 			row.SkipButton.text = PerfMeterWindowLocalization.Text(skipped ? "Skipped" : "Skip");
 			row.SkipButton.SetEnabled(!skipped);
+			SetButtonVisible(row.OpenButton, ShouldShowExternalDownload(skipped, row.IsAvailable));
+			SetButtonVisible(row.SkipButton, ShouldShowExternalSkip(row.IsAvailable));
+			if (displayName == "RenderDoc")
+			{
+				SetButtonVisible(row.CheckAttachmentButton, !skipped);
+				SetButtonVisible(row.CopySnippetButton, !skipped);
+				SetButtonVisible(row.GuideButton, !skipped);
+				SetButtonVisible(row.RuntimeButton, !skipped);
+				SetElementVisible(row.Guidance, !skipped);
+			}
 		}
 
 		private void SetChecklist(ChecklistRow row, string state, string text)
@@ -887,6 +1034,97 @@ namespace SGG.PerfMeter.Editor.UI
 			_selectRuntime?.Invoke();
 		}
 
+		private void OpenMemoryProfiler()
+		{
+			OpenEditorMenu("Memory Profiler", MemoryProfilerMenuItem);
+		}
+
+		private void OpenProfileAnalyzer()
+		{
+			try
+			{
+				bool opened = PerfMeterProfileAnalyzerIntegration.TryOpenProfileAnalyzerForCurrentSession();
+				Report(opened
+					? "Profile Analyzer opened; the current session ID was copied. Search that ID after recording or loading Unity Profiler data."
+					: "Profile Analyzer could not be opened. Start and stop a PerfMeter session first, then try again; see the Console for package warnings.");
+			}
+			catch (Exception exception)
+			{
+				Report("Profile Analyzer failed to open: " + exception.Message);
+			}
+		}
+
+		private void OpenEditorMenu(string displayName, string menuItem)
+		{
+			bool opened = EditorApplication.ExecuteMenuItem(menuItem);
+			Report(opened ? displayName + " opened." : displayName + " menu was not found. Install or enable the optional package.");
+		}
+
+		private void CopyMemorySnapshotSnippet()
+		{
+			CopySnippet("RequestMemorySnapshot", BuildMemorySnapshotSnippet());
+		}
+
+		private void CopyMemorySnapshotTriggerSnippet()
+		{
+			CopySnippet("memory snapshot trigger", BuildMemorySnapshotTriggerSnippet());
+		}
+
+		private void CopyGraphicsStateTraceSnippet()
+		{
+			CopySnippet("GraphicsStateCollection trace", BuildGraphicsStateTraceSnippet());
+		}
+
+		private void CopyGraphicsStatePrewarmSnippet()
+		{
+			CopySnippet("GraphicsStateCollection prewarm", BuildGraphicsStatePrewarmSnippet());
+		}
+
+		private void CopyRenderDocCaptureSnippet()
+		{
+			CopySnippet("RenderDoc capture", BuildRenderDocCaptureSnippet());
+		}
+
+		private void CopySnippet(string name, string snippet)
+		{
+			EditorGUIUtility.systemCopyBuffer = snippet;
+			Report(name + " snippet copied to clipboard. It runs only when you invoke it from your own runtime code.");
+		}
+
+		private void CheckRenderDocAttachment()
+		{
+			Refresh();
+			Report("RenderDoc attachment checked. Unity can confirm only that an external GPU profiler is attached; it cannot identify RenderDoc versus PIX.");
+		}
+
+		private void RevealGraphicsStateCollectionArtifacts()
+		{
+			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetGraphicsStateCollectionCapabilities();
+			PerfMeterGraphicsStateCollectionStatusSnapshot status = RuntimePerformanceMeter.GetGraphicsStateCollectionStatus();
+			if (!HasMeaningfulGraphicsStateCollectionArtifacts(capabilities, status))
+			{
+				Report("GraphicsStateCollection artifact folder is not available yet. Request a trace first.");
+				return;
+			}
+
+			string path = GetGraphicsStateCollectionArtifactPath(capabilities);
+			EditorUtility.RevealInFinder(path);
+			Report("GraphicsStateCollection artifacts revealed: " + path);
+		}
+
+		private void RevealMemoryProfilerSnapshots()
+		{
+			string path = GetProjectArtifactPath(MemoryProfilerSnapshotRoot);
+			if (!Directory.Exists(path))
+			{
+				Report("Memory snapshot folder is not available yet. Request a snapshot first.");
+				return;
+			}
+
+			EditorUtility.RevealInFinder(path);
+			Report("Memory Profiler snapshots revealed: " + path);
+		}
+
 		private void RefreshProfilerMetricCatalog()
 		{
 			bool refreshed = RuntimePerformanceMeter.TryRefreshProfilerMetricCatalog();
@@ -949,6 +1187,173 @@ namespace SGG.PerfMeter.Editor.UI
 			PerfMeterFtueState.SetSkipped(optionalId);
 			Report("Optional FTUE step skipped: " + optionalId + ".");
 			Refresh();
+		}
+
+		internal static string BuildMemorySnapshotSnippet()
+		{
+			return "using SGG.PerfMeter;\n\n" +
+				"PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(\n" +
+				"    new PerfMeterMemorySnapshotOptions(\"ftue-memory-snapshot\"));";
+		}
+
+		internal static string BuildMemorySnapshotTriggerSnippet()
+		{
+			return "using SGG.PerfMeter;\n\n" +
+				"bool configured = PerformanceMeter.ConfigureMemorySnapshotTriggers(\n" +
+				"    new PerfMeterMemorySnapshotTriggerOptions(\n" +
+				"        enabled: true,\n" +
+				"        systemMemoryThresholdBytes: 2L * 1024L * 1024L * 1024L,\n" +
+				"        leakGrowthThresholdBytes: 256L * 1024L * 1024L));";
+		}
+
+		internal static string BuildGraphicsStateTraceSnippet()
+		{
+			return "using SGG.PerfMeter;\n\n" +
+				"PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.RequestGraphicsStateTrace(\n" +
+				"    new PerfMeterGraphicsStateTraceOptions(\"ftue-graphics-state-trace\", 60));";
+		}
+
+		internal static string BuildGraphicsStatePrewarmSnippet()
+		{
+			return "using SGG.PerfMeter;\n\n" +
+				"PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.PrewarmGraphicsStateCollection(\n" +
+				"    new PerfMeterGraphicsStatePrewarmOptions(\"" + GraphicsStateCollectionPrewarmPathPlaceholder + "\"));";
+		}
+
+		internal static string BuildRenderDocCaptureSnippet()
+		{
+			return "using SGG.PerfMeter;\n\n" +
+				"PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(\n" +
+				"    new PerfMeterCaptureOptions(\"ftue-renderdoc-capture\", PerfMeterCaptureTool.RenderDoc, 1));";
+		}
+
+		internal static string FormatMemoryProfilerInstalledStatus(string version, string minimumVersion)
+		{
+			return FormatInstalledPackagePrefix("Memory Profiler", version, minimumVersion);
+		}
+
+		internal static string FormatProfileAnalyzerInstalledStatus(string version, string minimumVersion)
+		{
+			return FormatInstalledPackagePrefix("Profile Analyzer", version, minimumVersion);
+		}
+
+		internal static string FormatAdaptivePerformanceInstalledStatus(string version, string minimumVersion)
+		{
+			return FormatInstalledPackagePrefix("Adaptive Performance", version, minimumVersion);
+		}
+
+		internal static string FormatGraphicsStateCollectionReadyStatus(PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities)
+		{
+			return PerfMeterWindowLocalization.Format(
+				"Installed/Ready - bundled GraphicsStateCollection backend {0}; trace {1}, prewarm {2}.",
+				FormatOptionalValue(capabilities.BackendId),
+				PerfMeterWindowLocalization.Text(capabilities.SupportsTrace ? "Available" : "Unavailable"),
+				PerfMeterWindowLocalization.Text(capabilities.SupportsPrewarm ? "Available" : "Unavailable"));
+		}
+
+		internal static string FormatRenderDocUnattachedStatus(string warning)
+		{
+			return PerfMeterWindowLocalization.Format(
+				"Not attached - Unity has not confirmed an external GPU profiler. {0}",
+				FormatOptionalValue(warning));
+		}
+
+		internal static string FormatRenderDocAmbiguousStatus()
+		{
+			return PerfMeterWindowLocalization.Text("Ambiguous attachment - Unity reports an external GPU profiler but cannot identify RenderDoc versus PIX.");
+		}
+
+		internal static string FormatRenderDocAttachedStatus()
+		{
+			return PerfMeterWindowLocalization.Text("Attached - Unity confirms an external GPU profiler, but cannot identify RenderDoc versus PIX or provide its artifact path.");
+		}
+
+		internal static bool ShouldShowExternalDownload(bool skipped, bool available)
+		{
+			return !skipped && !available;
+		}
+
+		internal static bool ShouldShowExternalSkip(bool available)
+		{
+			return !available;
+		}
+
+		private static string FormatInstalledPackageStatus(PackageRow row, string version)
+		{
+			if (row.OptionalId == PerfMeterFtueState.MemoryProfilerId)
+			{
+				return FormatMemoryProfilerInstalledStatus(version, row.MinimumVersion);
+			}
+
+			if (row.OptionalId == PerfMeterFtueState.ProfileAnalyzerId)
+			{
+				return FormatProfileAnalyzerInstalledStatus(version, row.MinimumVersion);
+			}
+
+			if (row.OptionalId == PerfMeterFtueState.AdaptivePerformanceId)
+			{
+				return FormatAdaptivePerformanceInstalledStatus(version, row.MinimumVersion);
+			}
+
+			return FormatInstalledPackagePrefix(row.DisplayName, version, row.MinimumVersion);
+		}
+
+		private static string FormatInstalledPackagePrefix(string displayName, string version, string minimumVersion)
+		{
+			return PerfMeterWindowLocalization.Format(
+				"Installed/Ready - {0} {1} meets the {2}+ floor.",
+				displayName,
+				FormatOptionalValue(version),
+				minimumVersion);
+		}
+
+		private static void SetPackageContinuationVisibility(PackageRow row, bool visible)
+		{
+			SetButtonVisible(row.OpenButton, visible);
+			SetButtonVisible(row.CopySnippetButton, visible);
+			SetButtonVisible(row.CopyTriggerSnippetButton, visible);
+			SetButtonVisible(row.RuntimeButton, visible);
+			SetButtonVisible(row.RevealArtifactsButton, visible && Directory.Exists(GetProjectArtifactPath(MemoryProfilerSnapshotRoot)));
+			SetElementVisible(row.Guidance, visible);
+		}
+
+		private static void SetButtonVisible(Button button, bool visible)
+		{
+			SetElementVisible(button, visible);
+		}
+
+		private static void SetElementVisible(VisualElement element, bool visible)
+		{
+			if (element != null)
+			{
+				element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+		}
+
+		private static bool HasMeaningfulGraphicsStateCollectionArtifacts(PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities)
+		{
+			return HasMeaningfulGraphicsStateCollectionArtifacts(capabilities, RuntimePerformanceMeter.GetGraphicsStateCollectionStatus());
+		}
+
+		private static bool HasMeaningfulGraphicsStateCollectionArtifacts(
+			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities,
+			PerfMeterGraphicsStateCollectionStatusSnapshot status)
+		{
+			return !string.IsNullOrEmpty(status.ArtifactRelativePath) || Directory.Exists(GetGraphicsStateCollectionArtifactPath(capabilities));
+		}
+
+		private static string GetGraphicsStateCollectionArtifactPath(PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities)
+		{
+			string root = string.IsNullOrEmpty(capabilities.ArtifactRoot) ? GraphicsStateCollectionArtifactRoot : capabilities.ArtifactRoot;
+			return GetProjectArtifactPath(root);
+		}
+
+		private static string GetProjectArtifactPath(string relativePath)
+		{
+			string projectRoot = Directory.GetParent(Application.dataPath) != null
+				? Directory.GetParent(Application.dataPath).FullName
+				: Directory.GetCurrentDirectory();
+			return Path.GetFullPath(Path.Combine(projectRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
 		}
 
 		private static string FormatProfilerDiagnostics(
@@ -1147,6 +1552,12 @@ namespace SGG.PerfMeter.Editor.UI
 			internal ChecklistRow Checklist { get; set; }
 			internal Button InstallButton { get; set; }
 			internal Button SkipButton { get; set; }
+			internal Button OpenButton { get; set; }
+			internal Button CopySnippetButton { get; set; }
+			internal Button CopyTriggerSnippetButton { get; set; }
+			internal Button RuntimeButton { get; set; }
+			internal Button RevealArtifactsButton { get; set; }
+			internal Label Guidance { get; set; }
 			internal bool IsAvailable { get; set; }
 		}
 
@@ -1161,6 +1572,14 @@ namespace SGG.PerfMeter.Editor.UI
 			internal ChecklistRow Checklist { get; set; }
 			internal Button OpenButton { get; set; }
 			internal Button SkipButton { get; set; }
+			internal Button CopyTraceButton { get; set; }
+			internal Button CopyPrewarmButton { get; set; }
+			internal Button RevealArtifactsButton { get; set; }
+			internal Button CheckAttachmentButton { get; set; }
+			internal Button CopySnippetButton { get; set; }
+			internal Button GuideButton { get; set; }
+			internal Button RuntimeButton { get; set; }
+			internal Label Guidance { get; set; }
 			internal bool IsAvailable { get; set; }
 		}
 	}

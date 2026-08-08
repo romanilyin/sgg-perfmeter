@@ -452,6 +452,27 @@ namespace SGG.PerfMeter
 			return PerfMeterSettingsStore.LoadFromResources();
 		}
 
+		public static bool TryApplySettingsJson(string json, out string warning)
+		{
+			if (!PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot settings))
+			{
+				warning = settings.Warning;
+				return false;
+			}
+
+			warning = settings.Warning;
+			if (!PerfMeterSettingsStore.ApplySnapshotToRuntime(settings))
+			{
+				warning = string.IsNullOrEmpty(warning)
+					? "PerfMeter settings were valid but could not be applied to the runtime."
+					: warning + " PerfMeter settings could not be applied to the runtime.";
+				return false;
+			}
+
+			PerfMeterSettingsBootstrap.MarkExplicitSettingsApplied();
+			return true;
+		}
+
 		public static void EnsureRunning()
 		{
 			PerfMeterRuntime.EnsureRunning();
@@ -511,7 +532,7 @@ namespace SGG.PerfMeter
 
 		public static void StartSession()
 		{
-			StartSession(PerfMeterSessionOptions.FromSettings(GetSettings()));
+			StartSession(PerfMeterSessionOptions.FromSettings(GetOperationSettings()));
 		}
 
 		public static void StartSession(PerfMeterSessionOptions options)
@@ -567,7 +588,7 @@ namespace SGG.PerfMeter
 
 		public static void RequestOverdrawMeasurement(int frameCount = 0)
 		{
-			PerfMeterSettingsSnapshot settings = GetSettings();
+			PerfMeterSettingsSnapshot settings = GetOperationSettings();
 			int normalizedFrameCount = frameCount <= 0
 				? settings.OverdrawDefaultFrameCount
 				: Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount);
@@ -919,9 +940,15 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		internal static void ApplySettings(PerfMeterSettingsSnapshot settings)
+		internal static bool ApplySettings(PerfMeterSettingsSnapshot settings)
 		{
-			PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
+			return PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
+		}
+
+		private static PerfMeterSettingsSnapshot GetOperationSettings()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.ConfiguredSettings : GetSettings();
 		}
 
 		internal static void ApplyOverlayTuning(PerfMeterSettingsSnapshot settings)

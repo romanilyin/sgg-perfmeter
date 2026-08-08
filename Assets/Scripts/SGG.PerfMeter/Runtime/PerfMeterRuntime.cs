@@ -94,6 +94,7 @@ namespace SGG.PerfMeter
 		internal string VisualOverlayPresetId => _visualOverlayPresetId;
 		internal PerfMeterOverlayModule OverlayModules => _overlayModules;
 		internal PerfMeterTargetFps TargetFps => _targetFps;
+		internal PerfMeterSettingsSnapshot ConfiguredSettings => _settings;
 		internal bool EditorWarningLogsEnabled => _settings.EditorWarningsEnabled;
 		internal bool StructuredLogsEnabled => _structuredLogsEnabled;
 		internal string ActiveAlertCaptureId => _alertCaptureId;
@@ -103,6 +104,7 @@ namespace SGG.PerfMeter
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
 		internal static PerfMeterOverdrawMeasurementState OverdrawState => _instance != null ? _instance._overdrawController.State : PerfMeterOverdrawMeasurementState.Off;
+		internal int OverdrawRequestedFrameCount => _overdrawController.RequestedFrameCount;
 
 		internal static PerfMeterCaptureBundleExportResult ExportCaptureBundle(string captureId, string path, string externalArtifactPath, bool requireAuthoritativeExternalArtifact)
 		{

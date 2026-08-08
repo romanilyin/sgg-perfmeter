@@ -88,6 +88,18 @@ PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 
 Device snapshots include Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots include scene, transform, projection, clipping, pixel rect, target display, and URP/HDRP camera settings when available.
 
+## Settings JSON And Explicit Bootstrap
+
+```csharp
+public static bool TryApplySettingsJson(string json, out string warning);
+```
+
+`TryApplySettingsJson` parses and normalizes a supported PerfMeter settings JSON string, then applies the accepted snapshot to the runtime. It returns `true` only after the snapshot is applied or its disabled/stopped state is satisfied; `warning` can still contain normalization warnings. Empty, invalid, newer-than-supported schema, or temporarily unapplicable JSON returns `false`, does not mark explicit startup authoritative, and reports the reason through `warning`. Parse rejection leaves the current runtime unchanged.
+
+The Setup window's **Initialization Code** section generates a self-contained `PerfMeterBootstrap` with a complete normalized snapshot in `SettingsJson` and a `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]` call to this API. The snapshot includes collection/work-mode, overlay and visual-preset data, logging and alert defaults, session defaults, and overdraw limits. A valid snapshot with `enabled: false` or `collectionMode: "Stopped"` stops PerfMeter; another valid collection mode ensures a runtime and applies the collection/overlay settings. The explicit bootstrap does not start a session or capture and does not persist or auto-run capture parameters.
+
+The generated bootstrap is an alternative to the Resources zero-code file at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` (load path `SGG.PerfMeter/perfmeter-settings`). Resources auto-start additionally checks `autoStart`; an explicit generated call is already the startup decision. A successfully parsed explicit application suppresses Resources auto-start for the current domain and becomes authoritative even if Resources started the runtime first. Invalid explicit JSON leaves the current runtime unchanged and does not suppress a later Resources auto-start. Parameterless session start and default overdraw requests use the active runtime snapshot after explicit application.
+
 ## CPU Core Loads
 
 ```csharp

@@ -117,14 +117,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(_window.rootVisualElement.Q<Toggle>(PerfMeterFtuePage.EditorWarningLogsToggleElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Toggle>(PerfMeterFtuePage.StructuredLogsToggleElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.ReviewFtueButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RefreshInitializationCodeButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.CopyInitializationCodeButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<VisualElement>(PerfMeterFtuePage.RequiredPackagePathElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalMemoryProfilerElementName + "-install").text, Is.EqualTo("Install"));
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalMemoryProfilerOpenWindowButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalMemoryProfilerCopySnippetButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalMemoryProfilerCopyTriggerSnippetButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalMemoryProfilerRevealSnapshotsButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalProfileAnalyzerOpenButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalGraphicsStateCollectionCopyTraceButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalGraphicsStateCollectionCopyPrewarmButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalGraphicsStateCollectionRevealArtifactsButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocElementName + "-open").text, Is.EqualTo("Download RenderDoc"));
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocCheckAttachmentButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocCopySnippetButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocGuideButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalPixElementName + "-open").text, Is.EqualTo("Download PIX"));
 			Assert.That(_window.rootVisualElement.Q<Label>(PerfMeterFtuePage.FtueTitleElementName).text, Does.Contain("first-time setup"));
 			Assert.That(_window.rootVisualElement.Q<Label>(className: "pm-title").text, Does.Contain(PerfMeterFtueState.PackageVersion));
 			Assert.That(_window.titleContent.text, Does.Contain(PerfMeterFtueState.PackageVersion));
 			Assert.That(PerfMeterFtuePage.RenderDocDownloadUrl, Is.EqualTo("https://renderdoc.org/builds"));
+			Assert.That(PerfMeterFtuePage.RenderDocIntegrationGuideUrl, Is.EqualTo("https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html"));
 			Assert.That(PerfMeterFtuePage.PixDownloadUrl, Is.EqualTo("https://devblogs.microsoft.com/pix/download/"));
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3SessionAnalysisButtonName).enabledSelf, Is.True);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.RuntimeP3ProfileAnalyzerButtonName).enabledSelf, Is.True);
@@ -136,6 +150,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(stopSession.ClassListContains("pm-button--active"), Is.True);
 			Assert.That(PerfMeterSetupWindow.ProjectDefaultOverdrawRequestFrameCount, Is.EqualTo(0));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void InitializationSnippetEmbedsCompleteProjectSettingsSnapshot()
+		{
+			string snippet = PerfMeterSetupUtility.BuildInitializationSnippet(PerfMeterSettingsStore.Defaults);
+
+			Assert.That(snippet, Does.Contain("PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning)"));
+			Assert.That(snippet, Does.Contain("\"\"editorWarningsEnabled\"\""));
+			Assert.That(snippet, Does.Contain("\"\"structuredLogsEnabled\"\""));
+			Assert.That(snippet, Does.Contain("\"\"editorWarningCooldownSeconds\"\""));
+			Assert.That(snippet, Does.Contain("\"\"overdrawRatioThreshold\"\""));
+			Assert.That(snippet, Does.Contain("\"\"warmupFrames\"\""));
+			Assert.That(snippet, Does.Contain("\"\"defaultFrameCount\"\""));
+			Assert.That(snippet, Does.Contain("\"\"refreshIntervalSeconds\"\""));
+			Assert.That(snippet, Does.Not.Contain("PerformanceMeter.RequestCapture"));
+			Assert.That(snippet, Does.Not.Contain("PerformanceMeter.StartSession"));
 		}
 
 		[Test]
@@ -297,6 +328,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(icon, Is.Not.Null);
 			Assert.That(icon.tooltip, Is.Not.Empty);
 			Assert.That(icon.tooltip == "Ready" || icon.tooltip == "Error" || icon.tooltip == "Optional" || icon.tooltip == "Next action", Is.False);
+		}
+
+		[Test]
+		public void FtueContinuationGuidanceIsLocalized()
+		{
+			PerfMeterWindowLocalization.CurrentLanguage = "ru";
+			CreateWindow();
+
+			Assert.That(_window.rootVisualElement.Q<Label>(PerfMeterFtuePage.OptionalMemoryProfilerGuidanceElementName).text, Does.StartWith("Сценарий:"));
+			Assert.That(_window.rootVisualElement.Q<Label>(PerfMeterFtuePage.OptionalProfileAnalyzerGuidanceElementName).text, Does.StartWith("Сценарий:"));
+			Assert.That(_window.rootVisualElement.Q<Label>(PerfMeterFtuePage.OptionalGraphicsStateCollectionGuidanceElementName).text, Does.StartWith("Сценарий:"));
+			Assert.That(_window.rootVisualElement.Q<Label>(PerfMeterFtuePage.OptionalRenderDocGuidanceElementName).text, Does.StartWith("Сценарий:"));
 		}
 
 		[Test]

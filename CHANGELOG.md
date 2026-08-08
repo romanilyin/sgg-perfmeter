@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.8.8-1
+
+- Added actionable FTUE continuation workflows for RenderDoc, Memory Profiler, Profile Analyzer, Adaptive Performance, and GraphicsStateCollection instead of terminal installed/available states.
+- Added a complete self-contained initialization bootstrap backed by `PerformanceMeter.TryApplySettingsJson(...)`, including overlay, logging, alert, session-default, and overdraw settings with deterministic precedence over Resources auto-start.
+- Added localized integration guidance, copyable one-shot/runtime-trigger/trace/prewarm/capture snippets, and owned snapshot/artifact reveal actions.
+
 ## 2026.8.7-2
 
 - Added a separate first-time setup tab with live required checks, optional package installation, explicit skips, external capture-tool download actions, and automatic hide/reappearance as setup readiness changes.

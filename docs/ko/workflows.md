@@ -1,5 +1,84 @@
 # 워크플로
 
+## FTUE 설정 및 연속 작업
+
+`SGG/Perfmeter/Setup`을 열고 **FTUE** 탭을 선택합니다. 필수 검사는 compatibility, render integration, Frame Timing Stats, package path, 로드된 settings JSON을 확인합니다. 선택 항목은 설치하거나 건너뛸 수 있으며, 설치된 항목은 workflow가 완료되었다고 조용히 주장하는 대신 다음 action을 표시합니다.
+
+### Memory Profiler
+
+`com.unity.memoryprofiler`를 설치하면, 관리되는 폴더가 존재할 때 **Memory Profiler** 행에서 **Open Window/Analysis/Memory Profiler**, **Copy RequestMemorySnapshot Snippet**, **Copy Memory Trigger Snippet**, **Open Runtime**, **Reveal Snapshots**를 제공합니다. 복사된 snippet은 project가 호출해야 하는 runtime code입니다. FTUE가 직접 snapshot을 요청하거나 trigger를 설정하지는 않습니다. One-shot `.snap` 파일은 `Temp/PerfMeter/MemorySnapshots` 아래에 staging됩니다. 이후 request 또는 runtime cleanup으로 관리되는 source가 제거되기 전에 결과를 열거나 복사하십시오.
+
+One-shot snippet:
+
+```csharp
+PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+    new PerfMeterMemorySnapshotOptions("ftue-memory-snapshot"));
+```
+
+Opt-in trigger snippet:
+
+```csharp
+bool configured = PerformanceMeter.ConfigureMemorySnapshotTriggers(
+    new PerfMeterMemorySnapshotTriggerOptions(
+        enabled: true,
+        systemMemoryThresholdBytes: 2L * 1024L * 1024L * 1024L,
+        leakGrowthThresholdBytes: 256L * 1024L * 1024L));
+```
+
+**Open Runtime**으로 capability/status snapshot을 확인합니다. 수동 capture가 기본값이며, trigger threshold는 명시적으로 설정할 때까지 비활성화되어 있습니다.
+
+### Profile Analyzer
+
+설치된 **Profile Analyzer** 행은 **Open Profile Analyzer**와 **Open Runtime**을 제공합니다. 먼저 Unity Profiler에서 recording을 시작한 다음, 그 recording 안에서 PerfMeter session을 시작하고 중지합니다. opener는 `PerfMeterProfileAnalyzerIntegration.TryOpenProfileAnalyzerForCurrentSession()`을 사용해 Profile Analyzer를 열고 session ID를 복사합니다. 기록된 Profiler data를 로드하고 해당 ID를 검색하십시오. Profile Analyzer 설치, Profiler data 로드 또는 filter 자동 적용은 수행하지 않습니다.
+
+### Adaptive Performance
+
+설치된 **Adaptive Performance** 행은 optional telemetry provider의 현재 status를 확인하기 위한 **Open Runtime**을 제공합니다. FTUE action은 session을 시작하거나 capture하지 않습니다.
+
+### RenderDoc
+
+RenderDoc은 external tool이며 PerfMeter에 포함되지 않습니다. Unity 공식 integration flow를 따르십시오.
+
+1. 공식 download page에서 RenderDoc을 설치합니다: <https://renderdoc.org/builds>.
+2. project 변경 사항을 저장한 뒤 Game View 또는 Scene View tab menu에서 **Load RenderDoc**을 사용합니다. 또는 RenderDoc을 통해 Unity Editor나 Development Build를 시작할 수 있습니다. 설치 후 Unity가 attachment를 노출하지 않으면 Unity를 재시작하십시오. 공식 Unity guide는 <https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html>입니다.
+3. FTUE에서 **Check Attachment**를 클릭합니다. 이 동작은 Unity의 shared external-profiler signal만 refresh합니다. FTUE는 RenderDoc 설치를 감지할 수 없으며 Unity도 이 signal만으로 RenderDoc과 PIX를 구분할 수 없습니다.
+4. **Copy Capture Snippet**을 클릭하고 Play Mode에 들어간 뒤 복사한 code를 project runtime code에서 invoke합니다.
+
+   ```csharp
+   PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+       new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
+   ```
+
+5. capture status에는 **Open Runtime**을 사용합니다. 복사한 request는 persist되지 않으며 자동으로 invoke되지 않습니다. Editor/Development Build, attached-tool, desktop platform, graphics API 요구 사항이 적용됩니다. `Completed`는 Unity wrapper lifecycle만 완료되었음을 확인하며, attached tool을 식별하거나 `.rdc` artifact를 authenticate하거나 artifact path를 반환하지 않습니다.
+
+### GraphicsStateCollection
+
+번들된 optional **GraphicsStateCollection** 행에는 package install이 필요하지 않습니다. **Open Runtime**, **Copy Trace Snippet**, **Copy Prewarm Snippet**, **Reveal Artifacts**를 제공합니다. FTUE는 trace나 prewarm을 자동으로 request하지 않습니다. 다음 순서를 사용하십시오.
+
+1. Play Mode에서 `PerformanceMeter.StartSession(...)`으로 recording 중인 PerfMeter session을 시작하고 유지합니다.
+2. 복사한 trace code를 project runtime code에서 invoke합니다.
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.RequestGraphicsStateTrace(
+       new PerfMeterGraphicsStateTraceOptions("ftue-graphics-state-trace", 60));
+   ```
+
+3. `State == PerfMeterGraphicsStateCollectionState.Completed`가 될 때까지 `PerformanceMeter.GetGraphicsStateCollectionStatus()`를 poll합니다. `ArtifactRelativePath`를 prewarm input으로 사용합니다. 이 path는 `Temp/PerfMeter/GraphicsStateCollections` 아래를 가리킵니다. tracing 중 session을 중지하면 trace가 취소됩니다.
+4. 복사한 prewarm snippet의 `<trace-artifact-file>`을 반환된 path로 교체합니다.
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.PrewarmGraphicsStateCollection(
+       new PerfMeterGraphicsStatePrewarmOptions("Temp/PerfMeter/GraphicsStateCollections/<trace-artifact-file>"));
+   ```
+
+5. trace 후 **Reveal Artifacts**를 클릭해 project-local artifact folder를 표시합니다. Prewarm은 synchronous이며 artifact를 보존하고 incomplete progressive warmup을 보고할 수 있습니다. Trace length는 600 frames, 관리되는 artifact는 64 MiB로 제한됩니다. Unity backend는 cache-miss evidence를 제공하지 않습니다.
+
+## 전체 초기화 Bootstrap
+
+**Setup > Initialization Code**에서 **Refresh from Project Settings**를 클릭한 다음 **Copy Init Code**를 클릭합니다. 생성된 `PerfMeterBootstrap`은 완전히 normalized된 project settings snapshot을 포함하고 scene load 후 `PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning)`을 호출합니다. overlay, logging, alert, session-default, overdraw settings를 전달하고 `enabled` 및 `collectionMode: Stopped`를 준수하며 `StartSession` 또는 capture request를 수행하지 않습니다.
+
+code-owned startup을 선호한다면 Resources zero-code settings path 대신 이 explicit bootstrap을 사용합니다. 둘 다 있으면 성공적으로 parse된 explicit call이 current domain의 Resources auto-start callback을 억제합니다. Resources가 먼저 시작된 경우 explicit snapshot이 이후 적용되어 authoritative가 됩니다. Invalid explicit JSON은 current runtime을 변경하지 않고 이후 Resources auto-start도 억제하지 않습니다. Session 및 default overdraw operation은 active explicit runtime snapshot을 사용합니다.
+
 ## Runtime Overlay
 
 게임 안에서 즉시 볼 수 있는 정보가 필요할 때 overlay를 사용합니다.

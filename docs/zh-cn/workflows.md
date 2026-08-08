@@ -1,5 +1,84 @@
 # 工作流
 
+## FTUE 设置与继续流程
+
+打开 `SGG/Perfmeter/Setup` 并选择 **FTUE** 标签页。必需检查涵盖 compatibility、render integration、Frame Timing Stats、package path 以及已加载的 settings JSON。可选行可以安装或跳过；已安装的行会显示下一步 action，而不会静默地声称 workflow 已完成。
+
+### Memory Profiler
+
+安装 `com.unity.memoryprofiler` 后，**Memory Profiler** 行会在 owned folder 存在后提供 **Open Window/Analysis/Memory Profiler**、**Copy RequestMemorySnapshot Snippet**、**Copy Memory Trigger Snippet**、**Open Runtime** 和 **Reveal Snapshots**。复制的 snippets 是 project 必须调用的 runtime code；FTUE 不会自行请求 snapshot，也不会自行配置 triggers。One-shot `.snap` 文件暂存于 `Temp/PerfMeter/MemorySnapshots` 下；请在后续 request 或 runtime cleanup 移除 owned source 之前打开或复制结果。
+
+One-shot snippet：
+
+```csharp
+PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(
+    new PerfMeterMemorySnapshotOptions("ftue-memory-snapshot"));
+```
+
+Opt-in trigger snippet：
+
+```csharp
+bool configured = PerformanceMeter.ConfigureMemorySnapshotTriggers(
+    new PerfMeterMemorySnapshotTriggerOptions(
+        enabled: true,
+        systemMemoryThresholdBytes: 2L * 1024L * 1024L * 1024L,
+        leakGrowthThresholdBytes: 256L * 1024L * 1024L));
+```
+
+使用 **Open Runtime** 查看 capability/status snapshot。手动 capture 是默认行为；在显式配置之前，trigger thresholds 会保持禁用。
+
+### Profile Analyzer
+
+已安装的 **Profile Analyzer** 行提供 **Open Profile Analyzer** 和 **Open Runtime**。先在 Unity Profiler 中开始 recording，再在该 recording 内开始并停止 PerfMeter session。opener 使用 `PerfMeterProfileAnalyzerIntegration.TryOpenProfileAnalyzerForCurrentSession()` 打开 Profile Analyzer 并复制 session ID；加载录制的 Profiler data 并搜索该 ID。它不会安装 Profile Analyzer，不会加载 Profiler data，也不会自动应用 filter。
+
+### Adaptive Performance
+
+已安装的 **Adaptive Performance** 行提供 **Open Runtime**，用于查看 optional telemetry provider 的当前 status。FTUE action 不会启动 session 或执行 capture。
+
+### RenderDoc
+
+RenderDoc 是外部 tool，不随 PerfMeter 一起提供。请遵循 Unity 的官方 integration flow：
+
+1. 从官方 download page 安装 RenderDoc：<https://renderdoc.org/builds>。
+2. 保存 project changes，然后在 Game View 或 Scene View 标签页菜单中使用 **Load RenderDoc**。也可以通过 RenderDoc 启动 Unity Editor 或 Development Build；如果安装后 Unity 没有显示 attachment，请重启 Unity。官方 Unity guide 为 <https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html>。
+3. 在 FTUE 中点击 **Check Attachment**。这只会刷新 Unity 的 shared external-profiler signal；FTUE 无法检测 RenderDoc 是否安装，Unity 也无法根据该 signal 区分 RenderDoc 和 PIX。
+4. 点击 **Copy Capture Snippet**，进入 Play Mode，并从 project runtime code 调用复制的代码：
+
+   ```csharp
+   PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
+       new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
+   ```
+
+5. 使用 **Open Runtime** 查看 capture status。复制的 request 不会持久化，也不会自动调用。它受 Editor/Development Build、attached-tool、desktop platform 和 graphics API 要求约束。`Completed` 只确认 Unity wrapper lifecycle 已结束；它不会识别 attached tool，不会验证 `.rdc` artifact，也不会返回 artifact path。
+
+### GraphicsStateCollection
+
+内置的可选 **GraphicsStateCollection** 行无需安装 package。它提供 **Open Runtime**、**Copy Trace Snippet**、**Copy Prewarm Snippet** 和 **Reveal Artifacts**。FTUE 不会自动请求 trace 或 prewarm。请按以下顺序操作：
+
+1. 在 Play Mode 中，通过 `PerformanceMeter.StartSession(...)` 启动并保持一个正在 recording 的 PerfMeter session。
+2. 从 project runtime code 调用复制的 trace code：
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.RequestGraphicsStateTrace(
+       new PerfMeterGraphicsStateTraceOptions("ftue-graphics-state-trace", 60));
+   ```
+
+3. 轮询 `PerformanceMeter.GetGraphicsStateCollectionStatus()`，直到 `State == PerfMeterGraphicsStateCollectionState.Completed`。使用它的 `ArtifactRelativePath` 作为 prewarm 输入；该路径位于 `Temp/PerfMeter/GraphicsStateCollections` 下。tracing 时停止 session 会取消 trace。
+4. 将复制的 prewarm snippet 中的 `<trace-artifact-file>` 替换为返回的 path：
+
+   ```csharp
+   PerfMeterGraphicsStateCollectionRequestResult result = PerformanceMeter.PrewarmGraphicsStateCollection(
+       new PerfMeterGraphicsStatePrewarmOptions("Temp/PerfMeter/GraphicsStateCollections/<trace-artifact-file>"));
+   ```
+
+5. trace 后点击 **Reveal Artifacts**，显示 project-local artifact folder。Prewarm 是同步的，会保留 artifact，并可能报告 incomplete progressive warmup。Trace length 限制为 600 frames，owned artifacts 限制为 64 MiB；Unity backend 不提供 cache-miss evidence。
+
+## 完整初始化 Bootstrap
+
+在 **Setup > Initialization Code** 中点击 **Refresh from Project Settings**，然后点击 **Copy Init Code**。生成的 `PerfMeterBootstrap` 嵌入完整的 normalized project settings snapshot，并在 scene load 后调用 `PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning)`。它携带 overlay、logging、alert、session-default 和 overdraw settings，遵循 `enabled` 与 `collectionMode: Stopped`，并且不会执行 `StartSession` 或 capture request。
+
+如果偏好由代码控制 startup，请使用此 explicit bootstrap，而不是 Resources zero-code settings path。如果两者同时存在，成功解析的 explicit call 会抑制当前 domain 的 Resources auto-start callback；如果 Resources 已先启动，则 explicit snapshot 会在之后应用并成为 authoritative。Invalid explicit JSON 不会改变当前 runtime，也不会抑制之后的 Resources auto-start。Session 和 default overdraw operation 使用 active explicit runtime snapshot。
+
 ## Runtime Overlay
 
 需要在游戏中立即看到诊断信息时使用 overlay。

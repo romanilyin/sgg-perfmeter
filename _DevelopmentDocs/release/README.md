@@ -4,6 +4,7 @@
 
 ## Current Release
 
+- Release candidate: `2026.8.8-1`
 - Current published release: `2026.8.7-2`
 - Current npm `latest`: `2026.8.7-2`
 - Previous published release: `2026.8.7-1`
@@ -18,12 +19,13 @@
 - Last published npm integrity: `sha512-rooQCnGEIbwm7ST3+3Z31ag/4517gfFat2tYt/lpryE7CwBUDNX4J+rkvDf6Mxeh/ngbzEfKYGYQosBSOJvvqw==`
 - Public npm and Git UPM install pins point to published `2026.8.7-2`; they were updated only after verified GitHub and npm publication.
 - Package: `com.sungeargames.perfmeter`
-- Unity validation target: `6000.5.6f1`
+- Unity validation matrix: `6000.4.12f1`, `6000.5.6f1`, `6000.6.0b7`, and `6000.7.0a4`
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
 - Release work date: 2026-08-08
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Current release record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`.
+Current release-candidate record: `_DevelopmentDocs/release/2026.8.8-1-ftue-continuation-release.md`.
+Last published release record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
