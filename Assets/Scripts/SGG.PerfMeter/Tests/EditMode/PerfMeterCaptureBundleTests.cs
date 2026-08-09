@@ -48,6 +48,134 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void ExternalArtifactObservationPreservesLifecycleAndRejectsMismatchedCapture()
+		{
+			const string captureId = "external-provenance";
+			const string identity = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			coordinator.Start(
+				new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1),
+				new PerfMeterCaptureBundleOptions(includeScreenshot: false),
+				CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+
+			PerfMeterExternalArtifactSnapshot observed = new PerfMeterExternalArtifactOptions(
+				artifactId: "external-artifact",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Observed)
+				.WithSourceFileIdentitySha256(identity)
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact(captureId, bundleId, observed);
+
+			PerfMeterCaptureBundleStatusSnapshot recording = coordinator.GetStatus(captureId);
+			Assert.That(recording.State, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(recording.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(recording.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+
+			PerfMeterExternalArtifactSnapshot mismatched = new PerfMeterExternalArtifactOptions(
+				artifactId: "mismatched-artifact",
+				requestId: "other-capture",
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				sizeBytes: 99L)
+				.WithSourceFileIdentitySha256(new string('f', 64))
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact("other-capture", bundleId, mismatched);
+			Assert.That(coordinator.GetStatus(captureId).ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+
+			coordinator.ObserveCapture(
+				CaptureStatus(captureId, PerfMeterCaptureState.Completed),
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+
+			PerfMeterExternalArtifactSnapshot authoritative = new PerfMeterExternalArtifactOptions(
+				artifactId: "authoritative-artifact",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				associationState: PerfMeterExternalArtifactAssociationState.BridgeAuthenticated,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				authorityState: PerfMeterExternalArtifactAuthorityState.Authenticated,
+				sizeBytes: 99L)
+				.WithSourceFileIdentitySha256(identity)
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact(captureId, bundleId, authoritative);
+
+			PerfMeterCaptureBundleStatusSnapshot completed = coordinator.GetStatus(captureId);
+			Assert.That(completed.State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(completed.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(completed.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+			Assert.That(completed.ExternalArtifact.IsAuthoritative, Is.False);
+
+			PerfMeterExternalArtifactSnapshot late = new PerfMeterExternalArtifactOptions(
+				artifactId: "late-artifact",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				sizeBytes: 101L)
+				.WithSourceFileIdentitySha256(new string('f', 64))
+				.ToSnapshot();
+			Assert.That(coordinator.MarkExported(
+				captureId,
+				bundleId,
+				string.Empty,
+				"Temp/PerfMeter/CaptureBundles/exported",
+				completed.ExternalArtifactState,
+				completed.ExternalArtifact), Is.True);
+			coordinator.ObserveExternalArtifact(captureId, bundleId, late);
+			Assert.That(coordinator.GetStatus(captureId).ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+		}
+
+		[Test]
+		public void ExternalArtifactProvenanceSurvivesStatusExportAndEnvelope()
+		{
+			const string captureId = "external-envelope";
+			const string identity = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(captureId, includeScreenshot: false);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			PerfMeterExternalArtifactSnapshot descriptor = new PerfMeterExternalArtifactOptions(
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized)
+				.WithSourceFileIdentitySha256(identity)
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact(captureId, bundleId, descriptor);
+
+			PerfMeterCaptureBundleStatusSnapshot status = coordinator.GetStatus(captureId);
+			Assert.That(status.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+			Assert.That(status.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			Assert.That(data.Status.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/external-envelope-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), relativePath);
+			try
+			{
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(result.Bundle.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+				Assert.That(result.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+				string envelope = File.ReadAllText(Path.Combine(fullPath, "external-artifact.json"));
+				Assert.That(envelope, Does.Contain("\"source_file_identity_sha256\":\"" + identity + "\""));
+				Assert.That(envelope, Does.Not.Contain("source_path"));
+				Assert.That(envelope, Does.Not.Contain(Path.GetFullPath(Path.Combine(Application.dataPath, ".."))));
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
 		public void BundleExportFreezesSessionAndCaptureTimelinesDefensively()
 		{
 			const string captureId = "timeline-bundle";

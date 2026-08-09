@@ -200,7 +200,8 @@ namespace SGG.PerfMeter
 			return string.IsNullOrEmpty(value.ArtifactId) &&
 				string.IsNullOrEmpty(value.RequestId) &&
 				value.ArtifactKind == PerfMeterExternalArtifactKind.Unknown &&
-				value.AssociationState == PerfMeterExternalArtifactAssociationState.None
+				value.AssociationState == PerfMeterExternalArtifactAssociationState.None &&
+				string.IsNullOrEmpty(value.SourceFileIdentitySha256)
 				? PerfMeterExternalArtifactSnapshot.Empty
 				: value;
 		}
@@ -295,7 +296,8 @@ namespace SGG.PerfMeter
 			return string.IsNullOrEmpty(value.ArtifactId) &&
 				string.IsNullOrEmpty(value.RequestId) &&
 				value.ArtifactKind == PerfMeterExternalArtifactKind.Unknown &&
-				value.AssociationState == PerfMeterExternalArtifactAssociationState.None
+				value.AssociationState == PerfMeterExternalArtifactAssociationState.None &&
+				string.IsNullOrEmpty(value.SourceFileIdentitySha256)
 				? PerfMeterExternalArtifactSnapshot.Empty
 				: value;
 		}
@@ -364,7 +366,7 @@ namespace SGG.PerfMeter
 			RelativePath = relativePath ?? string.Empty;
 			Error = error ?? string.Empty;
 			Bundle = bundle;
-			ExternalArtifact = string.IsNullOrEmpty(externalArtifact.ArtifactId) && string.IsNullOrEmpty(externalArtifact.RequestId) && externalArtifact.ArtifactKind == PerfMeterExternalArtifactKind.Unknown
+			ExternalArtifact = string.IsNullOrEmpty(externalArtifact.ArtifactId) && string.IsNullOrEmpty(externalArtifact.RequestId) && externalArtifact.ArtifactKind == PerfMeterExternalArtifactKind.Unknown && string.IsNullOrEmpty(externalArtifact.SourceFileIdentitySha256)
 				? bundle.ExternalArtifact
 				: externalArtifact;
 		}
@@ -499,6 +501,37 @@ namespace SGG.PerfMeter
 			{
 				_record.CaptureStatus = captureStatus;
 			}
+		}
+
+		internal void ObserveExternalArtifact(
+			string captureId,
+			string bundleId,
+			PerfMeterExternalArtifactSnapshot snapshot)
+		{
+			if (_record == null ||
+				_record.State == PerfMeterCaptureBundleState.Exported ||
+				snapshot.IsAuthoritative ||
+				!string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) ||
+				!string.Equals(_record.BundleId, bundleId, StringComparison.Ordinal))
+			{
+				return;
+			}
+
+			_record.ExternalArtifact = snapshot;
+			_record.ExternalArtifactState = GetExternalArtifactState(snapshot);
+		}
+
+		private static PerfMeterCaptureExternalArtifactState GetExternalArtifactState(PerfMeterExternalArtifactSnapshot snapshot)
+		{
+			bool observedFile =
+				(snapshot.FinalizationState == PerfMeterExternalArtifactFinalizationState.Observed ||
+					snapshot.FinalizationState == PerfMeterExternalArtifactFinalizationState.Finalized) &&
+				(snapshot.SizeBytes > 0L ||
+					!string.IsNullOrEmpty(snapshot.ObservedSourceSha256) ||
+					!string.IsNullOrEmpty(snapshot.SourceFileIdentitySha256));
+			return observedFile
+				? PerfMeterCaptureExternalArtifactState.FileObserved
+				: PerfMeterCaptureExternalArtifactState.Unavailable;
 		}
 
 		internal bool IsRecordingCaptureFrame(PerfMeterCaptureStatusSnapshot captureStatus)

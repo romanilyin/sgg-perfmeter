@@ -1,23 +1,71 @@
 using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using UnityEngine;
 
 namespace SGG.PerfMeter
 {
 	internal readonly struct PerfMeterRenderDocPreflight
 	{
 		internal PerfMeterRenderDocPreflight(ulong requestNonce, string capturePathTemplate, string title)
+			: this(
+				requestNonce,
+				capturePathTemplate,
+				title,
+				new PerfMeterExternalArtifactOptions(
+					artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+					containsGpuCaptureData: PerfMeterExternalArtifactContentState.Unknown,
+					privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
+						PerfMeterExternalArtifactPrivacyFlags.Sensitive |
+						PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
+					storageMode: PerfMeterExternalArtifactStorageMode.MetadataOnly,
+					quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+					sharePolicy: PerfMeterExternalArtifactSharePolicy.DoNotShare),
+				null)
+		{
+		}
+
+		internal PerfMeterRenderDocPreflight(
+			ulong requestNonce,
+			string capturePathTemplate,
+			string title,
+			PerfMeterExternalArtifactOptions artifactOptions,
+			PerfMeterRenderDocStorageReservation reservation)
 		{
 			RequestNonce = requestNonce;
 			CapturePathTemplate = capturePathTemplate ?? string.Empty;
 			Title = title ?? string.Empty;
+			ArtifactOptions = artifactOptions;
+			Reservation = reservation;
 		}
 
 		internal ulong RequestNonce { get; }
 		internal string CapturePathTemplate { get; }
 		internal string Title { get; }
+		internal PerfMeterExternalArtifactOptions ArtifactOptions { get; }
+		internal PerfMeterRenderDocStorageReservation Reservation { get; }
+		internal string RootPath => Reservation == null ? string.Empty : Reservation.RootPath;
+
+		internal SggRdResult SetTerminal(out string error)
+		{
+			if (Reservation == null)
+			{
+				error = string.Empty;
+				return SggRdResult.Ok;
+			}
+
+			return Reservation.SetState(PerfMeterRenderDocStorageState.Terminal, out error);
+		}
+
+		internal SggRdResult ReleaseReservation(out string error)
+		{
+			if (Reservation == null)
+			{
+				error = string.Empty;
+				return SggRdResult.Ok;
+			}
+
+			return Reservation.Release(out error);
+		}
 	}
 
 	internal interface IPerfMeterRenderDocPreflightProvider
@@ -27,58 +75,125 @@ namespace SGG.PerfMeter
 
 	internal sealed class PerfMeterRenderDocPreflightProvider : IPerfMeterRenderDocPreflightProvider
 	{
-		private const string PolicyNotReadyWarning =
-			"RenderDoc native preflight is unavailable until PM-RDOC-003C source ownership and quota policy are implemented.";
+		private const string StorageFailureWarning =
+			"RenderDoc native preflight remains fail-closed until PM-RDOC-003C/003D worker/lifecycle wiring is enabled.";
+		private readonly PerfMeterRenderDocStorage _storage;
+		private readonly Func<string, string> _titleFactory;
+
+		internal PerfMeterRenderDocPreflightProvider()
+		{
+			// The default production seam must not touch the filesystem before the
+			// asynchronous worker/lifecycle wiring owns the preflight lifetime.
+			_storage = null;
+			_titleFactory = null;
+		}
+
+		internal PerfMeterRenderDocPreflightProvider(PerfMeterRenderDocStorage storage)
+			: this(storage, null)
+		{
+		}
+
+		internal PerfMeterRenderDocPreflightProvider(
+			PerfMeterRenderDocStorage storage,
+			Func<string, string> titleFactory)
+		{
+			_storage = storage ?? throw new ArgumentNullException(nameof(storage));
+			_titleFactory = titleFactory ?? CreateBoundedTitle;
+		}
+
+		internal PerfMeterRenderDocStorage Storage => _storage;
 
 		public SggRdResult Prepare(PerfMeterCaptureOptions options, out PerfMeterRenderDocPreflight preflight)
 		{
-			try
+			preflight = default;
+			if (_storage == null)
 			{
-				ulong requestNonce = CreateCryptographicNonce();
-				string capturePathTemplate = CreateAbsolutePathTemplate(requestNonce);
-				string title = CreateBoundedTitle(options.CaptureId);
-				preflight = new PerfMeterRenderDocPreflight(requestNonce, capturePathTemplate, title);
-			}
-			catch (Exception)
-			{
-				preflight = default;
 				return SggRdResult.InternalError;
 			}
 
-			// This control-only assembly deliberately does not own marker creation, quota
-			// reservation, free-space checks, or cleanup. PM-RDOC-003C must make this
-			// provider successful before any production bootstrap can use it.
-			return SggRdResult.InternalError;
+			PerfMeterRenderDocStorageReservation reservation = null;
+			try
+			{
+				if (string.IsNullOrWhiteSpace(options.CaptureId))
+				{
+					return SggRdResult.InvalidArgument;
+				}
+
+				string opaqueSessionId = CreateOpaqueSessionId(options.CaptureId);
+				PerfMeterRenderDocStorageRequest request = new PerfMeterRenderDocStorageRequest(opaqueSessionId, 0u);
+				SggRdResult result = _storage.TryReserveSource(request, out reservation, out string error);
+				if (result != SggRdResult.Ok)
+				{
+					return result;
+				}
+
+				string capturePathTemplate = reservation.CapturePathTemplate;
+				string title = _titleFactory(options.CaptureId);
+				PerfMeterExternalArtifactOptions artifactOptions = CreateNativeArtifactOptions(options.CaptureId);
+				preflight = new PerfMeterRenderDocPreflight(
+					reservation.RequestNonce,
+					capturePathTemplate,
+					title,
+					artifactOptions,
+					reservation);
+				return SggRdResult.Ok;
+			}
+			catch (Exception)
+			{
+				if (reservation != null)
+				{
+					reservation.Abort(out _);
+					if (!reservation.IsReleased)
+					{
+						reservation.Release(out _);
+					}
+				}
+
+				return SggRdResult.InternalError;
+			}
 		}
 
-		internal static string PolicyNotReadyMessage => PolicyNotReadyWarning;
+		internal static string PolicyNotReadyMessage => StorageFailureWarning;
 
-		private static ulong CreateCryptographicNonce()
+		private static string CreateOpaqueSessionId(string captureId)
 		{
-			byte[] randomBytes = new byte[sizeof(ulong)];
+			byte[] randomBytes = new byte[16];
+			string opaqueSessionId;
 			using (RandomNumberGenerator generator = RandomNumberGenerator.Create())
 			{
 				do
 				{
 					generator.GetBytes(randomBytes);
+					StringBuilder hex = new StringBuilder(randomBytes.Length * 2);
+					for (int index = 0; index < randomBytes.Length; index++)
+					{
+						hex.Append(randomBytes[index].ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+					}
+
+					opaqueSessionId = hex.ToString();
 				}
-				while (BitConverter.ToUInt64(randomBytes, 0) == 0u);
+				while (string.Equals(opaqueSessionId, captureId, StringComparison.Ordinal));
 			}
 
-			return BitConverter.ToUInt64(randomBytes, 0);
+			return opaqueSessionId;
 		}
 
-		private static string CreateAbsolutePathTemplate(ulong requestNonce)
+		private static PerfMeterExternalArtifactOptions CreateNativeArtifactOptions(string requestId)
 		{
-			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-			string nonceDirectory = requestNonce.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
-			return Path.GetFullPath(Path.Combine(
-				projectRoot,
-				"Temp",
-				"PerfMeter",
-				"RenderDoc",
-				nonceDirectory,
-				"capture"));
+			return new PerfMeterExternalArtifactOptions(
+				artifactId: string.IsNullOrEmpty(requestId) ? "renderdoc" : requestId + "-renderdoc",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: requestId,
+				associationState: PerfMeterExternalArtifactAssociationState.None,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Unavailable,
+				authorityState: PerfMeterExternalArtifactAuthorityState.Unknown,
+				containsGpuCaptureData: PerfMeterExternalArtifactContentState.Unknown,
+				privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
+					PerfMeterExternalArtifactPrivacyFlags.Sensitive |
+					PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
+				storageMode: PerfMeterExternalArtifactStorageMode.MetadataOnly,
+				quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+				sharePolicy: PerfMeterExternalArtifactSharePolicy.DoNotShare);
 		}
 
 		private static string CreateBoundedTitle(string captureId)

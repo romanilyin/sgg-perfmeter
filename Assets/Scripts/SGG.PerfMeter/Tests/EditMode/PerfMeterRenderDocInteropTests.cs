@@ -225,7 +225,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void ProductionPreflightCreatesBoundedNonceAndAbsoluteTemplateButFailsClosed()
+		public void ProductionPreflightRemainsFailClosedUntilWorkerLifecycleWiring()
 		{
 			PerfMeterRenderDocPreflightProvider provider = new PerfMeterRenderDocPreflightProvider();
 			SggRdResult result = provider.Prepare(
@@ -233,10 +233,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 				out PerfMeterRenderDocPreflight preflight);
 
 			Assert.That(result, Is.EqualTo(SggRdResult.InternalError));
-			Assert.That(preflight.RequestNonce, Is.Not.Zero);
-			Assert.That(IsAbsolutePath(preflight.CapturePathTemplate), Is.True);
-			Assert.That(PerfMeterRenderDocUtf8.GetByteCount(preflight.Title), Is.InRange(0, PerfMeterRenderDocAbiV1.MaxTitleBytes));
-			Assert.That(PerfMeterRenderDocPreflightProvider.PolicyNotReadyMessage, Does.Contain("PM-RDOC-003C"));
+			Assert.That(provider.Storage, Is.Null);
+			Assert.That(preflight.RequestNonce, Is.Zero);
+			Assert.That(preflight.CapturePathTemplate, Is.Null);
+			Assert.That(preflight.Title, Is.Null);
+			Assert.That(preflight.Reservation, Is.Null);
+			Assert.That(PerfMeterRenderDocPreflightProvider.PolicyNotReadyMessage, Does.Contain("PM-RDOC-003C/003D"));
+			Assert.That(PerfMeterRenderDocPreflightProvider.PolicyNotReadyMessage, Does.Contain("worker/lifecycle"));
 		}
 
 		[Test]
@@ -251,7 +254,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(backend.GetCapability(CreateOptions()).Availability, Is.EqualTo(PerfMeterAvailability.Available));
 			Assert.That(backend.TryBegin(CreateOptions(), out string error), Is.False);
-			Assert.That(error, Does.Contain("PM-RDOC-003C"));
+			Assert.That(error, Does.Contain("PM-RDOC-003C/003D"));
 			Assert.That(bridge.BeginCount, Is.Zero);
 			Assert.That(backend.Snapshot.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.Failed));
 			Assert.That(backend.Snapshot.NativeResultCode, Is.EqualTo((int)SggRdResult.InternalError));
@@ -580,12 +583,6 @@ namespace SGG.PerfMeter.Tests.EditMode
 				SupportsAnnotations = supportsAnnotations ? 1u : 0u,
 				CaptureCount = 0u
 			};
-		}
-
-		private static bool IsAbsolutePath(string path)
-		{
-			return path.StartsWith("/", StringComparison.Ordinal) ||
-				(path.Length >= 3 && char.IsLetter(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/'));
 		}
 
 		private static void AssertOffsets<T>(params (string Name, int Offset)[] expected)

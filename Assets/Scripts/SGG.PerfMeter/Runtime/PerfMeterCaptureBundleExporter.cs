@@ -546,6 +546,7 @@ namespace SGG.PerfMeter
 			builder.Append(",\"size_bytes\":").Append(artifact.SizeBytes);
 			builder.Append(",\"observed_source_sha256\":").Append(JsonString(artifact.ObservedSourceSha256));
 			builder.Append(",\"post_copy_sha256\":").Append(JsonString(artifact.PostCopySha256));
+			builder.Append(",\"source_file_identity_sha256\":").Append(JsonString(artifact.SourceFileIdentitySha256));
 			builder.Append(",\"warning\":").Append(JsonString(artifact.Warning));
 			builder.Append('}');
 			return builder.ToString();

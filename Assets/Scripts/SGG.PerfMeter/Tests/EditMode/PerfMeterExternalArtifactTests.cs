@@ -65,7 +65,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 				sharePolicy: (PerfMeterExternalArtifactSharePolicy)99,
 				sizeBytes: -1L,
 				observedSourceSha256: "not-a-hash",
-				postCopySha256: "not-a-hash");
+				postCopySha256: "not-a-hash")
+				.WithSourceFileIdentitySha256("not-a-hash");
 
 			Assert.That(options.ArtifactId, Is.Empty);
 			Assert.That(options.ToolId, Has.Length.EqualTo(PerfMeterExternalArtifactOptions.MaxToolIdLength));
@@ -84,6 +85,21 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(options.SharePolicy, Is.EqualTo(PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare));
 			Assert.That(options.ObservedSourceSha256, Is.Empty);
 			Assert.That(options.PostCopySha256, Is.Empty);
+			Assert.That(options.SourceFileIdentitySha256, Is.Empty);
+		}
+
+		[Test]
+		public void SourceFileIdentitySha256NormalizesValidMixedCaseHex()
+		{
+			const string mixedCase = "aBcDeF0123456789aBcDeF0123456789aBcDeF0123456789aBcDeF0123456789";
+			const string normalized = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+			PerfMeterExternalArtifactOptions options = new PerfMeterExternalArtifactOptions(
+				artifactId: "identity")
+				.WithSourceFileIdentitySha256(mixedCase);
+			PerfMeterExternalArtifactSnapshot snapshot = options.ToSnapshot();
+
+			Assert.That(options.SourceFileIdentitySha256, Is.EqualTo(normalized));
+			Assert.That(snapshot.SourceFileIdentitySha256, Is.EqualTo(normalized));
 		}
 
 		[Test]
