@@ -381,6 +381,8 @@ namespace SGG.PerfMeter
 			if (string.IsNullOrWhiteSpace(options.CaptureId) ||
 				options.CaptureId.Length > 128 ||
 				(options.Tool != PerfMeterCaptureTool.RenderDoc && options.Tool != PerfMeterCaptureTool.Pix) ||
+				!options.IsValidBackendMode ||
+				(options.Tool != PerfMeterCaptureTool.RenderDoc && options.BackendMode != PerfMeterCaptureBackendMode.GenericUnity) ||
 				options.CaptureFrames > 120 ||
 				options.PreRollFrames > 600 ||
 				options.PostRollFrames > 600)

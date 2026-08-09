@@ -1,23 +1,18 @@
 {
-    "name": "SGG.PerfMeter.Tests.EditMode",
-    "rootNamespace": "SGG.PerfMeter.Tests.EditMode",
+    "name": "SGG.PerfMeter.RenderDoc",
+    "rootNamespace": "SGG.PerfMeter",
     "references": [
-        "SGG.PerfMeter",
-        "SGG.PerfMeter.Editor",
-        "SGG.PerfMeter.RenderDoc"
+        "SGG.PerfMeter"
     ],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "optionalUnityReferences": [
-        "TestAssemblies"
-    ],
     "noEngineReferences": false
 }

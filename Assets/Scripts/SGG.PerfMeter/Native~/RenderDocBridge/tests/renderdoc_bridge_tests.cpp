@@ -625,6 +625,52 @@ bool TestArtifactObservationAndBuffers()
     return true;
 }
 
+bool TestArtifactReenumeratesAfterObservation()
+{
+    SggRdCaptureTokenV1 token{};
+    CHECK(BeginAndEndForArtifact(&token));
+
+    AddCapture(0u, "C:\\captures\\nonce\\first.rdc", 42u);
+    SggRdArtifactV1 artifact{};
+    artifact.struct_size = sizeof(artifact);
+    char path[128]{};
+    CHECK(SggRd_TryGetNewArtifactV1(&token, &artifact, path, sizeof(path)) == SGG_RD_OK);
+    const uint64_t first_observed_unix_ns = artifact.observed_unix_ns;
+    CHECK(artifact.index == 0u);
+    CHECK(std::strcmp(path, "C:\\captures\\nonce\\first.rdc") == 0);
+
+    AddCapture(1u, "C:\\captures\\nonce\\second.rdc", 43u);
+    artifact = {};
+    artifact.struct_size = sizeof(artifact);
+    CHECK(SggRd_TryGetNewArtifactV1(&token, &artifact, nullptr, 0u) == SGG_RD_CAPTURE_FAILED);
+    CHECK(artifact.required_path_bytes == 0u);
+
+    g_fake.capture_count = 1u;
+    artifact = {};
+    artifact.struct_size = sizeof(artifact);
+    std::memset(path, 0, sizeof(path));
+    CHECK(SggRd_TryGetNewArtifactV1(&token, &artifact, path, sizeof(path)) == SGG_RD_OK);
+    CHECK(artifact.index == 0u);
+    CHECK(artifact.observed_unix_ns == first_observed_unix_ns);
+    CHECK(std::strcmp(path, "C:\\captures\\nonce\\first.rdc") == 0);
+
+    g_fake.capture_timestamps[0] = 44u;
+    artifact = {};
+    artifact.struct_size = sizeof(artifact);
+    CHECK(SggRd_TryGetNewArtifactV1(&token, &artifact, nullptr, 0u) == SGG_RD_CAPTURE_FAILED);
+
+    CHECK(BeginAndEndForArtifact(&token));
+    AddCapture(0u, "C:\\captures\\nonce\\original.rdc", 45u);
+    artifact = {};
+    artifact.struct_size = sizeof(artifact);
+    CHECK(SggRd_TryGetNewArtifactV1(&token, &artifact, path, sizeof(path)) == SGG_RD_OK);
+    CopyFixed(g_fake.capture_paths[0], kMaxPathBytes, "C:\\captures\\nonce\\replacement.rdc");
+    artifact = {};
+    artifact.struct_size = sizeof(artifact);
+    CHECK(SggRd_TryGetNewArtifactV1(&token, &artifact, nullptr, 0u) == SGG_RD_CAPTURE_FAILED);
+    return true;
+}
+
 bool TestForeignMultipleAndCountCandidates()
 {
     SggRdCaptureTokenV1 token{};
@@ -788,6 +834,7 @@ int main()
         {"begin_end_discard_restore", TestBeginEndDiscardAndRestore},
         {"begin_failures_and_token_ownership", TestBeginFailuresAndTokenOwnership},
         {"artifact_observation_and_buffers", TestArtifactObservationAndBuffers},
+        {"artifact_reenumerates_after_observation", TestArtifactReenumeratesAfterObservation},
         {"foreign_multiple_and_count_candidates", TestForeignMultipleAndCountCandidates},
         {"comments_authorization_and_limits", TestCommentsAuthorizationAndLimits},
         {"known_prefix_and_concurrent_rejection", TestKnownPrefixAndConcurrentRejection}};

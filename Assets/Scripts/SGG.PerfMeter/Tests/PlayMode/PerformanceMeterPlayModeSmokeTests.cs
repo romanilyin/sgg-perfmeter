@@ -686,6 +686,8 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(PerformanceMeter.ActiveAlertCaptureId, Is.Empty);
 			Assert.That(PerformanceMeter.CancelCapture(), Is.True);
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Canceled));
+			Assert.That(PerformanceMeter.CancelCapture("wrong-capture"), Is.False);
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Canceled));
 
 			PerformanceMeter.EnsureRunning();
 			yield return null;

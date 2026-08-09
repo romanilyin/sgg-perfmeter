@@ -852,52 +852,55 @@ SggRdResult TryGetNewArtifactImpl(const SggRdCaptureTokenV1 *token, SggRdArtifac
     if (!TokensMatch(*token, g_state.completed_token))
         return SGG_RD_INVALID_ARGUMENT;
 
+    const uint32_t count_now = g_state.api.get_num_captures();
+    uint32_t matching_candidates = 0u;
+    bool candidate_read_failed = false;
     Candidate selected{};
+    for (uint64_t index = g_state.completed_token.count_before; index < count_now; ++index)
+    {
+        Candidate candidate{};
+        const SggRdResult candidate_result =
+            ReadCandidateLocked(static_cast<uint32_t>(index), g_state.completed_parent_directory,
+                                g_state.completed_parent_directory_bytes, &candidate);
+        if (candidate_result == SGG_RD_CAPTURE_FAILED)
+        {
+            candidate_read_failed = true;
+            continue;
+        }
+        if (candidate_result != SGG_RD_OK)
+            continue;
+
+        ++matching_candidates;
+        if (matching_candidates == 1u)
+            selected = candidate;
+    }
+
+    if (candidate_read_failed)
+        return SGG_RD_CAPTURE_FAILED;
+
+    if (matching_candidates == 0u)
+    {
+        SggRdArtifactV1 empty{};
+        empty.struct_size = out_artifact->struct_size;
+        WriteArtifact(out_artifact, empty);
+        return SGG_RD_CAPTURE_NOT_OBSERVED;
+    }
+
+    if (matching_candidates > 1u)
+        return SGG_RD_CAPTURE_FAILED;
+
     if (g_state.observed != 0u)
     {
-        selected.index = g_state.observed_index;
-        selected.timestamp_seconds = g_state.observed_timestamp_seconds;
+        if (selected.index != g_state.observed_index ||
+            selected.timestamp_seconds != g_state.observed_timestamp_seconds ||
+            selected.path_bytes != g_state.observed_path_bytes ||
+            std::memcmp(selected.path, g_state.observed_path, selected.path_bytes) != 0)
+            return SGG_RD_CAPTURE_FAILED;
+
         selected.observed_unix_ns = g_state.observed_unix_ns;
-        selected.path_bytes = g_state.observed_path_bytes;
-        std::memcpy(selected.path, g_state.observed_path, sizeof(selected.path));
     }
     else
     {
-        const uint32_t count_now = g_state.api.get_num_captures();
-        if (count_now <= g_state.completed_token.count_before)
-        {
-            SggRdArtifactV1 empty{};
-            empty.struct_size = out_artifact->struct_size;
-            WriteArtifact(out_artifact, empty);
-            return SGG_RD_CAPTURE_NOT_OBSERVED;
-        }
-
-        uint32_t matching_candidates = 0u;
-        for (uint64_t index = g_state.completed_token.count_before; index < count_now; ++index)
-        {
-            Candidate candidate{};
-            const SggRdResult candidate_result =
-                ReadCandidateLocked(static_cast<uint32_t>(index), g_state.completed_parent_directory,
-                                    g_state.completed_parent_directory_bytes, &candidate);
-            if (candidate_result == SGG_RD_CAPTURE_FAILED)
-                return SGG_RD_CAPTURE_FAILED;
-            if (candidate_result != SGG_RD_OK)
-                continue;
-
-            ++matching_candidates;
-            if (matching_candidates > 1u)
-                return SGG_RD_CAPTURE_FAILED;
-            selected = candidate;
-        }
-
-        if (matching_candidates == 0u)
-        {
-            SggRdArtifactV1 empty{};
-            empty.struct_size = out_artifact->struct_size;
-            WriteArtifact(out_artifact, empty);
-            return SGG_RD_CAPTURE_NOT_OBSERVED;
-        }
-
         g_state.observed = 1u;
         g_state.observed_index = selected.index;
         g_state.observed_timestamp_seconds = selected.timestamp_seconds;

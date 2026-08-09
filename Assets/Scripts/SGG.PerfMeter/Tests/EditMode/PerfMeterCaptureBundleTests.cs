@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 using NUnit.Framework;
@@ -14,6 +15,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void SetUp()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
 
@@ -21,6 +23,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
 
@@ -524,6 +527,34 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void PublicCaptureApiRejectsNativeBackendModesForPixButKeepsGenericPixValid()
+		{
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions(
+				"pix-preferred",
+				PerfMeterCaptureTool.Pix,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.InvalidRequest));
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions(
+				"pix-required",
+				PerfMeterCaptureTool.Pix,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.InvalidRequest));
+
+			try
+			{
+				Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("pix-generic", PerfMeterCaptureTool.Pix)), Is.Not.EqualTo(PerfMeterCaptureRequestResult.InvalidRequest));
+			}
+			finally
+			{
+				PerformanceMeter.Stop();
+			}
+		}
+
+		[Test]
 		public void BundleExportCommitsAtomicallyAndRefusesExistingDestination()
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("atomic", includeScreenshot: false);
@@ -950,6 +981,92 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void RuntimeShutdownRetainsBundleWhenCaptureCleanupFails()
+		{
+			const string captureId = "shutdown-retains-bundle";
+			PerformanceMeter.EnsureRunning();
+			ShutdownCaptureBackend backend = new ShutdownCaptureBackend { EndSucceeds = false };
+			PerfMeterRuntime.Instance.SetCaptureBackendForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerformanceMeter.Stop();
+
+			PerfMeterCaptureBundleStatusSnapshot status = PerformanceMeter.GetCaptureBundleStatus(captureId);
+			Assert.That(status.State, Is.EqualTo(PerfMeterCaptureBundleState.Error));
+			Assert.That(status.CaptureState, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(status.IsExportReady, Is.True);
+
+			backend.EndSucceeds = true;
+			PerformanceMeter.Stop();
+		}
+
+		[Test]
+		public void RuntimeShutdownDoesNotFinalizeNativeBundleWithPendingResources()
+		{
+			const string captureId = "shutdown-native-pending";
+			PerformanceMeter.EnsureRunning();
+			ShutdownNativeCaptureBackend backend = new ShutdownNativeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerformanceMeter.Stop();
+
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(backend.DiscardCount, Is.EqualTo(1));
+
+			backend.CleanupCanComplete = true;
+			Assert.That(PerfMeterRuntime.EnsureRunning(), Is.True);
+
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Canceled));
+			Assert.That(backend.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void PostDestroyCleanupTerminalizesRetainedNativeBundleWithoutRediscard()
+		{
+			const string captureId = "destroy-native-pending";
+			PerformanceMeter.EnsureRunning();
+			ShutdownNativeCaptureBackend backend = new ShutdownNativeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			typeof(PerfMeterRuntime).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(runtime, null);
+			typeof(PerfMeterRuntime).GetMethod("OnDestroy", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(runtime, null);
+			UnityEngine.Object.DestroyImmediate(runtime.gameObject);
+
+			bool runtimeDestroyed = PerfMeterRuntime.Instance == null;
+			PerfMeterCaptureBundleState retainedState = PerformanceMeter.GetCaptureBundleStatus(captureId).State;
+			int discardCountAfterDestroy = backend.DiscardCount;
+
+			backend.CleanupCanComplete = true;
+			bool restarted = PerfMeterRuntime.EnsureRunning();
+			PerfMeterCaptureBundleState finalState = PerformanceMeter.GetCaptureBundleStatus(captureId).State;
+
+			Assert.That(runtimeDestroyed, Is.True);
+			Assert.That(retainedState, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(discardCountAfterDestroy, Is.EqualTo(1));
+			Assert.That(restarted, Is.True);
+			Assert.That(finalState, Is.EqualTo(PerfMeterCaptureBundleState.Canceled));
+			Assert.That(backend.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
 		public void CaptureMcpCommandsAreRegisteredAndCapabilitiesDoNotStartRuntime()
 		{
 			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
@@ -978,6 +1095,34 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(missingExport, Does.Contain("\"export_id\":\"\""));
 			Assert.That(PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"missing\"}"), Does.Contain("\"result\":\"not_found\""));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void CaptureMcpRequestDefaultsAndReportsBackendModeStatusFields()
+		{
+			string omitted = PerfMeterMcpCommands.CaptureRequest("{\"capture_id\":\"mcp-default\",\"tool\":\"RenderDoc\"}");
+			Assert.That(omitted, Does.Contain("\"requested_backend_mode\":\"GenericUnity\""));
+			Assert.That(omitted, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+			Assert.That(omitted, Does.Contain("\"native_phase\":"));
+			Assert.That(omitted, Does.Contain("\"native_result_code\":"));
+			Assert.That(omitted, Does.Contain("\"fallback_reason\":"));
+
+			string omittedStatus = PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"mcp-default\"}");
+			Assert.That(omittedStatus, Does.Contain("\"requested_backend_mode\":\"GenericUnity\""));
+			Assert.That(omittedStatus, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+
+			PerformanceMeter.Stop();
+
+			string explicitMode = PerfMeterMcpCommands.CaptureRequest("{\"capture_id\":\"mcp-explicit\",\"tool\":\"RenderDoc\",\"backend_mode\":\"NativePreferred\"}");
+			Assert.That(explicitMode, Does.Contain("\"requested_backend_mode\":\"NativePreferred\""));
+			Assert.That(explicitMode, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+			Assert.That(explicitMode, Does.Contain("\"native_phase\":"));
+			Assert.That(explicitMode, Does.Contain("\"native_result_code\":"));
+			Assert.That(explicitMode, Does.Contain("\"fallback_reason\":"));
+
+			string explicitStatus = PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"mcp-explicit\"}");
+			Assert.That(explicitStatus, Does.Contain("\"requested_backend_mode\":\"NativePreferred\""));
+			Assert.That(explicitStatus, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
 		}
 
 		[Test]
@@ -1170,6 +1315,93 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 
 			return coordinator.GetStatus(exportId);
+		}
+
+		private sealed class ShutdownCaptureBackend : IPerfMeterCaptureBackend
+		{
+			internal bool EndSucceeds { get; set; }
+
+			public PerfMeterCaptureBackendCapability GetCapability(PerfMeterCaptureTool tool)
+			{
+				return new PerfMeterCaptureBackendCapability(PerfMeterAvailability.Available, string.Empty);
+			}
+
+			public bool TryBegin(PerfMeterCaptureTool tool, out string error)
+			{
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryEnd(out string error)
+			{
+				error = EndSucceeds ? string.Empty : "shutdown cleanup failed";
+				return EndSucceeds;
+			}
+		}
+
+		private sealed class ShutdownNativeCaptureBackend : IPerfMeterCaptureBackendV2
+		{
+			private PerfMeterCaptureBackendV2Snapshot _snapshot;
+
+			internal bool CleanupCanComplete { get; set; }
+			internal int DiscardCount { get; private set; }
+			internal int TickCount { get; private set; }
+
+			public PerfMeterCaptureBackendV2Snapshot Snapshot => _snapshot;
+
+			public PerfMeterCaptureBackendV2Snapshot GetCapability(PerfMeterCaptureOptions options)
+			{
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.None, false);
+				return _snapshot;
+			}
+
+			public bool TryBegin(PerfMeterCaptureOptions options, out string error)
+			{
+				error = string.Empty;
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.BeginExecuted, true);
+				return true;
+			}
+
+			public bool ScheduleEnd(out string error)
+			{
+				error = string.Empty;
+				return false;
+			}
+
+			public bool TryDiscard(out string error)
+			{
+				DiscardCount++;
+				error = CleanupCanComplete ? string.Empty : "native cleanup pending";
+				_snapshot = NativeSnapshot(
+					CleanupCanComplete ? PerfMeterRenderDocCapturePhase.Completed : PerfMeterRenderDocCapturePhase.FinalizingArtifact,
+					!CleanupCanComplete);
+				return true;
+			}
+
+			public void Tick()
+			{
+				TickCount++;
+				if (CleanupCanComplete && _snapshot.HasPendingCompletion)
+				{
+					_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.Completed, false);
+				}
+			}
+
+			private static PerfMeterCaptureBackendV2Snapshot NativeSnapshot(
+				PerfMeterRenderDocCapturePhase phase,
+				bool active)
+			{
+				return new PerfMeterCaptureBackendV2Snapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					phase,
+					PerfMeterNativeCaptureResultCodes.Ok,
+					string.Empty,
+					true,
+					active,
+					active);
+			}
 		}
 	}
 }
