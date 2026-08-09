@@ -4,30 +4,35 @@
 
 ## Current Release
 
-- Release candidate: `2026.8.9-1` Core Hardening Release (pre-publication)
-- Current published release: `2026.8.8-1`
-- Current npm `latest`: `2026.8.8-1`
-- Previous published release: `2026.8.7-2`
+- Release candidate: none.
+- Current published release: `2026.8.9-1`
+- Current npm `latest`: `2026.8.9-1`
+- Previous published release: `2026.8.8-1`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.8-1
-- Git tag `2026.8.8-1` points to main merge commit `5994e127bdafc27177f97239f75c215099a66e49`
-- Last published npm: `com.sungeargames.perfmeter@2026.8.8-1` through Trusted Publishing OIDC with verified SLSA provenance v1
-- npm dist-tag: `latest` -> `2026.8.8-1`
-- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31252498187 (completed successfully and published npm)
-- Last published npm SHA-1: `61a668b66192732a9a6384a588c811e39b6f892a`
-- Last published npm integrity: `sha512-9BMqv9ZiYP4Kt6mB3Sg0fr8OTs/pMj836vfD/kJzFWXYBEzxx7H8kT/kWC5JJUYN4eiIdaYhW6pViXQEgla7gg==`
-- Public npm and Git UPM install pins point to published `2026.8.8-1`; they were updated only after verified GitHub and npm publication.
+- Release PR: [#22](https://github.com/romanilyin/sgg-perfmeter/pull/22) merged to `main` as commit `b3894a0ce87c423f200f46e3d9caf64ce5dde2fb`
+- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.9-1 (published 2026-08-09)
+- Git tag `2026.8.9-1` points to main merge commit `b3894a0ce87c423f200f46e3d9caf64ce5dde2fb`
+- Last published npm: `com.sungeargames.perfmeter@2026.8.9-1` through Trusted Publishing OIDC with verified SLSA provenance v1
+- npm dist-tag: `latest` -> `2026.8.9-1`
+- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31300896015 (completed successfully and published npm)
+- Last published npm SHA-1: `bccd958a68c99de0bf2af3beb56b51307436ac5a`
+- Last published npm integrity: `sha512-GZ50UNnkMAhT7swIhOPSl03zsMi9r9O2/xuKMVy9zlH3AnESGkd5CeyDohX8zurfJtMswjRzq8zyh7tfl5YK8Q==`
+- Registry signature key ID: `SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U`
+- npm audit signatures: one registry signature and one attestation verified.
+- SLSA provenance v1 resolves `refs/tags/2026.8.9-1`, commit `b3894a0ce87c423f200f46e3d9caf64ce5dde2fb`, and workflow run `31300896015`.
+- Public npm and Git UPM install pins point to published `2026.8.9-1`; they were updated only after verified GitHub and npm publication.
 - Package: `com.sungeargames.perfmeter`
-- Last published Unity validation matrix: `6000.4.12f1`, `6000.5.6f1`, `6000.6.0b7`, and `6000.7.0a4`
-- Current candidate Unity validation evidence: `6000.4.12f1`; see the candidate record for targeted and full-suite results.
+- Last published Unity validation matrix: `6000.4.12f1`
+- Published release Unity validation evidence: `6000.4.12f1`; see the current release record for targeted and full-suite results.
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
 - Release work date: 2026-08-09
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Last published release record: `_DevelopmentDocs/release/2026.8.8-1-ftue-continuation-release.md`.
-Current release candidate record: `_DevelopmentDocs/release/2026.8.9-1-core-hardening-release.md`.
-Previous published release record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`.
+Current release record: `_DevelopmentDocs/release/2026.8.9-1-core-hardening-release.md`.
+Current release candidate record: none.
+Previous published release record: `_DevelopmentDocs/release/2026.8.8-1-ftue-continuation-release.md`.
+Earlier published release record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
