@@ -22,6 +22,8 @@ O objetivo e saida JSON estruturada para agents em vez de parsing de screenshots
 | `perfmeter.runtime.mode.set` | Alternar entre `Stopped`, `Background`, `Overlay` ou `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Ler as metricas mais recentes, incluindo custom metrics. |
 | `perfmeter.profiler.capabilities` | Ler capabilities e proveniencia de resolucao das metricas Profiler em cache sem iniciar o runtime ou a discovery. |
+| `perfmeter.profiler.lease.capabilities` | Ler recursos de profiler lease locais ao processo e semantica de reload. |
+| `perfmeter.profiler.lease.status` | Ler o estado atual ou correspondente do profiler lease local ao processo. |
 | `perfmeter.alerts.latest` | Ler alerts ativos, contadores e estado de avisos do Editor. |
 | `perfmeter.alerts.clear` | Limpar alerts ativos, contadores e estado de cooldown. |
 | `perfmeter.alerts.capture.begin` | Iniciar a classificacao limitada de uma captura externa. |
@@ -42,7 +44,12 @@ O objetivo e saida JSON estruturada para agents em vez de parsing de screenshots
 | `perfmeter.capture.status` | Ler o estado do capture e do bundle. |
 | `perfmeter.capture.cancel` | Cancelar o capture ativo correspondente. |
 | `perfmeter.capture.export` | Exportar atomicamente um bundle pronto sob a raiz local do projeto. |
+| `perfmeter.capture.export.request` | Enfileirar um export single-flight e retornar export ID e progresso. |
+| `perfmeter.capture.export.status` | Ler fase, progresso, cancelamento, retry e autoridade do artefato. |
+| `perfmeter.capture.export.cancel` | Solicitar cancelamento do export ativo correspondente. |
 | `perfmeter.capture.capabilities` | Ler capabilities de schema, quota, retention, screenshot e provenance. |
+
+Prefira `perfmeter.capture.export.request`, depois consulte `perfmeter.capture.export.status` e, opcionalmente, chame `perfmeter.capture.export.cancel`. O comando legado `perfmeter.capture.export` bloqueia por compatibilidade. As respostas incluem o envelope generico `external_artifact` com associacao, autoridade, finalizacao, conteudo, politica de privacidade/compartilhamento, tamanho e hashes de origem e pos-copia. Os comandos read-only de lease expoem o estado de conflito local ao processo sem adquirir um lease.
 
 ## Self-Overhead No Status Runtime
 

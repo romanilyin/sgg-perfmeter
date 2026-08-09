@@ -170,6 +170,10 @@ Coordinator допускает только один активный запро
 
 Overload с `PerfMeterCaptureBundleOptions` сохраняет capture samples отдельно от baseline session evidence и может добавить opt-in screenshot. После `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` вызовите `PerformanceMeter.ExportCaptureBundle(captureId)`: versioned bundle атомарно создается в `Temp/PerfMeter/CaptureBundles` и содержит manifest с SHA-256, session/baseline/capture samples, capture alerts, context, optional screenshot и external-artifact metadata. Переданный project-local `.rdc`/`.wpix` копируется только как observed artifact и не становится authoritative; paths с traversal/reparse points и файлы вне проекта отклоняются.
 
+Экспорт capture bundle также предоставляет неблокирующий single-flight API: `RequestCaptureBundleExport(..., out exportId)`, `GetCaptureBundleExportStatus(exportId)` и `CancelCaptureBundleExport(exportId)`. Статус содержит фазу, прогресс, размер в байтах, сведения об отмене и повторной попытке, путь commit и универсальный envelope внешнего артефакта. Существующий API `ExportCaptureBundle(...)` остается блокирующим compatibility wrapper, а сериализация, файловый I/O, хеширование, retention и атомарный commit выполняются в worker thread.
+
+Session и capture JSON дополняются типизированными timeline events для отсутствующих samples и границ capture. Существующие версии схем, массивы samples и столбцы CSV остаются совместимыми; legacy или неизвестные timeline payloads считываются без создания несуществующих gaps. Custom metric providers используют кэшированный snapshot providers и переиспользуемый buffer, принадлежащий core, на прогретом collection path; копии создаются только для сохраняемых samples, экспортов и публичных snapshots. Координация Profiler является process-local через `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)` и `ReleaseProfilerLease(...)`; удерживаемые leases не переживают domain reload.
+
 ## Пользовательские метрики
 
 ```csharp

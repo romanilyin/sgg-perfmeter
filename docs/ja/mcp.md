@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.mode.set` | `Stopped`、`Background`、`Overlay`、`OverdrawDiagnostic` を切り替えます。 |
 | `perfmeter.metrics.latest` | custom metrics を含む latest metrics を読み取ります。 |
 | `perfmeter.profiler.capabilities` | cache 済み Profiler metric capabilities と resolution provenance を、runtime や discovery を開始せずに読み取ります。 |
+| `perfmeter.profiler.lease.capabilities` | process-local profiler lease resource と reload semantics を読み取ります。 |
+| `perfmeter.profiler.lease.status` | current または matching process-local profiler lease state を読み取ります。 |
 | `perfmeter.alerts.latest` | active alerts、counters、Editor warning state を読み取ります。 |
 | `perfmeter.alerts.clear` | active alerts、counters、cooldown state をクリアします。 |
 | `perfmeter.alerts.capture.begin` | 外部 capture の bounded classification を開始します。 |
@@ -42,7 +44,12 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.capture.status` | capture と bundle の state を読み取ります。 |
 | `perfmeter.capture.cancel` | 一致する active capture を cancel します。 |
 | `perfmeter.capture.export` | ready bundle を project-local root に atomic export します。 |
+| `perfmeter.capture.export.request` | single-flight export を queue し、export ID と progress を返します。 |
+| `perfmeter.capture.export.status` | phase、progress、cancellation、retry、artifact authority を読み取ります。 |
+| `perfmeter.capture.export.cancel` | matching active export の cancellation を request します。 |
 | `perfmeter.capture.capabilities` | schema、quota、retention、screenshot、provenance capabilities を読み取ります。 |
+
+`perfmeter.capture.export.request` を優先し、その後 `perfmeter.capture.export.status` を polling し、必要に応じて `perfmeter.capture.export.cancel` を呼び出してください。Legacy の `perfmeter.capture.export` command は互換性のため blocking 動作を維持します。Export response には association、authority、finalization、content、privacy/share policy、size、source hash、post-copy hash を持つ汎用 `external_artifact` envelope が含まれます。Read-only lease commands は lease を取得せずに process-local conflict state を公開します。
 
 ## Runtime Self-Overhead Payload
 

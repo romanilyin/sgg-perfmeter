@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Mcp;
 using UnityEngine;
@@ -41,6 +42,103 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(data.CaptureSamples[0].PlatformTelemetry.ProviderId, Is.EqualTo("capture.provider"));
 			Assert.That(data.CaptureSamples[0].PlatformTelemetry.TemperatureLevel, Is.EqualTo(0.7f));
 			Assert.That(data.AlertEvents[0].CaptureId, Is.EqualTo("bundle-data"));
+		}
+
+		[Test]
+		public void BundleExportFreezesSessionAndCaptureTimelinesDefensively()
+		{
+			const string captureId = "timeline-bundle";
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			PerfMeterCaptureStatusSnapshot capturing = CaptureStatus(captureId, PerfMeterCaptureState.Capturing);
+			PerfMeterCaptureStatusSnapshot completed = CaptureStatus(captureId, PerfMeterCaptureState.Completed);
+			coordinator.Start(new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1), new PerfMeterCaptureBundleOptions(false), capturing);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			coordinator.RecordCaptureBoundary(capturing, PerfMeterSessionTimelineCaptureBoundary.Begin, 10, 1d);
+			coordinator.RecordCaptureFrame(
+				new PerfMeterSessionSampleSnapshot(10, 1d, "Scene", CreateMetrics(10), Array.Empty<PerfMeterCustomMetricSnapshot>(), CreatePlatformTelemetry()),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				PerformanceMeter.GetStatus());
+			coordinator.RecordCaptureBoundary(completed, PerfMeterSessionTimelineCaptureBoundary.End, 11, 1.1d);
+
+			PerfMeterSessionTimelineStore sessionTimelineStore = new PerfMeterSessionTimelineStore();
+			sessionTimelineStore.Start(1, 0);
+			sessionTimelineStore.AddValidBaseline(9, 0.9d, 0);
+			PerfMeterSessionTimelineSnapshot sessionTimeline = sessionTimelineStore.GetSnapshotCopy();
+			coordinator.ObserveCapture(
+				completed,
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				sessionTimeline,
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				PerfMeterRenderIntegrationSnapshot.NotObserved,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			Assert.That(data.SessionTimeline.Events, Has.Length.EqualTo(1));
+			Assert.That(data.SessionTimeline.Events[0].Stream, Is.EqualTo(PerfMeterSessionTimelineStream.Baseline));
+			Assert.That(data.CaptureTimeline.Events, Has.Length.EqualTo(3));
+			Assert.That(data.CaptureTimeline.Events[0].CaptureId, Is.EqualTo(captureId));
+			Assert.That(data.CaptureTimeline.Events[0].BundleId, Is.EqualTo(bundleId));
+			Assert.That(data.CaptureTimeline.Events[1].CaptureSampleIndex, Is.EqualTo(0));
+
+			data.CaptureTimeline.Events[0] = default;
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData second), Is.True);
+			Assert.That(second.CaptureTimeline.Events[0].Kind, Is.EqualTo(PerfMeterSessionTimelineKind.CaptureBoundary));
+			string captureJson = PerfMeterSessionExporter.BuildCaptureSamplesJson(captureId, second.CaptureSamples, second.CaptureTimeline);
+			Assert.That(captureJson, Does.Contain("\"timeline_schema_version\":1"));
+			Assert.That(captureJson, Does.Contain("\"capture_boundary\":\"Begin\""));
+		}
+
+		[Test]
+		public void BundleCaptureCopiesOnlyReportedCustomMetricCount()
+		{
+			const string captureId = "custom-buffer";
+			PerfMeterCustomMetricSnapshot[] buffer = new PerfMeterCustomMetricSnapshot[2];
+			buffer[0] = new PerfMeterCustomMetricSnapshot("reported.metric", "Reported", "tests", "count", 7d);
+			buffer[1] = new PerfMeterCustomMetricSnapshot("stale.metric", "Stale", "tests", "count", 99d);
+			PerfMeterCustomMetricCollection collection = new PerfMeterCustomMetricCollection(buffer, 1);
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			coordinator.Start(
+				new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1),
+				new PerfMeterCaptureBundleOptions(includeScreenshot: false),
+				CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
+
+			coordinator.RecordCaptureFrame(
+				10,
+				1d,
+				"Scene",
+				CreateMetrics(10),
+				collection,
+				CreatePlatformTelemetry(),
+				"trace",
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				PerfMeterRenderIntegrationSnapshot.NotObserved,
+				PerformanceMeter.GetStatus());
+			buffer[0] = new PerfMeterCustomMetricSnapshot("mutated.metric", "Mutated", "tests", "count", 100d);
+
+			coordinator.ObserveCapture(
+				CaptureStatus(captureId, PerfMeterCaptureState.Completed),
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			Assert.That(data.CaptureSamples, Has.Length.EqualTo(1));
+			Assert.That(data.CaptureSamples[0].CustomMetrics, Has.Length.EqualTo(1));
+			Assert.That(data.CaptureSamples[0].CustomMetrics[0].Id, Is.EqualTo("reported.metric"));
 		}
 
 		[Test]
@@ -480,13 +578,89 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterCaptureBundleExportResult traversal = PerfMeterCaptureBundleExporter.Export(data, "Temp/PerfMeter/CaptureBundles/../outside", null, false);
 			PerfMeterCaptureBundleExportResult absolute = PerfMeterCaptureBundleExporter.Export(data, Path.GetFullPath(Path.Combine(Application.dataPath, "..", PerfMeterCaptureBundleExporter.RelativeBundleRoot, "absolute")), null, false);
 			PerfMeterCaptureBundleExportResult malformed = PerfMeterCaptureBundleExporter.Export(data, "Temp/PerfMeter/CaptureBundles/bad\0path", null, false);
+			PerfMeterCaptureBundleExportResult reserved = PerfMeterCaptureBundleExporter.Export(data, PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/.sgg-perfmeter-staging-user", null, false);
+			PerfMeterCaptureBundleExportResult reservedMixedCase = PerfMeterCaptureBundleExporter.Export(data, PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/.SGG-PERFMETER-STAGING-user", null, false);
 			PerfMeterCaptureBundleExportResult authority = PerfMeterCaptureBundleExporter.Export(data, PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/authority-" + Guid.NewGuid().ToString("N"), null, true);
 
 			Assert.That(traversal.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
 			Assert.That(absolute.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
 			Assert.That(malformed.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+			Assert.That(reserved.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+			Assert.That(reserved.Error, Is.EqualTo("path_uses_reserved_staging_name"));
+			Assert.That(reservedMixedCase.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+			Assert.That(reservedMixedCase.Error, Is.EqualTo("path_uses_reserved_staging_name"));
 			Assert.That(authority.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.AuthorityRequired));
 			Assert.That(authority.Error, Does.Contain("authoritative"));
+		}
+
+		[Test]
+		public void BundleExportRejectsEmptyObservedArtifact()
+		{
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("empty-artifact", includeScreenshot: false);
+			coordinator.TryGetExportData("empty-artifact", out PerfMeterCaptureBundleExportData data);
+			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+			string sourceDirectory = Path.Combine(projectRoot, "Temp", "PerfMeter", "TestArtifacts", Guid.NewGuid().ToString("N"));
+			string sourcePath = Path.Combine(sourceDirectory, "empty.rdc");
+			string sourceRelativePath = sourcePath.Substring(projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1).Replace('\\', '/');
+
+			try
+			{
+				Directory.CreateDirectory(sourceDirectory);
+				File.WriteAllBytes(sourcePath, Array.Empty<byte>());
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(
+					data,
+					PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/empty-" + Guid.NewGuid().ToString("N"),
+					sourceRelativePath,
+					false);
+
+				Assert.That(result.Success, Is.False);
+				Assert.That(result.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+				Assert.That(result.Error, Is.EqualTo("external_artifact_is_empty"));
+			}
+			finally
+			{
+				if (Directory.Exists(sourceDirectory))
+				{
+					Directory.Delete(sourceDirectory, true);
+				}
+			}
+		}
+
+		[Test]
+		public void PathRedactionHandlesCaseInsensitiveJsonEscapes()
+		{
+			PerfMeterCaptureBundleExportEnvironment environment = new PerfMeterCaptureBundleExportEnvironment(
+				"C:\\Project",
+				"C:\\Project\\Temp\\PerfMeter\\CaptureBundles",
+				"C:\\Users\\Roman\\AppData",
+				"C:\\Users\\Roman",
+				true,
+				"test");
+			string escapedUserPath = environment.UserProfilePath.ToUpperInvariant().Replace("\\", "\\\\");
+			string json = "{\"path\":\"" + escapedUserPath + "\\\\secret.txt\"}";
+
+			string redacted = PerfMeterCaptureBundleExporter.RedactSensitivePaths(json, environment);
+
+			Assert.That(redacted, Does.Not.Contain(escapedUserPath));
+			Assert.That(redacted, Does.Contain("<user>\\\\secret.txt"));
+		}
+
+		[Test]
+		public void MemorySnapshotCleanupWarningIsCombinedWithoutDuplication()
+		{
+			const string existingWarning = "existing-warning";
+			string cleanupWarning = PerfMeterRuntime.MemorySnapshotCleanupWarning;
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("cleanup-warning", includeScreenshot: false);
+			string bundleId = coordinator.GetStatus("cleanup-warning").BundleId;
+
+			coordinator.AppendWarning("cleanup-warning", bundleId, existingWarning);
+			coordinator.AppendWarning("cleanup-warning", bundleId, cleanupWarning);
+			coordinator.AppendWarning("cleanup-warning", bundleId, cleanupWarning);
+
+			PerfMeterCaptureBundleStatusSnapshot status = coordinator.GetStatus("cleanup-warning");
+			Assert.That(status.Warning, Is.EqualTo(existingWarning + " " + cleanupWarning));
+			Assert.That(status.Warning.IndexOf(cleanupWarning, StringComparison.Ordinal), Is.EqualTo(status.Warning.LastIndexOf(cleanupWarning, StringComparison.Ordinal)));
+			Assert.That(PerfMeterCaptureBundleCoordinator.CombineWarnings(existingWarning, existingWarning), Is.EqualTo(existingWarning));
 		}
 
 		[Test]
@@ -519,6 +693,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(metadata, Does.Contain("\"artifact_file\":\"external-capture.rdc\""));
 				Assert.That(metadata, Does.Contain("\"association_verified\":false"));
 				Assert.That(metadata, Does.Not.Contain(sourceDirectory));
+				string envelope = File.ReadAllText(Path.Combine(bundlePath, "external-artifact.json"));
+				Assert.That(envelope, Does.Contain("\"schema\":\"sgg.perfmeter.external-artifact\""));
+				Assert.That(envelope, Does.Contain("\"association_state\":\"Unverified\""));
+				Assert.That(envelope, Does.Contain("\"contains_gpu_capture_data\":\"Unknown\""));
+				Assert.That(envelope, Does.Contain("\"storage_mode\":\"Embed\""));
+				Assert.That(envelope, Does.Contain("\"post_copy_sha256\":\"" + Sha256(artifactBytes) + "\""));
+				Assert.That(result.ExternalArtifact.PostCopySha256, Is.EqualTo(Sha256(artifactBytes)));
+				Assert.That(result.ExternalArtifact.IsAuthoritative, Is.False);
 				Assert.That(File.ReadAllText(Path.Combine(bundlePath, "manifest.json")), Does.Contain(Sha256(artifactBytes)));
 				Assert.That(Directory.Exists(unknownDirectory), Is.True);
 			}
@@ -573,6 +755,179 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void AsyncExportIsSingleFlightAndFailedExportCanBeRetried()
+		{
+			PerfMeterCaptureBundleCoordinator bundleCoordinator = CreateReadyCoordinator("async-retry", includeScreenshot: false);
+			Assert.That(bundleCoordinator.TryGetExportData("async-retry", out PerfMeterCaptureBundleExportData data), Is.True);
+			PerfMeterCaptureBundleExportCoordinator coordinator = new PerfMeterCaptureBundleExportCoordinator();
+			PerfMeterCaptureBundleExportEnvironment environment = PerfMeterCaptureBundleExporter.CaptureEnvironment();
+			string exportId;
+			PerfMeterCaptureBundleExportRequestResult request = coordinator.Request(
+				data,
+				"Temp/PerfMeter/CaptureBundles/../invalid",
+				null,
+				false,
+				environment,
+				null,
+				out exportId);
+
+			Assert.That(request, Is.EqualTo(PerfMeterCaptureBundleExportRequestResult.Started));
+			Assert.That(exportId, Is.Not.Empty);
+			Assert.That(coordinator.Request(data, null, null, false, environment, null, out _), Is.EqualTo(PerfMeterCaptureBundleExportRequestResult.AlreadyActive));
+			PerfMeterCaptureBundleExportStatusSnapshot failed = WaitForExport(coordinator, exportId);
+			Assert.That(failed.Phase, Is.EqualTo(PerfMeterCaptureBundleExportPhase.Failed));
+			Assert.That(failed.CanRetry, Is.True);
+			Assert.That(coordinator.TryConsumeCompletion(out _), Is.True);
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/async-retry-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(environment.ProjectRoot, relativePath);
+			try
+			{
+				Assert.That(coordinator.Request(data, relativePath, null, false, environment, null, out string retryId), Is.EqualTo(PerfMeterCaptureBundleExportRequestResult.Started));
+				PerfMeterCaptureBundleExportStatusSnapshot completed = WaitForExport(coordinator, retryId);
+				Assert.That(completed.Phase, Is.EqualTo(PerfMeterCaptureBundleExportPhase.Completed), completed.Error + " " + completed.Warning);
+				Assert.That(completed.Success, Is.True);
+				Assert.That(completed.Progress, Is.EqualTo(1f));
+				Assert.That(File.Exists(Path.Combine(fullPath, "manifest.json")), Is.True);
+				coordinator.AppendTerminalWarning(retryId, PerfMeterRuntime.MemorySnapshotCleanupWarning);
+				coordinator.AppendTerminalWarning(retryId, PerfMeterRuntime.MemorySnapshotCleanupWarning);
+				PerfMeterCaptureBundleExportStatusSnapshot warningStatus = coordinator.GetStatus(retryId);
+				Assert.That(warningStatus.Error, Is.Empty);
+				Assert.That(warningStatus.Warning, Is.EqualTo(PerfMeterRuntime.MemorySnapshotCleanupWarning));
+				Assert.That(coordinator.TryConsumeCompletion(out _), Is.True);
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void QueueRejectionFailsAsyncAndBlockingExportsWithoutWaiting()
+		{
+			PerfMeterCaptureBundleCoordinator bundleCoordinator = CreateReadyCoordinator("queue-rejected", includeScreenshot: false);
+			Assert.That(bundleCoordinator.TryGetExportData("queue-rejected", out PerfMeterCaptureBundleExportData data), Is.True);
+			PerfMeterCaptureBundleExportCoordinator coordinator = new PerfMeterCaptureBundleExportCoordinator((callback, state) => false);
+			PerfMeterCaptureBundleExportEnvironment environment = PerfMeterCaptureBundleExporter.CaptureEnvironment();
+
+			PerfMeterCaptureBundleExportRequestResult request = coordinator.Request(data, null, null, false, environment, null, out string exportId);
+			PerfMeterCaptureBundleExportStatusSnapshot status = coordinator.GetStatus(exportId);
+			Assert.That(request, Is.EqualTo(PerfMeterCaptureBundleExportRequestResult.Failed));
+			Assert.That(exportId, Is.Not.Empty);
+			Assert.That(status.Phase, Is.EqualTo(PerfMeterCaptureBundleExportPhase.Failed));
+			Assert.That(status.Error, Is.EqualTo("export_queue_rejected"));
+			Assert.That(status.Warning, Is.Empty);
+			Assert.That(coordinator.TryConsumeCompletion(out _), Is.True);
+
+			PerfMeterCaptureBundleExportResult blocking = coordinator.ExportBlocking(data, null, null, false, environment);
+			Assert.That(blocking.Success, Is.False);
+			Assert.That(blocking.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.IoError));
+			Assert.That(blocking.Error, Is.EqualTo("export_queue_rejected"));
+		}
+
+		[Test]
+		public void QueueExceptionRedactsProjectRootFromTerminalError()
+		{
+			PerfMeterCaptureBundleCoordinator bundleCoordinator = CreateReadyCoordinator("queue-throws", includeScreenshot: false);
+			Assert.That(bundleCoordinator.TryGetExportData("queue-throws", out PerfMeterCaptureBundleExportData data), Is.True);
+			PerfMeterCaptureBundleExportEnvironment environment = PerfMeterCaptureBundleExporter.CaptureEnvironment();
+			PerfMeterCaptureBundleExportCoordinator coordinator = new PerfMeterCaptureBundleExportCoordinator((callback, state) =>
+			{
+				throw new IOException(environment.ProjectRoot + "/private/queue-failure");
+			});
+
+			PerfMeterCaptureBundleExportRequestResult request = coordinator.Request(data, null, null, false, environment, null, out string exportId);
+			PerfMeterCaptureBundleExportStatusSnapshot status = coordinator.GetStatus(exportId);
+
+			Assert.That(request, Is.EqualTo(PerfMeterCaptureBundleExportRequestResult.Failed));
+			Assert.That(status.Error, Does.Not.Contain(environment.ProjectRoot));
+			Assert.That(status.Error, Does.Contain("<project>"));
+			Assert.That(status.Warning, Is.Empty);
+		}
+
+		[Test]
+		public void LegacyPublicCaptureBundleConstructorsRemainAvailable()
+		{
+			Type[] statusParameters =
+			{
+				typeof(PerfMeterAvailability),
+				typeof(PerfMeterCaptureBundleState),
+				typeof(string),
+				typeof(string),
+				typeof(PerfMeterCaptureState),
+				typeof(PerfMeterCaptureTool),
+				typeof(int),
+				typeof(int),
+				typeof(int),
+				typeof(int),
+				typeof(bool),
+				typeof(PerfMeterCaptureScreenshotState),
+				typeof(PerfMeterCaptureExternalArtifactState),
+				typeof(string),
+				typeof(string),
+				typeof(PerfMeterMemorySnapshotState)
+			};
+			Type[] resultParameters =
+			{
+				typeof(bool),
+				typeof(PerfMeterCaptureBundleExportStatus),
+				typeof(string),
+				typeof(string),
+				typeof(PerfMeterCaptureBundleStatusSnapshot)
+			};
+
+			Assert.That(typeof(PerfMeterCaptureBundleStatusSnapshot).GetConstructor(statusParameters), Is.Not.Null);
+			Assert.That(typeof(PerfMeterCaptureBundleExportResult).GetConstructor(resultParameters), Is.Not.Null);
+		}
+
+		[Test]
+		public void AsyncExportCancellationLeavesBundleExportable()
+		{
+			PerfMeterCaptureBundleCoordinator bundleCoordinator = CreateReadyCoordinator("async-cancel", includeScreenshot: false);
+			Assert.That(bundleCoordinator.TryGetExportData("async-cancel", out PerfMeterCaptureBundleExportData data), Is.True);
+			PerfMeterCaptureBundleExportCoordinator coordinator = new PerfMeterCaptureBundleExportCoordinator();
+			PerfMeterCaptureBundleExportEnvironment environment = PerfMeterCaptureBundleExporter.CaptureEnvironment();
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/async-cancel-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(environment.ProjectRoot, relativePath);
+			string sourceDirectory = Path.Combine(environment.ProjectRoot, "Temp", "PerfMeter", "TestArtifacts", Guid.NewGuid().ToString("N"));
+			string sourcePath = Path.Combine(sourceDirectory, "cancel.rdc");
+			string sourceRelativePath = sourcePath.Substring(environment.ProjectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1).Replace('\\', '/');
+
+			try
+			{
+				Directory.CreateDirectory(sourceDirectory);
+				using (FileStream stream = new FileStream(sourcePath, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+				{
+					stream.SetLength(8L * 1024L * 1024L);
+				}
+
+				Assert.That(coordinator.Request(data, relativePath, sourceRelativePath, false, environment, null, out string exportId), Is.EqualTo(PerfMeterCaptureBundleExportRequestResult.Started));
+				Assert.That(coordinator.Cancel(exportId), Is.True);
+				PerfMeterCaptureBundleExportStatusSnapshot status = WaitForExport(coordinator, exportId);
+				Assert.That(status.Phase, Is.EqualTo(PerfMeterCaptureBundleExportPhase.Canceled));
+				Assert.That(status.IsCanceled, Is.True);
+				Assert.That(status.CanRetry, Is.True);
+				Assert.That(Directory.Exists(fullPath), Is.False);
+				Assert.That(coordinator.TryConsumeCompletion(out _), Is.True);
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+
+				if (Directory.Exists(sourceDirectory))
+				{
+					Directory.Delete(sourceDirectory, true);
+				}
+			}
+		}
+
+		[Test]
 		public void TerminalCaptureWithoutScreenshotDoesNotRemainPending()
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
@@ -603,6 +958,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metadata, Does.Contain("perfmeter.capture.status"));
 			Assert.That(metadata, Does.Contain("perfmeter.capture.cancel"));
 			Assert.That(metadata, Does.Contain("perfmeter.capture.export"));
+			Assert.That(metadata, Does.Contain("perfmeter.capture.export.request"));
+			Assert.That(metadata, Does.Contain("perfmeter.capture.export.status"));
+			Assert.That(metadata, Does.Contain("perfmeter.capture.export.cancel"));
 			Assert.That(metadata, Does.Contain("perfmeter.capture.capabilities"));
 			Assert.That(metadata, Does.Contain("require_authoritative_external_artifact"));
 			Assert.That(metadata, Does.Not.Contain("require_authoritative_external_metadata"));
@@ -613,6 +971,11 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(capabilities, Does.Contain("\"tool_identity\":\"unknown\""));
 			Assert.That(capabilities, Does.Contain("\"tool_version\":\"unknown\""));
 			Assert.That(status, Does.Contain("\"bundle\""));
+			Assert.That(PerfMeterMcpCommands.CaptureExportStatus("{}"), Does.Contain("\"phase\":\"None\""));
+			Assert.That(PerfMeterMcpCommands.CaptureExportStatus("{}"), Does.Contain("\"external_artifact\""));
+			string missingExport = PerfMeterMcpCommands.CaptureExportStatus("{\"export_id\":\"missing-export\"}");
+			Assert.That(missingExport, Does.Contain("\"requested_export_id\":\"missing-export\""));
+			Assert.That(missingExport, Does.Contain("\"export_id\":\"\""));
 			Assert.That(PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"missing\"}"), Does.Contain("\"result\":\"not_found\""));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
 		}
@@ -789,6 +1152,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 				byte[] hash = sha.ComputeHash(bytes);
 				return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
 			}
+		}
+
+		private static PerfMeterCaptureBundleExportStatusSnapshot WaitForExport(
+			PerfMeterCaptureBundleExportCoordinator coordinator,
+			string exportId)
+		{
+			for (int i = 0; i < 500; i++)
+			{
+				PerfMeterCaptureBundleExportStatusSnapshot status = coordinator.GetStatus(exportId);
+				if (status.IsTerminal)
+				{
+					return status;
+				}
+
+				Thread.Sleep(10);
+			}
+
+			return coordinator.GetStatus(exportId);
 		}
 	}
 }

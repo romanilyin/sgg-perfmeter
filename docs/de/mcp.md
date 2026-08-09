@@ -22,6 +22,8 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | `perfmeter.runtime.mode.set` | `Stopped`, `Background`, `Overlay` oder `OverdrawDiagnostic` setzen. |
 | `perfmeter.metrics.latest` | Latest metrics inklusive custom metrics lesen. |
 | `perfmeter.profiler.capabilities` | Gecachte Profiler-Metrik-Capabilities und Aufloesungs-Provenienz lesen, ohne Runtime oder Discovery zu starten. |
+| `perfmeter.profiler.lease.capabilities` | Prozesslokale Profiler-Lease-Ressourcen und Reload-Semantik lesen. |
+| `perfmeter.profiler.lease.status` | Aktuellen oder passenden prozesslokalen Profiler-Lease-Status lesen. |
 | `perfmeter.alerts.latest` | Aktive alerts, counters und Editor warning state lesen. |
 | `perfmeter.alerts.clear` | Aktive alerts, counters und cooldown state loeschen. |
 | `perfmeter.alerts.capture.begin` | Begrenzte Klassifizierung fuer eine externe Aufnahme starten. |
@@ -42,7 +44,12 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | `perfmeter.capture.status` | Capture- und Bundle-Status lesen. |
 | `perfmeter.capture.cancel` | Passenden aktiven Capture abbrechen. |
 | `perfmeter.capture.export` | Bereites Bundle atomar unter dem projektlokalen Bundle-Root exportieren. |
+| `perfmeter.capture.export.request` | Single-Flight-Bundle-Export einreihen und Export-ID sowie Fortschritt zurueckgeben. |
+| `perfmeter.capture.export.status` | Exportphase, Fortschritt, Abbruch, Retry und Artefakt-Autoritaet lesen. |
+| `perfmeter.capture.export.cancel` | Abbruch des passenden aktiven Exports anfordern. |
 | `perfmeter.capture.capabilities` | Schema-, Quota-, Retention-, Screenshot- und Provenance-Capabilities lesen. |
+
+Nutze vorzugsweise `perfmeter.capture.export.request`, polle anschliessend `perfmeter.capture.export.status` und rufe optional `perfmeter.capture.export.cancel` auf. Der Legacy-Befehl `perfmeter.capture.export` blockiert aus Kompatibilitaetsgruenden. Export-Antworten enthalten die generische `external_artifact`-Envelope mit Zuordnung, Autoritaet, Finalisierung, Inhalt, Datenschutz-/Freigaberichtlinie, Groesse sowie Source- und Post-Copy-Hashes. Die read-only Lease-Befehle zeigen den prozesslokalen Konfliktstatus an, ohne eine Lease zu erwerben.
 
 ## Self-Overhead Im Runtime-Status
 

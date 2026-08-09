@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.8.9-1
+
+- Added non-blocking single-flight capture-bundle export request/status/cancel APIs and MCP commands while retaining the blocking compatibility surface.
+- Added additive typed missing-sample/capture-boundary timelines, allocation-free warmed custom metric collection, and backward-compatible timeline/schema readers.
+- Added a generic external-artifact authority/hash/privacy envelope, process-local profiler conflict leases, and an opt-in hosted PlayMode CI matrix.
+
 ## 2026.8.8-1
 
 - Added actionable FTUE continuation workflows for RenderDoc, Memory Profiler, Profile Analyzer, Adaptive Performance, and GraphicsStateCollection instead of terminal installed/available states.

@@ -59,8 +59,10 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - See frame bottleneck context while the game is running.
 - Switch between visual presets, graphs, metric bars, compact layouts, and custom metric rows for different debugging situations.
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
+- Preserve explicit missing-sample and capture-boundary events in additive session/capture JSON timelines instead of turning unavailable timing into numeric zero.
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
 - Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
+- Queue, poll, and cancel single-flight capture-bundle exports while serialization, streaming copy/hash, retention, and atomic commit run off the caller thread; the existing blocking API remains available for compatibility.
 - Optionally capture sensitive memory snapshots through the separate Memory Profiler integration and correlate them with the existing evidence-bundle surface.
 - Inspect dynamic shader GPU-program and graphics-pipeline creation markers with their discovered units and provenance, then correlate an optional GraphicsStateCollection trace with session samples.
 - Use alerts, structured logs, callbacks, and Editor warning cooldowns to catch regressions without watching the overlay all the time.
@@ -69,11 +71,11 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 ## How It Exposes The Data
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
-- **Public C# API**: immutable snapshots for status, metrics, device, camera, integration-neutral render context (with a legacy Render Graph facade), alerts, sessions, and custom metrics.
+- **Public C# API**: immutable snapshots for status, metrics, device, camera, integration-neutral render context (with a legacy Render Graph facade), alerts, sessions, timelines, external artifacts, profiler leases, and custom metrics.
 - **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools with atomic correlated bundles and truthful artifact provenance.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
-- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, search for hotspots, and request/status/cancel/export captures through structured data.
+- **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, search for hotspots, queue/status/cancel exports, and read external-artifact authority plus profiler lease conflicts through structured data.
 
 ## What It Measures
 

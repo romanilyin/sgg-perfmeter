@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 namespace SGG.PerfMeter
 {
@@ -40,7 +39,35 @@ namespace SGG.PerfMeter
 		PathRejected = 4,
 		QuotaExceeded = 5,
 		AuthorityRequired = 6,
-		IoError = 7
+		IoError = 7,
+		Canceled = 8
+	}
+
+	public enum PerfMeterCaptureBundleExportPhase
+	{
+		None = 0,
+		Snapshotting = 1,
+		Queued = 2,
+		Serializing = 3,
+		CopyingExternalArtifact = 4,
+		HashingExternalArtifact = 5,
+		Committing = 6,
+		Retaining = 7,
+		Completed = 8,
+		Canceled = 9,
+		Failed = 10
+	}
+
+	public enum PerfMeterCaptureBundleExportRequestResult
+	{
+		Started = 0,
+		AlreadyActive = 1,
+		NotFound = 2,
+		NotReady = 3,
+		Conflict = 4,
+		InvalidRequest = 5,
+		Unavailable = 6,
+		Failed = 7
 	}
 
 	public readonly struct PerfMeterCaptureBundleOptions
@@ -72,6 +99,45 @@ namespace SGG.PerfMeter
 			string committedRelativePath,
 			string warning,
 			PerfMeterMemorySnapshotState memorySnapshotState = PerfMeterMemorySnapshotState.NotRequested)
+			: this(
+				availability,
+				state,
+				bundleId,
+				captureId,
+				captureState,
+				requestedTool,
+				baselineSampleCount,
+				captureSampleCount,
+				droppedCaptureSampleCount,
+				alertEventCount,
+				alertEventsTruncated,
+				screenshotState,
+				externalArtifactState,
+				committedRelativePath,
+				warning,
+				memorySnapshotState,
+				PerfMeterExternalArtifactSnapshot.Empty)
+		{
+		}
+
+		public PerfMeterCaptureBundleStatusSnapshot(
+			PerfMeterAvailability availability,
+			PerfMeterCaptureBundleState state,
+			string bundleId,
+			string captureId,
+			PerfMeterCaptureState captureState,
+			PerfMeterCaptureTool requestedTool,
+			int baselineSampleCount,
+			int captureSampleCount,
+			int droppedCaptureSampleCount,
+			int alertEventCount,
+			bool alertEventsTruncated,
+			PerfMeterCaptureScreenshotState screenshotState,
+			PerfMeterCaptureExternalArtifactState externalArtifactState,
+			string committedRelativePath,
+			string warning,
+			PerfMeterMemorySnapshotState memorySnapshotState,
+			PerfMeterExternalArtifactSnapshot externalArtifact)
 		{
 			Availability = availability;
 			State = state;
@@ -79,16 +145,17 @@ namespace SGG.PerfMeter
 			CaptureId = captureId ?? string.Empty;
 			CaptureState = captureState;
 			RequestedTool = requestedTool;
-			BaselineSampleCount = Mathf.Max(0, baselineSampleCount);
-			CaptureSampleCount = Mathf.Max(0, captureSampleCount);
-			DroppedCaptureSampleCount = Mathf.Max(0, droppedCaptureSampleCount);
-			AlertEventCount = Mathf.Max(0, alertEventCount);
+			BaselineSampleCount = Math.Max(0, baselineSampleCount);
+			CaptureSampleCount = Math.Max(0, captureSampleCount);
+			DroppedCaptureSampleCount = Math.Max(0, droppedCaptureSampleCount);
+			AlertEventCount = Math.Max(0, alertEventCount);
 			AlertEventsTruncated = alertEventsTruncated;
 			ScreenshotState = screenshotState;
 			ExternalArtifactState = externalArtifactState;
 			CommittedRelativePath = committedRelativePath ?? string.Empty;
 			Warning = warning ?? string.Empty;
 			MemorySnapshotState = memorySnapshotState;
+			ExternalArtifact = NormalizeExternalArtifact(externalArtifact);
 		}
 
 		public static PerfMeterCaptureBundleStatusSnapshot None => new PerfMeterCaptureBundleStatusSnapshot(
@@ -126,6 +193,112 @@ namespace SGG.PerfMeter
 		public string CommittedRelativePath { get; }
 		public string Warning { get; }
 		public PerfMeterMemorySnapshotState MemorySnapshotState { get; }
+		public PerfMeterExternalArtifactSnapshot ExternalArtifact { get; }
+
+		private static PerfMeterExternalArtifactSnapshot NormalizeExternalArtifact(PerfMeterExternalArtifactSnapshot value)
+		{
+			return string.IsNullOrEmpty(value.ArtifactId) &&
+				string.IsNullOrEmpty(value.RequestId) &&
+				value.ArtifactKind == PerfMeterExternalArtifactKind.Unknown &&
+				value.AssociationState == PerfMeterExternalArtifactAssociationState.None
+				? PerfMeterExternalArtifactSnapshot.Empty
+				: value;
+		}
+	}
+
+	public readonly struct PerfMeterCaptureBundleExportStatusSnapshot
+	{
+		public PerfMeterCaptureBundleExportStatusSnapshot(
+			string exportId,
+			string captureId,
+			string bundleId,
+			PerfMeterCaptureBundleExportPhase phase,
+			float progress,
+			long bytesProcessed,
+			long totalBytes,
+			string committedRelativePath,
+			PerfMeterCaptureBundleExportStatus legacyStatus,
+			bool success,
+			bool cancellationRequested,
+			bool isTerminal,
+			bool canRetry,
+			string error,
+			string warning,
+			string startedUtc,
+			string completedUtc,
+			PerfMeterExternalArtifactSnapshot externalArtifact = default)
+		{
+			ExportId = exportId ?? string.Empty;
+			CaptureId = captureId ?? string.Empty;
+			BundleId = bundleId ?? string.Empty;
+			Phase = phase;
+			Progress = float.IsNaN(progress) || float.IsInfinity(progress) ? 0f : Math.Max(0f, Math.Min(1f, progress));
+			BytesProcessed = Math.Max(0L, bytesProcessed);
+			TotalBytes = Math.Max(0L, totalBytes);
+			CommittedRelativePath = committedRelativePath ?? string.Empty;
+			LegacyStatus = legacyStatus;
+			Success = success;
+			CancellationRequested = cancellationRequested;
+			IsTerminal = isTerminal;
+			CanRetry = canRetry;
+			Error = error ?? string.Empty;
+			Warning = warning ?? string.Empty;
+			StartedUtc = startedUtc ?? string.Empty;
+			CompletedUtc = completedUtc ?? string.Empty;
+			ExternalArtifact = NormalizeExternalArtifact(externalArtifact);
+		}
+
+		public static PerfMeterCaptureBundleExportStatusSnapshot None => new PerfMeterCaptureBundleExportStatusSnapshot(
+			string.Empty,
+			string.Empty,
+			string.Empty,
+			PerfMeterCaptureBundleExportPhase.None,
+			0f,
+			0L,
+			0L,
+			string.Empty,
+			PerfMeterCaptureBundleExportStatus.NotFound,
+			false,
+			false,
+			true,
+			false,
+			string.Empty,
+			string.Empty,
+			string.Empty,
+			string.Empty);
+
+		public bool IsActive => !IsTerminal;
+		public bool IsCanceled => Phase == PerfMeterCaptureBundleExportPhase.Canceled || LegacyStatus == PerfMeterCaptureBundleExportStatus.Canceled;
+		public string RelativePath => CommittedRelativePath;
+		public PerfMeterCaptureBundleExportStatus Status => LegacyStatus;
+		public string ExportId { get; }
+		public string CaptureId { get; }
+		public string BundleId { get; }
+		public PerfMeterCaptureBundleExportPhase Phase { get; }
+		public float Progress { get; }
+		public long BytesProcessed { get; }
+		public long TotalBytes { get; }
+		public string CommittedRelativePath { get; }
+		public PerfMeterCaptureBundleExportStatus LegacyStatus { get; }
+		public bool Success { get; }
+		public bool CancellationRequested { get; }
+		public bool IsTerminal { get; }
+		public bool CanRetry { get; }
+		public string Error { get; }
+		public string Warning { get; }
+		public string StartedUtc { get; }
+		public string CompletedUtc { get; }
+		public PerfMeterExternalArtifactSnapshot ExternalArtifact { get; }
+
+		private static PerfMeterExternalArtifactSnapshot NormalizeExternalArtifact(PerfMeterExternalArtifactSnapshot value)
+		{
+			return string.IsNullOrEmpty(value.ArtifactId) &&
+				string.IsNullOrEmpty(value.RequestId) &&
+				value.ArtifactKind == PerfMeterExternalArtifactKind.Unknown &&
+				value.AssociationState == PerfMeterExternalArtifactAssociationState.None
+				? PerfMeterExternalArtifactSnapshot.Empty
+				: value;
+		}
 	}
 
 	public readonly struct PerfMeterCaptureCapabilitiesSnapshot
@@ -174,13 +347,26 @@ namespace SGG.PerfMeter
 
 	public readonly struct PerfMeterCaptureBundleExportResult
 	{
-		public PerfMeterCaptureBundleExportResult(bool success, PerfMeterCaptureBundleExportStatus status, string relativePath, string error, PerfMeterCaptureBundleStatusSnapshot bundle)
+		public PerfMeterCaptureBundleExportResult(
+			bool success,
+			PerfMeterCaptureBundleExportStatus status,
+			string relativePath,
+			string error,
+			PerfMeterCaptureBundleStatusSnapshot bundle)
+			: this(success, status, relativePath, error, bundle, bundle.ExternalArtifact)
+		{
+		}
+
+		public PerfMeterCaptureBundleExportResult(bool success, PerfMeterCaptureBundleExportStatus status, string relativePath, string error, PerfMeterCaptureBundleStatusSnapshot bundle, PerfMeterExternalArtifactSnapshot externalArtifact)
 		{
 			Success = success;
 			Status = status;
 			RelativePath = relativePath ?? string.Empty;
 			Error = error ?? string.Empty;
 			Bundle = bundle;
+			ExternalArtifact = string.IsNullOrEmpty(externalArtifact.ArtifactId) && string.IsNullOrEmpty(externalArtifact.RequestId) && externalArtifact.ArtifactKind == PerfMeterExternalArtifactKind.Unknown
+				? bundle.ExternalArtifact
+				: externalArtifact;
 		}
 
 		public bool Success { get; }
@@ -188,6 +374,7 @@ namespace SGG.PerfMeter
 		public string RelativePath { get; }
 		public string Error { get; }
 		public PerfMeterCaptureBundleStatusSnapshot Bundle { get; }
+		public PerfMeterExternalArtifactSnapshot ExternalArtifact { get; }
 	}
 
 	internal sealed class PerfMeterCaptureBundleCoordinator
@@ -203,6 +390,13 @@ namespace SGG.PerfMeter
 			}
 
 			return _record.CreateStatus();
+		}
+
+		internal PerfMeterCaptureStatusSnapshot GetCaptureStatus(string captureId)
+		{
+			return _record != null && string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal)
+				? _record.CaptureStatus
+				: PerfMeterCaptureStatusSnapshot.NotRunning;
 		}
 
 		internal void Start(PerfMeterCaptureOptions captureOptions, PerfMeterCaptureBundleOptions bundleOptions, PerfMeterCaptureStatusSnapshot captureStatus)
@@ -249,6 +443,7 @@ namespace SGG.PerfMeter
 				artifact,
 				sessionSummary,
 				baselineSamples,
+				PerfMeterSessionTimelineSnapshot.Empty,
 				runtimeStatus,
 				device,
 				camera,
@@ -261,6 +456,7 @@ namespace SGG.PerfMeter
 			PerfMeterMemorySnapshotArtifact artifact,
 			PerfMeterSessionSummarySnapshot sessionSummary,
 			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterSessionTimelineSnapshot sessionTimeline,
 			PerfMeterStatusSnapshot runtimeStatus,
 			PerfMeterDeviceSnapshot device,
 			PerfMeterCameraSnapshot camera,
@@ -280,7 +476,7 @@ namespace SGG.PerfMeter
 			}
 
 			_record.CaptureContext(device, camera, render, renderIntegration, runtimeStatus);
-			_record.Freeze(sessionSummary, baselineSamples, runtimeStatus, Array.Empty<PerfMeterAlertSnapshot>(), false);
+			_record.Freeze(sessionSummary, baselineSamples, sessionTimeline, runtimeStatus, Array.Empty<PerfMeterAlertSnapshot>(), false);
 			_record.MemorySnapshotArtifact = artifact;
 			_record.Warning = string.Empty;
 			switch (memoryStatus.State)
@@ -342,6 +538,83 @@ namespace SGG.PerfMeter
 			_record.AddCaptureSample(sample);
 		}
 
+		internal void RecordCaptureFrame(
+			int collectionFrame,
+			double collectionTimeSeconds,
+			string sceneName,
+			PerfMeterMetricsSnapshot metrics,
+			PerfMeterCustomMetricCollection customMetrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry,
+			string graphicsStateTraceId,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration,
+			PerfMeterStatusSnapshot runtimeStatus)
+		{
+			RecordCaptureFrame(
+				collectionFrame,
+				collectionTimeSeconds,
+				sceneName,
+				metrics,
+				customMetrics,
+				platformTelemetry,
+				graphicsStateTraceId,
+				device,
+				camera,
+				render,
+				renderIntegration,
+				runtimeStatus,
+				_record != null ? _record.CaptureStatus : PerfMeterCaptureStatusSnapshot.NotRunning,
+				out _);
+		}
+
+		internal bool RecordCaptureFrame(
+			int collectionFrame,
+			double collectionTimeSeconds,
+			string sceneName,
+			PerfMeterMetricsSnapshot metrics,
+			PerfMeterCustomMetricCollection customMetrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry,
+			string graphicsStateTraceId,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration,
+			PerfMeterStatusSnapshot runtimeStatus,
+			PerfMeterCaptureStatusSnapshot captureStatus,
+			out int captureSampleIndex)
+		{
+			captureSampleIndex = -1;
+			if (_record == null || _record.State != PerfMeterCaptureBundleState.Recording)
+			{
+				return false;
+			}
+
+			_record.CaptureContext(device, camera, render, renderIntegration, runtimeStatus);
+			return _record.AddCaptureSample(collectionFrame, collectionTimeSeconds, sceneName, metrics, customMetrics, platformTelemetry, graphicsStateTraceId, captureStatus, out captureSampleIndex);
+		}
+
+		internal void RecordMissingCaptureFrame(PerfMeterCaptureStatusSnapshot captureStatus, int frame, double timeSeconds, PerfMeterSessionTimelineReasonFlags reason)
+		{
+			if (_record == null || _record.State != PerfMeterCaptureBundleState.Recording || captureStatus.State != PerfMeterCaptureState.Capturing)
+			{
+				return;
+			}
+
+			_record.AddMissingCaptureFrame(captureStatus, frame, timeSeconds, reason);
+		}
+
+		internal void RecordCaptureBoundary(PerfMeterCaptureStatusSnapshot captureStatus, PerfMeterSessionTimelineCaptureBoundary boundary, int frame, double timeSeconds)
+		{
+			if (_record == null || _record.State != PerfMeterCaptureBundleState.Recording)
+			{
+				return;
+			}
+
+			_record.AddCaptureBoundary(captureStatus, boundary, frame, timeSeconds);
+		}
+
 		internal void ObserveCapture(
 			PerfMeterCaptureStatusSnapshot captureStatus,
 			PerfMeterSessionSummarySnapshot sessionSummary,
@@ -357,6 +630,7 @@ namespace SGG.PerfMeter
 				captureStatus,
 				sessionSummary,
 				baselineSamples,
+				PerfMeterSessionTimelineSnapshot.Empty,
 				runtimeStatus,
 				device,
 				camera,
@@ -370,6 +644,7 @@ namespace SGG.PerfMeter
 			PerfMeterCaptureStatusSnapshot captureStatus,
 			PerfMeterSessionSummarySnapshot sessionSummary,
 			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterSessionTimelineSnapshot sessionTimeline,
 			PerfMeterStatusSnapshot runtimeStatus,
 			PerfMeterDeviceSnapshot device,
 			PerfMeterCameraSnapshot camera,
@@ -390,7 +665,7 @@ namespace SGG.PerfMeter
 			}
 
 			_record.CaptureContext(device, camera, render, renderIntegration, runtimeStatus);
-			_record.Freeze(sessionSummary, baselineSamples, runtimeStatus, alerts, alertsTruncated);
+			_record.Freeze(sessionSummary, baselineSamples, sessionTimeline, runtimeStatus, alerts, alertsTruncated);
 			switch (captureStatus.State)
 			{
 				case PerfMeterCaptureState.Completed:
@@ -421,6 +696,32 @@ namespace SGG.PerfMeter
 					? PerfMeterCaptureScreenshotState.Error
 					: PerfMeterCaptureScreenshotState.Unavailable;
 			}
+		}
+
+		internal void ObserveCapture(
+			PerfMeterCaptureStatusSnapshot captureStatus,
+			PerfMeterSessionSummarySnapshot sessionSummary,
+			PerfMeterSessionSampleSnapshot[] baselineSamples,
+			PerfMeterStatusSnapshot runtimeStatus,
+			PerfMeterDeviceSnapshot device,
+			PerfMeterCameraSnapshot camera,
+			PerfMeterRenderGraphSnapshot render,
+			PerfMeterRenderIntegrationSnapshot renderIntegration,
+			PerfMeterAlertSnapshot[] alerts,
+			bool alertsTruncated)
+		{
+			ObserveCapture(
+				captureStatus,
+				sessionSummary,
+				baselineSamples,
+				PerfMeterSessionTimelineSnapshot.Empty,
+				runtimeStatus,
+				device,
+				camera,
+				render,
+				renderIntegration,
+				alerts,
+				alertsTruncated);
 		}
 
 		internal void CancelActive(string warning)
@@ -490,6 +791,37 @@ namespace SGG.PerfMeter
 			return true;
 		}
 
+		internal bool TryBeginExport(string captureId, string bundleId, string exportId)
+		{
+			if (_record == null ||
+				!string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) ||
+				!string.Equals(_record.BundleId, bundleId, StringComparison.Ordinal) ||
+				string.IsNullOrEmpty(exportId) ||
+				!_record.CreateStatus().IsExportReady)
+			{
+				return false;
+			}
+
+			if (!string.IsNullOrEmpty(_record.ExportId) && !string.Equals(_record.ExportId, exportId, StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			_record.ExportId = exportId;
+			return true;
+		}
+
+		internal void ClearExport(string captureId, string bundleId, string exportId)
+		{
+			if (_record != null &&
+				string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) &&
+				string.Equals(_record.BundleId, bundleId, StringComparison.Ordinal) &&
+				string.Equals(_record.ExportId, exportId, StringComparison.Ordinal))
+			{
+				_record.ExportId = string.Empty;
+			}
+		}
+
 		internal bool TryGetMemorySnapshotArtifact(out PerfMeterMemorySnapshotArtifact artifact)
 		{
 			artifact = _record != null ? _record.MemorySnapshotArtifact : default;
@@ -506,6 +838,17 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal void AppendWarning(string captureId, string bundleId, string warning)
+		{
+			if (_record != null &&
+				!string.IsNullOrEmpty(warning) &&
+				string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) &&
+				string.Equals(_record.BundleId, bundleId, StringComparison.Ordinal))
+			{
+				_record.Warning = CombineWarnings(_record.Warning, warning);
+			}
+		}
+
 		internal void MarkExported(string captureId, string relativePath, PerfMeterCaptureExternalArtifactState externalArtifactState)
 		{
 			if (_record == null || !string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal))
@@ -513,9 +856,31 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			MarkExported(captureId, _record.BundleId, _record.ExportId, relativePath, externalArtifactState, _record.ExternalArtifact);
+		}
+
+		internal bool MarkExported(
+			string captureId,
+			string bundleId,
+			string exportId,
+			string relativePath,
+			PerfMeterCaptureExternalArtifactState externalArtifactState,
+			PerfMeterExternalArtifactSnapshot externalArtifact)
+		{
+			if (_record == null ||
+				!string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) ||
+				!string.Equals(_record.BundleId, bundleId, StringComparison.Ordinal) ||
+				(!string.IsNullOrEmpty(exportId) && !string.Equals(_record.ExportId, exportId, StringComparison.Ordinal)))
+			{
+				return false;
+			}
+
 			_record.State = PerfMeterCaptureBundleState.Exported;
 			_record.CommittedRelativePath = relativePath ?? string.Empty;
 			_record.ExternalArtifactState = externalArtifactState;
+			_record.ExternalArtifact = externalArtifact;
+			_record.ExportId = string.Empty;
+			return true;
 		}
 
 		internal void ResetForTests()
@@ -526,9 +891,12 @@ namespace SGG.PerfMeter
 		private sealed class BundleRecord
 		{
 			private readonly PerfMeterSessionSampleSnapshot[] _captureSamples = new PerfMeterSessionSampleSnapshot[MaxCaptureSamples];
+			private readonly PerfMeterSessionTimelineStore _timeline = new PerfMeterSessionTimelineStore();
 			private int _captureSampleCount;
 			private int _droppedCaptureSampleCount;
 			private bool _contextCaptured;
+			private bool _captureBeginBoundaryRecorded;
+			private bool _captureEndBoundaryRecorded;
 
 			internal BundleRecord(
 				PerfMeterCaptureOptions captureOptions,
@@ -547,6 +915,7 @@ namespace SGG.PerfMeter
 				State = PerfMeterCaptureBundleState.Recording;
 				ScreenshotState = bundleOptions.IncludeScreenshot ? PerfMeterCaptureScreenshotState.Pending : PerfMeterCaptureScreenshotState.NotRequested;
 				StartedUtc = DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+				_timeline.Start(0, MaxCaptureSamples);
 			}
 
 			internal string BundleId { get; }
@@ -558,12 +927,14 @@ namespace SGG.PerfMeter
 			internal PerfMeterCaptureBundleState State { get; set; }
 			internal PerfMeterCaptureScreenshotState ScreenshotState { get; set; }
 			internal PerfMeterCaptureExternalArtifactState ExternalArtifactState { get; set; }
+			internal PerfMeterExternalArtifactSnapshot ExternalArtifact { get; set; } = PerfMeterExternalArtifactSnapshot.Empty;
 			internal PerfMeterMemorySnapshotState MemorySnapshotState { get; set; } = PerfMeterMemorySnapshotState.NotRequested;
 			internal PerfMeterMemorySnapshotArtifact MemorySnapshotArtifact { get; set; }
 			internal bool ScreenshotStarted { get; set; }
 			internal byte[] ScreenshotBytes { get; set; }
 			internal string CommittedRelativePath { get; set; }
 			internal string Warning { get; set; }
+			internal string ExportId { get; set; }
 			internal string StartedUtc { get; }
 			internal string CompletedUtc { get; private set; }
 			internal PerfMeterDeviceSnapshot Device { get; private set; }
@@ -572,6 +943,7 @@ namespace SGG.PerfMeter
 			internal PerfMeterRenderIntegrationSnapshot RenderIntegration { get; private set; }
 			internal PerfMeterStatusSnapshot RuntimeStatus { get; private set; }
 			internal PerfMeterSessionSummarySnapshot SessionSummary { get; private set; }
+			internal PerfMeterSessionTimelineSnapshot SessionTimeline { get; private set; } = PerfMeterSessionTimelineSnapshot.Empty;
 			internal PerfMeterSessionSampleSnapshot[] BaselineSamples { get; private set; } = Array.Empty<PerfMeterSessionSampleSnapshot>();
 			internal PerfMeterAlertSnapshot[] AlertEvents { get; private set; } = Array.Empty<PerfMeterAlertSnapshot>();
 			internal bool AlertEventsTruncated { get; private set; }
@@ -605,10 +977,95 @@ namespace SGG.PerfMeter
 					return;
 				}
 
+				int sampleIndex = _captureSampleCount;
 				_captureSamples[_captureSampleCount++] = CopySample(sample);
+				_timeline.AddValidCapture(
+					sample.CollectionFrame,
+					sample.CollectionTimeSeconds,
+					CaptureOptions.CaptureId,
+					BundleId,
+					CaptureStatus.CompletedCaptureFrames + 1,
+					CaptureStatus.RequestedCaptureFrames,
+					sampleIndex);
 			}
 
-			internal void Freeze(PerfMeterSessionSummarySnapshot sessionSummary, PerfMeterSessionSampleSnapshot[] baselineSamples, PerfMeterStatusSnapshot runtimeStatus, PerfMeterAlertSnapshot[] alerts, bool alertsTruncated)
+			internal bool AddCaptureSample(
+				int collectionFrame,
+				double collectionTimeSeconds,
+				string sceneName,
+				PerfMeterMetricsSnapshot metrics,
+				PerfMeterCustomMetricCollection customMetrics,
+				PerfMeterPlatformTelemetrySnapshot platformTelemetry,
+				string graphicsStateTraceId,
+				PerfMeterCaptureStatusSnapshot captureStatus,
+				out int captureSampleIndex)
+			{
+				captureSampleIndex = -1;
+				if (_captureSampleCount >= _captureSamples.Length)
+				{
+					_droppedCaptureSampleCount++;
+					return false;
+				}
+
+				PerfMeterCustomMetricSnapshot[] customMetricCopy = CopyCustomMetrics(customMetrics);
+				captureSampleIndex = _captureSampleCount;
+				_captureSamples[_captureSampleCount++] = new PerfMeterSessionSampleSnapshot(collectionFrame, collectionTimeSeconds, sceneName, metrics, customMetricCopy, platformTelemetry, graphicsStateTraceId);
+				_timeline.AddValidCapture(
+					collectionFrame,
+					collectionTimeSeconds,
+					captureStatus.CaptureId,
+					BundleId,
+					captureStatus.CompletedCaptureFrames + 1,
+					captureStatus.RequestedCaptureFrames,
+					captureSampleIndex);
+				return true;
+			}
+
+			internal void AddMissingCaptureFrame(PerfMeterCaptureStatusSnapshot captureStatus, int frame, double timeSeconds, PerfMeterSessionTimelineReasonFlags reason)
+			{
+				_timeline.AddMissingCapture(
+					frame,
+					frame,
+					timeSeconds,
+					timeSeconds,
+					captureStatus.CaptureId,
+					BundleId,
+					captureStatus.CompletedCaptureFrames + 1,
+					captureStatus.RequestedCaptureFrames,
+					reason);
+			}
+
+			internal void AddCaptureBoundary(PerfMeterCaptureStatusSnapshot captureStatus, PerfMeterSessionTimelineCaptureBoundary boundary, int frame, double timeSeconds)
+			{
+				if (boundary == PerfMeterSessionTimelineCaptureBoundary.Begin && _captureBeginBoundaryRecorded ||
+					boundary == PerfMeterSessionTimelineCaptureBoundary.End && _captureEndBoundaryRecorded)
+				{
+					return;
+				}
+
+				_timeline.AddCaptureBoundary(
+					frame,
+					timeSeconds,
+					captureStatus.CaptureId,
+					BundleId,
+					boundary,
+					PerfMeterSessionTimelineUtility.GetCapturePhase(captureStatus.State),
+					captureStatus.RequestedCaptureFrames,
+					captureStatus.State == PerfMeterCaptureState.Unavailable || captureStatus.State == PerfMeterCaptureState.Error
+						? PerfMeterSessionTimelineReasonFlags.CaptureFrameMissing
+						: PerfMeterSessionTimelineReasonFlags.None);
+
+				if (boundary == PerfMeterSessionTimelineCaptureBoundary.Begin)
+				{
+					_captureBeginBoundaryRecorded = true;
+				}
+				else if (boundary == PerfMeterSessionTimelineCaptureBoundary.End)
+				{
+					_captureEndBoundaryRecorded = true;
+				}
+			}
+
+			internal void Freeze(PerfMeterSessionSummarySnapshot sessionSummary, PerfMeterSessionSampleSnapshot[] baselineSamples, PerfMeterSessionTimelineSnapshot sessionTimeline, PerfMeterStatusSnapshot runtimeStatus, PerfMeterAlertSnapshot[] alerts, bool alertsTruncated)
 			{
 				if (!string.IsNullOrEmpty(CompletedUtc))
 				{
@@ -617,6 +1074,7 @@ namespace SGG.PerfMeter
 
 				CompletedUtc = DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 				SessionSummary = sessionSummary;
+				SessionTimeline = sessionTimeline;
 				BaselineSamples = CopySamples(baselineSamples);
 				RuntimeStatus = runtimeStatus;
 				AlertEvents = alerts ?? Array.Empty<PerfMeterAlertSnapshot>();
@@ -644,7 +1102,8 @@ namespace SGG.PerfMeter
 					ExternalArtifactState,
 					CommittedRelativePath,
 					CombineWarnings(CaptureStatus.Warning, Warning),
-					MemorySnapshotState);
+					MemorySnapshotState,
+					ExternalArtifact);
 			}
 
 			internal PerfMeterCaptureBundleExportData CreateExportData()
@@ -663,6 +1122,8 @@ namespace SGG.PerfMeter
 					StartedUtc,
 					CompletedUtc,
 					SessionSummary,
+					SessionTimeline,
+					_timeline.GetSnapshotCopy(),
 					CopySamples(BaselineSamples),
 					captureSamples,
 					ConfiguredSettings,
@@ -685,6 +1146,18 @@ namespace SGG.PerfMeter
 			return new PerfMeterSessionSampleSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, sample.Metrics, customMetrics, sample.PlatformTelemetry, sample.GraphicsStateTraceId);
 		}
 
+		private static PerfMeterCustomMetricSnapshot[] CopyCustomMetrics(PerfMeterCustomMetricCollection customMetrics)
+		{
+			if (customMetrics.Count == 0)
+			{
+				return Array.Empty<PerfMeterCustomMetricSnapshot>();
+			}
+
+			PerfMeterCustomMetricSnapshot[] copy = new PerfMeterCustomMetricSnapshot[customMetrics.Count];
+			Array.Copy(customMetrics.Buffer, copy, customMetrics.Count);
+			return copy;
+		}
+
 		private static PerfMeterSessionSampleSnapshot[] CopySamples(PerfMeterSessionSampleSnapshot[] samples)
 		{
 			if (samples == null || samples.Length == 0)
@@ -701,17 +1174,22 @@ namespace SGG.PerfMeter
 			return copy;
 		}
 
-		private static string CombineWarnings(string first, string second)
+		internal static string CombineWarnings(string first, string second)
 		{
 			if (string.IsNullOrEmpty(first))
 			{
 				return second ?? string.Empty;
 			}
 
-			return string.IsNullOrEmpty(second) ? first : first + " " + second;
+			if (string.IsNullOrEmpty(second) || first.IndexOf(second, StringComparison.Ordinal) >= 0)
+			{
+				return first;
+			}
+
+			return first + " " + second;
 		}
 
-		private static PerfMeterCaptureStatusSnapshot MemoryCaptureStatus(PerfMeterMemorySnapshotStatusSnapshot status)
+		internal static PerfMeterCaptureStatusSnapshot MemoryCaptureStatus(PerfMeterMemorySnapshotStatusSnapshot status)
 		{
 			PerfMeterCaptureState state;
 			switch (status.State)
@@ -776,6 +1254,8 @@ namespace SGG.PerfMeter
 				startedUtc,
 				completedUtc,
 				sessionSummary,
+				PerfMeterSessionTimelineSnapshot.Empty,
+				PerfMeterSessionTimelineSnapshot.Empty,
 				baselineSamples,
 				captureSamples,
 				configuredSettings,
@@ -799,6 +1279,8 @@ namespace SGG.PerfMeter
 			string startedUtc,
 			string completedUtc,
 			PerfMeterSessionSummarySnapshot sessionSummary,
+			PerfMeterSessionTimelineSnapshot sessionTimeline,
+			PerfMeterSessionTimelineSnapshot captureTimeline,
 			PerfMeterSessionSampleSnapshot[] baselineSamples,
 			PerfMeterSessionSampleSnapshot[] captureSamples,
 			PerfMeterSettingsSnapshot configuredSettings,
@@ -818,13 +1300,15 @@ namespace SGG.PerfMeter
 			BundleOptions = bundleOptions;
 			StartedUtc = startedUtc ?? string.Empty;
 			CompletedUtc = completedUtc ?? string.Empty;
-			SessionSummary = sessionSummary;
+			SessionSummary = CopySummary(sessionSummary);
+			SessionTimeline = CopyTimeline(sessionTimeline);
+			CaptureTimeline = CopyTimeline(captureTimeline);
 			BaselineSamples = baselineSamples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			CaptureSamples = captureSamples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			ConfiguredSettings = configuredSettings;
 			EffectiveSettings = effectiveSettings;
 			RuntimeStatus = runtimeStatus;
-			Device = device;
+			Device = CopyDevice(device);
 			Camera = camera;
 			Render = render;
 			RenderIntegration = renderIntegration;
@@ -840,6 +1324,8 @@ namespace SGG.PerfMeter
 		internal string StartedUtc { get; }
 		internal string CompletedUtc { get; }
 		internal PerfMeterSessionSummarySnapshot SessionSummary { get; }
+		internal PerfMeterSessionTimelineSnapshot SessionTimeline { get; }
+		internal PerfMeterSessionTimelineSnapshot CaptureTimeline { get; }
 		internal PerfMeterSessionSampleSnapshot[] BaselineSamples { get; }
 		internal PerfMeterSessionSampleSnapshot[] CaptureSamples { get; }
 		internal PerfMeterSettingsSnapshot ConfiguredSettings { get; }
@@ -853,5 +1339,102 @@ namespace SGG.PerfMeter
 		internal bool AlertEventsTruncated { get; }
 		internal byte[] ScreenshotBytes { get; }
 		internal PerfMeterMemorySnapshotArtifact MemorySnapshotArtifact { get; }
+
+		private static PerfMeterSessionTimelineSnapshot CopyTimeline(PerfMeterSessionTimelineSnapshot timeline)
+		{
+			return new PerfMeterSessionTimelineSnapshot(
+				timeline.Events ?? Array.Empty<PerfMeterSessionTimelineEventSnapshot>(),
+				timeline.DroppedEventCount,
+				timeline.IsComplete);
+		}
+
+		private static PerfMeterDeviceSnapshot CopyDevice(PerfMeterDeviceSnapshot device)
+		{
+			PerfMeterDisplaySnapshot[] displays = device.Displays == null || device.Displays.Length == 0
+				? Array.Empty<PerfMeterDisplaySnapshot>()
+				: (PerfMeterDisplaySnapshot[])device.Displays.Clone();
+			return new PerfMeterDeviceSnapshot(
+				device.UnityVersion,
+				device.ApplicationPlatform,
+				device.IsEditor,
+				device.OperatingSystem,
+				device.DeviceModel,
+				device.DeviceType,
+				device.ProcessorType,
+				device.ProcessorCount,
+				device.ProcessorFrequencyMhz,
+				device.SystemMemorySizeMb,
+				device.GraphicsDeviceType,
+				device.GraphicsDeviceName,
+				device.GraphicsDeviceVendor,
+				device.GraphicsDeviceVersion,
+				device.GraphicsMemorySizeMb,
+				device.GraphicsShaderLevel,
+				device.GraphicsMultiThreaded,
+				device.MaxTextureSize,
+				device.SupportsComputeShaders,
+				device.SupportsAsyncGpuReadback,
+				device.SupportsInstancing,
+				device.SupportsGraphicsFence,
+				device.ScreenWidth,
+				device.ScreenHeight,
+				device.CurrentResolutionWidth,
+				device.CurrentResolutionHeight,
+				device.CurrentRefreshRateNumerator,
+				device.CurrentRefreshRateDenominator,
+				device.CurrentRefreshRateHz,
+				device.Dpi,
+				device.FullScreen,
+				device.FullScreenMode,
+				device.MainWindowPositionAvailable,
+				device.MainWindowPositionX,
+				device.MainWindowPositionY,
+				device.DisplayLayoutAvailable,
+				device.DisplayLayoutWarning,
+				displays,
+				device.RenderPipeline,
+				device.RenderPipelineAssetName,
+				device.RenderPipelineAssetType,
+				device.RenderPipelineRuntimeType);
+		}
+
+		private static PerfMeterSessionSummarySnapshot CopySummary(PerfMeterSessionSummarySnapshot summary)
+		{
+			return new PerfMeterSessionSummarySnapshot(
+				summary.State,
+				summary.Options,
+				summary.SampleCount,
+				summary.DroppedSampleCount,
+				summary.FirstFrame,
+				summary.LastFrame,
+				summary.StartTimeSeconds,
+				summary.StopTimeSeconds,
+				summary.DurationSeconds,
+				summary.AverageFrameTimeMs,
+				summary.MinFrameTimeMs,
+				summary.MaxFrameTimeMs,
+				summary.AverageFps,
+				summary.MinFps,
+				summary.MaxFps,
+				summary.GpuBoundSampleCount,
+				summary.CpuMainThreadBoundSampleCount,
+				summary.CpuRenderThreadBoundSampleCount,
+				summary.PresentLimitedSampleCount,
+				summary.FrameSpikeCount,
+				summary.SevereFrameSpikeCount,
+				summary.Warning,
+				CopyDevice(summary.Device),
+				summary.Camera,
+				summary.ConfiguredSettings,
+				summary.EffectiveSettings,
+				summary.StartSceneName,
+				summary.LastSceneName,
+				summary.WholeRun,
+				summary.CurrentScene,
+				summary.FocusLossCount,
+				summary.PauseCount,
+				summary.FocusPausedDurationSeconds,
+				summary.SessionId);
+		}
 	}
 }

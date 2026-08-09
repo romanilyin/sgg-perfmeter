@@ -22,6 +22,8 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | `perfmeter.runtime.mode.set` | Basculer vers `Stopped`, `Background`, `Overlay` ou `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Lire les dernieres metriques, y compris les metriques personnalisees. |
 | `perfmeter.profiler.capabilities` | Lire les capabilities et la provenance de resolution des metriques Profiler en cache sans demarrer le runtime ni la discovery. |
+| `perfmeter.profiler.lease.capabilities` | Lire les ressources de profiler lease locales au processus et la semantique de reload. |
+| `perfmeter.profiler.lease.status` | Lire l'etat actuel ou correspondant du profiler lease local au processus. |
 | `perfmeter.alerts.latest` | Lire les alertes actives, les compteurs et l'etat des avertissements Editor. |
 | `perfmeter.alerts.clear` | Effacer les alertes actives, les compteurs et l'etat de cooldown. |
 | `perfmeter.alerts.capture.begin` | Demarrer la classification bornee d'une capture externe. |
@@ -42,7 +44,12 @@ L'objectif est une sortie JSON structuree pour les agents, sans analyse de captu
 | `perfmeter.capture.status` | Lire l'etat de la capture et du bundle. |
 | `perfmeter.capture.cancel` | Annuler la capture active correspondante. |
 | `perfmeter.capture.export` | Exporter atomiquement un bundle pret sous la racine locale du projet. |
+| `perfmeter.capture.export.request` | Mettre en file un export single-flight et renvoyer son export ID et sa progression. |
+| `perfmeter.capture.export.status` | Lire phase, progression, annulation, retry et autorite de l'artefact. |
+| `perfmeter.capture.export.cancel` | Demander l'annulation de l'export actif correspondant. |
 | `perfmeter.capture.capabilities` | Lire les capacites de schema, quota, retention, screenshot et provenance. |
+
+Utilisez de preference `perfmeter.capture.export.request`, puis interrogez `perfmeter.capture.export.status` et appelez eventuellement `perfmeter.capture.export.cancel`. La commande legacy `perfmeter.capture.export` est bloquante pour la compatibilite. Les reponses incluent l'enveloppe generique `external_artifact` avec association, autorite, finalisation, contenu, politique de confidentialite/partage, taille et hashes source et post-copie. Les commandes read-only de lease exposent l'etat de conflit local au processus sans acquerir de lease.
 
 ## Self-Overhead Dans Le Status Runtime
 

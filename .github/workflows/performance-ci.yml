@@ -9,6 +9,7 @@ on:
       - "Assets/Scripts/SGG.PerfMeter/Runtime/**"
       - "Assets/Scripts/SGG.PerfMeter/Editor/**"
       - "Assets/Scripts/SGG.PerfMeter/Tests/EditMode/**"
+      - "Assets/Scripts/SGG.PerfMeter/Tests/PlayMode/**"
       - "Assets/Scripts/SGG.PerfMeter/Tests/Performance/**"
       - "Assets/Scripts/SGG.PerfMeter/package.json"
       - "Packages/**"
@@ -21,6 +22,7 @@ on:
       - "Assets/Scripts/SGG.PerfMeter/Runtime/**"
       - "Assets/Scripts/SGG.PerfMeter/Editor/**"
       - "Assets/Scripts/SGG.PerfMeter/Tests/EditMode/**"
+      - "Assets/Scripts/SGG.PerfMeter/Tests/PlayMode/**"
       - "Assets/Scripts/SGG.PerfMeter/Tests/Performance/**"
       - "Assets/Scripts/SGG.PerfMeter/package.json"
       - "Packages/**"
@@ -31,6 +33,69 @@ permissions:
   contents: read
 
 jobs:
+  playmode:
+    name: PlayMode lifecycle (${{ matrix.unityVersion }})
+    # Enable after the repository has GameCI-compatible Unity credentials.
+    # Fork pull requests cannot access Unity license secrets and are explicitly skipped.
+    if: vars.PERFMETER_UNITY_CI_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        unityVersion:
+          - "6000.4.12f1"
+          - "6000.5.6f1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Run PerfMeter PlayMode lifecycle tests
+        uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: playmode
+          artifactsPath: TestResults
+          customParameters: >-
+            -assemblyNames SGG.PerfMeter.Tests.PlayMode
+            -testResults TestResults/unity-playmode-${{ matrix.unityVersion }}.xml
+            -logFile TestResults/unity-playmode-${{ matrix.unityVersion }}.log
+
+      - name: Validate PlayMode result artifact
+        if: always()
+        shell: bash
+        env:
+          UNITY_VERSION: ${{ matrix.unityVersion }}
+        run: |
+          python3 <<'PY'
+          import os
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          path = pathlib.Path("TestResults") / f"unity-playmode-{os.environ['UNITY_VERSION']}.xml"
+          if not path.is_file() or path.stat().st_size == 0:
+              raise SystemExit(f"Required PlayMode result is missing or empty: {path}")
+          if not ET.parse(path).getroot().findall(".//test-case"):
+              raise SystemExit(f"PlayMode result has no test cases: {path}")
+          PY
+
+      - name: Upload PlayMode artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: perfmeter-playmode-${{ matrix.unityVersion }}
+          if-no-files-found: error
+          path: |
+            TestResults/**/*.xml
+            TestResults/**/*.log
+            artifacts/**/*.xml
+            artifacts/**/*.log
+            Logs/**/*.log
+
   performance:
     name: EditMode performance (${{ matrix.unityVersion }})
     # Enable only after the repository has GameCI-compatible Unity credentials.

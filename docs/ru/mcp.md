@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.mode.set` | Переключить `Stopped`, `Background`, `Overlay` или `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Прочитать latest metrics, включая пользовательские метрики. |
 | `perfmeter.profiler.capabilities` | Прочитать кэшированные capabilities и provenance Profiler-метрик без запуска runtime и discovery. |
+| `perfmeter.profiler.lease.capabilities` | Прочитать process-local ресурсы profiler lease и семантику reload. |
+| `perfmeter.profiler.lease.status` | Прочитать текущее или соответствующее process-local состояние profiler lease. |
 | `perfmeter.alerts.latest` | Прочитать активные alerts/оповещения, счетчики и состояние Editor warnings. |
 | `perfmeter.alerts.clear` | Очистить активные alerts/оповещения, счетчики и состояние cooldown. |
 | `perfmeter.alerts.capture.begin` | Начать ограниченную классификацию внешнего capture. |
@@ -42,7 +44,12 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.capture.status` | Прочитать состояние capture и bundle. |
 | `perfmeter.capture.cancel` | Отменить matching active capture. |
 | `perfmeter.capture.export` | Атомарно экспортировать ready bundle в project-local bundle root. |
+| `perfmeter.capture.export.request` | Поставить single-flight export в очередь и вернуть export ID и прогресс. |
+| `perfmeter.capture.export.status` | Прочитать фазу, прогресс, отмену, retry и authority артефакта. |
+| `perfmeter.capture.export.cancel` | Запросить отмену соответствующего активного export. |
 | `perfmeter.capture.capabilities` | Прочитать schema, quota, retention, screenshot и provenance capabilities. |
+
+Предпочитайте `perfmeter.capture.export.request`, затем опрашивайте `perfmeter.capture.export.status` и при необходимости вызывайте `perfmeter.capture.export.cancel`. Legacy-команда `perfmeter.capture.export` блокируется для совместимости. Ответы включают универсальный envelope `external_artifact` с association, authority, finalization, content, политикой privacy/share, размером, а также source- и post-copy-хешами. Read-only команды lease предоставляют process-local состояние конфликтов без получения lease.
 
 ## Self-overhead в runtime status
 

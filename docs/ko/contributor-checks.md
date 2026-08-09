@@ -26,3 +26,5 @@ maintainer-only release gate 또는 device smoke test에는 현재 project-maint
 ## Performance CI
 
 `.github/workflows/performance-ci.yml`은 동일 repository의 pull request, `main` push 및 manual run에서 Unity `6000.4.12f1`과 `6000.5.6f1`의 full EditMode correctness suite와 isolated performance test를 실행합니다. GitHub가 fork pull request에 Unity license secret을 제공하지 않으므로 해당 job은 skip됩니다. CI는 ephemeral checkout에만 `com.unity.test-framework.performance` `3.5.0`을 추가하며 package에는 hard dependency가 남지 않습니다. versioned threshold는 `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`에 있고 CI는 raw NUnit XML, converted JUnit XML, performance JSON과 log를 upload합니다.
+
+같은 workflow는 repository variable `PERFMETER_UNITY_CI_ENABLED`가 `true`이고 GameCI-compatible Unity credentials가 구성된 경우 두 Unity version에서 별도의 full PlayMode lifecycle job을 실행합니다. `Tests/PlayMode/**` 변경은 workflow를 trigger하며, credentials가 비활성화되거나 fork PR인 경우 명시적으로 skipped job이 됩니다.

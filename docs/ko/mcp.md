@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.mode.set` | `Stopped`, `Background`, `Overlay`, `OverdrawDiagnostic` 중 하나로 전환합니다. |
 | `perfmeter.metrics.latest` | custom metrics를 포함한 latest metrics를 읽습니다. |
 | `perfmeter.profiler.capabilities` | cache된 Profiler metric capabilities와 provenance를 읽으며 runtime이나 discovery를 시작하지 않습니다. |
+| `perfmeter.profiler.lease.capabilities` | process-local profiler lease resource와 reload semantics를 읽습니다. |
+| `perfmeter.profiler.lease.status` | current 또는 matching process-local profiler lease state를 읽습니다. |
 | `perfmeter.alerts.latest` | active alerts, counters, Editor warning state를 읽습니다. |
 | `perfmeter.alerts.clear` | active alerts, counters, cooldown state를 지웁니다. |
 | `perfmeter.alerts.capture.begin` | 외부 capture의 bounded classification을 시작합니다. |
@@ -42,7 +44,12 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.capture.status` | capture와 bundle state를 읽습니다. |
 | `perfmeter.capture.cancel` | 일치하는 active capture를 cancel합니다. |
 | `perfmeter.capture.export` | ready bundle을 project-local root 아래에 atomic export합니다. |
+| `perfmeter.capture.export.request` | single-flight export를 queue하고 export ID와 progress를 반환합니다. |
+| `perfmeter.capture.export.status` | phase, progress, cancellation, retry 및 artifact authority를 읽습니다. |
+| `perfmeter.capture.export.cancel` | matching active export의 cancellation을 요청합니다. |
 | `perfmeter.capture.capabilities` | schema, quota, retention, screenshot, provenance capabilities를 읽습니다. |
+
+`perfmeter.capture.export.request`를 우선 사용한 다음 `perfmeter.capture.export.status`를 polling하고, 필요하면 `perfmeter.capture.export.cancel`을 호출합니다. Legacy `perfmeter.capture.export` command는 호환성을 위해 blocking 방식으로 동작합니다. Export response에는 association, authority, finalization, content, privacy/share policy, size, source hash 및 post-copy hash를 포함하는 범용 `external_artifact` envelope가 들어 있습니다. Read-only lease command는 lease를 획득하지 않고 process-local conflict state를 노출합니다.
 
 ## Runtime Self-Overhead Payload
 

@@ -195,6 +195,10 @@ The bundle overload keeps capture samples separate from baseline session evidenc
 
 A caller-supplied project-local `.rdc` or `.wpix` path can be copied and hashed as an observed artifact, but Unity cannot authenticate its tool identity or association. It is never marked authoritative; `requireAuthoritativeExternalArtifact: true` fails explicitly. Absolute paths, traversal, reparse points, oversized data, and external files outside the project are rejected. Use `PerformanceMeter.GetCaptureCapabilities()` to inspect current schema, quota, retention, and screenshot limits.
 
+Capture-bundle export also has a non-blocking single-flight API: `RequestCaptureBundleExport(..., out exportId)`, `GetCaptureBundleExportStatus(exportId)`, and `CancelCaptureBundleExport(exportId)`. Status reports phase, progress, bytes, cancellation, retry, commit path, and the generic external-artifact envelope. The existing `ExportCaptureBundle(...)` API remains a blocking compatibility wrapper, while serialization, file I/O, hashing, retention, and atomic commit run on a worker thread.
+
+Session and capture JSON add typed timeline events for missing samples and capture boundaries. Existing schema versions, sample arrays, and CSV columns remain compatible; legacy or unknown timeline payloads are read without inventing gaps. Custom metric providers use a cached provider snapshot and reusable core-owned buffer on the warmed collection path, with copies only for retained samples, exports, and public snapshots. Profiler coordination is process-local through `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)`, and `ReleaseProfilerLease(...)`; held leases do not survive domain reload.
+
 ## Custom Metrics
 
 ```csharp

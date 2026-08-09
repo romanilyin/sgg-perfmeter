@@ -26,3 +26,5 @@ git diff --check
 ## Performance CI
 
 `.github/workflows/performance-ci.yml` 会在同一 repository 的 pull request、推送到 `main` 以及 manual run 中，使用 Unity `6000.4.12f1` 和 `6000.5.6f1` 运行完整 EditMode correctness suite 与 isolated performance tests。GitHub 不会向 fork pull request 提供 Unity license secrets，因此该 job 会跳过。CI 只在 ephemeral checkout 中注入 `com.unity.test-framework.performance` `3.5.0`，package 不保留 hard dependency。versioned threshold 位于 `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`；CI 会上传 raw NUnit XML、converted JUnit XML、performance JSON 和 logs。
+
+同一 workflow 会在 repository variable `PERFMETER_UNITY_CI_ENABLED` 为 `true` 且配置了 GameCI-compatible Unity credentials 时，针对两个 Unity version 运行单独的 full PlayMode lifecycle job。`Tests/PlayMode/**` 下的更改会 trigger workflow；credentials 未启用或 fork PR 会得到明确的 skipped job。

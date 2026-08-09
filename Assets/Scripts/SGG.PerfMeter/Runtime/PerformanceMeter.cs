@@ -27,7 +27,7 @@ namespace SGG.PerfMeter
 		public static PerfMeterCustomMetricSnapshot[] GetCustomMetrics()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			return runtime != null ? runtime.GetLatestCustomMetrics() : PerfMeterCustomMetricRegistry.Collect();
+			return runtime != null ? runtime.GetLatestCustomMetrics() : PerfMeterCustomMetricRegistry.Copy(PerfMeterCustomMetricRegistry.Collect());
 		}
 
 		public static void RegisterPlatformTelemetryProvider(IPerfMeterPlatformTelemetryProvider provider)
@@ -44,6 +44,36 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null ? runtime.LatestPlatformTelemetry : PerfMeterPlatformTelemetryRegistry.Collect();
+		}
+
+		public static PerfMeterProfilerLeaseCapabilitiesSnapshot GetProfilerLeaseCapabilities()
+		{
+			return PerfMeterRuntime.GetProfilerLeaseCapabilities();
+		}
+
+		public static PerfMeterProfilerLeaseStatusSnapshot GetProfilerLeaseStatus(string leaseId = null)
+		{
+			return PerfMeterRuntime.GetProfilerLeaseStatus(leaseId);
+		}
+
+		public static PerfMeterProfilerLeaseAcquireResult TryAcquireProfilerLease(
+			PerfMeterProfilerLeaseRequestOptions options,
+			out PerfMeterProfilerLeaseStatusSnapshot status)
+		{
+			return PerfMeterRuntime.TryAcquireProfilerLease(options, out status);
+		}
+
+		public static PerfMeterProfilerLeaseReleaseResult ReleaseProfilerLease(
+			string leaseId,
+			string ownerId,
+			out PerfMeterProfilerLeaseStatusSnapshot status)
+		{
+			return PerfMeterRuntime.ReleaseProfilerLease(leaseId, ownerId, out status);
+		}
+
+		public static PerfMeterProfilerLeaseReleaseResult ReleaseProfilerLease(string leaseId, string ownerId)
+		{
+			return ReleaseProfilerLease(leaseId, ownerId, out _);
 		}
 
 		public static void RegisterMemorySnapshotBackend(IPerfMeterMemorySnapshotBackend backend)
@@ -295,6 +325,36 @@ namespace SGG.PerfMeter
 		public static PerfMeterCaptureBundleStatusSnapshot GetCaptureBundleStatus(string captureId = null)
 		{
 			return PerfMeterRuntime.CaptureBundleStatus(captureId);
+		}
+
+		public static PerfMeterCaptureBundleExportRequestResult RequestCaptureBundleExport(
+			string captureId,
+			out string exportId,
+			string path = null,
+			string externalArtifactPath = null,
+			bool requireAuthoritativeExternalArtifact = false)
+		{
+			return PerfMeterRuntime.RequestCaptureBundleExport(captureId, path, externalArtifactPath, requireAuthoritativeExternalArtifact, out exportId);
+		}
+
+		public static PerfMeterCaptureBundleExportRequestResult RequestCaptureBundleExport(
+			string captureId,
+			string path,
+			string externalArtifactPath,
+			bool requireAuthoritativeExternalArtifact,
+			out string exportId)
+		{
+			return PerfMeterRuntime.RequestCaptureBundleExport(captureId, path, externalArtifactPath, requireAuthoritativeExternalArtifact, out exportId);
+		}
+
+		public static PerfMeterCaptureBundleExportStatusSnapshot GetCaptureBundleExportStatus(string exportId = null)
+		{
+			return PerfMeterRuntime.CaptureBundleExportStatus(exportId);
+		}
+
+		public static bool CancelCaptureBundleExport(string exportId)
+		{
+			return PerfMeterRuntime.CancelCaptureBundleExport(exportId);
 		}
 
 		public static PerfMeterCaptureCapabilitiesSnapshot GetCaptureCapabilities()
@@ -570,12 +630,19 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
 		}
 
+		public static PerfMeterSessionTimelineSnapshot GetSessionTimeline()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.GetSessionTimeline() : PerfMeterSessionTimelineSnapshot.Empty;
+		}
+
 		public static bool ExportSessionJson(string path)
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
 			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
-			return PerfMeterSessionExporter.ExportJson(path, summary, samples, GetStatus());
+			PerfMeterSessionTimelineSnapshot timeline = runtime != null ? runtime.GetSessionTimeline() : PerfMeterSessionTimelineSnapshot.Empty;
+			return PerfMeterSessionExporter.ExportJson(path, summary, samples, timeline, GetStatus());
 		}
 
 		public static bool ExportSessionCsv(string path)
@@ -966,11 +1033,24 @@ namespace SGG.PerfMeter
 		}
 	}
 
+	internal readonly struct PerfMeterCustomMetricCollection
+	{
+		internal PerfMeterCustomMetricCollection(PerfMeterCustomMetricSnapshot[] buffer, int count)
+		{
+			Buffer = buffer ?? System.Array.Empty<PerfMeterCustomMetricSnapshot>();
+			Count = count < 0 ? 0 : count > Buffer.Length ? Buffer.Length : count;
+		}
+
+		internal PerfMeterCustomMetricSnapshot[] Buffer { get; }
+		internal int Count { get; }
+	}
+
 	internal static class PerfMeterCustomMetricRegistry
 	{
 		private static readonly System.Collections.Generic.List<IPerfMeterCustomMetricProvider> Providers = new System.Collections.Generic.List<IPerfMeterCustomMetricProvider>();
 		private static readonly object SyncRoot = new object();
-		private static IPerfMeterCustomMetricProvider[] _providerSnapshot = System.Array.Empty<IPerfMeterCustomMetricProvider>();
+		private static ProviderSlot[] _providerSnapshot = System.Array.Empty<ProviderSlot>();
+		private static PerfMeterCustomMetricSnapshot[] _collectionBuffer = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 
 		internal static void Register(IPerfMeterCustomMetricProvider provider)
 		{
@@ -985,13 +1065,14 @@ namespace SGG.PerfMeter
 				if (!Providers.Contains(provider))
 				{
 					Providers.Add(provider);
-					_providerSnapshot = Providers.ToArray();
+					PublishProviderSnapshotLocked();
 					changed = true;
 				}
 			}
 
 			if (changed)
 			{
+				PerfMeterRuntime.InvalidateCustomMetricCache();
 				PerfMeterProfilerInstrumentation.RecordCustomMetricCount(0);
 			}
 		}
@@ -1008,13 +1089,14 @@ namespace SGG.PerfMeter
 			{
 				if (Providers.Remove(provider))
 				{
-					_providerSnapshot = Providers.ToArray();
+					PublishProviderSnapshotLocked();
 					changed = true;
 				}
 			}
 
 			if (changed)
 			{
+				PerfMeterRuntime.InvalidateCustomMetricCache();
 				PerfMeterProfilerInstrumentation.RecordCustomMetricCount(0);
 			}
 		}
@@ -1024,66 +1106,90 @@ namespace SGG.PerfMeter
 			lock (SyncRoot)
 			{
 				Providers.Clear();
-				_providerSnapshot = System.Array.Empty<IPerfMeterCustomMetricProvider>();
+				System.Threading.Volatile.Write(ref _providerSnapshot, System.Array.Empty<ProviderSlot>());
 			}
 
+			PerfMeterRuntime.InvalidateCustomMetricCache();
 			PerfMeterProfilerInstrumentation.RecordCustomMetricCount(0);
 		}
 
-		internal static PerfMeterCustomMetricSnapshot[] Collect()
+		internal static PerfMeterCustomMetricCollection Collect()
 		{
-			PerfMeterCustomMetricSnapshot[] metrics;
+			PerfMeterCustomMetricCollection metrics;
 			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.CustomMetricProviders))
 			using (PerfMeterProfilerInstrumentation.CustomMetricsMarker.Auto())
 			{
 				metrics = CollectCore();
 			}
 
-			PerfMeterProfilerInstrumentation.RecordCustomMetricCount(metrics.Length);
+			PerfMeterProfilerInstrumentation.RecordCustomMetricCount(metrics.Count);
 			return metrics;
 		}
 
-		private static PerfMeterCustomMetricSnapshot[] CollectCore()
+		internal static PerfMeterCustomMetricSnapshot[] Copy(PerfMeterCustomMetricCollection metrics)
 		{
-			IPerfMeterCustomMetricProvider[] providers;
-			lock (SyncRoot)
+			if (metrics.Count == 0)
 			{
-				providers = _providerSnapshot;
-				if (providers.Length == 0)
-				{
-					return System.Array.Empty<PerfMeterCustomMetricSnapshot>();
-				}
+				return System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 			}
 
-			PerfMeterCustomMetricSnapshot[] metrics = new PerfMeterCustomMetricSnapshot[providers.Length];
+			PerfMeterCustomMetricSnapshot[] copy = new PerfMeterCustomMetricSnapshot[metrics.Count];
+			System.Array.Copy(metrics.Buffer, copy, metrics.Count);
+			return copy;
+		}
+
+		private static PerfMeterCustomMetricCollection CollectCore()
+		{
+			ProviderSlot[] providers = System.Threading.Volatile.Read(ref _providerSnapshot);
+			if (providers.Length == 0)
+			{
+				return new PerfMeterCustomMetricCollection(System.Array.Empty<PerfMeterCustomMetricSnapshot>(), 0);
+			}
+
+			PerfMeterCustomMetricSnapshot[] metrics = EnsureCollectionBuffer(providers.Length);
 			int count = 0;
 			for (int i = 0; i < providers.Length; i++)
 			{
-				IPerfMeterCustomMetricProvider provider = providers[i];
-				string providerId = GetProviderId(provider, i);
+				ProviderSlot slot = providers[i];
+				IPerfMeterCustomMetricProvider provider = slot.Provider;
 				try
 				{
 					if (provider.TryCollect(out PerfMeterCustomMetricSnapshot metric))
 					{
-						metrics[count] = NormalizeMetric(metric, providerId);
+						metrics[count] = NormalizeMetric(metric, slot.ProviderId);
 						count++;
 					}
 				}
 				catch (System.Exception exception)
 				{
-					metrics[count] = new PerfMeterCustomMetricSnapshot(providerId, providerId, "custom", string.Empty, 0d, false, exception.GetType().Name + ": " + exception.Message);
+					metrics[count] = new PerfMeterCustomMetricSnapshot(slot.ProviderId, slot.ProviderId, "custom", string.Empty, 0d, false, exception.GetType().Name + ": " + exception.Message);
 					count++;
 				}
 			}
 
-			if (count == metrics.Length)
+			return new PerfMeterCustomMetricCollection(metrics, count);
+		}
+
+		private static void PublishProviderSnapshotLocked()
+		{
+			ProviderSlot[] snapshot = new ProviderSlot[Providers.Count];
+			for (int i = 0; i < Providers.Count; i++)
 			{
-				return metrics;
+				IPerfMeterCustomMetricProvider provider = Providers[i];
+				snapshot[i] = new ProviderSlot(provider, GetProviderId(provider, i));
 			}
 
-			PerfMeterCustomMetricSnapshot[] compact = new PerfMeterCustomMetricSnapshot[count];
-			System.Array.Copy(metrics, compact, count);
-			return compact;
+			System.Threading.Volatile.Write(ref _providerSnapshot, snapshot);
+		}
+
+		private static PerfMeterCustomMetricSnapshot[] EnsureCollectionBuffer(int requiredLength)
+		{
+			if (_collectionBuffer.Length < requiredLength)
+			{
+				_collectionBuffer = new PerfMeterCustomMetricSnapshot[requiredLength];
+			}
+
+			return _collectionBuffer;
 		}
 
 		private static string GetProviderId(IPerfMeterCustomMetricProvider provider, int index)
@@ -1105,6 +1211,18 @@ namespace SGG.PerfMeter
 			string name = string.IsNullOrEmpty(metric.Name) ? id : metric.Name;
 			string category = string.IsNullOrEmpty(metric.Category) ? "custom" : metric.Category;
 			return new PerfMeterCustomMetricSnapshot(id, name, category, metric.Unit, metric.Value, metric.Available, metric.Warning);
+		}
+
+		private readonly struct ProviderSlot
+		{
+			internal ProviderSlot(IPerfMeterCustomMetricProvider provider, string providerId)
+			{
+				Provider = provider;
+				ProviderId = providerId;
+			}
+
+			internal IPerfMeterCustomMetricProvider Provider { get; }
+			internal string ProviderId { get; }
 		}
 	}
 }

@@ -679,7 +679,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 				Assert.That(firstResult, Does.Contain("\"success\":true"));
 				Assert.That(firstResult, Does.Contain("\"status\":\"exported\""));
-				Assert.That(Encoding.UTF8.GetString(firstArtifact), Does.Contain("\"schema_version\":2"));
+				string firstJson = Encoding.UTF8.GetString(firstArtifact);
+				Assert.That(firstJson, Does.Contain("\"schema_version\":2"));
+				Assert.That(firstJson, Does.Contain("\"timeline\":"));
 
 				string repeatedResult = PerfMeterMcpCommands.SessionExport("{\"path\":\"" + relativePath.Replace("\\", "/") + "\",\"format\":\"json\"}");
 				Assert.That(repeatedResult, Does.Contain("\"success\":false"));
@@ -778,6 +780,114 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(metrics[0].Id, Is.EqualTo("broken.provider"));
 			Assert.That(metrics[0].Available, Is.False);
 			Assert.That(metrics[0].Warning, Does.Contain("InvalidOperationException"));
+		}
+
+		[Test]
+		public void CustomMetricCollectionReusesBufferAndDoesNotExposeStaleCapacity()
+		{
+			TestCustomMetricProvider reportingProvider = new TestCustomMetricProvider("reported.metric", 7d);
+			NonReportingCustomMetricProvider nonReportingProvider = new NonReportingCustomMetricProvider("stale.metric");
+			PerformanceMeter.RegisterCustomMetricProvider(reportingProvider);
+			PerformanceMeter.RegisterCustomMetricProvider(nonReportingProvider);
+
+			PerfMeterCustomMetricCollection first = PerfMeterCustomMetricRegistry.Collect();
+			first.Buffer[1] = new PerfMeterCustomMetricSnapshot("stale.metric", "Stale", "tests", "count", 99d);
+			PerfMeterCustomMetricCollection second = PerfMeterCustomMetricRegistry.Collect();
+
+			Assert.That(second.Buffer, Is.SameAs(first.Buffer));
+			Assert.That(second.Buffer.Length, Is.EqualTo(2));
+			Assert.That(second.Count, Is.EqualTo(1));
+
+			PerfMeterCustomMetricSnapshot[] publicMetrics = PerformanceMeter.GetCustomMetrics();
+			Assert.That(publicMetrics, Has.Length.EqualTo(1));
+			Assert.That(publicMetrics[0].Id, Is.EqualTo("reported.metric"));
+		}
+
+		[Test]
+		public void WarmedCustomMetricCollectionDoesNotAllocate()
+		{
+			PerformanceMeter.RegisterCustomMetricProvider(new TestCustomMetricProvider("allocation.metric", 7d));
+			PerfMeterCustomMetricRegistry.Collect();
+			System.GC.Collect();
+			System.GC.WaitForPendingFinalizers();
+			System.GC.Collect();
+
+			int lastCount = 0;
+			long before = System.GC.GetAllocatedBytesForCurrentThread();
+			for (int iteration = 0; iteration < 1000; iteration++)
+			{
+				PerfMeterCustomMetricCollection metrics = PerfMeterCustomMetricRegistry.Collect();
+				lastCount = metrics.Count;
+			}
+			long allocatedBytes = System.GC.GetAllocatedBytesForCurrentThread() - before;
+
+			Assert.That(lastCount, Is.EqualTo(1));
+			Assert.That(allocatedBytes, Is.Zero);
+		}
+
+		[Test]
+		public void CustomMetricProviderIdentityIsCachedUntilLifecycleChange()
+		{
+			CountingIdCustomMetricProvider provider = new CountingIdCustomMetricProvider("cached.metric", 5d);
+			PerformanceMeter.RegisterCustomMetricProvider(provider);
+			int idReadsAfterRegister = provider.IdReadCount;
+
+			PerfMeterCustomMetricRegistry.Collect();
+			PerfMeterCustomMetricRegistry.Collect();
+
+			Assert.That(idReadsAfterRegister, Is.EqualTo(1));
+			Assert.That(provider.IdReadCount, Is.EqualTo(idReadsAfterRegister));
+		}
+
+		[Test]
+		public void CollectedEmptyCustomMetricSnapshotDoesNotReinvokeProvidersOnRead()
+		{
+			NonReportingCustomMetricProvider provider = new NonReportingCustomMetricProvider("empty.metric");
+			PerformanceMeter.RegisterCustomMetricProvider(provider);
+			PerformanceMeter.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			Assert.That(runtime, Is.Not.Null);
+			System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+			typeof(PerfMeterRuntime).GetField("_latestCustomMetricBuffer", flags).SetValue(runtime, System.Array.Empty<PerfMeterCustomMetricSnapshot>());
+			typeof(PerfMeterRuntime).GetField("_latestCustomMetricCount", flags).SetValue(runtime, 0);
+			typeof(PerfMeterRuntime).GetField("_hasLatestCustomMetrics", flags).SetValue(runtime, true);
+
+			Assert.That(PerformanceMeter.GetCustomMetrics(), Is.Empty);
+			Assert.That(runtime.PeekLatestCustomMetrics(out int count), Is.Empty);
+			Assert.That(count, Is.Zero);
+			Assert.That(provider.CollectCount, Is.Zero);
+
+			System.Reflection.FieldInfo bufferField = typeof(PerfMeterRuntime).GetField("_latestCustomMetricBuffer", flags);
+			System.Reflection.FieldInfo countField = typeof(PerfMeterRuntime).GetField("_latestCustomMetricCount", flags);
+			System.Reflection.FieldInfo initializedField = typeof(PerfMeterRuntime).GetField("_hasLatestCustomMetrics", flags);
+			bufferField.SetValue(runtime, new[] { new PerfMeterCustomMetricSnapshot("stale.metric", "Stale", "tests", "count", 1d) });
+			countField.SetValue(runtime, 1);
+			initializedField.SetValue(runtime, true);
+			PerformanceMeter.ClearCustomMetricProviders();
+			Assert.That(PerformanceMeter.GetCustomMetrics(), Is.Empty);
+
+			initializedField.SetValue(runtime, true);
+			typeof(PerfMeterRuntime).GetMethod("OnDisable", flags).Invoke(runtime, null);
+			Assert.That((bool)initializedField.GetValue(runtime), Is.False);
+		}
+
+		[Test]
+		public void SessionRecorderCopiesOnlyReportedCustomMetricCount()
+		{
+			PerfMeterCustomMetricSnapshot[] buffer = new PerfMeterCustomMetricSnapshot[2];
+			buffer[0] = new PerfMeterCustomMetricSnapshot("reported.metric", "Reported", "tests", "count", 7d);
+			buffer[1] = new PerfMeterCustomMetricSnapshot("stale.metric", "Stale", "tests", "count", 99d);
+			PerfMeterCustomMetricCollection collection = new PerfMeterCustomMetricCollection(buffer, 1);
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 2), default, default, PerfMeterSettingsStore.Defaults, 10, 1d, CreateMetrics(10, 16d, PerfMeterBottleneck.Balanced));
+
+			recorder.Update(CreateMetrics(11, 16d, PerfMeterBottleneck.GpuBound), 11, 1.01d, collection, PerfMeterPlatformTelemetrySnapshot.Unavailable());
+			buffer[0] = new PerfMeterCustomMetricSnapshot("mutated.metric", "Mutated", "tests", "count", 100d);
+
+			PerfMeterSessionSampleSnapshot[] samples = recorder.GetSamplesCopy();
+			Assert.That(samples, Has.Length.EqualTo(1));
+			Assert.That(samples[0].CustomMetrics, Has.Length.EqualTo(1));
+			Assert.That(samples[0].CustomMetrics[0].Id, Is.EqualTo("reported.metric"));
 		}
 
 		[Test]
@@ -1865,6 +1975,107 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.GetAlertHistory().IntervalId, Is.EqualTo(intervalId));
 		}
 
+		[Test]
+		public void ProfilerLeaseApiIsAdditiveAndEnforcesOwnership()
+		{
+			Assert.That(PerformanceMeter.GetProfilerLeaseCapabilities().Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
+			Assert.That(PerfMeterProfilerLeaseResourceKeys.ActiveGpu, Is.EqualTo("active-gpu"));
+			Assert.That(PerfMeterProfilerLeaseResourceKeys.ExclusiveProfilingOperation, Is.EqualTo("exclusive-profiling-operation"));
+
+			PerfMeterProfilerLeaseRequestOptions request = new PerfMeterProfilerLeaseRequestOptions(
+				"provider-lease",
+				"provider-owner",
+				string.Empty,
+				PerfMeterProfilerLeaseResourceKeys.ActiveGpu,
+				PerfMeterProfilerLeaseResourceKeys.ExclusiveProfilingOperation,
+				PerfMeterProfilerLeaseResource.Gpu | PerfMeterProfilerLeaseResource.Operation);
+
+			Assert.That(PerformanceMeter.TryAcquireProfilerLease(request, out PerfMeterProfilerLeaseStatusSnapshot acquired), Is.EqualTo(PerfMeterProfilerLeaseAcquireResult.Acquired));
+			Assert.That(acquired.IsHeld, Is.True);
+			Assert.That(acquired.Resources, Is.EqualTo(PerfMeterProfilerLeaseResource.Gpu | PerfMeterProfilerLeaseResource.Operation));
+			Assert.That(PerformanceMeter.GetProfilerLeaseCapabilities().Availability, Is.EqualTo(PerfMeterAvailability.Available));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(request.LeaseId).IsHeld, Is.True);
+
+			Assert.That(PerformanceMeter.TryAcquireProfilerLease(request, out PerfMeterProfilerLeaseStatusSnapshot repeated), Is.EqualTo(PerfMeterProfilerLeaseAcquireResult.AlreadyHeld));
+			Assert.That(repeated.IsHeld, Is.True);
+			Assert.That(PerformanceMeter.ReleaseProfilerLease(request.LeaseId, "wrong-owner", out PerfMeterProfilerLeaseStatusSnapshot wrongOwner), Is.EqualTo(PerfMeterProfilerLeaseReleaseResult.WrongOwner));
+			Assert.That(wrongOwner.IsHeld, Is.True);
+			Assert.That(PerformanceMeter.ReleaseProfilerLease(request.LeaseId, request.OwnerId, out PerfMeterProfilerLeaseStatusSnapshot released), Is.EqualTo(PerfMeterProfilerLeaseReleaseResult.Released));
+			Assert.That(released.IsHeld, Is.False);
+			Assert.That(PerformanceMeter.ReleaseProfilerLease(request.LeaseId, request.OwnerId, out PerfMeterProfilerLeaseStatusSnapshot repeatedRelease), Is.EqualTo(PerfMeterProfilerLeaseReleaseResult.AlreadyReleased));
+			Assert.That(repeatedRelease.State, Is.EqualTo(PerfMeterProfilerLeaseState.Released));
+		}
+
+		[Test]
+		public void ExternalGpuOperationLeasePreservesOperationOverlapResults()
+		{
+			PerfMeterProfilerLeaseRequestOptions external = new PerfMeterProfilerLeaseRequestOptions(
+				"external-gpu-operation",
+				"external-owner",
+				string.Empty,
+				PerfMeterProfilerLeaseResourceKeys.ActiveGpu,
+				PerfMeterProfilerLeaseResourceKeys.ExclusiveProfilingOperation,
+				PerfMeterProfilerLeaseResource.Gpu | PerfMeterProfilerLeaseResource.Operation);
+
+			Assert.That(PerformanceMeter.TryAcquireProfilerLease(external, out PerfMeterProfilerLeaseStatusSnapshot acquired), Is.EqualTo(PerfMeterProfilerLeaseAcquireResult.Acquired));
+			try
+			{
+				Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("lease-blocked-capture", PerfMeterCaptureTool.RenderDoc)), Is.EqualTo(PerfMeterCaptureRequestResult.RejectedOverlap));
+				Assert.That(PerformanceMeter.RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("lease-blocked-memory", minimumFreeDiskBytes: 0L, cooldownSeconds: 0d)), Is.EqualTo(PerfMeterMemorySnapshotRequestResult.RejectedOverlap));
+
+				PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 2));
+				Assert.That(PerformanceMeter.RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("lease-blocked-trace", 1, 0L)), Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.RejectedOverlap));
+				Assert.That(PerformanceMeter.PrewarmGraphicsStateCollection(new PerfMeterGraphicsStatePrewarmOptions("lease-blocked-prewarm")), Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.RejectedOverlap));
+				Assert.That(PerformanceMeter.BeginAlertCapture("lease-blocked-alert"), Is.False);
+				Assert.That(PerformanceMeter.GetProfilerLeaseStatus(external.LeaseId).IsHeld, Is.True);
+			}
+			finally
+			{
+				PerformanceMeter.ReleaseProfilerLease(external.LeaseId, external.OwnerId);
+			}
+		}
+
+		[Test]
+		public void InternalCaptureLeaseRetainsThroughCleanupFailureAndThenReleases()
+		{
+			PerformanceMeter.EnsureRunning();
+			LeaseCaptureBackend backend = new LeaseCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendForTests(backend);
+
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("lease-capture", PerfMeterCaptureTool.RenderDoc, 1)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			PerfMeterProfilerLeaseStatusSnapshot held = PerformanceMeter.GetProfilerLeaseStatus();
+			Assert.That(held.IsHeld, Is.True);
+			Assert.That(held.OwnerId, Is.EqualTo("perfmeter-capture"));
+			Assert.That(held.Resources, Is.EqualTo(PerfMeterProfilerLeaseResource.Gpu | PerfMeterProfilerLeaseResource.Operation));
+			Assert.That(PerformanceMeter.ReleaseProfilerLease(held.LeaseId, held.OwnerId), Is.EqualTo(PerfMeterProfilerLeaseReleaseResult.WrongOwner));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(held.LeaseId).IsHeld, Is.True);
+
+			backend.EndSucceeds = false;
+			PerfMeterRuntime.Instance.TickCaptureForTests();
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(held.LeaseId).IsHeld, Is.True);
+			Assert.That(PerformanceMeter.CancelCapture("lease-capture"), Is.False);
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(held.LeaseId).IsHeld, Is.True);
+
+			backend.EndSucceeds = true;
+			Assert.That(PerformanceMeter.CancelCapture("lease-capture"), Is.True);
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(held.LeaseId).State, Is.EqualTo(PerfMeterProfilerLeaseState.Released));
+		}
+
+		[Test]
+		public void StoppingRuntimeDoesNotLeaveHeldProfilerLease()
+		{
+			PerformanceMeter.EnsureRunning();
+			Assert.That(PerformanceMeter.BeginAlertCapture("stop-lease"), Is.True);
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus().IsHeld, Is.True);
+
+			PerformanceMeter.Stop();
+
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus().IsHeld, Is.False);
+			PerformanceMeter.EnsureRunning();
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus().IsHeld, Is.False);
+		}
+
 		private static PerfMeterMetricsSnapshot CreateMetrics(int frame, double frameTimeMs, PerfMeterBottleneck bottleneck)
 		{
 			return new PerfMeterMetricsSnapshot(
@@ -1998,6 +2209,78 @@ namespace SGG.PerfMeter.Tests.EditMode
 			{
 				metric = default;
 				throw new System.InvalidOperationException("Provider failed.");
+			}
+		}
+
+		private sealed class NonReportingCustomMetricProvider : IPerfMeterCustomMetricProvider
+		{
+			private readonly string _id;
+
+			public NonReportingCustomMetricProvider(string id)
+			{
+				_id = id;
+			}
+
+			public string Id => _id;
+			public int CollectCount { get; private set; }
+
+			public bool TryCollect(out PerfMeterCustomMetricSnapshot metric)
+			{
+				CollectCount++;
+				metric = default;
+				return false;
+			}
+		}
+
+		private sealed class CountingIdCustomMetricProvider : IPerfMeterCustomMetricProvider
+		{
+			private readonly string _id;
+			private readonly double _value;
+			private int _idReadCount;
+
+			public CountingIdCustomMetricProvider(string id, double value)
+			{
+				_id = id;
+				_value = value;
+			}
+
+			public int IdReadCount => _idReadCount;
+
+			public string Id
+			{
+				get
+				{
+					_idReadCount++;
+					return _id;
+				}
+			}
+
+			public bool TryCollect(out PerfMeterCustomMetricSnapshot metric)
+			{
+				metric = new PerfMeterCustomMetricSnapshot(string.Empty, string.Empty, "tests", "count", _value);
+				return true;
+			}
+		}
+
+		private sealed class LeaseCaptureBackend : IPerfMeterCaptureBackend
+		{
+			internal bool EndSucceeds { get; set; } = true;
+
+			public PerfMeterCaptureBackendCapability GetCapability(PerfMeterCaptureTool tool)
+			{
+				return new PerfMeterCaptureBackendCapability(PerfMeterAvailability.Available, string.Empty);
+			}
+
+			public bool TryBegin(PerfMeterCaptureTool tool, out string error)
+			{
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryEnd(out string error)
+			{
+				error = EndSucceeds ? string.Empty : "test capture cleanup failed";
+				return EndSucceeds;
 			}
 		}
 

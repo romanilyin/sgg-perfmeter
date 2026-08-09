@@ -170,6 +170,10 @@ coordinator は active request を 1 件だけ許可し、`PreRoll`、`Capturing
 
 `PerfMeterCaptureBundleOptions` overload は capture samples を baseline session から分離し、opt-in screenshot を含められます。`PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` の後、`PerformanceMeter.ExportCaptureBundle(captureId)` は `Temp/PerfMeter/CaptureBundles` に SHA-256 manifest、samples、alerts、context、optional screenshot、external artifact metadata を持つ versioned bundle を atomic に作成します。project-local `.rdc`/`.wpix` は observed artifact にすぎず authoritative ではありません。traversal、reparse point、project 外の file は reject されます。
 
+Capture bundle の export には non-blocking single-flight API もあります: `RequestCaptureBundleExport(..., out exportId)`、`GetCaptureBundleExportStatus(exportId)`、`CancelCaptureBundleExport(exportId)`。Status は phase、progress、byte 数、cancellation、retry、commit path、汎用 external-artifact envelope を報告します。既存の `ExportCaptureBundle(...)` API は blocking compatibility wrapper として維持され、serialization、file I/O、hashing、retention、atomic commit は worker thread 上で実行されます。
+
+Session JSON と capture JSON には、欠落 sample と capture 境界を表す typed timeline event が追加されます。既存の schema version、sample array、CSV column との互換性は維持され、legacy または未知の payload から存在しない gap を生成しません。Custom metric provider は warmed collection path で cache 済み provider snapshot と core 所有の再利用可能な buffer を使用し、copy は retained sample、export、public snapshot に対してのみ作成されます。Profiler coordination は `GetProfilerLeaseCapabilities()`、`GetProfilerLeaseStatus()`、`TryAcquireProfilerLease(...)`、`ReleaseProfilerLease(...)` を通じた process-local 動作で、保持中の lease は domain reload 後に存続しません。
+
 ## Custom Metrics
 
 ```csharp

@@ -84,6 +84,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void ProfilerLeaseMcpCommandsAreReadOnlyAndDoNotStartRuntime()
+		{
+			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
+			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.profiler.lease.capabilities\""));
+			Assert.That(metadata, Does.Contain("\"id\": \"perfmeter.profiler.lease.status\""));
+			Assert.That(metadata, Does.Contain("PerfMeterMcpCommands.ProfilerLeaseCapabilities"));
+			Assert.That(metadata, Does.Contain("PerfMeterMcpCommands.ProfilerLeaseStatus"));
+
+			string capabilities = PerfMeterMcpCommands.ProfilerLeaseCapabilities();
+			string status = PerfMeterMcpCommands.ProfilerLeaseStatus("{}");
+
+			Assert.That(capabilities, Does.Contain("\"process_local\":true"));
+			Assert.That(capabilities, Does.Contain("\"persists_held_across_reload\":false"));
+			Assert.That(status, Does.Contain("\"state\":\"Idle\""));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+		}
+
+		[Test]
 		public void CameraSnapshotMcpCommandDoesNotStartRuntime()
 		{
 			string json = PerfMeterMcpCommands.CameraSnapshot("{}");

@@ -215,6 +215,63 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return CaptureExportJson(result);
 		}
 
+		public static string CaptureExportRequest(string argsJson)
+		{
+			string captureId = RequireString(argsJson, "capture_id");
+			TryExtractString(argsJson, "path", out string path);
+			TryExtractString(argsJson, "external_artifact_path", out string externalArtifactPath);
+			bool requireAuthority = TryExtractBool(argsJson, "require_authoritative_external_artifact", out bool required) && required;
+			PerfMeterCaptureBundleExportRequestResult result = RuntimePerformanceMeter.RequestCaptureBundleExport(
+				captureId,
+				out string exportId,
+				path,
+				externalArtifactPath,
+				requireAuthority);
+			PerfMeterCaptureBundleExportStatusSnapshot status = string.IsNullOrEmpty(exportId)
+				? PerfMeterCaptureBundleExportStatusSnapshot.None
+				: RuntimePerformanceMeter.GetCaptureBundleExportStatus(exportId);
+			return CaptureExportStatusJson(result.ToString(), exportId, status);
+		}
+
+		public static string CaptureExportStatus(string argsJson)
+		{
+			TryExtractString(argsJson, "export_id", out string exportId);
+			return CaptureExportStatusJson("status", exportId, RuntimePerformanceMeter.GetCaptureBundleExportStatus(exportId));
+		}
+
+		public static string CaptureExportCancel(string argsJson)
+		{
+			string exportId = RequireString(argsJson, "export_id");
+			bool canceled = RuntimePerformanceMeter.CancelCaptureBundleExport(exportId);
+			return CaptureExportStatusJson(canceled ? "cancellation_requested" : "not_canceled", exportId, RuntimePerformanceMeter.GetCaptureBundleExportStatus(exportId));
+		}
+
+		public static string ProfilerLeaseStatus(string argsJson)
+		{
+			TryExtractString(argsJson, "lease_id", out string leaseId);
+			StringBuilder builder = new StringBuilder(768);
+			builder.Append("{\"lease\":");
+			AppendProfilerLeaseStatus(builder, RuntimePerformanceMeter.GetProfilerLeaseStatus(leaseId));
+			AppendEditorState(builder);
+			return builder.Append('}').ToString();
+		}
+
+		public static string ProfilerLeaseCapabilities()
+		{
+			PerfMeterProfilerLeaseCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetProfilerLeaseCapabilities();
+			StringBuilder builder = new StringBuilder(384);
+			builder.Append("{\"availability\":").Append(JsonString(capabilities.Availability.ToString()));
+			builder.Append(",\"supported_resources\":").Append(JsonString(capabilities.SupportedResources.ToString()));
+			builder.Append(",\"max_active_leases\":").Append(capabilities.MaxActiveLeases);
+			builder.Append(",\"process_local\":").Append(JsonBool(capabilities.ProcessLocal));
+			builder.Append(",\"persists_held_across_reload\":").Append(JsonBool(capabilities.PersistsHeldAcrossReload));
+			builder.Append(",\"active_gpu_key\":").Append(JsonString(PerfMeterProfilerLeaseResourceKeys.ActiveGpu));
+			builder.Append(",\"exclusive_operation_key\":").Append(JsonString(PerfMeterProfilerLeaseResourceKeys.ExclusiveProfilingOperation));
+			builder.Append(",\"warning\":").Append(JsonString(capabilities.Warning));
+			AppendEditorState(builder);
+			return builder.Append('}').ToString();
+		}
+
 		public static string CaptureCapabilities()
 		{
 			PerfMeterCaptureCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetCaptureCapabilities();
@@ -489,7 +546,14 @@ namespace SGG.PerfMeter.Editor.Mcp
 				PerfMeterPackageIdentity packageIdentity = packageInfo != null
 					? new PerfMeterPackageIdentity(packageInfo.name, packageInfo.version, "unity_package_manager")
 					: PerfMeterSessionExporter.RuntimePackageIdentity;
-				result = PerfMeterSessionExporter.ExportJson(safePath, summary, samples, status, false, packageIdentity);
+				result = PerfMeterSessionExporter.ExportJson(
+					safePath,
+					summary,
+					samples,
+					RuntimePerformanceMeter.GetSessionTimeline(),
+					status,
+					false,
+					packageIdentity);
 			}
 			else if (string.Equals(normalizedFormat, "csv", StringComparison.OrdinalIgnoreCase))
 			{
@@ -692,16 +756,53 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		private static string CaptureExportJson(PerfMeterCaptureBundleExportResult result)
 		{
-			StringBuilder builder = new StringBuilder(768);
+			StringBuilder builder = new StringBuilder(1536);
 			builder.Append("{\"success\":").Append(JsonBool(result.Success));
 			builder.Append(",\"status\":").Append(JsonString(result.Status.ToString()));
 			builder.Append(",\"relative_path\":").Append(JsonString(result.RelativePath));
 			builder.Append(",\"error\":").Append(JsonString(result.Error));
 			builder.Append(",\"bundle\":");
 			AppendCaptureBundleStatus(builder, result.Bundle);
+			builder.Append(",\"external_artifact\":");
+			AppendExternalArtifact(builder, result.ExternalArtifact);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static string CaptureExportStatusJson(string requestResult, string requestedExportId, PerfMeterCaptureBundleExportStatusSnapshot status)
+		{
+			StringBuilder builder = new StringBuilder(1536);
+			builder.Append("{\"request_result\":").Append(JsonString(requestResult));
+			builder.Append(",\"requested_export_id\":").Append(JsonString(requestedExportId));
+			builder.Append(",\"export\":");
+			AppendCaptureExportStatus(builder, status);
+			AppendEditorState(builder);
+			return builder.Append('}').ToString();
+		}
+
+		private static void AppendCaptureExportStatus(StringBuilder builder, PerfMeterCaptureBundleExportStatusSnapshot status)
+		{
+			builder.Append("{\"export_id\":").Append(JsonString(status.ExportId));
+			builder.Append(",\"capture_id\":").Append(JsonString(status.CaptureId));
+			builder.Append(",\"bundle_id\":").Append(JsonString(status.BundleId));
+			builder.Append(",\"phase\":").Append(JsonString(status.Phase.ToString()));
+			builder.Append(",\"progress\":").Append(JsonNumber(status.Progress));
+			builder.Append(",\"bytes_processed\":").Append(status.BytesProcessed);
+			builder.Append(",\"total_bytes\":").Append(status.TotalBytes);
+			builder.Append(",\"committed_relative_path\":").Append(JsonString(status.CommittedRelativePath));
+			builder.Append(",\"status\":").Append(JsonString(status.LegacyStatus.ToString()));
+			builder.Append(",\"success\":").Append(JsonBool(status.Success));
+			builder.Append(",\"cancellation_requested\":").Append(JsonBool(status.CancellationRequested));
+			builder.Append(",\"is_terminal\":").Append(JsonBool(status.IsTerminal));
+			builder.Append(",\"can_retry\":").Append(JsonBool(status.CanRetry));
+			builder.Append(",\"error\":").Append(JsonString(status.Error));
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append(",\"started_utc\":").Append(JsonString(status.StartedUtc));
+			builder.Append(",\"completed_utc\":").Append(JsonString(status.CompletedUtc));
+			builder.Append(",\"external_artifact\":");
+			AppendExternalArtifact(builder, status.ExternalArtifact);
+			builder.Append('}');
 		}
 
 		private static void AppendCaptureStatus(StringBuilder builder, PerfMeterCaptureStatusSnapshot status)
@@ -737,6 +838,49 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"external_artifact_state\":").Append(JsonString(status.ExternalArtifactState.ToString()));
 			builder.Append(",\"memory_snapshot_state\":").Append(JsonString(status.MemorySnapshotState.ToString()));
 			builder.Append(",\"committed_relative_path\":").Append(JsonString(status.CommittedRelativePath));
+			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
+			builder.Append(",\"external_artifact\":");
+			AppendExternalArtifact(builder, status.ExternalArtifact);
+			builder.Append('}');
+		}
+
+		private static void AppendExternalArtifact(StringBuilder builder, PerfMeterExternalArtifactSnapshot artifact)
+		{
+			builder.Append("{\"artifact_id\":").Append(JsonString(artifact.ArtifactId));
+			builder.Append(",\"artifact_kind\":").Append(JsonString(artifact.ArtifactKind.ToString()));
+			builder.Append(",\"tool_id\":").Append(JsonString(artifact.ToolId));
+			builder.Append(",\"tool_version\":").Append(JsonString(artifact.ToolVersion));
+			builder.Append(",\"request_id\":").Append(JsonString(artifact.RequestId));
+			builder.Append(",\"host_namespace\":").Append(JsonString(artifact.HostNamespace));
+			builder.Append(",\"association_state\":").Append(JsonString(artifact.AssociationState.ToString()));
+			builder.Append(",\"finalization_state\":").Append(JsonString(artifact.FinalizationState.ToString()));
+			builder.Append(",\"authority_state\":").Append(JsonString(artifact.AuthorityState.ToString()));
+			builder.Append(",\"is_authoritative\":").Append(JsonBool(artifact.IsAuthoritative));
+			builder.Append(",\"contains_gpu_capture_data\":").Append(JsonString(artifact.ContainsGpuCaptureData.ToString()));
+			builder.Append(",\"privacy_flags\":").Append(JsonString(artifact.PrivacyFlags.ToString()));
+			builder.Append(",\"storage_mode\":").Append(JsonString(artifact.StorageMode.ToString()));
+			builder.Append(",\"quota_bytes\":").Append(artifact.QuotaBytes);
+			builder.Append(",\"share_policy\":").Append(JsonString(artifact.SharePolicy.ToString()));
+			builder.Append(",\"size_bytes\":").Append(artifact.SizeBytes);
+			builder.Append(",\"observed_source_sha256\":").Append(JsonString(artifact.ObservedSourceSha256));
+			builder.Append(",\"post_copy_sha256\":").Append(JsonString(artifact.PostCopySha256));
+			builder.Append(",\"warning\":").Append(JsonString(artifact.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendProfilerLeaseStatus(StringBuilder builder, PerfMeterProfilerLeaseStatusSnapshot status)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(status.Availability.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(status.State.ToString()));
+			builder.Append(",\"reason\":").Append(JsonString(status.Reason.ToString()));
+			builder.Append(",\"lease_id\":").Append(JsonString(status.LeaseId));
+			builder.Append(",\"owner_id\":").Append(JsonString(status.OwnerId));
+			builder.Append(",\"owner_key\":").Append(JsonString(status.OwnerKey));
+			builder.Append(",\"gpu_key\":").Append(JsonString(status.GpuKey));
+			builder.Append(",\"operation_key\":").Append(JsonString(status.OperationKey));
+			builder.Append(",\"resources\":").Append(JsonString(status.Resources.ToString()));
+			builder.Append(",\"host_namespace\":").Append(JsonString(status.HostNamespace));
+			builder.Append(",\"generation\":").Append(status.Generation);
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
 			builder.Append('}');
 		}
