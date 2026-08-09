@@ -7,6 +7,7 @@ namespace SGG.PerfMeter
 	internal sealed class PerfMeterSessionRecorder
 	{
 		private PerfMeterSessionSampleSnapshot[] _samples = System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+		private readonly PerfMeterSessionTimelineStore _timeline = new PerfMeterSessionTimelineStore();
 		private PerfMeterSessionOptions _options = PerfMeterSessionOptions.Default;
 		private PerfMeterSessionState _state = PerfMeterSessionState.Idle;
 		private PerfMeterDeviceSnapshot _device;
@@ -51,6 +52,7 @@ namespace SGG.PerfMeter
 			PerfMeterProfilerInstrumentation.RecordSessionBegin(_sessionId);
 			_options = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(configuredSettings);
 			_samples = new PerfMeterSessionSampleSnapshot[_options.MaxSamples];
+			_timeline.Start(_options.MaxSamples);
 			_state = PerfMeterSessionState.Recording;
 			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_device = device;
@@ -88,6 +90,7 @@ namespace SGG.PerfMeter
 			PerfMeterProfilerInstrumentation.RecordSessionState(_state);
 			_options = PerfMeterSessionOptions.Default;
 			_samples = System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+			_timeline.Reset();
 			_sampleCount = 0;
 			_droppedSampleCount = 0;
 			_startFrame = -1;
@@ -158,6 +161,23 @@ namespace SGG.PerfMeter
 			PerfMeterPlatformTelemetrySnapshot platformTelemetry,
 			string graphicsStateTraceId = "")
 		{
+			Update(
+				metrics,
+				frame,
+				timeSeconds,
+				new PerfMeterCustomMetricCollection(customMetrics, customMetrics == null ? 0 : customMetrics.Length),
+				platformTelemetry,
+				graphicsStateTraceId);
+		}
+
+		internal void Update(
+			PerfMeterMetricsSnapshot metrics,
+			int frame,
+			double timeSeconds,
+			PerfMeterCustomMetricCollection customMetrics,
+			PerfMeterPlatformTelemetrySnapshot platformTelemetry,
+			string graphicsStateTraceId = "")
+		{
 			if (_state != PerfMeterSessionState.Recording)
 			{
 				return;
@@ -169,7 +189,7 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private void UpdateRecording(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricSnapshot[] customMetrics, PerfMeterPlatformTelemetrySnapshot platformTelemetry, string graphicsStateTraceId)
+		private void UpdateRecording(PerfMeterMetricsSnapshot metrics, int frame, double timeSeconds, PerfMeterCustomMetricCollection customMetrics, PerfMeterPlatformTelemetrySnapshot platformTelemetry, string graphicsStateTraceId)
 		{
 			if (frame < 0 || frame < _wholeRunStats.LastFrame)
 			{
@@ -184,16 +204,19 @@ namespace SGG.PerfMeter
 
 			if (frame - _startFrame < _options.WarmupFrames)
 			{
+				_timeline.AddMissingBaseline(frame, frame, timeSeconds, timeSeconds, PerfMeterSessionTimelineReasonFlags.Warmup);
 				return;
 			}
 
 			if (timeSeconds - _startTimeSeconds < _options.WarmupSeconds)
 			{
+				_timeline.AddMissingBaseline(frame, frame, timeSeconds, timeSeconds, PerfMeterSessionTimelineReasonFlags.Warmup);
 				return;
 			}
 
 			if ((_sceneIgnoreUntilFrame >= 0 && frame < _sceneIgnoreUntilFrame) || timeSeconds < _sceneIgnoreUntilTimeSeconds)
 			{
+				_timeline.AddMissingBaseline(frame, frame, timeSeconds, timeSeconds, PerfMeterSessionTimelineReasonFlags.SceneLoadIgnore);
 				return;
 			}
 
@@ -207,6 +230,7 @@ namespace SGG.PerfMeter
 			if (_sampleCount >= _samples.Length)
 			{
 				_droppedSampleCount++;
+				_timeline.AddMissingBaseline(frame, frame, timeSeconds, timeSeconds, PerfMeterSessionTimelineReasonFlags.SampleBufferFull);
 				_summary = CreateSummary(timeSeconds, "Session sample buffer is full; additional samples are dropped.");
 				return;
 			}
@@ -214,6 +238,7 @@ namespace SGG.PerfMeter
 			PerfMeterSessionSampleSnapshot sample = new PerfMeterSessionSampleSnapshot(frame, timeSeconds, _lastSceneName, metrics, CopyCustomMetrics(customMetrics), platformTelemetry, graphicsStateTraceId);
 			_samples[_sampleCount] = sample;
 			_sampleCount++;
+			_timeline.AddValidBaseline(frame, timeSeconds, _sampleCount - 1);
 			_wholeRunStats.Add(sample, metrics);
 			_currentSceneStats.Add(sample, metrics);
 			_summary = CreateSummary(timeSeconds, string.Empty);
@@ -241,8 +266,92 @@ namespace SGG.PerfMeter
 			return copy;
 		}
 
+		internal PerfMeterSessionTimelineSnapshot GetTimelineCopy()
+		{
+			return _timeline.GetSnapshotCopy();
+		}
+
+		internal void RecordMissingCollection(
+			int frame,
+			double timeSeconds,
+			PerfMeterSessionTimelineReasonFlags reason,
+			PerfMeterCaptureStatusSnapshot captureStatus,
+			string bundleId)
+		{
+			if (_state != PerfMeterSessionState.Recording)
+			{
+				return;
+			}
+
+			if (captureStatus.State == PerfMeterCaptureState.Capturing)
+			{
+				_timeline.AddMissingCapture(
+					frame,
+					frame,
+					timeSeconds,
+					timeSeconds,
+					captureStatus.CaptureId,
+					bundleId,
+					captureStatus.CompletedCaptureFrames + 1,
+					captureStatus.RequestedCaptureFrames,
+					reason);
+			}
+			else
+			{
+				_timeline.AddMissingBaseline(frame, frame, timeSeconds, timeSeconds, reason);
+			}
+		}
+
+		internal void RecordValidCapture(
+			int frame,
+			double timeSeconds,
+			PerfMeterCaptureStatusSnapshot captureStatus,
+			string bundleId,
+			int captureSampleIndex)
+		{
+			if (_state != PerfMeterSessionState.Recording || captureStatus.State != PerfMeterCaptureState.Capturing)
+			{
+				return;
+			}
+
+			_timeline.AddValidCapture(
+				frame,
+				timeSeconds,
+				captureStatus.CaptureId,
+				bundleId,
+				captureStatus.CompletedCaptureFrames + 1,
+				captureStatus.RequestedCaptureFrames,
+				captureSampleIndex);
+		}
+
+		internal void RecordCaptureBoundary(
+			int frame,
+			double timeSeconds,
+			PerfMeterCaptureStatusSnapshot captureStatus,
+			string bundleId,
+			PerfMeterSessionTimelineCaptureBoundary boundary)
+		{
+			if (_state != PerfMeterSessionState.Recording)
+			{
+				return;
+			}
+
+			_timeline.AddCaptureBoundary(
+				frame,
+				timeSeconds,
+				captureStatus.CaptureId,
+				bundleId,
+				boundary,
+				PerfMeterSessionTimelineUtility.GetCapturePhase(captureStatus.State),
+				captureStatus.RequestedCaptureFrames,
+				captureStatus.State == PerfMeterCaptureState.Unavailable || captureStatus.State == PerfMeterCaptureState.Error
+					? PerfMeterSessionTimelineReasonFlags.CaptureFrameMissing
+					: PerfMeterSessionTimelineReasonFlags.None);
+		}
+
 		private void ResetRecordingWindow(string sceneName, int frame, double timeSeconds, PerfMeterMetricsSnapshot latestMetrics)
 		{
+			_timeline.Reset();
 			_startSceneName = sceneName;
 			_lastSceneName = sceneName;
 			_startTimeSeconds = timeSeconds;
@@ -370,13 +479,18 @@ namespace SGG.PerfMeter
 
 		private static PerfMeterCustomMetricSnapshot[] CopyCustomMetrics(PerfMeterCustomMetricSnapshot[] customMetrics)
 		{
-			if (customMetrics == null || customMetrics.Length == 0)
+			return CopyCustomMetrics(new PerfMeterCustomMetricCollection(customMetrics, customMetrics == null ? 0 : customMetrics.Length));
+		}
+
+		private static PerfMeterCustomMetricSnapshot[] CopyCustomMetrics(PerfMeterCustomMetricCollection customMetrics)
+		{
+			if (customMetrics.Count == 0)
 			{
 				return System.Array.Empty<PerfMeterCustomMetricSnapshot>();
 			}
 
-			PerfMeterCustomMetricSnapshot[] copy = new PerfMeterCustomMetricSnapshot[customMetrics.Length];
-			System.Array.Copy(customMetrics, copy, customMetrics.Length);
+			PerfMeterCustomMetricSnapshot[] copy = new PerfMeterCustomMetricSnapshot[customMetrics.Count];
+			System.Array.Copy(customMetrics.Buffer, copy, customMetrics.Count);
 			return copy;
 		}
 

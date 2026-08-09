@@ -22,6 +22,8 @@ El objetivo es salida JSON estructurada para agentes en lugar de parsing de scre
 | `perfmeter.runtime.mode.set` | Cambiar a `Stopped`, `Background`, `Overlay` u `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Leer las métricas más recientes, incluidas custom metrics. |
 | `perfmeter.profiler.capabilities` | Leer las capabilities y la procedencia de resolución de métricas del Profiler en caché sin iniciar el runtime ni discovery. |
+| `perfmeter.profiler.lease.capabilities` | Leer recursos de profiler lease locales al proceso y semántica de reload. |
+| `perfmeter.profiler.lease.status` | Leer el estado actual o coincidente de profiler lease local al proceso. |
 | `perfmeter.alerts.latest` | Leer alertas activas, contadores y estado de advertencias del Editor. |
 | `perfmeter.alerts.clear` | Limpiar alertas activas, contadores y estado de cooldown. |
 | `perfmeter.alerts.capture.begin` | Iniciar la clasificacion acotada de una captura externa. |
@@ -42,7 +44,12 @@ El objetivo es salida JSON estructurada para agentes en lugar de parsing de scre
 | `perfmeter.capture.status` | Leer el estado del capture y del bundle. |
 | `perfmeter.capture.cancel` | Cancelar el capture activo coincidente. |
 | `perfmeter.capture.export` | Exportar atómicamente un bundle listo bajo la raíz local del proyecto. |
+| `perfmeter.capture.export.request` | Encolar un export single-flight y devolver su export ID y progreso. |
+| `perfmeter.capture.export.status` | Leer fase, progreso, cancelación, retry y autoridad del artefacto. |
+| `perfmeter.capture.export.cancel` | Solicitar la cancelación del export activo coincidente. |
 | `perfmeter.capture.capabilities` | Leer capacidades de schema, cuota, retención, screenshot y provenance. |
+
+Usa preferentemente `perfmeter.capture.export.request`, consulta después `perfmeter.capture.export.status` y llama opcionalmente a `perfmeter.capture.export.cancel`. El comando legacy `perfmeter.capture.export` bloquea por compatibilidad. Las respuestas incluyen el envelope genérico `external_artifact` con asociación, autoridad, finalización, contenido, política de privacidad/uso compartido, tamaño y hashes de origen y post-copia. Los comandos read-only de lease exponen el estado de conflicto local al proceso sin adquirir una lease.
 
 ## Self-Overhead En Runtime Status
 

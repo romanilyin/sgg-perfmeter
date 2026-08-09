@@ -170,6 +170,10 @@ Les valeurs par defaut de `PerfMeterCaptureOptions` sont `captureFrames: 1`, `pr
 
 L'overload avec `PerfMeterCaptureBundleOptions` separe les capture samples de la baseline session et peut inclure un screenshot opt-in. Quand `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady`, `PerformanceMeter.ExportCaptureBundle(captureId)` cree atomiquement un bundle versionne sous `Temp/PerfMeter/CaptureBundles` avec manifest SHA-256, samples, alerts, contexte, screenshot optionnel et metadata d'artefact externe. Un `.rdc`/`.wpix` local au projet reste un artefact observe, jamais autoritatif; traversal, reparse points et fichiers hors projet sont rejetes.
 
+L'export du capture bundle propose aussi une API single-flight non bloquante : `RequestCaptureBundleExport(..., out exportId)`, `GetCaptureBundleExportStatus(exportId)` et `CancelCaptureBundleExport(exportId)`. Le statut indique phase, progression, octets, annulation, nouvelle tentative, chemin de commit et enveloppe generique d'artefact externe. L'API existante `ExportCaptureBundle(...)` reste un wrapper de compatibilite bloquant, tandis que serialisation, E/S de fichiers, hashing, retention et commit atomique s'executent dans un worker thread.
+
+Les JSON de session et capture ajoutent des evenements de timeline types pour les samples manquants et les limites de capture. Les versions de schema, tableaux de samples et colonnes CSV existants restent compatibles; les payloads legacy ou inconnus sont lus sans inventer de gaps. Les providers de custom metrics utilisent un provider snapshot en cache et un buffer reutilisable appartenant au core sur le warmed collection path; les copies ne sont creees que pour les samples conserves, les exports et les public snapshots. La coordination du Profiler est locale au processus via `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)` et `ReleaseProfilerLease(...)`; les leases detenues ne survivent pas a un domain reload.
+
 ## Metriques Personnalisees
 
 ```csharp

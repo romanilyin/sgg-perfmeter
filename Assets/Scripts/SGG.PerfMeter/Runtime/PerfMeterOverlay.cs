@@ -2344,8 +2344,8 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			PerfMeterCustomMetricSnapshot[] customMetrics = GetOverlayCustomMetrics();
-			int count = Math.Min(customMetrics.Length, MaxCustomMetricRows);
+			PerfMeterCustomMetricSnapshot[] customMetrics = GetOverlayCustomMetrics(out int customMetricCount);
+			int count = Math.Min(customMetricCount, MaxCustomMetricRows);
 			for (int i = 0; i < count && HasAvailableBarField(); i++)
 			{
 				PerfMeterCustomMetricSnapshot metric = customMetrics[i];
@@ -2800,8 +2800,8 @@ namespace SGG.PerfMeter
 				return;
 			}
 
-			PerfMeterCustomMetricSnapshot[] customMetrics = GetOverlayCustomMetrics();
-			int count = Math.Min(customMetrics.Length, MaxCustomMetricRows);
+			PerfMeterCustomMetricSnapshot[] customMetrics = GetOverlayCustomMetrics(out int customMetricCount);
+			int count = Math.Min(customMetricCount, MaxCustomMetricRows);
 			for (int i = 0; i < count; i++)
 			{
 				PerfMeterCustomMetricSnapshot metric = customMetrics[i];
@@ -2822,10 +2822,17 @@ namespace SGG.PerfMeter
 			return name.Length <= MaxCustomMetricNameLength ? name : name.Substring(0, MaxCustomMetricNameLength - 3) + "...";
 		}
 
-		private static PerfMeterCustomMetricSnapshot[] GetOverlayCustomMetrics()
+		private static PerfMeterCustomMetricSnapshot[] GetOverlayCustomMetrics(out int count)
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			return runtime != null ? runtime.PeekLatestCustomMetrics() : PerformanceMeter.GetCustomMetrics();
+			if (runtime != null)
+			{
+				return runtime.PeekLatestCustomMetrics(out count);
+			}
+
+			PerfMeterCustomMetricCollection collection = PerfMeterCustomMetricRegistry.Collect();
+			count = collection.Count;
+			return collection.Buffer;
 		}
 
 		private PerfMeterCpuCoreLoadSnapshot[] GetOverlayCpuCoreLoads(out int count)

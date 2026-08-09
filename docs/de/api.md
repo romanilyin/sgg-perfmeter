@@ -161,6 +161,10 @@ Das eingebaute Backend kapselt Unitys experimentellen `ExternalGPUProfiler` nur 
 
 Der Overload mit `PerfMeterCaptureBundleOptions` trennt Capture-Samples von der Baseline-Session und kann einen opt-in Screenshot aufnehmen. Sobald `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` gilt, erstellt `PerformanceMeter.ExportCaptureBundle(captureId)` atomar ein versioniertes Bundle unter `Temp/PerfMeter/CaptureBundles` mit SHA-256-Manifest, Session-/Baseline-/Capture-Samples, Capture-Alerts, Kontext, optionalem Screenshot und External-Artifact-Metadaten. Eine projektlokale `.rdc`/`.wpix`-Datei ist nur ein beobachtetes Artefakt und nie autoritativ; Traversal, Reparse Points und Dateien ausserhalb des Projekts werden abgewiesen.
 
+Der Capture-Bundle-Export bietet ausserdem eine nicht blockierende Single-Flight-API: `RequestCaptureBundleExport(..., out exportId)`, `GetCaptureBundleExportStatus(exportId)` und `CancelCaptureBundleExport(exportId)`. Der Status meldet Phase, Fortschritt, Byteanzahl, Abbruch, Wiederholungsversuch, Commit-Pfad und die generische External-Artifact-Envelope. Die bestehende API `ExportCaptureBundle(...)` bleibt ein blockierender Kompatibilitaets-Wrapper, waehrend Serialisierung, Datei-I/O, Hashing, Aufbewahrung und atomischer Commit in einem Worker-Thread ausgefuehrt werden.
+
+Session- und Capture-JSON ergaenzen typisierte Timeline-Events fuer fehlende Samples und Capture-Grenzen. Bestehende Schemaversionen, Sample-Arrays und CSV-Spalten bleiben kompatibel; Legacy- oder unbekannte Timeline-Payloads werden gelesen, ohne Luecken zu erfinden. Custom-Metric-Provider verwenden auf dem aufgewaermten Erfassungspfad einen gecachten Provider-Snapshot und einen wiederverwendbaren, coreeigenen Buffer; Kopien entstehen nur fuer aufbewahrte Samples, Exporte und public snapshots. Die Profiler-Koordination ist ueber `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)` und `ReleaseProfilerLease(...)` prozesslokal; gehaltene Leases ueberstehen keinen Domain Reload.
+
 ## Custom Metrics
 
 ```csharp

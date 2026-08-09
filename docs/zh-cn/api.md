@@ -170,6 +170,10 @@ Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `
 
 `PerfMeterCaptureBundleOptions` overload 会将 capture samples 与 baseline session 分离，并可包含 opt-in screenshot。当 `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` 后，`PerformanceMeter.ExportCaptureBundle(captureId)` 会在 `Temp/PerfMeter/CaptureBundles` 下原子创建 versioned bundle，其中包含 SHA-256 manifest、samples、alerts、context、optional screenshot 和 external artifact metadata。project-local `.rdc`/`.wpix` 仅是 observed artifact，绝不标记为 authoritative；traversal、reparse point 和项目外文件会被拒绝。
 
+Capture bundle export 还提供 non-blocking single-flight API：`RequestCaptureBundleExport(..., out exportId)`、`GetCaptureBundleExportStatus(exportId)` 和 `CancelCaptureBundleExport(exportId)`。Status 会报告 phase、progress、字节数、cancellation、retry、commit path，以及通用 external-artifact envelope。现有 `ExportCaptureBundle(...)` API 仍作为 blocking compatibility wrapper，而 serialization、文件 I/O、hashing、retention 和 atomic commit 均在 worker thread 上运行。
+
+Session 和 capture JSON 新增用于表示缺失 sample 和 capture 边界的 typed timeline event。现有 schema version、sample array 和 CSV column 保持兼容；读取 legacy 或未知 payload 时不会虚构 gap。Custom metric provider 在 warmed collection path 上使用缓存的 provider snapshot 和由 core 持有的可复用 buffer，仅为 retained sample、export 和 public snapshot 创建副本。Profiler coordination 通过 `GetProfilerLeaseCapabilities()`、`GetProfilerLeaseStatus()`、`TryAcquireProfilerLease(...)` 和 `ReleaseProfilerLease(...)` 在 process-local 范围内进行；已持有的 lease 不会在 domain reload 后保留。
+
 ## Custom Metrics
 
 ```csharp

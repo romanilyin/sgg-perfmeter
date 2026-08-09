@@ -22,6 +22,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.runtime.mode.set` | 切换 `Stopped`、`Background`、`Overlay` 或 `OverdrawDiagnostic`。 |
 | `perfmeter.metrics.latest` | 读取 latest metrics，包括 custom metrics。 |
 | `perfmeter.profiler.capabilities` | 读取缓存的 Profiler metric capabilities 和 provenance，不启动 runtime 或 discovery。 |
+| `perfmeter.profiler.lease.capabilities` | 读取 process-local profiler lease resource 和 reload semantics。 |
+| `perfmeter.profiler.lease.status` | 读取 current 或 matching process-local profiler lease state。 |
 | `perfmeter.alerts.latest` | 读取 active alerts、counters 和 Editor warning state。 |
 | `perfmeter.alerts.clear` | 清除 active alerts、counters 和 cooldown state。 |
 | `perfmeter.alerts.capture.begin` | 开始外部 capture 的 bounded classification。 |
@@ -42,7 +44,12 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.capture.status` | 读取 capture 和 bundle state。 |
 | `perfmeter.capture.cancel` | 取消匹配的 active capture。 |
 | `perfmeter.capture.export` | 将 ready bundle 原子导出到 project-local bundle root。 |
+| `perfmeter.capture.export.request` | 将 single-flight export 加入队列，并返回 export ID 和 progress。 |
+| `perfmeter.capture.export.status` | 读取 phase、progress、cancellation、retry 和 artifact authority。 |
+| `perfmeter.capture.export.cancel` | 请求取消 matching active export。 |
 | `perfmeter.capture.capabilities` | 读取 schema、quota、retention、screenshot 和 provenance capabilities。 |
+
+优先使用 `perfmeter.capture.export.request`，然后轮询 `perfmeter.capture.export.status`，并可按需调用 `perfmeter.capture.export.cancel`。Legacy `perfmeter.capture.export` command 为保持兼容性会阻塞。Export response 包含通用 `external_artifact` envelope，其中含有 association、authority、finalization、content、privacy/share policy、size，以及 source hash 和 post-copy hash。Read-only lease commands 可在不获取 lease 的情况下公开 process-local conflict state。
 
 ## Runtime Self-Overhead Payload
 

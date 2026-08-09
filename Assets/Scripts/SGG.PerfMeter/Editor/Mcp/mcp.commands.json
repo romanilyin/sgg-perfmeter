@@ -184,6 +184,40 @@
       }
     },
     {
+      "id": "perfmeter.profiler.lease.capabilities",
+      "title": "PerfMeter profiler lease capabilities",
+      "description": "Read process-local profiler lease resources and reload semantics without acquiring a lease.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.ProfilerLeaseCapabilities",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "profiler", "lease", "capabilities"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.profiler.lease.status",
+      "title": "PerfMeter profiler lease status",
+      "description": "Read the current or matching process-local profiler lease without acquiring or releasing it.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.ProfilerLeaseStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "profiler", "lease", "status"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "lease_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "perfmeter.alerts.latest",
       "title": "PerfMeter latest alerts",
       "description": "Read active SGG PerfMeter alerts and alert counters.",
@@ -318,7 +352,7 @@
     {
       "id": "perfmeter.capture.export",
       "title": "Export PerfMeter capture bundle",
-      "description": "Atomically export a completed correlated capture bundle under Temp/PerfMeter/CaptureBundles. Existing destinations are never overwritten.",
+      "description": "Compatibility command that blocks until a completed correlated capture bundle is atomically exported under Temp/PerfMeter/CaptureBundles. Existing destinations are never overwritten.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureExport",
       "risk": "write",
       "idempotency": "unsafe",
@@ -334,6 +368,65 @@
           "require_authoritative_external_artifact": { "type": "boolean" }
         },
         "required": ["capture_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.export.request",
+      "title": "Request PerfMeter capture bundle export",
+      "description": "Queue a single-flight capture bundle export and return immediately with an export identifier and progress snapshot.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureExportRequest",
+      "risk": "write",
+      "idempotency": "unsafe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture", "bundle", "export", "async"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "path": { "type": "string" },
+          "external_artifact_path": { "type": "string" },
+          "require_authoritative_external_artifact": { "type": "boolean" }
+        },
+        "required": ["capture_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.export.status",
+      "title": "Read PerfMeter capture bundle export status",
+      "description": "Read asynchronous capture bundle export phase, progress, cancellation, retry, and external-artifact authority state.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureExportStatus",
+      "risk": "read",
+      "idempotency": "safe",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture", "bundle", "export", "status"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "export_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "perfmeter.capture.export.cancel",
+      "title": "Cancel PerfMeter capture bundle export",
+      "description": "Request cancellation for the matching active export. Already committed bundles are not modified.",
+      "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureExportCancel",
+      "risk": "write",
+      "idempotency": "idempotent",
+      "timeout_ms": 10000,
+      "tags": ["perfmeter", "capture", "bundle", "export", "cancel"],
+      "capability": "perfmeter",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "export_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "required": ["export_id"],
         "additionalProperties": false
       }
     },

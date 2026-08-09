@@ -170,6 +170,10 @@ Coordinator는 active request 하나만 허용하며 `PreRoll`, `Capturing`, `Po
 
 `PerfMeterCaptureBundleOptions` overload는 capture samples를 baseline session과 분리하고 opt-in screenshot을 포함할 수 있습니다. `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` 이후 `PerformanceMeter.ExportCaptureBundle(captureId)`는 `Temp/PerfMeter/CaptureBundles` 아래에 SHA-256 manifest, samples, alerts, context, optional screenshot, external artifact metadata가 있는 versioned bundle을 atomic하게 생성합니다. project-local `.rdc`/`.wpix`는 observed artifact일 뿐 authoritative하지 않습니다. traversal, reparse point, project 외부 file은 reject됩니다.
 
+Capture bundle export는 non-blocking single-flight API도 제공합니다: `RequestCaptureBundleExport(..., out exportId)`, `GetCaptureBundleExportStatus(exportId)`, `CancelCaptureBundleExport(exportId)`. Status는 phase, progress, byte 수, cancellation, retry, commit path 및 범용 external-artifact envelope를 보고합니다. 기존 `ExportCaptureBundle(...)` API는 blocking compatibility wrapper로 유지되며, serialization, file I/O, hashing, retention 및 atomic commit은 worker thread에서 실행됩니다.
+
+Session 및 capture JSON에는 누락된 sample과 capture 경계를 나타내는 typed timeline event가 추가됩니다. 기존 schema version, sample array 및 CSV column은 호환성을 유지하고, legacy 또는 알 수 없는 payload에서 존재하지 않는 gap을 만들지 않습니다. Custom metric provider는 warmed collection path에서 cache된 provider snapshot과 core 소유의 재사용 가능한 buffer를 사용하며, copy는 retained sample, export 및 public snapshot에 대해서만 생성됩니다. Profiler coordination은 `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)`, `ReleaseProfilerLease(...)`를 통한 process-local 동작이며, 보유 중인 lease는 domain reload 후 유지되지 않습니다.
+
 ## Custom Metrics
 
 ```csharp

@@ -26,3 +26,5 @@ Para gates de release solo para maintainers o smoke tests en dispositivos, usa l
 ## CI De Rendimiento
 
 `.github/workflows/performance-ci.yml` ejecuta toda la suite de corrección EditMode y las pruebas de rendimiento aisladas en Unity `6000.4.12f1` y `6000.5.6f1` para pull requests del mismo repositorio, pushes a `main` y ejecuciones manuales. Las pull requests desde forks se omiten porque GitHub no expone los secretos de licencia de Unity. CI inyecta `com.unity.test-framework.performance` `3.5.0` solo en el checkout efímero; el paquete no conserva una dependencia obligatoria. Los umbrales versionados están en `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`; CI publica XML NUnit original, XML JUnit convertido, JSON de rendimiento y logs.
+
+El mismo workflow ejecuta un job PlayMode lifecycle completo y separado en ambas versiones de Unity cuando `PERFMETER_UNITY_CI_ENABLED` es `true` y hay credenciales Unity compatibles con GameCI. Los cambios en `Tests/PlayMode/**` activan el workflow; las credenciales desactivadas y los PR desde forks producen un job omitido explícito.

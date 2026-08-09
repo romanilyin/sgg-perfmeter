@@ -24,3 +24,5 @@ Fuehre einen Unity compile check fuer das Zielprojekt aus und nenne den Befehl i
 ## Performance CI
 
 `.github/workflows/performance-ci.yml` fuehrt die vollstaendige EditMode-Correctness-Suite und die isolierten Performance-Tests mit Unity `6000.4.12f1` und `6000.5.6f1` fuer Pull Requests aus demselben Repository, Pushes auf `main` und manuelle Laeufe aus. Pull Requests aus Forks werden uebersprungen, weil GitHub keine Unity-Lizenz-Secrets bereitstellt. CI fuegt `com.unity.test-framework.performance` `3.5.0` nur in den temporaeren Checkout ein; das Paket behaelt keine feste Abhaengigkeit. Versionierte Grenzwerte liegen in `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`; CI laedt rohes NUnit-XML, konvertiertes JUnit-XML, Performance-JSON und Logs hoch.
+
+Dasselbe Workflow fuehrt einen separaten vollstaendigen PlayMode-Lifecycle-Job auf beiden Unity-Versionen aus, wenn `PERFMETER_UNITY_CI_ENABLED` auf `true` gesetzt ist und GameCI-kompatible Unity-Credentials konfiguriert sind. Aenderungen unter `Tests/PlayMode/**` triggern den Workflow; deaktivierte Credentials und Fork-PRs ergeben einen explizit uebersprungenen Job.

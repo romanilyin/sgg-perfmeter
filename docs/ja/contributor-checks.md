@@ -26,3 +26,5 @@ maintainer-only release gates または device smoke tests については、現
 ## Performance CI
 
 `.github/workflows/performance-ci.yml` は、同一 repository の pull request、`main` への push、manual run で、Unity `6000.4.12f1` と `6000.5.6f1` の full EditMode correctness suite と isolated performance tests を実行します。GitHub は fork pull request に Unity license secrets を公開しないため、その job は skip されます。CI は ephemeral checkout にのみ `com.unity.test-framework.performance` `3.5.0` を追加し、package に hard dependency は残しません。versioned threshold は `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json` にあり、CI は raw NUnit XML、converted JUnit XML、performance JSON、logs を upload します。
+
+同じ workflow は、repository variable `PERFMETER_UNITY_CI_ENABLED` が `true` で GameCI-compatible Unity credentials が設定されている場合、両方の Unity version で separate full PlayMode lifecycle job を実行します。`Tests/PlayMode/**` の変更は workflow を trigger し、credentials が無効な場合や fork PR では明示的に skipped job になります。

@@ -26,3 +26,5 @@ git diff --check
 ## Performance CI
 
 `.github/workflows/performance-ci.yml` запускает полный EditMode correctness suite и изолированные performance tests на Unity `6000.4.12f1` и `6000.5.6f1` для pull request из этого репозитория, push в `main` и ручных запусков. Pull request из fork пропускаются, поскольку GitHub не передаёт Unity license secrets. CI добавляет `com.unity.test-framework.performance` `3.5.0` только в ephemeral checkout; у пакета нет hard dependency. Версионируемые пороги находятся в `Assets/Scripts/SGG.PerfMeter/Tests/Performance/performance-baselines.json`; CI сохраняет raw NUnit XML, преобразованный JUnit XML, performance JSON и логи.
+
+Тот же workflow запускает отдельный полный PlayMode lifecycle job на обеих версиях Unity, когда repository variable `PERFMETER_UNITY_CI_ENABLED` равна `true` и настроены совместимые с GameCI Unity credentials. Изменения в `Tests/PlayMode/**` запускают workflow; отключенные credentials и PR из fork дают явно skipped job.

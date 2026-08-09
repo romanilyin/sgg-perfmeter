@@ -170,6 +170,10 @@ I valori predefiniti di `PerfMeterCaptureOptions` sono `captureFrames: 1`, `preR
 
 L'overload con `PerfMeterCaptureBundleOptions` separa i capture samples dalla baseline session e puo includere uno screenshot opt-in. Quando `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady`, `PerformanceMeter.ExportCaptureBundle(captureId)` crea atomicamente un bundle versionato sotto `Temp/PerfMeter/CaptureBundles` con manifest SHA-256, samples, alerts, contesto, screenshot opzionale e metadata dell'artefatto esterno. Un `.rdc`/`.wpix` locale al progetto e solo un artefatto osservato, mai autoritativo; traversal, reparse points e file esterni al progetto vengono rifiutati.
 
+L'esportazione del capture bundle dispone anche di un'API single-flight non bloccante: `RequestCaptureBundleExport(..., out exportId)`, `GetCaptureBundleExportStatus(exportId)` e `CancelCaptureBundleExport(exportId)`. Lo stato riporta fase, avanzamento, byte, annullamento, nuovi tentativi, percorso di commit ed envelope generico dell'artefatto esterno. L'API esistente `ExportCaptureBundle(...)` rimane un wrapper di compatibilita bloccante, mentre serializzazione, I/O su file, hashing, retention e commit atomico vengono eseguiti in un worker thread.
+
+I JSON di sessione e capture aggiungono eventi di timeline tipizzati per sample mancanti e limiti della capture. Le versioni dello schema, gli array di sample e le colonne CSV esistenti rimangono compatibili; i payload legacy o sconosciuti vengono letti senza inventare gap. I provider di custom metrics usano un provider snapshot in cache e un buffer riutilizzabile di proprieta del core nel warmed collection path; le copie vengono create solo per sample conservati, export e public snapshots. Il coordinamento del Profiler e locale al processo tramite `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)` e `ReleaseProfilerLease(...)`; i lease detenuti non sopravvivono a un domain reload.
+
 ## Custom Metrics
 
 ```csharp

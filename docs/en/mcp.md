@@ -22,6 +22,8 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.runtime.mode.set` | Switch `Stopped`, `Background`, `Overlay`, or `OverdrawDiagnostic`. |
 | `perfmeter.metrics.latest` | Read latest metrics, including custom metrics. |
 | `perfmeter.profiler.capabilities` | Read cached Profiler metric capabilities and resolution provenance without starting runtime or discovery. |
+| `perfmeter.profiler.lease.capabilities` | Read process-local profiler lease resources and reload semantics. |
+| `perfmeter.profiler.lease.status` | Read current or matching process-local profiler lease state. |
 | `perfmeter.alerts.latest` | Read active alerts, counters, and Editor warning state. |
 | `perfmeter.alerts.clear` | Clear active alerts, counters, and cooldown state. |
 | `perfmeter.alerts.capture.begin` | Begin a bounded external-capture classification scope. |
@@ -42,7 +44,12 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.capture.status` | Read capture and bundle state. |
 | `perfmeter.capture.cancel` | Cancel the matching active capture. |
 | `perfmeter.capture.export` | Atomically export a ready bundle under the project-local bundle root. |
+| `perfmeter.capture.export.request` | Queue a single-flight bundle export and return its export ID and progress. |
+| `perfmeter.capture.export.status` | Read export phase, progress, cancellation, retry, and artifact authority. |
+| `perfmeter.capture.export.cancel` | Request cancellation of the matching active export. |
 | `perfmeter.capture.capabilities` | Read bundle schema, quota, retention, screenshot, and provenance capabilities. |
+
+Prefer `perfmeter.capture.export.request`, then poll `perfmeter.capture.export.status` and optionally call `perfmeter.capture.export.cancel`. The legacy `perfmeter.capture.export` command blocks for compatibility. Export responses include the generic `external_artifact` envelope with association, authority, finalization, content, privacy/share policy, size, and source/post-copy hashes. The read-only lease commands expose process-local conflict state without acquiring a lease.
 
 `perfmeter.compatibility.status` is read-only and does not start runtime. It reports `import_compatible`, `core_runtime_compatible`, and `render_integration_compatible` independently, with current/floor versions and a reason for each result. `perfmeter.setup.status` includes the same structured `compatibility` object while retaining its existing human-readable `status_report`; setup/configuration readiness remains separate.
 

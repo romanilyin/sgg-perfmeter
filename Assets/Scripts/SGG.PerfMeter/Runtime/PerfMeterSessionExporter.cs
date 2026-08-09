@@ -14,7 +14,12 @@ namespace SGG.PerfMeter
 
 		internal static bool ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
-			return ExportJson(path, summary, samples, status, true).Success;
+			return ExportJson(path, summary, samples, PerfMeterSessionTimelineSnapshot.Empty, status);
+		}
+
+		internal static bool ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterSessionTimelineSnapshot timeline, PerfMeterStatusSnapshot status)
+		{
+			return ExportJson(path, summary, samples, timeline, status, true, PackageIdentity).Success;
 		}
 
 		internal static bool ExportCsv(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
@@ -24,17 +29,26 @@ namespace SGG.PerfMeter
 
 		internal static PerfMeterSessionExportResult ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting)
 		{
-			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
-			{
-				return Export(path, BuildJson(summary, samples, status), overwriteExisting);
-			}
+			return ExportJson(path, summary, samples, PerfMeterSessionTimelineSnapshot.Empty, status, overwriteExisting, PackageIdentity);
 		}
 
 		internal static PerfMeterSessionExportResult ExportJson(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting, PerfMeterPackageIdentity packageIdentity)
 		{
+			return ExportJson(path, summary, samples, PerfMeterSessionTimelineSnapshot.Empty, status, overwriteExisting, packageIdentity);
+		}
+
+		internal static PerfMeterSessionExportResult ExportJson(
+			string path,
+			PerfMeterSessionSummarySnapshot summary,
+			PerfMeterSessionSampleSnapshot[] samples,
+			PerfMeterSessionTimelineSnapshot timeline,
+			PerfMeterStatusSnapshot status,
+			bool overwriteExisting,
+			PerfMeterPackageIdentity packageIdentity)
+		{
 			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
 			{
-				return Export(path, BuildJson(summary, samples, status, packageIdentity), overwriteExisting);
+				return Export(path, BuildJson(summary, samples, status, packageIdentity, timeline), overwriteExisting);
 			}
 		}
 
@@ -48,10 +62,20 @@ namespace SGG.PerfMeter
 
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
-			return BuildJson(summary, samples, status, PackageIdentity);
+			return BuildJson(summary, samples, status, PackageIdentity, PerfMeterSessionTimelineSnapshot.Empty);
 		}
 
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, PerfMeterPackageIdentity packageIdentity)
+		{
+			return BuildJson(summary, samples, status, packageIdentity, PerfMeterSessionTimelineSnapshot.Empty);
+		}
+
+		internal static string BuildJson(
+			PerfMeterSessionSummarySnapshot summary,
+			PerfMeterSessionSampleSnapshot[] samples,
+			PerfMeterStatusSnapshot status,
+			PerfMeterPackageIdentity packageIdentity,
+			PerfMeterSessionTimelineSnapshot timeline)
 		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(2048 + safeSamples.Length * 768);
@@ -93,7 +117,9 @@ namespace SGG.PerfMeter
 				AppendSample(builder, safeSamples[i]);
 			}
 
-			builder.Append("]}");
+			builder.Append("]");
+			AppendTimeline(builder, timeline);
+			builder.Append('}');
 			return builder.ToString();
 		}
 
@@ -114,6 +140,11 @@ namespace SGG.PerfMeter
 
 		internal static string BuildCaptureSamplesJson(string captureId, PerfMeterSessionSampleSnapshot[] samples)
 		{
+			return BuildCaptureSamplesJson(captureId, samples, PerfMeterSessionTimelineSnapshot.Empty);
+		}
+
+		internal static string BuildCaptureSamplesJson(string captureId, PerfMeterSessionSampleSnapshot[] samples, PerfMeterSessionTimelineSnapshot timeline)
+		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(256 + safeSamples.Length * 768);
 			builder.Append("{\"schema\":\"sgg.perfmeter.capture-samples\",\"schema_version\":1");
@@ -130,7 +161,9 @@ namespace SGG.PerfMeter
 				AppendSample(builder, safeSamples[i]);
 			}
 
-			builder.Append("]}");
+			builder.Append("]");
+			AppendTimeline(builder, timeline);
+			builder.Append('}');
 			return builder.ToString();
 		}
 
@@ -232,6 +265,69 @@ namespace SGG.PerfMeter
 			}
 
 			return new PerfMeterPackageIdentity(packageName, packageVersion, "assembly_metadata");
+		}
+
+		private static void AppendTimeline(StringBuilder builder, PerfMeterSessionTimelineSnapshot timeline)
+		{
+			PerfMeterSessionTimelineEventSnapshot[] events = timeline.Events ?? Array.Empty<PerfMeterSessionTimelineEventSnapshot>();
+			builder.Append(",\"timeline_schema_version\":").Append(PerfMeterSessionTimelineSnapshot.CurrentSchemaVersion);
+			builder.Append(",\"timeline_complete\":").Append(JsonBool(timeline.IsComplete && timeline.DroppedEventCount == 0));
+			builder.Append(",\"timeline_event_count\":").Append(events.Length);
+			builder.Append(",\"timeline_dropped_event_count\":").Append(timeline.DroppedEventCount);
+			builder.Append(",\"timeline\":[");
+			for (int i = 0; i < events.Length; i++)
+			{
+				if (i > 0)
+				{
+					builder.Append(',');
+				}
+
+				AppendTimelineEvent(builder, events[i]);
+			}
+
+			builder.Append(']');
+		}
+
+		private static void AppendTimelineEvent(StringBuilder builder, PerfMeterSessionTimelineEventSnapshot timelineEvent)
+		{
+			builder.Append('{');
+			builder.Append("\"kind\":").Append(JsonString(timelineEvent.Kind.ToString()));
+			builder.Append(",\"stream\":").Append(JsonString(timelineEvent.Stream.ToString()));
+			builder.Append(",\"reason_flags\":").Append(JsonString(timelineEvent.Reason.ToString()));
+			builder.Append(",\"timing_state\":").Append(JsonString(timelineEvent.TimingState.ToString()));
+			builder.Append(",\"first_frame\":").Append(timelineEvent.FirstFrame);
+			builder.Append(",\"last_frame\":").Append(timelineEvent.LastFrame);
+			builder.Append(",\"frame_count\":").Append(timelineEvent.FrameCount);
+			builder.Append(",\"first_time_seconds\":");
+			builder.Append(timelineEvent.TimingState == PerfMeterSessionTimelineTimingState.Valid ? JsonNumber(timelineEvent.FirstTimeSeconds) : "null");
+			builder.Append(",\"last_time_seconds\":");
+			builder.Append(timelineEvent.TimingState == PerfMeterSessionTimelineTimingState.Valid ? JsonNumber(timelineEvent.LastTimeSeconds) : "null");
+			builder.Append(",\"reference_index\":");
+			builder.Append(timelineEvent.ReferenceIndex >= 0 ? timelineEvent.ReferenceIndex.ToString(CultureInfo.InvariantCulture) : "null");
+			builder.Append(",\"capture_id\":").Append(JsonString(timelineEvent.CaptureId));
+			builder.Append(",\"bundle_id\":").Append(JsonString(timelineEvent.BundleId));
+			builder.Append(",\"capture_frame_ordinal\":").Append(timelineEvent.CaptureFrameOrdinal);
+			builder.Append(",\"capture_frame_end_ordinal\":").Append(timelineEvent.CaptureFrameEndOrdinal);
+			builder.Append(",\"requested_capture_frame_count\":").Append(timelineEvent.RequestedCaptureFrameCount);
+			builder.Append(",\"capture_boundary\":").Append(JsonString(timelineEvent.CaptureBoundary.ToString()));
+			builder.Append(",\"capture_phase\":").Append(JsonString(timelineEvent.CapturePhase.ToString()));
+			builder.Append(",\"measurement_provenance\":");
+			AppendMeasurementProvenance(builder, timelineEvent.Provenance);
+			builder.Append('}');
+		}
+
+		private static void AppendMeasurementProvenance(StringBuilder builder, PerfMeterMeasurementProvenanceSnapshot provenance)
+		{
+			builder.Append('{');
+			builder.Append("\"measurement_kind\":").Append(JsonString(provenance.MeasurementKind));
+			builder.Append(",\"collectors\":").Append(JsonString(provenance.Collectors));
+			builder.Append(",\"perturbation\":").Append(JsonString(provenance.Perturbation));
+			builder.Append(",\"metric_set\":").Append(JsonString(provenance.MetricSet));
+			builder.Append(",\"frequency\":").Append(JsonString(provenance.Frequency));
+			builder.Append(",\"clock_state\":").Append(JsonString(provenance.ClockState));
+			builder.Append(",\"administrative_state\":").Append(JsonString(provenance.AdministrativeState));
+			builder.Append(",\"vsync_state\":").Append(JsonString(provenance.VSyncState));
+			builder.Append('}');
 		}
 
 		private static void AppendSummary(StringBuilder builder, PerfMeterSessionSummarySnapshot summary)

@@ -340,6 +340,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				Assert.That(
 					PerformanceMeter.RequestGraphicsStateTrace(new PerfMeterGraphicsStateTraceOptions("graphics-trace", 2, 0L)),
 					Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.Started));
+				PerfMeterProfilerLeaseStatusSnapshot graphicsLease = PerformanceMeter.GetProfilerLeaseStatus();
+				Assert.That(graphicsLease.IsHeld, Is.True);
+				Assert.That(graphicsLease.Resources, Is.EqualTo(PerfMeterProfilerLeaseResource.Gpu | PerfMeterProfilerLeaseResource.Operation));
 				Assert.That(
 					PerformanceMeter.RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions("overlap", minimumFreeDiskBytes: 0L, cooldownSeconds: 0d)),
 					Is.EqualTo(PerfMeterMemorySnapshotRequestResult.RejectedOverlap));
@@ -359,6 +362,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				Assert.That(completed.CompletedTraceFrames, Is.EqualTo(2));
 				Assert.That(completed.TotalGraphicsStateCount, Is.EqualTo(7));
 				Assert.That(completed.VariantCount, Is.EqualTo(3));
+				Assert.That(PerformanceMeter.GetProfilerLeaseStatus(graphicsLease.LeaseId).State, Is.EqualTo(PerfMeterProfilerLeaseState.Released));
 				Assert.That(completed.ArtifactRelativePath, Does.StartWith(PerfMeterGraphicsStateCollectionStorage.RelativeGraphicsStateCollectionRoot + "/"));
 				artifactPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", completed.ArtifactRelativePath));
 				Assert.That(File.Exists(artifactPath), Is.True);
@@ -578,6 +582,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				new PerfMeterCaptureBundleOptions());
 			Assert.That(result, Is.EqualTo(PerfMeterCaptureRequestResult.Started));
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.PreRoll));
+			PerfMeterProfilerLeaseStatusSnapshot captureLease = PerformanceMeter.GetProfilerLeaseStatus();
+			Assert.That(captureLease.IsHeld, Is.True);
+			Assert.That(captureLease.OwnerId, Is.EqualTo("perfmeter-capture"));
 
 			yield return null;
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Capturing));
@@ -597,6 +604,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(completed.CompletedPreRollFrames, Is.EqualTo(1));
 			Assert.That(completed.CompletedCaptureFrames, Is.EqualTo(2));
 			Assert.That(completed.CompletedPostRollFrames, Is.EqualTo(1));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(captureLease.LeaseId).State, Is.EqualTo(PerfMeterProfilerLeaseState.Released));
 			Assert.That(backend.BeginCount, Is.EqualTo(1));
 			Assert.That(backend.EndCount, Is.EqualTo(1));
 			PerfMeterCaptureBundleStatusSnapshot completedBundle = PerformanceMeter.GetCaptureBundleStatus("playmode-capture");
