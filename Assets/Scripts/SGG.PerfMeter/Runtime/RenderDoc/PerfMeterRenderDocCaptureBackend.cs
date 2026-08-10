@@ -207,10 +207,18 @@ namespace SGG.PerfMeter
 		public PerfMeterCaptureBackendV2Snapshot Snapshot => _snapshot;
 
 		internal PerfMeterRenderDocCapabilitySnapshot CapabilityDetails => _capabilityDetails;
+		internal bool OwnsActiveResources =>
+			_hasToken ||
+			_begun ||
+			_beginUncertain ||
+			_preflightOperation != null ||
+			_finalizationOperation != null ||
+			_cleanupOperation != null ||
+			(_preflight.Reservation != null && !_preflight.Reservation.IsReleased);
 
 		public PerfMeterCaptureBackendV2Snapshot GetCapability(PerfMeterCaptureOptions options)
 		{
-			if (_begun && _hasToken)
+			if (OwnsActiveResources)
 			{
 				return _snapshot;
 			}
@@ -1388,6 +1396,57 @@ namespace SGG.PerfMeter
 			}
 
 			return string.IsNullOrEmpty(second) ? first : first + " " + second;
+		}
+	}
+
+	internal static class PerfMeterRenderDocBootstrap
+	{
+		private static PerfMeterRenderDocCaptureBackend _backend;
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		internal static void Reset()
+		{
+			if (_backend == null)
+			{
+				return;
+			}
+
+			if (_backend.OwnsActiveResources)
+			{
+				_backend.TryDiscard(out _);
+			}
+			if (_backend.OwnsActiveResources)
+			{
+				return;
+			}
+
+			PerfMeterNativeCaptureBackendRegistry.Unregister(_backend);
+			_backend = null;
+		}
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+		internal static void Register()
+		{
+			if (_backend != null)
+			{
+				return;
+			}
+
+			PerfMeterRenderDocStorage storage = new PerfMeterRenderDocStorage();
+			PerfMeterRenderDocCaptureBackend backend = new PerfMeterRenderDocCaptureBackend(
+				new PerfMeterRenderDocPInvokeBridge(),
+				new PerfMeterRenderDocPreflightProvider(storage),
+				new PerfMeterRenderDocUnityPlatformProvider(),
+				new PerfMeterRenderDocTaskWorkerScheduler(),
+				new PerfMeterRenderDocArtifactFinalizer(storage));
+			try
+			{
+				PerfMeterNativeCaptureBackendRegistry.Register(backend);
+				_backend = backend;
+			}
+			catch (InvalidOperationException)
+			{
+			}
 		}
 	}
 }

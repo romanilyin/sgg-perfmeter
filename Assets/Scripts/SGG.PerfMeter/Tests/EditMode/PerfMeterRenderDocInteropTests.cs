@@ -12,12 +12,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[SetUp]
 		public void SetUp()
 		{
+			PerfMeterRenderDocBootstrap.Reset();
 			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 		}
 
 		[TearDown]
 		public void TearDown()
 		{
+			PerfMeterRenderDocBootstrap.Reset();
 			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 		}
 
@@ -555,6 +557,89 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out _), Is.False);
 		}
 
+		[Test]
+		public void ProductionBootstrapRegistersConfiguredBackendIdempotently()
+		{
+			PerfMeterRenderDocBootstrap.Register();
+
+			Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out IPerfMeterCaptureBackendV2 first), Is.True);
+			Assert.That(first, Is.TypeOf<PerfMeterRenderDocCaptureBackend>());
+			Assert.That(first.Snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(first.Snapshot.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.None));
+			Assert.That(first.Snapshot.HasActiveResources, Is.False);
+
+			PerfMeterRenderDocBootstrap.Register();
+
+			Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out IPerfMeterCaptureBackendV2 second), Is.True);
+			Assert.That(second, Is.SameAs(first));
+			PerfMeterRenderDocBootstrap.Reset();
+			Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out _), Is.False);
+		}
+
+		[Test]
+		public void ProductionBootstrapDoesNotDisplaceOrUnregisterAnotherBackend()
+		{
+			PerfMeterRenderDocCaptureBackend registered = CreateBackend(new FakeBridge(), SupportedPlatform());
+			PerfMeterNativeCaptureBackendRegistry.Register(registered);
+
+			PerfMeterRenderDocBootstrap.Register();
+
+			Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out IPerfMeterCaptureBackendV2 current), Is.True);
+			Assert.That(current, Is.SameAs(registered));
+			PerfMeterRenderDocBootstrap.Reset();
+			Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out current), Is.True);
+			Assert.That(current, Is.SameAs(registered));
+		}
+
+		[Test]
+		public void ProductionBootstrapRetainsOwnedBackendWhileCancellationIsPending()
+		{
+			PerfMeterRenderDocCaptureBackend backend = new PerfMeterRenderDocCaptureBackend(
+				new FakeBridge(),
+				new FakePreflight(),
+				SupportedPlatform(),
+				new PendingWorkerScheduler(),
+				new UnusedFinalizer());
+			Assert.That(
+				backend.TryBegin(CreateOptions(), 1, out string error),
+				Is.EqualTo(PerfMeterCaptureBackendBeginResult.Pending),
+				error);
+			PerfMeterNativeCaptureBackendRegistry.Register(backend);
+			SetBootstrapBackend(backend);
+
+			try
+			{
+				PerfMeterCaptureBackendV2Snapshot pending = backend.GetCapability(CreateOptions());
+				Assert.That(pending.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.Preflight));
+				Assert.That(pending.HasActiveResources, Is.True);
+				Assert.That(pending.HasPendingCompletion, Is.True);
+				PerfMeterRenderDocBootstrap.Reset();
+
+				Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out IPerfMeterCaptureBackendV2 current), Is.True);
+				Assert.That(current, Is.SameAs(backend));
+				Assert.That(backend.Snapshot.HasActiveResources, Is.True);
+				Assert.That(backend.Snapshot.HasPendingCompletion, Is.True);
+				Assert.That(backend.Snapshot.Warning, Does.Contain("cancellation is pending"));
+				PerfMeterRenderDocBootstrap.Register();
+				Assert.That(PerfMeterNativeCaptureBackendRegistry.TryGet(out current), Is.True);
+				Assert.That(current, Is.SameAs(backend));
+			}
+			finally
+			{
+				PerfMeterNativeCaptureBackendRegistry.Unregister(backend);
+				SetBootstrapBackend(null);
+			}
+		}
+
+		private static void SetBootstrapBackend(PerfMeterRenderDocCaptureBackend backend)
+		{
+			FieldInfo field = typeof(PerfMeterRenderDocBootstrap).GetField(
+				"_backend",
+				BindingFlags.NonPublic | BindingFlags.Static);
+			Assert.That(field, Is.Not.Null);
+			field.SetValue(null, backend);
+		}
+
 		private static PerfMeterRenderDocCaptureBackend CreateBackend(
 			FakeBridge bridge,
 			FakePlatformProvider platformProvider,
@@ -659,6 +744,36 @@ namespace SGG.PerfMeter.Tests.EditMode
 				PrepareCount++;
 				preflight = Data;
 				return Result;
+			}
+		}
+
+		private sealed class PendingWorkerScheduler : IPerfMeterRenderDocWorkerScheduler
+		{
+			public IPerfMeterRenderDocWorkerOperation<T> Start<T>(Func<T> operation)
+			{
+				return new PendingWorkerOperation<T>();
+			}
+
+			private sealed class PendingWorkerOperation<T> : IPerfMeterRenderDocWorkerOperation<T>
+			{
+				public bool IsCompleted => false;
+
+				public T GetResult()
+				{
+					throw new InvalidOperationException("The pending test operation has not completed.");
+				}
+			}
+		}
+
+		private sealed class UnusedFinalizer : IPerfMeterRenderDocArtifactFinalizer
+		{
+			public PerfMeterRenderDocFinalizationResult Run(
+				IPerfMeterRenderDocBridge bridge,
+				SggRdCaptureTokenV1 token,
+				PerfMeterRenderDocPreflight preflight,
+				Func<bool> isCancellationRequested = null)
+			{
+				throw new InvalidOperationException("The pending test finalizer must not run.");
 			}
 		}
 
