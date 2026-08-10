@@ -35,6 +35,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			PerfMeterCaptureOptions legacy = new PerfMeterCaptureOptions("legacy", PerfMeterCaptureTool.RenderDoc);
 			Assert.That(legacy.BackendMode, Is.EqualTo(PerfMeterCaptureBackendMode.GenericUnity));
+			Assert.That(legacy.ExternalArtifactStorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.MetadataOnly));
 			Assert.That(typeof(PerfMeterCaptureOptions).GetConstructor(new[]
 			{
 				typeof(string),
@@ -43,6 +44,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 				typeof(int),
 				typeof(int)
 			}), Is.Not.Null, "The released five-argument constructor must remain binary-compatible.");
+			Assert.That(typeof(PerfMeterCaptureOptions).GetConstructor(new[]
+			{
+				typeof(string),
+				typeof(PerfMeterCaptureTool),
+				typeof(int),
+				typeof(int),
+				typeof(int),
+				typeof(PerfMeterCaptureBackendMode)
+			}), Is.Not.Null, "The released six-argument constructor must remain binary-compatible.");
+			PerfMeterCaptureOptions copied = new PerfMeterCaptureOptions(
+				"copy",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired,
+				PerfMeterExternalArtifactStorageMode.Copy);
+			Assert.That(copied.ExternalArtifactStorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.Copy));
 			PerfMeterCaptureStatusSnapshot oldStatus = new PerfMeterCaptureStatusSnapshot(
 				PerfMeterAvailability.Available,
 				PerfMeterCaptureState.Capturing,

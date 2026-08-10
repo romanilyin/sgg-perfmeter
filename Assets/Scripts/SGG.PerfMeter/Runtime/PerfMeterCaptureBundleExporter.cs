@@ -191,6 +191,9 @@ namespace SGG.PerfMeter
 				}
 
 				PerfMeterExternalArtifactSnapshot externalArtifact = CreateExternalArtifactSnapshot(data, externalMetadata, environment);
+				PerfMeterCaptureExternalArtifactState externalArtifactState = string.IsNullOrEmpty(externalMetadata.SourcePath)
+					? data.Status.ExternalArtifactState
+					: externalMetadata.State;
 				byte[] externalEnvelope = Utf8(BuildExternalArtifactEnvelope(externalArtifact));
 				WriteFile(stagingPath, "external-artifact.json", externalEnvelope);
 				entries.Add(new FileManifestEntry("external-artifact.json", externalEnvelope.LongLength, Sha256(externalEnvelope)));
@@ -237,7 +240,7 @@ namespace SGG.PerfMeter
 					data.Status.AlertEventCount,
 					data.Status.AlertEventsTruncated,
 					data.Status.ScreenshotState,
-					externalMetadata.State,
+					externalArtifactState,
 					relativePath,
 					data.Status.Warning,
 					data.Status.MemorySnapshotState,

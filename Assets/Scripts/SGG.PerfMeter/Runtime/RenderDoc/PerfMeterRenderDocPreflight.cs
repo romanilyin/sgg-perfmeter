@@ -66,6 +66,17 @@ namespace SGG.PerfMeter
 
 			return Reservation.Release(out error);
 		}
+
+		internal SggRdResult Abort(out string error)
+		{
+			if (Reservation == null)
+			{
+				error = string.Empty;
+				return SggRdResult.Ok;
+			}
+
+			return Reservation.Abort(out error);
+		}
 	}
 
 	internal interface IPerfMeterRenderDocPreflightProvider
@@ -73,7 +84,15 @@ namespace SGG.PerfMeter
 		SggRdResult Prepare(PerfMeterCaptureOptions options, out PerfMeterRenderDocPreflight preflight);
 	}
 
-	internal sealed class PerfMeterRenderDocPreflightProvider : IPerfMeterRenderDocPreflightProvider
+	internal interface IPerfMeterRenderDocPreflightProviderV2 : IPerfMeterRenderDocPreflightProvider
+	{
+		SggRdResult Prepare(
+			PerfMeterCaptureOptions options,
+			int generation,
+			out PerfMeterRenderDocPreflight preflight);
+	}
+
+	internal sealed class PerfMeterRenderDocPreflightProvider : IPerfMeterRenderDocPreflightProviderV2
 	{
 		private const string StorageFailureWarning =
 			"RenderDoc native preflight remains fail-closed until PM-RDOC-003C/003D worker/lifecycle wiring is enabled.";
@@ -105,6 +124,14 @@ namespace SGG.PerfMeter
 
 		public SggRdResult Prepare(PerfMeterCaptureOptions options, out PerfMeterRenderDocPreflight preflight)
 		{
+			return Prepare(options, 0, out preflight);
+		}
+
+		public SggRdResult Prepare(
+			PerfMeterCaptureOptions options,
+			int generation,
+			out PerfMeterRenderDocPreflight preflight)
+		{
 			preflight = default;
 			if (_storage == null)
 			{
@@ -118,9 +145,15 @@ namespace SGG.PerfMeter
 				{
 					return SggRdResult.InvalidArgument;
 				}
+				if (options.ExternalArtifactStorageMode == PerfMeterExternalArtifactStorageMode.Embed)
+				{
+					return SggRdResult.InvalidArgument;
+				}
 
 				string opaqueSessionId = CreateOpaqueSessionId(options.CaptureId);
-				PerfMeterRenderDocStorageRequest request = new PerfMeterRenderDocStorageRequest(opaqueSessionId, 0u);
+				PerfMeterRenderDocStorageRequest request = new PerfMeterRenderDocStorageRequest(
+					opaqueSessionId,
+					unchecked((ulong)Math.Max(0, generation)));
 				SggRdResult result = _storage.TryReserveSource(request, out reservation, out string error);
 				if (result != SggRdResult.Ok)
 				{
@@ -129,7 +162,9 @@ namespace SGG.PerfMeter
 
 				string capturePathTemplate = reservation.CapturePathTemplate;
 				string title = _titleFactory(options.CaptureId);
-				PerfMeterExternalArtifactOptions artifactOptions = CreateNativeArtifactOptions(options.CaptureId);
+				PerfMeterExternalArtifactOptions artifactOptions = CreateNativeArtifactOptions(
+					options.CaptureId,
+					options.ExternalArtifactStorageMode);
 				preflight = new PerfMeterRenderDocPreflight(
 					reservation.RequestNonce,
 					capturePathTemplate,
@@ -178,7 +213,9 @@ namespace SGG.PerfMeter
 			return opaqueSessionId;
 		}
 
-		private static PerfMeterExternalArtifactOptions CreateNativeArtifactOptions(string requestId)
+		private static PerfMeterExternalArtifactOptions CreateNativeArtifactOptions(
+			string requestId,
+			PerfMeterExternalArtifactStorageMode storageMode)
 		{
 			return new PerfMeterExternalArtifactOptions(
 				artifactId: string.IsNullOrEmpty(requestId) ? "renderdoc" : requestId + "-renderdoc",
@@ -191,9 +228,11 @@ namespace SGG.PerfMeter
 				privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
 					PerfMeterExternalArtifactPrivacyFlags.Sensitive |
 					PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
-				storageMode: PerfMeterExternalArtifactStorageMode.MetadataOnly,
+				storageMode: storageMode,
 				quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
-				sharePolicy: PerfMeterExternalArtifactSharePolicy.DoNotShare);
+				sharePolicy: storageMode == PerfMeterExternalArtifactStorageMode.MetadataOnly
+					? PerfMeterExternalArtifactSharePolicy.DoNotShare
+					: PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare);
 		}
 
 		private static string CreateBoundedTitle(string captureId)

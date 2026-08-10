@@ -208,6 +208,44 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void CleanupPendingTombstoneIsRediscoveredAfterRestart()
+		{
+			PerfMeterRenderDocStorage first = CreateStorage();
+			PerfMeterRenderDocStorageReservation reservation = ReserveSource(first, "cleanup-reload");
+			Assert.That(reservation.SetState(PerfMeterRenderDocStorageState.CleanupPending, out string pendingError), Is.EqualTo(SggRdResult.Ok), pendingError);
+			string tombstone = reservation.RootPath + ".cleanup";
+			Directory.Move(reservation.RootPath, tombstone);
+
+			PerfMeterRenderDocStorage restarted = CreateStorage();
+			Assert.That(restarted.TryCleanup((session, generation) => false, out _, out string cleanupError), Is.EqualTo(SggRdResult.Ok), cleanupError);
+			Assert.That(Directory.Exists(tombstone), Is.False);
+		}
+
+		[Test]
+		public void CleanupTombstoneBlocksNonceReuseAcrossStorageInstances()
+		{
+			PerfMeterRenderDocStorage first = CreateStorage();
+			PerfMeterRenderDocStorageReservation abandoned = ReserveSource(first, "cleanup-collision");
+			Assert.That(abandoned.SetState(PerfMeterRenderDocStorageState.Terminal, out string terminalError), Is.EqualTo(SggRdResult.Ok), terminalError);
+			string tombstone = abandoned.RootPath + ".cleanup";
+			Directory.Move(abandoned.RootPath, tombstone);
+
+			PerfMeterRenderDocStorage second = new PerfMeterRenderDocStorage(
+				_projectRoot,
+				_freeSpace,
+				_clock,
+				new IncrementingNonceProvider(0x1000u),
+				new TestRetryDelay());
+			PerfMeterRenderDocStorageReservation replacement = ReserveSource(second, "replacement");
+
+			Assert.That(replacement.RequestNonce, Is.EqualTo(0x1001u));
+			Assert.That(Directory.Exists(tombstone), Is.True);
+			CompleteAndDelete(second, replacement);
+			Directory.Move(tombstone, abandoned.RootPath);
+			Assert.That(first.TryDeleteOwnedRoot(abandoned.RootPath, out string cleanupError), Is.EqualTo(SggRdResult.Ok), cleanupError);
+		}
+
+		[Test]
 		public void ReparseAliasIsRejectedWhenThePlatformSupportsSymbolicLinks()
 		{
 			MethodInfo createSymbolicLink = typeof(Directory).GetMethod(

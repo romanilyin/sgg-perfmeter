@@ -1035,7 +1035,7 @@ namespace SGG.PerfMeter
 			if (CanMutateRuntime)
 			{
 				_captureCoordinator?.Tick();
-				TryReleaseCaptureLeaseIfIdle();
+				UpdateCaptureBundleAfterCoordinatorTick();
 			}
 		}
 
@@ -2728,6 +2728,17 @@ namespace SGG.PerfMeter
 
 			PerfMeterCaptureStatusSnapshot captureStatus = _captureCoordinator.Status;
 			CaptureBundles.UpdateCaptureStatus(captureStatus);
+			while (_captureCoordinator.TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion completion))
+			{
+				PerfMeterCaptureBundleStatusSnapshot bundleStatus = CaptureBundles.GetStatus(completion.CaptureId);
+				if (string.Equals(bundleStatus.BundleId, _captureBundleId, StringComparison.Ordinal))
+				{
+					CaptureBundles.ObserveExternalArtifact(
+						completion.CaptureId,
+						bundleStatus.BundleId,
+						completion.Artifact);
+				}
+			}
 			if (!captureStatus.IsActive && !_captureCoordinator.HasActiveResources)
 			{
 				FinalizeCaptureBundle(captureStatus);

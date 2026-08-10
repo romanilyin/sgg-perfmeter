@@ -217,6 +217,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SourceTerminalFailureRemovesAlreadyTerminalCopy()
+		{
+			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.Copy, new byte[] { 10, 11, 12 });
+			_files.OnDispose = openIndex =>
+			{
+				if (openIndex == 4)
+				{
+					File.WriteAllText(fixture.Preflight.Reservation.MarkerPath, "corrupt");
+				}
+			};
+
+			PerfMeterRenderDocFinalizationResult result = CreateFinalizer().Run(
+				FakeBridge.Always(fixture.Path),
+				fixture.Token,
+				fixture.Preflight);
+
+			Assert.That(result.Result, Is.EqualTo(SggRdResult.InternalError));
+			Assert.That(result.Artifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Failed));
+			Assert.That(Directory.Exists(_storage.CopyRoot) && Directory.GetDirectories(_storage.CopyRoot).Length > 0, Is.False);
+		}
+
+		[Test]
 		public void EmbedRemainsFailClosedWithoutDedicatedNativeBundlePath()
 		{
 			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.Embed, new byte[] { 1 });
@@ -389,6 +411,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			internal int ReplaceIdentityOnOpen { get; set; }
 			internal int HashMismatchOnOpen { get; set; }
 			internal int HashAdvanceMilliseconds { get; set; }
+			internal Action<int> OnDispose { get; set; }
 
 			internal void Register(string path, byte[] bytes)
 			{
@@ -503,7 +526,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 					error = string.Empty;
 					return SggRdResult.Ok;
 				}
-				public void Dispose() { }
+				public void Dispose() => _owner.OnDispose?.Invoke(_openIndex);
 			}
 		}
 

@@ -72,8 +72,17 @@ namespace SGG.PerfMeter
 		internal bool Succeeded => Result == SggRdResult.Ok;
 	}
 
+	internal interface IPerfMeterRenderDocArtifactFinalizer
+	{
+		PerfMeterRenderDocFinalizationResult Run(
+			IPerfMeterRenderDocBridge bridge,
+			SggRdCaptureTokenV1 token,
+			PerfMeterRenderDocPreflight preflight,
+			Func<bool> isCancellationRequested = null);
+	}
+
 	// Run is intentionally synchronous: callers must schedule it on a worker.
-	internal sealed class PerfMeterRenderDocArtifactFinalizer
+	internal sealed class PerfMeterRenderDocArtifactFinalizer : IPerfMeterRenderDocArtifactFinalizer
 	{
 		private readonly PerfMeterRenderDocStorage _storage;
 		private readonly IPerfMeterRenderDocFileBindingFactory _fileBindings;
@@ -98,7 +107,7 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		internal PerfMeterRenderDocFinalizationResult Run(
+		public PerfMeterRenderDocFinalizationResult Run(
 			IPerfMeterRenderDocBridge bridge,
 			SggRdCaptureTokenV1 token,
 			PerfMeterRenderDocPreflight preflight,
@@ -261,6 +270,16 @@ namespace SGG.PerfMeter
 
 				if (!TryFinishSource(sourceReservation, out string sourceTerminalError))
 				{
+					if (copyReservation != null)
+					{
+						SggRdResult copyCleanupResult = _storage.TryDeleteOwnedRoot(
+							copyReservation.RootPath,
+							out string copyCleanupError);
+						if (copyCleanupResult != SggRdResult.Ok)
+						{
+							sourceTerminalError = CombineErrors(sourceTerminalError, copyCleanupError);
+						}
+					}
 					return Failed(preflight, SggRdResult.InternalError, sourceTerminalError, payloadBytes, sourceHash, identityHash);
 				}
 				bool canceledAtCompletion = IsCanceled(isCancellationRequested);

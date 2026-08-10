@@ -81,6 +81,25 @@ namespace SGG.PerfMeter
 			int preRollFrames,
 			int postRollFrames,
 			PerfMeterCaptureBackendMode backendMode)
+			: this(
+				captureId,
+				tool,
+				captureFrames,
+				preRollFrames,
+				postRollFrames,
+				backendMode,
+				PerfMeterExternalArtifactStorageMode.MetadataOnly)
+		{
+		}
+
+		public PerfMeterCaptureOptions(
+			string captureId,
+			PerfMeterCaptureTool tool,
+			int captureFrames,
+			int preRollFrames,
+			int postRollFrames,
+			PerfMeterCaptureBackendMode backendMode,
+			PerfMeterExternalArtifactStorageMode externalArtifactStorageMode)
 		{
 			CaptureId = captureId ?? string.Empty;
 			Tool = tool;
@@ -88,6 +107,7 @@ namespace SGG.PerfMeter
 			PreRollFrames = Mathf.Max(0, preRollFrames);
 			PostRollFrames = Mathf.Max(0, postRollFrames);
 			BackendMode = backendMode;
+			ExternalArtifactStorageMode = externalArtifactStorageMode;
 		}
 
 		public string CaptureId { get; }
@@ -96,8 +116,12 @@ namespace SGG.PerfMeter
 		public int PreRollFrames { get; }
 		public int PostRollFrames { get; }
 		public PerfMeterCaptureBackendMode BackendMode { get; }
+		public PerfMeterExternalArtifactStorageMode ExternalArtifactStorageMode { get; }
 
 		internal bool IsValidBackendMode => Enum.IsDefined(typeof(PerfMeterCaptureBackendMode), BackendMode);
+		internal bool IsValidExternalArtifactStorageMode => Enum.IsDefined(
+			typeof(PerfMeterExternalArtifactStorageMode),
+			ExternalArtifactStorageMode);
 	}
 
 	public readonly struct PerfMeterCaptureStatusSnapshot
@@ -285,6 +309,42 @@ namespace SGG.PerfMeter
 		PerfMeterCaptureBackendV2Snapshot Snapshot { get; }
 	}
 
+	internal enum PerfMeterCaptureBackendBeginResult
+	{
+		Failed = 0,
+		Pending = 1,
+		Started = 2
+	}
+
+	internal readonly struct PerfMeterCaptureExternalArtifactCompletion
+	{
+		internal PerfMeterCaptureExternalArtifactCompletion(
+			string captureId,
+			int generation,
+			PerfMeterExternalArtifactSnapshot artifact,
+			string retainedPayloadPath)
+		{
+			CaptureId = captureId ?? string.Empty;
+			Generation = generation;
+			Artifact = artifact;
+			RetainedPayloadPath = retainedPayloadPath ?? string.Empty;
+		}
+
+		internal string CaptureId { get; }
+		internal int Generation { get; }
+		internal PerfMeterExternalArtifactSnapshot Artifact { get; }
+		internal string RetainedPayloadPath { get; }
+	}
+
+	internal interface IPerfMeterCaptureBackendV3 : IPerfMeterCaptureBackendV2
+	{
+		PerfMeterCaptureBackendBeginResult TryBegin(
+			PerfMeterCaptureOptions options,
+			int generation,
+			out string error);
+		bool TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion completion);
+	}
+
 	internal static class PerfMeterNativeCaptureBackendRegistry
 	{
 		private static IPerfMeterCaptureBackendV2 _backend;
@@ -334,6 +394,7 @@ namespace SGG.PerfMeter
 	{
 		private readonly IPerfMeterCaptureBackend _backend;
 		private readonly IPerfMeterCaptureBackendV2 _backendV2;
+		private readonly IPerfMeterCaptureBackendV3 _backendV3;
 		private readonly IPerfMeterCaptureScope _scope;
 		private PerfMeterCaptureOptions _options;
 		private PerfMeterCaptureState _state;
@@ -347,12 +408,14 @@ namespace SGG.PerfMeter
 		private bool _endScheduled;
 		private bool _endExecuted;
 		private bool _cleanupAccepted;
+		private bool _beginPending;
 		private int _generation;
 
 		internal PerfMeterCaptureCoordinator(IPerfMeterCaptureBackend backend, IPerfMeterCaptureScope scope)
 		{
 			_backend = backend ?? throw new ArgumentNullException(nameof(backend));
 			_backendV2 = backend as IPerfMeterCaptureBackendV2;
+			_backendV3 = backend as IPerfMeterCaptureBackendV3;
 			_scope = scope ?? throw new ArgumentNullException(nameof(scope));
 			SetState(PerfMeterCaptureState.Idle, PerfMeterAvailability.Unknown, string.Empty);
 		}
@@ -360,6 +423,7 @@ namespace SGG.PerfMeter
 		internal PerfMeterCaptureCoordinator(IPerfMeterCaptureBackendV2 backend, IPerfMeterCaptureScope scope)
 		{
 			_backendV2 = backend ?? throw new ArgumentNullException(nameof(backend));
+			_backendV3 = backend as IPerfMeterCaptureBackendV3;
 			_scope = scope ?? throw new ArgumentNullException(nameof(scope));
 			SetState(PerfMeterCaptureState.Idle, PerfMeterAvailability.Unknown, string.Empty);
 		}
@@ -412,7 +476,10 @@ namespace SGG.PerfMeter
 		{
 			using (PerfMeterProfilerInstrumentation.CaptureCoordinatorMarker.Auto())
 			{
-				if (string.IsNullOrEmpty(options.CaptureId) || options.Tool == PerfMeterCaptureTool.Unknown || !options.IsValidBackendMode)
+				if (string.IsNullOrEmpty(options.CaptureId) ||
+					options.Tool == PerfMeterCaptureTool.Unknown ||
+					!options.IsValidBackendMode ||
+					!options.IsValidExternalArtifactStorageMode)
 				{
 					return PerfMeterCaptureRequestResult.InvalidRequest;
 				}
@@ -456,7 +523,7 @@ namespace SGG.PerfMeter
 				}
 
 				SetState(PerfMeterCaptureState.PreRoll, PerfMeterAvailability.Available, capability.Warning);
-				if (_options.PreRollFrames == 0 && !TryBeginCapture())
+				if (_options.PreRollFrames == 0 && TryBeginCapture() == PerfMeterCaptureBackendBeginResult.Failed)
 				{
 					return PerfMeterCaptureRequestResult.Failed;
 				}
@@ -470,6 +537,16 @@ namespace SGG.PerfMeter
 			using (PerfMeterProfilerInstrumentation.CaptureCoordinatorMarker.Auto())
 			{
 				TickBackend();
+				if (_beginPending)
+				{
+					PerfMeterCaptureBackendBeginResult beginResult = TryBeginCapture();
+					if (beginResult != PerfMeterCaptureBackendBeginResult.Started)
+					{
+						CompleteBackendIfReady();
+						return;
+					}
+					return;
+				}
 				CompleteBackendIfReady();
 				if (_endScheduled && !_endExecuted)
 				{
@@ -479,6 +556,10 @@ namespace SGG.PerfMeter
 				switch (_state)
 				{
 					case PerfMeterCaptureState.PreRoll:
+						if (_beginPending)
+						{
+							break;
+						}
 						_completedPreRollFrames++;
 						if (_completedPreRollFrames >= _options.PreRollFrames)
 						{
@@ -538,6 +619,7 @@ namespace SGG.PerfMeter
 				}
 
 				AdvanceGeneration();
+				_beginPending = false;
 				_endScheduled = false;
 				if (_cleanupAccepted)
 				{
@@ -580,6 +662,7 @@ namespace SGG.PerfMeter
 		internal bool Reset()
 		{
 			AdvanceGeneration();
+			_beginPending = false;
 			_endScheduled = false;
 			if (_cleanupAccepted)
 			{
@@ -615,46 +698,68 @@ namespace SGG.PerfMeter
 			return true;
 		}
 
-		private bool TryBeginCapture()
+		private PerfMeterCaptureBackendBeginResult TryBeginCapture()
 		{
-			_scopeActive = true;
-			try
+			if (!_scopeActive)
 			{
-				if (!_scope.TryBegin(_options.CaptureId))
+				_scopeActive = true;
+				try
 				{
-					_scopeActive = false;
-					SetState(PerfMeterCaptureState.Error, PerfMeterAvailability.Unavailable, "Another alert capture scope is active.");
-					return false;
+					if (!_scope.TryBegin(_options.CaptureId))
+					{
+						_scopeActive = false;
+						SetState(PerfMeterCaptureState.Error, PerfMeterAvailability.Unavailable, "Another alert capture scope is active.");
+						return PerfMeterCaptureBackendBeginResult.Failed;
+					}
 				}
-			}
-			catch (Exception exception)
-			{
-				TryReleaseCaptureResources(out string cleanupError);
-				SetState(PerfMeterCaptureState.Error, PerfMeterAvailability.Unavailable, CombineErrors(FormatException(exception), cleanupError));
-				return false;
+				catch (Exception exception)
+				{
+					TryReleaseCaptureResources(out string cleanupError);
+					SetState(PerfMeterCaptureState.Error, PerfMeterAvailability.Unavailable, CombineErrors(FormatException(exception), cleanupError));
+					return PerfMeterCaptureBackendBeginResult.Failed;
+				}
 			}
 
 			try
 			{
-				bool started;
+				PerfMeterCaptureBackendBeginResult beginResult;
 				string error;
-				if (_backendV2 != null)
+				if (_backendV3 != null)
 				{
-					started = _backendV2.TryBegin(_options, out error);
+					beginResult = _backendV3.TryBegin(_options, _generation, out error);
+					PerfMeterCaptureBackendV2Snapshot backendSnapshot = GetBackendSnapshot();
+					_backendActive = beginResult != PerfMeterCaptureBackendBeginResult.Failed || backendSnapshot.HasActiveResources;
+				}
+				else if (_backendV2 != null)
+				{
+					bool started = _backendV2.TryBegin(_options, out error);
+					beginResult = started
+						? PerfMeterCaptureBackendBeginResult.Started
+						: PerfMeterCaptureBackendBeginResult.Failed;
 					PerfMeterCaptureBackendV2Snapshot backendSnapshot = GetBackendSnapshot();
 					_backendActive = started || backendSnapshot.HasActiveResources;
 				}
 				else
 				{
-					started = _backend.TryBegin(_options.Tool, out error);
+					bool started = _backend.TryBegin(_options.Tool, out error);
+					beginResult = started
+						? PerfMeterCaptureBackendBeginResult.Started
+						: PerfMeterCaptureBackendBeginResult.Failed;
 					_backendActive = started;
 				}
 
-				if (!started)
+				if (beginResult == PerfMeterCaptureBackendBeginResult.Pending)
+				{
+					_beginPending = true;
+					return beginResult;
+				}
+
+				_beginPending = false;
+				if (beginResult == PerfMeterCaptureBackendBeginResult.Failed)
 				{
 					TryReleaseCaptureResources(out string cleanupError);
 					SetState(PerfMeterCaptureState.Error, PerfMeterAvailability.Unavailable, CombineErrors(error, cleanupError));
-					return false;
+					return beginResult;
 				}
 			}
 			catch (Exception exception)
@@ -662,11 +767,11 @@ namespace SGG.PerfMeter
 				_backendActive = _backendV2 != null;
 				TryReleaseCaptureResources(out string cleanupError);
 				SetState(PerfMeterCaptureState.Error, PerfMeterAvailability.Unavailable, CombineErrors(FormatException(exception), cleanupError));
-				return false;
+				return PerfMeterCaptureBackendBeginResult.Failed;
 			}
 
 			SetState(PerfMeterCaptureState.Capturing, PerfMeterAvailability.Available, string.Empty);
-			return true;
+			return PerfMeterCaptureBackendBeginResult.Started;
 		}
 
 		private void TryEndCapture()
@@ -858,7 +963,7 @@ namespace SGG.PerfMeter
 
 		private void TickBackend()
 		{
-			if (_backendV2 == null || !_backendActive || !_endExecuted)
+			if (_backendV2 == null || !_backendActive || (!_beginPending && !_endExecuted && !_cleanupAccepted))
 			{
 				return;
 			}
@@ -935,6 +1040,24 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal bool TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion completion)
+		{
+			completion = default;
+			if (_backendV3 == null || !_backendV3.TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion candidate))
+			{
+				return false;
+			}
+
+			if (candidate.Generation != _generation ||
+				!string.Equals(candidate.CaptureId, _options.CaptureId, StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			completion = candidate;
+			return true;
+		}
+
 		private void AdvanceGeneration()
 		{
 			unchecked
@@ -960,6 +1083,7 @@ namespace SGG.PerfMeter
 			_endScheduled = false;
 			_endExecuted = false;
 			_cleanupAccepted = false;
+			_beginPending = false;
 		}
 
 		private void SetState(PerfMeterCaptureState state, PerfMeterAvailability availability, string warning)
@@ -1022,7 +1146,7 @@ namespace SGG.PerfMeter
 		}
 	}
 
-	internal sealed class PerfMeterCaptureBackendRouter : IPerfMeterCaptureBackend, IPerfMeterCaptureBackendV2
+	internal sealed class PerfMeterCaptureBackendRouter : IPerfMeterCaptureBackend, IPerfMeterCaptureBackendV3
 	{
 		private readonly IPerfMeterCaptureBackend _genericBackend;
 		private IPerfMeterCaptureBackendV2 _nativeBackend;
@@ -1137,22 +1261,36 @@ namespace SGG.PerfMeter
 
 		public bool TryBegin(PerfMeterCaptureOptions options, out string error)
 		{
+			return TryBegin(options, 0, out error) == PerfMeterCaptureBackendBeginResult.Started;
+		}
+
+		public PerfMeterCaptureBackendBeginResult TryBegin(
+			PerfMeterCaptureOptions options,
+			int generation,
+			out string error)
+		{
 			error = string.Empty;
 			if (!_nativeRequested || !_usingNative)
 			{
-				return TryGenericBegin(options.Tool, out error, _snapshot.FallbackReason);
+				return TryGenericBegin(options.Tool, out error, _snapshot.FallbackReason)
+					? PerfMeterCaptureBackendBeginResult.Started
+					: PerfMeterCaptureBackendBeginResult.Failed;
 			}
 
-			bool started;
+			PerfMeterCaptureBackendBeginResult beginResult;
 			PerfMeterCaptureBackendV2Snapshot nativeSnapshot;
 			try
 			{
-				started = _nativeBackend.TryBegin(options, out error);
+				beginResult = _nativeBackend is IPerfMeterCaptureBackendV3 nativeV3
+					? nativeV3.TryBegin(options, generation, out error)
+					: _nativeBackend.TryBegin(options, out error)
+						? PerfMeterCaptureBackendBeginResult.Started
+						: PerfMeterCaptureBackendBeginResult.Failed;
 				nativeSnapshot = ReadNativeSnapshot(_snapshot.FallbackReason);
 			}
 			catch (Exception exception)
 			{
-				started = false;
+				beginResult = PerfMeterCaptureBackendBeginResult.Failed;
 				error = FormatException(exception);
 				nativeSnapshot = CreateNativeFailure(
 					PerfMeterAvailability.Unavailable,
@@ -1162,10 +1300,16 @@ namespace SGG.PerfMeter
 					true);
 			}
 
-			if (started)
+			if (beginResult == PerfMeterCaptureBackendBeginResult.Started)
 			{
 				_snapshot = NormalizeNativeBeginSnapshot(nativeSnapshot);
-				return true;
+				return beginResult;
+			}
+
+			if (beginResult == PerfMeterCaptureBackendBeginResult.Pending)
+			{
+				_snapshot = nativeSnapshot;
+				return beginResult;
 			}
 
 			_snapshot = nativeSnapshot;
@@ -1173,7 +1317,9 @@ namespace SGG.PerfMeter
 			{
 				string fallbackReason = PerfMeterCaptureFallbackReasons.ForResultCode(nativeSnapshot.NativeResultCode);
 				_usingNative = false;
-				return TryGenericBegin(options.Tool, out error, fallbackReason);
+				return TryGenericBegin(options.Tool, out error, fallbackReason)
+					? PerfMeterCaptureBackendBeginResult.Started
+					: PerfMeterCaptureBackendBeginResult.Failed;
 			}
 
 			if (string.IsNullOrEmpty(error))
@@ -1181,7 +1327,14 @@ namespace SGG.PerfMeter
 				error = nativeSnapshot.Warning;
 			}
 
-			return false;
+			return PerfMeterCaptureBackendBeginResult.Failed;
+		}
+
+		public bool TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion completion)
+		{
+			completion = default;
+			return _nativeBackend is IPerfMeterCaptureBackendV3 nativeV3 &&
+				nativeV3.TryConsumeExternalArtifact(out completion);
 		}
 
 		public bool ScheduleEnd(out string error)

@@ -95,11 +95,42 @@ namespace SGG.PerfMeter
 		internal uint CaptureCount { get; }
 	}
 
-	internal sealed class PerfMeterRenderDocCaptureBackend : IPerfMeterCaptureBackendV2
+	internal readonly struct PerfMeterRenderDocPreflightWorkerResult
+	{
+		internal PerfMeterRenderDocPreflightWorkerResult(
+			SggRdResult result,
+			PerfMeterRenderDocPreflight preflight,
+			string warning)
+		{
+			Result = result;
+			Preflight = preflight;
+			Warning = warning ?? string.Empty;
+		}
+
+		internal SggRdResult Result { get; }
+		internal PerfMeterRenderDocPreflight Preflight { get; }
+		internal string Warning { get; }
+	}
+
+	internal readonly struct PerfMeterRenderDocCleanupWorkerResult
+	{
+		internal PerfMeterRenderDocCleanupWorkerResult(SggRdResult result, string warning)
+		{
+			Result = result;
+			Warning = warning ?? string.Empty;
+		}
+
+		internal SggRdResult Result { get; }
+		internal string Warning { get; }
+	}
+
+	internal sealed class PerfMeterRenderDocCaptureBackend : IPerfMeterCaptureBackendV3
 	{
 		private readonly IPerfMeterRenderDocBridge _bridge;
 		private readonly IPerfMeterRenderDocPreflightProvider _preflightProvider;
 		private readonly IPerfMeterRenderDocPlatformProvider _platformProvider;
+		private readonly IPerfMeterRenderDocWorkerScheduler _worker;
+		private readonly IPerfMeterRenderDocArtifactFinalizer _finalizer;
 		private PerfMeterCaptureBackendV2Snapshot _snapshot;
 		private PerfMeterRenderDocCapabilitySnapshot _capabilityDetails;
 		private bool _capabilityQueried;
@@ -112,6 +143,17 @@ namespace SGG.PerfMeter
 		private bool _endInvoked;
 		private bool _discardInvoked;
 		private bool _beginUncertain;
+		private IPerfMeterRenderDocWorkerOperation<PerfMeterRenderDocPreflightWorkerResult> _preflightOperation;
+		private IPerfMeterRenderDocWorkerOperation<PerfMeterRenderDocFinalizationResult> _finalizationOperation;
+		private IPerfMeterRenderDocWorkerOperation<PerfMeterRenderDocCleanupWorkerResult> _cleanupOperation;
+		private PerfMeterCaptureOptions _operationOptions;
+		private int _operationGeneration;
+		private volatile bool _workerCancellationRequested;
+		private PerfMeterRenderDocCapturePhase _cleanupTerminalPhase;
+		private int _cleanupResultCode;
+		private string _cleanupWarning = string.Empty;
+		private bool _artifactCompletionAvailable;
+		private PerfMeterCaptureExternalArtifactCompletion _artifactCompletion;
 
 		internal PerfMeterRenderDocCaptureBackend(
 			IPerfMeterRenderDocBridge bridge,
@@ -124,10 +166,26 @@ namespace SGG.PerfMeter
 			IPerfMeterRenderDocBridge bridge,
 			IPerfMeterRenderDocPreflightProvider preflightProvider,
 			IPerfMeterRenderDocPlatformProvider platformProvider)
+			: this(bridge, preflightProvider, platformProvider, null, null)
+		{
+		}
+
+		internal PerfMeterRenderDocCaptureBackend(
+			IPerfMeterRenderDocBridge bridge,
+			IPerfMeterRenderDocPreflightProvider preflightProvider,
+			IPerfMeterRenderDocPlatformProvider platformProvider,
+			IPerfMeterRenderDocWorkerScheduler worker,
+			IPerfMeterRenderDocArtifactFinalizer finalizer)
 		{
 			_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 			_preflightProvider = preflightProvider ?? throw new ArgumentNullException(nameof(preflightProvider));
 			_platformProvider = platformProvider ?? throw new ArgumentNullException(nameof(platformProvider));
+			if ((worker == null) != (finalizer == null))
+			{
+				throw new ArgumentException("RenderDoc worker and finalizer must be configured together.");
+			}
+			_worker = worker;
+			_finalizer = finalizer;
 			_snapshot = CreateSnapshot(
 				PerfMeterAvailability.Unknown,
 				PerfMeterRenderDocCapturePhase.None,
@@ -157,6 +215,119 @@ namespace SGG.PerfMeter
 
 		public bool TryBegin(PerfMeterCaptureOptions options, out string error)
 		{
+			if (!TryPrepareSynchronously(options, 0, out PerfMeterRenderDocPreflight preflight, out error))
+			{
+				return false;
+			}
+
+			return TryBeginPrepared(options, preflight, out error);
+		}
+
+		public PerfMeterCaptureBackendBeginResult TryBegin(
+			PerfMeterCaptureOptions options,
+			int generation,
+			out string error)
+		{
+			if (_worker == null)
+			{
+				return TryBegin(options, out error)
+					? PerfMeterCaptureBackendBeginResult.Started
+					: PerfMeterCaptureBackendBeginResult.Failed;
+			}
+
+			error = string.Empty;
+			if (_hasToken || _finalizationOperation != null || _cleanupOperation != null)
+			{
+				error = "RenderDoc capture already owns active resources.";
+				return PerfMeterCaptureBackendBeginResult.Failed;
+			}
+
+			if (_preflightOperation == null)
+			{
+				if (!EnsureAvailable(options, out error))
+				{
+					return PerfMeterCaptureBackendBeginResult.Failed;
+				}
+
+				_operationOptions = options;
+				_operationGeneration = generation;
+				_workerCancellationRequested = false;
+				_artifactCompletionAvailable = false;
+				_preflightOperation = _worker.Start(() => PrepareOnWorker(options, generation));
+				_snapshot = CreateSnapshot(
+					PerfMeterAvailability.Available,
+					PerfMeterRenderDocCapturePhase.Preflight,
+					(int)SggRdResult.Ok,
+					string.Empty,
+					false,
+					true,
+					true);
+				return PerfMeterCaptureBackendBeginResult.Pending;
+			}
+
+			if (!AreSameOptions(_operationOptions, options) || _operationGeneration != generation)
+			{
+				error = "RenderDoc pending preflight belongs to another capture generation.";
+				return PerfMeterCaptureBackendBeginResult.Failed;
+			}
+
+			if (!_preflightOperation.IsCompleted)
+			{
+				return PerfMeterCaptureBackendBeginResult.Pending;
+			}
+
+			PerfMeterRenderDocPreflightWorkerResult workerResult;
+			try
+			{
+				workerResult = _preflightOperation.GetResult();
+			}
+			catch (Exception exception)
+			{
+				_preflightOperation = null;
+				return FailPendingBegin(
+					PerfMeterRenderDocPInvokeBridge.MapInteropException(exception),
+					FormatException(exception),
+					default,
+					out error);
+			}
+			_preflightOperation = null;
+
+			if (_workerCancellationRequested)
+			{
+				return FailPendingBegin(
+					SggRdResult.CaptureFailed,
+					"RenderDoc preflight was canceled.",
+					workerResult.Preflight,
+					out error,
+					PerfMeterRenderDocCapturePhase.Completed);
+			}
+
+			if (workerResult.Result != SggRdResult.Ok)
+			{
+				return FailPendingBegin(workerResult.Result, workerResult.Warning, workerResult.Preflight, out error);
+			}
+
+			bool started = TryBeginPrepared(options, workerResult.Preflight, out error);
+			if (!started && !_begun && workerResult.Preflight.Reservation != null)
+			{
+				ScheduleCleanup(
+					workerResult.Preflight,
+					PerfMeterRenderDocCapturePhase.Failed,
+					_snapshot.NativeResultCode,
+					error);
+			}
+			return started
+				? PerfMeterCaptureBackendBeginResult.Started
+				: PerfMeterCaptureBackendBeginResult.Failed;
+		}
+
+		private bool TryPrepareSynchronously(
+			PerfMeterCaptureOptions options,
+			int generation,
+			out PerfMeterRenderDocPreflight preflight,
+			out string error)
+		{
+			preflight = default;
 			error = string.Empty;
 			if (_hasToken)
 			{
@@ -164,16 +335,8 @@ namespace SGG.PerfMeter
 				return false;
 			}
 
-			if (!_capabilityQueried || !AreSameOptions(_capabilityOptions, options))
+			if (!EnsureAvailable(options, out error))
 			{
-				_capabilityOptions = options;
-				_capabilityQueried = true;
-				_snapshot = QueryCapability(options);
-			}
-
-			if (_snapshot.Availability != PerfMeterAvailability.Available)
-			{
-				error = _snapshot.Warning;
 				return false;
 			}
 
@@ -189,7 +352,9 @@ namespace SGG.PerfMeter
 			SggRdResult preflightResult;
 			try
 			{
-				preflightResult = _preflightProvider.Prepare(options, out _preflight);
+				preflightResult = _preflightProvider is IPerfMeterRenderDocPreflightProviderV2 providerV2
+					? providerV2.Prepare(options, generation, out preflight)
+					: _preflightProvider.Prepare(options, out preflight);
 			}
 			catch (Exception exception)
 			{
@@ -203,7 +368,16 @@ namespace SGG.PerfMeter
 					: DescribeResult(preflightResult);
 				return FailBegin(preflightResult, warning, out error);
 			}
+			return true;
+		}
 
+		private bool TryBeginPrepared(
+			PerfMeterCaptureOptions options,
+			PerfMeterRenderDocPreflight preflight,
+			out string error)
+		{
+			error = string.Empty;
+			_preflight = preflight;
 			if (!IsValidPreflight(_preflight, out string preflightError))
 			{
 				return FailBegin(SggRdResult.InvalidArgument, preflightError, out error);
@@ -325,6 +499,26 @@ namespace SGG.PerfMeter
 			_hasToken = false;
 			_beginUncertain = false;
 			_endScheduled = false;
+			if (_worker != null && _finalizer != null && _preflight.Reservation != null)
+			{
+				SggRdCaptureTokenV1 completedToken = _token;
+				PerfMeterRenderDocPreflight completedPreflight = _preflight;
+				_workerCancellationRequested = false;
+				_finalizationOperation = _worker.Start(() => _finalizer.Run(
+					_bridge,
+					completedToken,
+					completedPreflight,
+					() => _workerCancellationRequested));
+				_snapshot = CreateSnapshot(
+					PerfMeterAvailability.Available,
+					PerfMeterRenderDocCapturePhase.AwaitingArtifact,
+					(int)SggRdResult.Ok,
+					string.Empty,
+					false,
+					true,
+					true);
+				return true;
+			}
 			_snapshot = CreateSnapshot(
 				PerfMeterAvailability.Available,
 				PerfMeterRenderDocCapturePhase.Completed,
@@ -339,8 +533,42 @@ namespace SGG.PerfMeter
 		public bool TryDiscard(out string error)
 		{
 			error = string.Empty;
+			if (_preflightOperation != null)
+			{
+				_workerCancellationRequested = true;
+				_snapshot = CreateSnapshot(
+					PerfMeterAvailability.Available,
+					PerfMeterRenderDocCapturePhase.Preflight,
+					(int)SggRdResult.Ok,
+					"RenderDoc preflight cancellation is pending.",
+					false,
+					true,
+					true);
+				return true;
+			}
+
+			if (_finalizationOperation != null)
+			{
+				_workerCancellationRequested = true;
+				return true;
+			}
+
+			if (_cleanupOperation != null)
+			{
+				return true;
+			}
+
 			if (!_begun)
 			{
+				if (_worker != null && _preflight.Reservation != null && !_preflight.Reservation.IsReleased)
+				{
+					ScheduleCleanup(
+						_preflight,
+						PerfMeterRenderDocCapturePhase.Completed,
+						(int)SggRdResult.Ok,
+						string.Empty);
+					return true;
+				}
 				return !_snapshot.HasActiveResources;
 			}
 
@@ -368,6 +596,15 @@ namespace SGG.PerfMeter
 				_beginUncertain = false;
 				_endScheduled = false;
 				_endInvoked = false;
+				if (_worker != null && _preflight.Reservation != null && !_preflight.Reservation.IsReleased)
+				{
+					ScheduleCleanup(
+						_preflight,
+						PerfMeterRenderDocCapturePhase.LostSession,
+						(int)discardResult,
+						DescribeResult(discardResult));
+					return true;
+				}
 				_snapshot = CreateSnapshot(
 					PerfMeterAvailability.Unavailable,
 					PerfMeterRenderDocCapturePhase.LostSession,
@@ -393,6 +630,15 @@ namespace SGG.PerfMeter
 			_beginUncertain = false;
 			_endScheduled = false;
 			_endInvoked = false;
+			if (_worker != null && _preflight.Reservation != null && !_preflight.Reservation.IsReleased)
+			{
+				ScheduleCleanup(
+					_preflight,
+					PerfMeterRenderDocCapturePhase.Completed,
+					(int)SggRdResult.Ok,
+					string.Empty);
+				return true;
+			}
 			_snapshot = CreateSnapshot(
 				PerfMeterAvailability.Available,
 				PerfMeterRenderDocCapturePhase.Completed,
@@ -406,8 +652,291 @@ namespace SGG.PerfMeter
 
 		public void Tick()
 		{
-			// Artifact polling and finalization belong to PM-RDOC-003C. This control
-			// foundation has no pending completion after a successful native end.
+			TickCanceledPreflight();
+			TickFinalization();
+			TickCleanup();
+		}
+
+		public bool TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion completion)
+		{
+			completion = default;
+			if (!_artifactCompletionAvailable)
+			{
+				return false;
+			}
+
+			completion = _artifactCompletion;
+			_artifactCompletion = default;
+			_artifactCompletionAvailable = false;
+			return true;
+		}
+
+		private bool EnsureAvailable(PerfMeterCaptureOptions options, out string error)
+		{
+			error = string.Empty;
+			if (!_capabilityQueried || !AreSameOptions(_capabilityOptions, options))
+			{
+				_capabilityOptions = options;
+				_capabilityQueried = true;
+				_snapshot = QueryCapability(options);
+			}
+
+			if (_snapshot.Availability == PerfMeterAvailability.Available)
+			{
+				return true;
+			}
+
+			error = _snapshot.Warning;
+			return false;
+		}
+
+		private PerfMeterRenderDocPreflightWorkerResult PrepareOnWorker(
+			PerfMeterCaptureOptions options,
+			int generation)
+		{
+			PerfMeterRenderDocPreflight preflight = default;
+			try
+			{
+				SggRdResult result = _preflightProvider is IPerfMeterRenderDocPreflightProviderV2 providerV2
+					? providerV2.Prepare(options, generation, out preflight)
+					: _preflightProvider.Prepare(options, out preflight);
+				if (result != SggRdResult.Ok)
+				{
+					return new PerfMeterRenderDocPreflightWorkerResult(
+						result,
+						preflight,
+						result == SggRdResult.InternalError
+							? PerfMeterRenderDocPreflightProvider.PolicyNotReadyMessage
+							: DescribeResult(result));
+				}
+
+				if (preflight.Reservation != null)
+				{
+					SggRdResult stateResult = preflight.Reservation.SetState(
+						PerfMeterRenderDocStorageState.Capturing,
+						out string stateError);
+					if (stateResult != SggRdResult.Ok)
+					{
+						preflight.Abort(out string abortError);
+						return new PerfMeterRenderDocPreflightWorkerResult(
+							stateResult,
+							default,
+							CombineWarnings(stateError, abortError));
+					}
+				}
+
+				return new PerfMeterRenderDocPreflightWorkerResult(SggRdResult.Ok, preflight, string.Empty);
+			}
+			catch (Exception exception)
+			{
+				if (preflight.Reservation != null)
+				{
+					preflight.Abort(out _);
+				}
+				return new PerfMeterRenderDocPreflightWorkerResult(
+					PerfMeterRenderDocPInvokeBridge.MapInteropException(exception),
+					default,
+					FormatException(exception));
+			}
+		}
+
+		private PerfMeterCaptureBackendBeginResult FailPendingBegin(
+			SggRdResult result,
+			string warning,
+			PerfMeterRenderDocPreflight preflight,
+			out string error,
+			PerfMeterRenderDocCapturePhase terminalPhase = PerfMeterRenderDocCapturePhase.Failed)
+		{
+			error = string.IsNullOrEmpty(warning) ? DescribeResult(result) : warning;
+			if (preflight.Reservation != null && !preflight.Reservation.IsReleased)
+			{
+				ScheduleCleanup(preflight, terminalPhase, (int)result, error);
+			}
+			else
+			{
+				_snapshot = CreateSnapshot(
+					terminalPhase == PerfMeterRenderDocCapturePhase.Completed
+						? PerfMeterAvailability.Available
+						: PerfMeterAvailability.Unavailable,
+					terminalPhase,
+					(int)result,
+					error,
+					false,
+					false,
+					false);
+			}
+			return PerfMeterCaptureBackendBeginResult.Failed;
+		}
+
+		private void ScheduleCleanup(
+			PerfMeterRenderDocPreflight preflight,
+			PerfMeterRenderDocCapturePhase terminalPhase,
+			int resultCode,
+			string warning)
+		{
+			_cleanupTerminalPhase = terminalPhase;
+			_cleanupResultCode = resultCode;
+			_cleanupWarning = warning ?? string.Empty;
+			_preflight = preflight;
+			_cleanupOperation = _worker.Start(() =>
+			{
+				SggRdResult cleanupResult = preflight.Abort(out string cleanupError);
+				return new PerfMeterRenderDocCleanupWorkerResult(cleanupResult, cleanupError);
+			});
+			_snapshot = CreateSnapshot(
+				terminalPhase == PerfMeterRenderDocCapturePhase.Completed
+					? PerfMeterAvailability.Available
+					: PerfMeterAvailability.Unavailable,
+				terminalPhase,
+				resultCode,
+				_cleanupWarning,
+				false,
+				true,
+				true);
+		}
+
+		private void TickCanceledPreflight()
+		{
+			if (_preflightOperation == null || !_workerCancellationRequested || !_preflightOperation.IsCompleted)
+			{
+				return;
+			}
+
+			try
+			{
+				PerfMeterRenderDocPreflightWorkerResult result = _preflightOperation.GetResult();
+				_preflightOperation = null;
+				if (result.Preflight.Reservation != null && !result.Preflight.Reservation.IsReleased)
+				{
+					ScheduleCleanup(
+						result.Preflight,
+						PerfMeterRenderDocCapturePhase.Completed,
+						(int)SggRdResult.Ok,
+						string.Empty);
+				}
+				else
+				{
+					_snapshot = CreateSnapshot(
+						PerfMeterAvailability.Available,
+						PerfMeterRenderDocCapturePhase.Completed,
+						(int)SggRdResult.Ok,
+						string.Empty,
+						false,
+						false,
+						false);
+				}
+			}
+			catch (Exception exception)
+			{
+				_preflightOperation = null;
+				_snapshot = CreateSnapshot(
+					PerfMeterAvailability.Unavailable,
+					PerfMeterRenderDocCapturePhase.Failed,
+					(int)PerfMeterRenderDocPInvokeBridge.MapInteropException(exception),
+					FormatException(exception),
+					false,
+					false,
+					false);
+			}
+		}
+
+		private void TickFinalization()
+		{
+			if (_finalizationOperation == null || !_finalizationOperation.IsCompleted)
+			{
+				return;
+			}
+
+			try
+			{
+				PerfMeterRenderDocFinalizationResult result = _finalizationOperation.GetResult();
+				_finalizationOperation = null;
+				bool canceled = _workerCancellationRequested;
+				if (!canceled)
+				{
+					_artifactCompletion = new PerfMeterCaptureExternalArtifactCompletion(
+						_operationOptions.CaptureId,
+						_operationGeneration,
+						result.Artifact,
+						result.RetainedPayloadPath);
+					_artifactCompletionAvailable = true;
+				}
+				_preflight = default;
+				_snapshot = CreateSnapshot(
+					canceled || result.Succeeded ? PerfMeterAvailability.Available : PerfMeterAvailability.Unavailable,
+					canceled || result.Succeeded
+						? PerfMeterRenderDocCapturePhase.Completed
+						: PerfMeterRenderDocCapturePhase.Failed,
+					canceled ? (int)SggRdResult.Ok : (int)result.Result,
+					canceled ? string.Empty : result.Warning,
+					false,
+					false,
+					false);
+			}
+			catch (Exception exception)
+			{
+				_finalizationOperation = null;
+				SggRdResult result = PerfMeterRenderDocPInvokeBridge.MapInteropException(exception);
+				string warning = FormatException(exception);
+				if (_preflight.Reservation != null && !_preflight.Reservation.IsReleased)
+				{
+					ScheduleCleanup(
+						_preflight,
+						PerfMeterRenderDocCapturePhase.Failed,
+						(int)result,
+						warning);
+				}
+				else
+				{
+					_preflight = default;
+					_snapshot = CreateSnapshot(
+						PerfMeterAvailability.Unavailable,
+						PerfMeterRenderDocCapturePhase.Failed,
+						(int)result,
+						warning,
+						false,
+						false,
+						false);
+				}
+			}
+		}
+
+		private void TickCleanup()
+		{
+			if (_cleanupOperation == null || !_cleanupOperation.IsCompleted)
+			{
+				return;
+			}
+
+			try
+			{
+				PerfMeterRenderDocCleanupWorkerResult cleanup = _cleanupOperation.GetResult();
+				_cleanupOperation = null;
+				_preflight = default;
+				bool cleaned = cleanup.Result == SggRdResult.Ok;
+				_snapshot = CreateSnapshot(
+					cleaned && _cleanupTerminalPhase == PerfMeterRenderDocCapturePhase.Completed
+						? PerfMeterAvailability.Available
+						: PerfMeterAvailability.Unavailable,
+					cleaned ? _cleanupTerminalPhase : PerfMeterRenderDocCapturePhase.Failed,
+					cleaned ? _cleanupResultCode : (int)cleanup.Result,
+					cleaned ? _cleanupWarning : CombineWarnings(_cleanupWarning, cleanup.Warning),
+					false,
+					false,
+					false);
+			}
+			catch (Exception exception)
+			{
+				_cleanupOperation = null;
+				_snapshot = CreateSnapshot(
+					PerfMeterAvailability.Unavailable,
+					PerfMeterRenderDocCapturePhase.Failed,
+					(int)PerfMeterRenderDocPInvokeBridge.MapInteropException(exception),
+					CombineWarnings(_cleanupWarning, FormatException(exception)),
+					false,
+					false,
+					false);
+			}
 		}
 
 		private PerfMeterCaptureBackendV2Snapshot QueryCapability(PerfMeterCaptureOptions options)
@@ -670,7 +1199,8 @@ namespace SGG.PerfMeter
 				left.CaptureFrames == right.CaptureFrames &&
 				left.PreRollFrames == right.PreRollFrames &&
 				left.PostRollFrames == right.PostRollFrames &&
-				left.BackendMode == right.BackendMode;
+				left.BackendMode == right.BackendMode &&
+				left.ExternalArtifactStorageMode == right.ExternalArtifactStorageMode;
 		}
 
 		private static bool IsAbsolutePathTemplate(string path)
@@ -735,6 +1265,16 @@ namespace SGG.PerfMeter
 		private static string FormatException(Exception exception)
 		{
 			return exception.GetType().Name + ": " + exception.Message;
+		}
+
+		private static string CombineWarnings(string first, string second)
+		{
+			if (string.IsNullOrEmpty(first))
+			{
+				return second ?? string.Empty;
+			}
+
+			return string.IsNullOrEmpty(second) ? first : first + " " + second;
 		}
 	}
 }

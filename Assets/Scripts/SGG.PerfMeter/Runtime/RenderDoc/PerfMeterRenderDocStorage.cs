@@ -245,6 +245,7 @@ namespace SGG.PerfMeter
 		private readonly IPerfMeterRenderDocNonceProvider _nonceProvider;
 		private readonly IPerfMeterRenderDocRetryDelay _retryDelay;
 		private readonly Action<string> _deleteDirectory;
+		private readonly bool _useAtomicOwnedDelete;
 		private readonly Dictionary<string, PerfMeterRenderDocStorageReservation> _reservations =
 			new Dictionary<string, PerfMeterRenderDocStorageReservation>(StringComparer.Ordinal);
 
@@ -277,6 +278,7 @@ namespace SGG.PerfMeter
 			_nonceProvider = nonceProvider ?? new CryptographicNonceProvider();
 			_retryDelay = retryDelay ?? new ThreadSleepRetryDelay();
 			_deleteDirectory = deleteDirectory ?? (path => Directory.Delete(path, true));
+			_useAtomicOwnedDelete = deleteDirectory == null;
 		}
 
 		internal string ProjectRoot => _projectRoot;
@@ -362,104 +364,120 @@ namespace SGG.PerfMeter
 					{
 						return SggRdResult.InvalidArgument;
 					}
-
-					SggRdResult cleanupResult = CleanupPoolInternal(
-						pool,
-						GetLiveSessionPredicate(),
-						reservationBytes,
-						includeStale: true,
-						out error);
-					if (cleanupResult != SggRdResult.Ok)
+					if (!PerfMeterRenderDocStorageLock.TryAcquire(root, out IDisposable poolLease, out error))
 					{
-						return cleanupResult;
-					}
-
-					PerfMeterRenderDocStoragePoolUsage usage;
-					SggRdResult usageResult = GetPoolUsageInternal(pool, out usage, out error);
-					if (usageResult != SggRdResult.Ok)
-					{
-						return usageResult;
-					}
-
-					if (Exceeds(usage.AccountedBytes, reservationBytes, usage.CapacityBytes))
-					{
-						error = "renderdoc_storage_quota_exceeded";
-						return SggRdResult.CaptureFailed;
-					}
-
-					long availableBytes;
-					try
-					{
-						availableBytes = _freeSpaceProvider.GetAvailableBytes(root);
-					}
-					catch (Exception exception) when (IsIoException(exception))
-					{
-						error = "renderdoc_storage_free_space_unavailable";
 						return SggRdResult.InternalError;
 					}
 
-					long requiredFreeBytes = checked(PerfMeterRenderDocStoragePolicy.FreeSpaceFloorBytes + reservationBytes);
-					if (availableBytes < requiredFreeBytes)
+					using (poolLease)
 					{
-						error = "renderdoc_storage_free_space_floor";
-						return SggRdResult.CaptureFailed;
-					}
-
-					for (int attempt = 0; attempt < PerfMeterRenderDocStoragePolicy.IoAttempts; attempt++)
-					{
-						ulong nonce = _nonceProvider.NextNonce();
-						if (nonce == 0u)
-						{
-							continue;
-						}
-
-						string nonceDirectory = nonce.ToString("x16", CultureInfo.InvariantCulture);
-						string candidate = Path.Combine(root, nonceDirectory);
-						if (!TryValidateOwnedRootPath(candidate, root, rejectTraversalInput: false, out error))
-						{
-							return SggRdResult.InvalidArgument;
-						}
-
-						if (Directory.Exists(candidate) || File.Exists(candidate))
-						{
-							continue;
-						}
-
-						Directory.CreateDirectory(candidate);
-						if (!TryValidateOwnedRootPath(candidate, root, rejectTraversalInput: false, out error))
-						{
-							return SggRdResult.InvalidArgument;
-						}
-
-						DateTimeOffset now = UtcNow();
-						PerfMeterRenderDocStorageMarker marker = new PerfMeterRenderDocStorageMarker(
-							nonce,
-							request.SessionId,
-							request.Generation,
-							now,
-							PerfMeterRenderDocStorageState.Preflight,
-							now);
-						SggRdResult markerResult = TryWriteMarker(candidate, marker, out error);
-						if (markerResult != SggRdResult.Ok)
-						{
-							TryRollbackEmptyCreatedRoot(candidate);
-							return markerResult;
-						}
-
-						reservation = new PerfMeterRenderDocStorageReservation(
-							this,
-							request,
+						SggRdResult cleanupResult = CleanupPoolInternal(
 							pool,
-							storageMode,
-							nonce,
-							candidate,
-							reservationBytes);
-						_reservations.Add(candidate, reservation);
-						return SggRdResult.Ok;
-					}
+							GetLiveSessionPredicate(),
+							reservationBytes,
+							includeStale: true,
+							out error);
+						if (cleanupResult != SggRdResult.Ok)
+						{
+							return cleanupResult;
+						}
 
-					error = "renderdoc_storage_nonce_collision";
-					return SggRdResult.InternalError;
+						PerfMeterRenderDocStoragePoolUsage usage;
+						SggRdResult usageResult = GetPoolUsageInternal(pool, out usage, out error);
+						if (usageResult != SggRdResult.Ok)
+						{
+							return usageResult;
+						}
+
+						if (Exceeds(usage.AccountedBytes, reservationBytes, usage.CapacityBytes))
+						{
+							error = "renderdoc_storage_quota_exceeded";
+							return SggRdResult.CaptureFailed;
+						}
+
+						long availableBytes;
+						try
+						{
+							availableBytes = _freeSpaceProvider.GetAvailableBytes(root);
+						}
+						catch (Exception exception) when (IsIoException(exception))
+						{
+							error = "renderdoc_storage_free_space_unavailable";
+							return SggRdResult.InternalError;
+						}
+
+						long requiredFreeBytes = checked(PerfMeterRenderDocStoragePolicy.FreeSpaceFloorBytes + reservationBytes);
+						if (availableBytes < requiredFreeBytes)
+						{
+							error = "renderdoc_storage_free_space_floor";
+							return SggRdResult.CaptureFailed;
+						}
+
+						for (int attempt = 0; attempt < PerfMeterRenderDocStoragePolicy.IoAttempts; attempt++)
+						{
+							ulong nonce = _nonceProvider.NextNonce();
+							if (nonce == 0u)
+							{
+								continue;
+							}
+
+							string nonceDirectory = nonce.ToString("x16", CultureInfo.InvariantCulture);
+							string candidate = Path.Combine(root, nonceDirectory);
+							if (!TryValidateOwnedRootPath(candidate, root, rejectTraversalInput: false, out error))
+							{
+								return SggRdResult.InvalidArgument;
+							}
+							if (!PerfMeterRenderDocStorageLock.TryAcquire(candidate, out IDisposable candidateLease, out error))
+							{
+								return SggRdResult.InternalError;
+							}
+
+							using (candidateLease)
+							{
+								string cleanupCandidate = candidate + ".cleanup";
+								if (Directory.Exists(candidate) || File.Exists(candidate) ||
+									Directory.Exists(cleanupCandidate) || File.Exists(cleanupCandidate))
+								{
+									continue;
+								}
+
+								Directory.CreateDirectory(candidate);
+								if (!TryValidateOwnedRootPath(candidate, root, rejectTraversalInput: false, out error))
+								{
+									return SggRdResult.InvalidArgument;
+								}
+
+								DateTimeOffset now = UtcNow();
+								PerfMeterRenderDocStorageMarker marker = new PerfMeterRenderDocStorageMarker(
+									nonce,
+									request.SessionId,
+									request.Generation,
+									now,
+									PerfMeterRenderDocStorageState.Preflight,
+									now);
+								SggRdResult markerResult = TryWriteMarker(candidate, marker, out error);
+								if (markerResult != SggRdResult.Ok)
+								{
+									TryRollbackEmptyCreatedRoot(candidate);
+									return markerResult;
+								}
+
+								reservation = new PerfMeterRenderDocStorageReservation(
+									this,
+									request,
+									pool,
+									storageMode,
+									nonce,
+									candidate,
+									reservationBytes);
+								_reservations.Add(candidate, reservation);
+								return SggRdResult.Ok;
+							}
+						}
+
+						error = "renderdoc_storage_nonce_collision";
+						return SggRdResult.InternalError;
+					}
 				}
 				catch (Exception exception) when (IsIoException(exception))
 				{
@@ -679,11 +697,10 @@ namespace SGG.PerfMeter
 		{
 			lock (_gate)
 			{
-				SggRdResult sourceResult = CleanupPoolInternal(
+				SggRdResult sourceResult = CleanupPoolWithUsage(
 					PerfMeterRenderDocStoragePool.Source,
 					isSessionLive ?? GetLiveSessionPredicate(),
-					0L,
-					includeStale: true,
+					out PerfMeterRenderDocStoragePoolUsage source,
 					out error);
 				if (sourceResult != SggRdResult.Ok)
 				{
@@ -691,11 +708,10 @@ namespace SGG.PerfMeter
 					return sourceResult;
 				}
 
-				SggRdResult copyResult = CleanupPoolInternal(
+				SggRdResult copyResult = CleanupPoolWithUsage(
 					PerfMeterRenderDocStoragePool.CopyEmbed,
 					isSessionLive ?? GetLiveSessionPredicate(),
-					0L,
-					includeStale: true,
+					out PerfMeterRenderDocStoragePoolUsage copy,
 					out error);
 				if (copyResult != SggRdResult.Ok)
 				{
@@ -703,22 +719,40 @@ namespace SGG.PerfMeter
 					return copyResult;
 				}
 
-				SggRdResult usageResult = GetPoolUsageInternal(PerfMeterRenderDocStoragePool.Source, out PerfMeterRenderDocStoragePoolUsage source, out error);
-				if (usageResult != SggRdResult.Ok)
-				{
-					usage = default;
-					return usageResult;
-				}
-
-				usageResult = GetPoolUsageInternal(PerfMeterRenderDocStoragePool.CopyEmbed, out PerfMeterRenderDocStoragePoolUsage copy, out error);
-				if (usageResult != SggRdResult.Ok)
-				{
-					usage = default;
-					return usageResult;
-				}
-
 				usage = new PerfMeterRenderDocStorageUsage(source, copy);
 				return SggRdResult.Ok;
+			}
+		}
+
+		private SggRdResult CleanupPoolWithUsage(
+			PerfMeterRenderDocStoragePool pool,
+			Func<string, ulong, bool> isSessionLive,
+			out PerfMeterRenderDocStoragePoolUsage usage,
+			out string error)
+		{
+			usage = PerfMeterRenderDocStoragePoolUsage.Empty(pool);
+			error = string.Empty;
+			string root = GetPoolRoot(pool);
+			if (!Directory.Exists(root))
+			{
+				return SggRdResult.Ok;
+			}
+			if (!PerfMeterRenderDocStorageLock.TryAcquire(root, out IDisposable poolLease, out error))
+			{
+				return SggRdResult.InternalError;
+			}
+
+			using (poolLease)
+			{
+				SggRdResult cleanupResult = CleanupPoolInternal(
+					pool,
+					isSessionLive,
+					0L,
+					includeStale: true,
+					out error);
+				return cleanupResult == SggRdResult.Ok
+					? GetPoolUsageInternal(pool, out usage, out error)
+					: cleanupResult;
 			}
 		}
 
@@ -953,7 +987,10 @@ namespace SGG.PerfMeter
 			}
 
 			string expectedName = marker.RequestNonce.ToString("x16", CultureInfo.InvariantCulture);
-			if (!string.Equals(Path.GetFileName(rootPath), expectedName, StringComparison.Ordinal))
+			string actualName = Path.GetFileName(rootPath);
+			bool cleanupTombstone = marker.State == PerfMeterRenderDocStorageState.CleanupPending &&
+				string.Equals(actualName, expectedName + ".cleanup", StringComparison.Ordinal);
+			if (!string.Equals(actualName, expectedName, StringComparison.Ordinal) && !cleanupTombstone)
 			{
 				error = "renderdoc_storage_marker_mismatch";
 				return SggRdResult.InvalidArgument;
@@ -963,6 +1000,23 @@ namespace SGG.PerfMeter
 		}
 
 		private SggRdResult TryDeleteOwnedRootInternal(
+			string rootPath,
+			bool allowLostSession,
+			bool allowStaleNonterminal,
+			out string error)
+		{
+			if (!PerfMeterRenderDocStorageLock.TryAcquire(rootPath, out IDisposable lease, out error))
+			{
+				return SggRdResult.InternalError;
+			}
+
+			using (lease)
+			{
+				return TryDeleteOwnedRootLocked(rootPath, allowLostSession, allowStaleNonterminal, out error);
+			}
+		}
+
+		private SggRdResult TryDeleteOwnedRootLocked(
 			string rootPath,
 			bool allowLostSession,
 			bool allowStaleNonterminal,
@@ -986,17 +1040,59 @@ namespace SGG.PerfMeter
 				return SggRdResult.InvalidArgument;
 			}
 
-			if (!TryDeleteDirectoryWithRetries(rootPath, out error))
+			string deletePath = rootPath;
+			if (_useAtomicOwnedDelete && !Path.GetFileName(rootPath).EndsWith(".cleanup", StringComparison.Ordinal))
 			{
-				SggRdResult pendingResult = TrySetStateInternal(
+				SggRdResult pendingResult = TrySetStateLocked(
 					rootPath,
 					new PerfMeterRenderDocStorageRequest(marker.SessionId, marker.Generation),
 					marker.RequestNonce,
 					PerfMeterRenderDocStorageState.CleanupPending,
-					out string pendingError);
-				if (pendingResult != SggRdResult.Ok && !string.IsNullOrEmpty(pendingError))
+					out error);
+				if (pendingResult != SggRdResult.Ok)
 				{
-					error = "renderdoc_storage_cleanup_pending";
+					return pendingResult;
+				}
+
+				deletePath = rootPath + ".cleanup";
+				try
+				{
+					if (Directory.Exists(deletePath) || File.Exists(deletePath))
+					{
+						error = "renderdoc_storage_cleanup_tombstone_conflict";
+						return SggRdResult.InternalError;
+					}
+
+					Directory.Move(rootPath, deletePath);
+				}
+				catch (Exception exception) when (IsIoException(exception))
+				{
+					error = "renderdoc_storage_cleanup_claim_failed";
+					return SggRdResult.InternalError;
+				}
+
+				SggRdResult claimedResult = TryInspectOwnedRootInternal(deletePath, out marker, out ignoredBytes, out error);
+				if (claimedResult != SggRdResult.Ok || marker.State != PerfMeterRenderDocStorageState.CleanupPending)
+				{
+					error = string.IsNullOrEmpty(error) ? "renderdoc_storage_cleanup_claim_invalid" : error;
+					return claimedResult == SggRdResult.Ok ? SggRdResult.InvalidArgument : claimedResult;
+				}
+			}
+
+			if (!TryDeleteDirectoryWithRetries(deletePath, out error))
+			{
+				if (!_useAtomicOwnedDelete)
+				{
+					SggRdResult pendingResult = TrySetStateInternal(
+						rootPath,
+						new PerfMeterRenderDocStorageRequest(marker.SessionId, marker.Generation),
+						marker.RequestNonce,
+						PerfMeterRenderDocStorageState.CleanupPending,
+						out string pendingError);
+					if (pendingResult != SggRdResult.Ok && !string.IsNullOrEmpty(pendingError))
+					{
+						error = "renderdoc_storage_cleanup_pending";
+					}
 				}
 
 				return SggRdResult.InternalError;
@@ -1055,6 +1151,24 @@ namespace SGG.PerfMeter
 		}
 
 		private SggRdResult TrySetStateInternal(
+			string rootPath,
+			PerfMeterRenderDocStorageRequest request,
+			ulong requestNonce,
+			PerfMeterRenderDocStorageState state,
+			out string error)
+		{
+			if (!PerfMeterRenderDocStorageLock.TryAcquire(rootPath, out IDisposable lease, out error))
+			{
+				return SggRdResult.InternalError;
+			}
+
+			using (lease)
+			{
+				return TrySetStateLocked(rootPath, request, requestNonce, state, out error);
+			}
+		}
+
+		private SggRdResult TrySetStateLocked(
 			string rootPath,
 			PerfMeterRenderDocStorageRequest request,
 			ulong requestNonce,
