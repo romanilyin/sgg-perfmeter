@@ -140,6 +140,21 @@ namespace SGG.PerfMeter
 					: PerfMeterCaptureBundleExportStatus.IoError;
 				return Result(false, status, string.Empty, memoryError, data.Status);
 			}
+			Dictionary<string, byte[]> provisionalComponents = BuildComponents(
+				data,
+				externalMetadata,
+				environment,
+				string.IsNullOrEmpty(externalMetadata.SourcePath));
+			long provisionalComponentBytes = GetTotalBytes(provisionalComponents);
+			long provisionalExternalBytes = string.IsNullOrEmpty(externalMetadata.SourcePath) ? 0L : externalMetadata.SizeBytes;
+			if (provisionalComponentBytes > MaxBundleBytes ||
+				(data.ScreenshotBytes != null && data.ScreenshotBytes.LongLength > MaxScreenshotBytes) ||
+				(!string.IsNullOrEmpty(externalMetadata.SourcePath) && externalMetadata.SizeBytes > MaxBundleBytes - provisionalComponentBytes) ||
+				provisionalComponentBytes + provisionalExternalBytes + memoryMetadata.SizeBytes > MaxBundleBytes + MaxMemorySnapshotBytes)
+			{
+				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
+			}
+			long additionalNativeStagingBytes = provisionalComponentBytes + memoryMetadata.SizeBytes;
 
 			string stagingPath = Path.Combine(bundleRoot, StagingDirectoryPrefix + Guid.NewGuid().ToString("N"));
 			bool nativeEmbedLifecycleStarted = false;
@@ -161,6 +176,7 @@ namespace SGG.PerfMeter
 					nativeEmbedLifecycleStarted = true;
 					if (!data.NativeArtifactSource.TryStageEmbed(
 						stagingPath,
+						additionalNativeStagingBytes,
 						() => cancellationToken.IsCancellationRequested,
 						out stagedNativeArtifact,
 						out string embedError))
@@ -746,6 +762,43 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal static bool IsOwnedCommittedBundle(string directoryPath)
+		{
+			try
+			{
+				if (!Directory.Exists(directoryPath) ||
+					(File.GetAttributes(directoryPath) & FileAttributes.ReparsePoint) != 0 ||
+					!IsOwnedMarker(Path.Combine(directoryPath, ".sgg-perfmeter-bundle")))
+				{
+					return false;
+				}
+
+				string manifestPath = Path.Combine(directoryPath, "manifest.json");
+				if (!File.Exists(manifestPath) ||
+					(File.GetAttributes(manifestPath) & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0)
+				{
+					return false;
+				}
+
+				FileInfo manifestInfo = new FileInfo(manifestPath);
+				if (manifestInfo.Length <= 0L || manifestInfo.Length > 256L * 1024L)
+				{
+					return false;
+				}
+
+				string manifest = File.ReadAllText(manifestPath);
+				return manifest.StartsWith(
+					"{\"schema\":\"" + BundleSchema + "\",\"schema_version\":1,",
+					StringComparison.Ordinal) &&
+					manifest.IndexOf("\"bundle_id\":", StringComparison.Ordinal) >= 0 &&
+					manifest.IndexOf("\"files\":[", StringComparison.Ordinal) >= 0;
+			}
+			catch (Exception exception) when (IsPathOrIoException(exception))
+			{
+				return false;
+			}
+		}
+
 		private static bool TryResolveBundleDestination(
 			string path,
 			PerfMeterCaptureBundleExportEnvironment environment,
@@ -996,14 +1049,20 @@ namespace SGG.PerfMeter
 					continue;
 				}
 
-				bundles.Add(new CommittedBundle(directory, GetDirectoryBytesForGenericQuota(directory.FullName)));
+				bool containsNativeEmbed = IsNativeEmbedMarker(Path.Combine(
+					directory.FullName,
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath));
+				bundles.Add(new CommittedBundle(
+					directory,
+					GetDirectoryBytesForGenericQuota(directory.FullName),
+					containsNativeEmbed));
 			}
 
 			bundles.Sort((left, right) => left.Directory.LastWriteTimeUtc.CompareTo(right.Directory.LastWriteTimeUtc));
 			DateTime cutoff = DateTime.UtcNow.AddDays(-RetentionDays);
 			for (int i = bundles.Count - 1; i >= 0; i--)
 			{
-				if (bundles[i].Directory.LastWriteTimeUtc < cutoff)
+				if (!bundles[i].ContainsNativeEmbed && bundles[i].Directory.LastWriteTimeUtc < cutoff)
 				{
 					bundles[i].Directory.Delete(true);
 					bundles.RemoveAt(i);
@@ -1018,10 +1077,24 @@ namespace SGG.PerfMeter
 
 			while (bundles.Count > MaxCommittedBundles || total > TotalQuotaBytes)
 			{
-				CommittedBundle oldest = bundles[0];
+				int oldestDeletableIndex = -1;
+				for (int index = 0; index < bundles.Count; index++)
+				{
+					if (!bundles[index].ContainsNativeEmbed)
+					{
+						oldestDeletableIndex = index;
+						break;
+					}
+				}
+				if (oldestDeletableIndex < 0)
+				{
+					break;
+				}
+
+				CommittedBundle oldest = bundles[oldestDeletableIndex];
 				oldest.Directory.Delete(true);
 				total -= oldest.SizeBytes;
-				bundles.RemoveAt(0);
+				bundles.RemoveAt(oldestDeletableIndex);
 			}
 
 		}
@@ -1165,6 +1238,8 @@ namespace SGG.PerfMeter
 				PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath);
 			if (!IsRegularFile(payloadPath, artifact.PayloadSizeBytes) ||
 				!IsRegularFile(markerPath, artifact.MarkerSizeBytes) ||
+				!IsSafeExistingPath(stagingPath, payloadPath, StringComparison.OrdinalIgnoreCase, out _) ||
+				!IsSafeExistingPath(stagingPath, markerPath, StringComparison.OrdinalIgnoreCase, out _) ||
 				!IsNativeEmbedMarker(markerPath))
 			{
 				return false;
@@ -1637,14 +1712,16 @@ namespace SGG.PerfMeter
 
 		private readonly struct CommittedBundle
 		{
-			internal CommittedBundle(DirectoryInfo directory, long sizeBytes)
+			internal CommittedBundle(DirectoryInfo directory, long sizeBytes, bool containsNativeEmbed)
 			{
 				Directory = directory;
 				SizeBytes = sizeBytes;
+				ContainsNativeEmbed = containsNativeEmbed;
 			}
 
 			internal DirectoryInfo Directory { get; }
 			internal long SizeBytes { get; }
+			internal bool ContainsNativeEmbed { get; }
 		}
 	}
 }

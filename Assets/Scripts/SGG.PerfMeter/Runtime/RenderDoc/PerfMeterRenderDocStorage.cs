@@ -247,6 +247,7 @@ namespace SGG.PerfMeter
 		private readonly IPerfMeterRenderDocRetryDelay _retryDelay;
 		private readonly Action<string> _deleteDirectory;
 		private readonly bool _useAtomicOwnedDelete;
+		private readonly PerfMeterRenderDocEmbeddedBundleStorage _embeddedBundleStorage;
 		private readonly Dictionary<string, PerfMeterRenderDocStorageReservation> _reservations =
 			new Dictionary<string, PerfMeterRenderDocStorageReservation>(StringComparer.Ordinal);
 
@@ -280,11 +281,13 @@ namespace SGG.PerfMeter
 			_retryDelay = retryDelay ?? new ThreadSleepRetryDelay();
 			_deleteDirectory = deleteDirectory ?? (path => Directory.Delete(path, true));
 			_useAtomicOwnedDelete = deleteDirectory == null;
+			_embeddedBundleStorage = new PerfMeterRenderDocEmbeddedBundleStorage(_projectRoot, UtcNow);
 		}
 
 		internal string ProjectRoot => _projectRoot;
 		internal string SourceRoot => _sourceRoot;
 		internal string CopyRoot => _copyRoot;
+		internal DateTimeOffset CurrentUtc => UtcNow();
 
 		internal SggRdResult TryReserveSource(
 			PerfMeterRenderDocStorageRequest request,
@@ -295,6 +298,7 @@ namespace SGG.PerfMeter
 				request,
 				PerfMeterExternalArtifactStorageMode.MetadataOnly,
 				PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+				0L,
 				out reservation,
 				out error);
 		}
@@ -306,13 +310,30 @@ namespace SGG.PerfMeter
 			out PerfMeterRenderDocStorageReservation reservation,
 			out string error)
 		{
-			return TryReserve(request, storageMode, payloadBytes, out reservation, out error);
+			return TryReserve(request, storageMode, payloadBytes, 0L, out reservation, out error);
+		}
+
+		internal SggRdResult TryReserveEmbed(
+			PerfMeterRenderDocStorageRequest request,
+			long payloadBytes,
+			long additionalStagingBytes,
+			out PerfMeterRenderDocStorageReservation reservation,
+			out string error)
+		{
+			return TryReserve(
+				request,
+				PerfMeterExternalArtifactStorageMode.Embed,
+				payloadBytes,
+				additionalStagingBytes,
+				out reservation,
+				out error);
 		}
 
 		internal SggRdResult TryReserve(
 			PerfMeterRenderDocStorageRequest request,
 			PerfMeterExternalArtifactStorageMode storageMode,
 			long payloadBytes,
+			long additionalStagingBytes,
 			out PerfMeterRenderDocStorageReservation reservation,
 			out string error)
 		{
@@ -322,7 +343,7 @@ namespace SGG.PerfMeter
 			{
 				try
 				{
-					if (!IsValidRequest(request))
+					if (!IsValidRequest(request) || additionalStagingBytes < 0L)
 					{
 						error = "renderdoc_storage_request_invalid";
 						return SggRdResult.InvalidArgument;
@@ -407,7 +428,19 @@ namespace SGG.PerfMeter
 							return SggRdResult.InternalError;
 						}
 
-						long requiredFreeBytes = checked(PerfMeterRenderDocStoragePolicy.FreeSpaceFloorBytes + reservationBytes);
+						long requiredFreeBytes;
+						try
+						{
+							requiredFreeBytes = checked(
+								PerfMeterRenderDocStoragePolicy.FreeSpaceFloorBytes +
+								reservationBytes +
+								additionalStagingBytes);
+						}
+						catch (OverflowException)
+						{
+							error = "renderdoc_storage_free_space_floor";
+							return SggRdResult.CaptureFailed;
+						}
 						if (availableBytes < requiredFreeBytes)
 						{
 							error = "renderdoc_storage_free_space_floor";
@@ -771,7 +804,7 @@ namespace SGG.PerfMeter
 			usage = PerfMeterRenderDocStoragePoolUsage.Empty(pool);
 			error = string.Empty;
 			string root = GetPoolRoot(pool);
-			if (!Directory.Exists(root))
+			if (!Directory.Exists(root) && pool != PerfMeterRenderDocStoragePool.CopyEmbed)
 			{
 				return SggRdResult.Ok;
 			}
@@ -803,12 +836,13 @@ namespace SGG.PerfMeter
 		{
 			error = string.Empty;
 			string root = GetPoolRoot(pool);
-			if (!Directory.Exists(root))
+			bool rootExists = Directory.Exists(root);
+			if (!rootExists && pool != PerfMeterRenderDocStoragePool.CopyEmbed)
 			{
 				return SggRdResult.Ok;
 			}
 
-			if (!IsSafePath(root) || !Directory.Exists(root))
+			if (rootExists && !IsSafePath(root))
 			{
 				error = "renderdoc_storage_root_reparse_or_invalid";
 				return SggRdResult.InvalidArgument;
@@ -819,6 +853,15 @@ namespace SGG.PerfMeter
 			if (scanResult != SggRdResult.Ok)
 			{
 				return scanResult;
+			}
+			List<PerfMeterRenderDocEmbeddedBundle> embeddedBundles = new List<PerfMeterRenderDocEmbeddedBundle>();
+			if (pool == PerfMeterRenderDocStoragePool.CopyEmbed)
+			{
+				SggRdResult embeddedResult = _embeddedBundleStorage.TryScan(out embeddedBundles, out error);
+				if (embeddedResult != SggRdResult.Ok)
+				{
+					return embeddedResult;
+				}
 			}
 
 			DateTimeOffset now = UtcNow();
@@ -846,23 +889,52 @@ namespace SGG.PerfMeter
 					return deleteResult;
 				}
 			}
+			for (int index = 0; index < embeddedBundles.Count; index++)
+			{
+				PerfMeterRenderDocEmbeddedBundle embedded = embeddedBundles[index];
+				if (!IsOlderThan(
+					embedded.StateUtc,
+					now,
+					TimeSpan.FromDays(PerfMeterRenderDocStoragePolicy.RetentionDays)))
+				{
+					continue;
+				}
+
+				SggRdResult deleteResult = _embeddedBundleStorage.TryDelete(embedded, out error);
+				if (deleteResult != SggRdResult.Ok)
+				{
+					return deleteResult;
+				}
+			}
 
 			SggRdResult refreshedResult = ScanOwnedRoots(pool, out ownedRoots, out error);
 			if (refreshedResult != SggRdResult.Ok)
 			{
 				return refreshedResult;
 			}
+			if (pool == PerfMeterRenderDocStoragePool.CopyEmbed)
+			{
+				refreshedResult = _embeddedBundleStorage.TryScan(out embeddedBundles, out error);
+				if (refreshedResult != SggRdResult.Ok)
+				{
+					return refreshedResult;
+				}
+			}
 
-			List<OwnedRoot> terminalRoots = new List<OwnedRoot>();
+			List<RetentionItem> terminalItems = new List<RetentionItem>();
 			for (int index = 0; index < ownedRoots.Count; index++)
 			{
 				if (ownedRoots[index].Marker.State == PerfMeterRenderDocStorageState.Terminal)
 				{
-					terminalRoots.Add(ownedRoots[index]);
+					terminalItems.Add(new RetentionItem(ownedRoots[index]));
 				}
 			}
+			for (int index = 0; index < embeddedBundles.Count; index++)
+			{
+				terminalItems.Add(new RetentionItem(embeddedBundles[index]));
+			}
 
-			terminalRoots.Sort(CompareOldestTerminalRoot);
+			terminalItems.Sort(CompareOldestRetentionItem);
 			PerfMeterRenderDocStoragePoolUsage currentUsage;
 			SggRdResult usageResult = GetPoolUsageInternal(pool, out currentUsage, out error);
 			if (usageResult != SggRdResult.Ok)
@@ -870,7 +942,7 @@ namespace SGG.PerfMeter
 				return usageResult;
 			}
 
-			for (int index = 0; index < terminalRoots.Count; index++)
+			for (int index = 0; index < terminalItems.Count; index++)
 			{
 				bool overCount = currentUsage.TerminalItemCount > PerfMeterRenderDocStoragePolicy.MaxTerminalItems;
 				bool overBytes = Exceeds(
@@ -882,11 +954,14 @@ namespace SGG.PerfMeter
 					break;
 				}
 
-				SggRdResult deleteResult = TryDeleteOwnedRootInternal(
-					terminalRoots[index].RootPath,
-					allowLostSession: false,
-					allowStaleNonterminal: false,
-					out error);
+				RetentionItem item = terminalItems[index];
+				SggRdResult deleteResult = item.IsEmbedded
+					? _embeddedBundleStorage.TryDelete(item.EmbeddedBundle, out error)
+					: TryDeleteOwnedRootInternal(
+						item.OwnedRoot.RootPath,
+						allowLostSession: false,
+						allowStaleNonterminal: false,
+						out error);
 				if (deleteResult != SggRdResult.Ok)
 				{
 					return deleteResult;
@@ -910,12 +985,13 @@ namespace SGG.PerfMeter
 			error = string.Empty;
 			usage = PerfMeterRenderDocStoragePoolUsage.Empty(pool);
 			string root = GetPoolRoot(pool);
-			if (!Directory.Exists(root))
+			bool rootExists = Directory.Exists(root);
+			if (!rootExists && pool != PerfMeterRenderDocStoragePool.CopyEmbed)
 			{
 				return SggRdResult.Ok;
 			}
 
-			if (!IsSafePath(root))
+			if (rootExists && !IsSafePath(root))
 			{
 				error = "renderdoc_storage_root_reparse_or_invalid";
 				return SggRdResult.InvalidArgument;
@@ -931,6 +1007,7 @@ namespace SGG.PerfMeter
 			long ownedBytes = 0L;
 			long reservedBytes = 0L;
 			int terminalItems = 0;
+			int embeddedItemCount = 0;
 			for (int index = 0; index < ownedRoots.Count; index++)
 			{
 				OwnedRoot owned = ownedRoots[index];
@@ -944,8 +1021,29 @@ namespace SGG.PerfMeter
 					reservedBytes = SaturatingAdd(reservedBytes, GetPersistedReservationBytes(pool, owned));
 				}
 			}
+			if (pool == PerfMeterRenderDocStoragePool.CopyEmbed)
+			{
+				SggRdResult embeddedResult = _embeddedBundleStorage.TryScan(
+					out List<PerfMeterRenderDocEmbeddedBundle> embeddedBundles,
+					out error);
+				if (embeddedResult != SggRdResult.Ok)
+				{
+					return embeddedResult;
+				}
+				embeddedItemCount = embeddedBundles.Count;
+				for (int index = 0; index < embeddedBundles.Count; index++)
+				{
+					ownedBytes = SaturatingAdd(ownedBytes, embeddedBundles[index].OwnedBytes);
+					terminalItems++;
+				}
+			}
 
-			usage = new PerfMeterRenderDocStoragePoolUsage(pool, ownedBytes, reservedBytes, ownedRoots.Count, terminalItems);
+			usage = new PerfMeterRenderDocStoragePoolUsage(
+				pool,
+				ownedBytes,
+				reservedBytes,
+				ownedRoots.Count + embeddedItemCount,
+				terminalItems);
 			return SggRdResult.Ok;
 		}
 
@@ -1845,15 +1943,15 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private int CompareOldestTerminalRoot(OwnedRoot left, OwnedRoot right)
+		private int CompareOldestRetentionItem(RetentionItem left, RetentionItem right)
 		{
-			int timestamp = left.Marker.StateUtc.CompareTo(right.Marker.StateUtc);
+			int timestamp = left.StateUtc.CompareTo(right.StateUtc);
 			if (timestamp != 0)
 			{
 				return timestamp;
 			}
 
-			return CompareNonceBytes(left.Marker.RequestNonce, right.Marker.RequestNonce);
+			return CompareNonceBytes(left.RequestNonce, right.RequestNonce);
 		}
 
 		private static int CompareNonceBytes(ulong left, ulong right)
@@ -2059,6 +2157,31 @@ namespace SGG.PerfMeter
 			internal string RootPath { get; }
 			internal PerfMeterRenderDocStorageMarker Marker { get; }
 			internal long OwnedBytes { get; }
+		}
+
+		private sealed class RetentionItem
+		{
+			internal RetentionItem(OwnedRoot ownedRoot)
+			{
+				OwnedRoot = ownedRoot;
+				EmbeddedBundle = default;
+				StateUtc = ownedRoot.Marker.StateUtc;
+				RequestNonce = ownedRoot.Marker.RequestNonce;
+			}
+
+			internal RetentionItem(PerfMeterRenderDocEmbeddedBundle embeddedBundle)
+			{
+				OwnedRoot = null;
+				EmbeddedBundle = embeddedBundle;
+				StateUtc = embeddedBundle.StateUtc;
+				RequestNonce = embeddedBundle.RequestNonce;
+			}
+
+			internal bool IsEmbedded => OwnedRoot == null;
+			internal OwnedRoot OwnedRoot { get; }
+			internal PerfMeterRenderDocEmbeddedBundle EmbeddedBundle { get; }
+			internal DateTimeOffset StateUtc { get; }
+			internal ulong RequestNonce { get; }
 		}
 
 		private sealed class DefaultFreeSpaceProvider : IPerfMeterRenderDocFreeSpaceProvider

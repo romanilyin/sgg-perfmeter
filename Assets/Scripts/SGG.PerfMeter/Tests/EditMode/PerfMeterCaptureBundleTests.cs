@@ -330,6 +330,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(File.ReadAllText(Path.Combine(fullPath, "manifest.json")), Does.Contain(
 					"\"path\":\"external/renderdoc/capture.rdc\""));
 				Assert.That(payloadSource.StageCalls, Is.EqualTo(1));
+				Assert.That(payloadSource.LastAdditionalStagingBytes, Is.GreaterThan(0L));
 				Assert.That(payloadSource.CompletionCalls, Is.EqualTo(1));
 				Assert.That(payloadSource.LastCommitted, Is.True);
 			}
@@ -370,6 +371,58 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(Directory.Exists(fullPath), Is.False);
 			Assert.That(payloadSource.CompletionCalls, Is.EqualTo(1));
 			Assert.That(payloadSource.LastCommitted, Is.False);
+		}
+
+		[Test]
+		public void NativeEmbedRejectsGenericQuotaBeforeStagingPayload()
+		{
+			const string captureId = "native-embed-generic-quota";
+			string payloadHash = Sha256Zeros(4L);
+			TestNativeEmbedPayloadSource payloadSource = new TestNativeEmbedPayloadSource(4L, payloadHash);
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(
+				captureId,
+				includeScreenshot: false,
+				storageMode: PerfMeterExternalArtifactStorageMode.Embed);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				CreateNativeEmbedArtifact(captureId, 4L, payloadHash),
+				CreateNativeSourceDescriptor(payloadSource)), Is.True);
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			data = new PerfMeterCaptureBundleExportData(
+				data.Status,
+				data.CaptureOptions,
+				data.BundleOptions,
+				data.StartedUtc,
+				data.CompletedUtc,
+				data.SessionSummary,
+				data.SessionTimeline,
+				data.CaptureTimeline,
+				data.BaselineSamples,
+				data.CaptureSamples,
+				data.ConfiguredSettings,
+				data.EffectiveSettings,
+				data.RuntimeStatus,
+				data.Device,
+				data.Camera,
+				data.Render,
+				data.RenderIntegration,
+				data.AlertEvents,
+				data.AlertEventsTruncated,
+				new byte[PerfMeterCaptureBundleExporter.MaxScreenshotBytes + 1],
+				data.MemorySnapshotArtifact,
+				data.NativeArtifactSource);
+
+			PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(
+				data,
+				PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/native-embed-quota-" + Guid.NewGuid().ToString("N"),
+				null,
+				true);
+
+			Assert.That(result.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.QuotaExceeded));
+			Assert.That(payloadSource.StageCalls, Is.Zero);
+			Assert.That(payloadSource.CompletionCalls, Is.Zero);
 		}
 
 		[Test]
@@ -921,6 +974,49 @@ namespace SGG.PerfMeter.Tests.EditMode
 				if (Directory.Exists(fullPath))
 				{
 					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void GenericRetentionNeverDeletesNativeEmbedBundles()
+		{
+			string bundleRoot = Path.GetFullPath(Path.Combine(
+				Application.dataPath,
+				"..",
+				PerfMeterCaptureBundleExporter.RelativeBundleRoot));
+			string nativeBundle = Path.Combine(bundleRoot, "native-retention-" + Guid.NewGuid().ToString("N"));
+			string exportedBundle = Path.Combine(bundleRoot, "generic-retention-" + Guid.NewGuid().ToString("N"));
+			try
+			{
+				Directory.CreateDirectory(Path.Combine(nativeBundle, "external", "renderdoc"));
+				File.WriteAllText(Path.Combine(nativeBundle, ".sgg-perfmeter-bundle"), "sgg.perfmeter.capture-bundle\n1\n");
+				File.WriteAllText(
+					Path.Combine(nativeBundle, "manifest.json"),
+					"{\"schema\":\"sgg.perfmeter.capture-bundle\",\"schema_version\":1,\"bundle_id\":\"native-retention\",\"files\":[]}");
+				File.WriteAllBytes(Path.Combine(nativeBundle, "external", "renderdoc", "capture.rdc"), new byte[] { 1 });
+				File.WriteAllText(
+					Path.Combine(nativeBundle, PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath),
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerHeader + "test=1\n");
+				Directory.SetLastWriteTimeUtc(nativeBundle, DateTime.UtcNow.AddDays(-PerfMeterCaptureBundleExporter.RetentionDays - 1d));
+
+				PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("generic-retention", includeScreenshot: false);
+				Assert.That(coordinator.TryGetExportData("generic-retention", out PerfMeterCaptureBundleExportData data), Is.True);
+				string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/" + Path.GetFileName(exportedBundle);
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(Directory.Exists(nativeBundle), Is.True);
+			}
+			finally
+			{
+				if (Directory.Exists(nativeBundle))
+				{
+					Directory.Delete(nativeBundle, true);
+				}
+				if (Directory.Exists(exportedBundle))
+				{
+					Directory.Delete(exportedBundle, true);
 				}
 			}
 		}
@@ -1718,6 +1814,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			public bool TryStageEmbed(
 				string stagingPath,
+				long additionalStagingBytes,
 				Func<bool> shouldStop,
 				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
 				out string error)
@@ -1749,6 +1846,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			internal int StageCalls { get; private set; }
 			internal int CompletionCalls { get; private set; }
 			internal bool LastCommitted { get; private set; }
+			internal long LastAdditionalStagingBytes { get; private set; }
 
 			public bool TryValidate(Func<bool> shouldStop, out string error)
 			{
@@ -1758,11 +1856,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			public bool TryStageEmbed(
 				string stagingPath,
+				long additionalStagingBytes,
 				Func<bool> shouldStop,
 				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
 				out string error)
 			{
 				StageCalls++;
+				LastAdditionalStagingBytes = additionalStagingBytes;
 				stagedArtifact = default;
 				if (shouldStop != null && shouldStop())
 				{

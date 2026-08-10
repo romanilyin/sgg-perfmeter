@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Threading;
 using NUnit.Framework;
 
 namespace SGG.PerfMeter.Tests.EditMode
@@ -325,16 +326,115 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void EmbedRemainsFailClosedWithoutDedicatedNativeBundlePath()
+		public void EmbedDefersAuthorityUntilDedicatedBundleStaging()
 		{
-			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.Embed, new byte[] { 1 });
+			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.Embed, new byte[] { 1, 2, 3 });
 
 			PerfMeterRenderDocFinalizationResult result = CreateFinalizer().Run(FakeBridge.Always(fixture.Path), fixture.Token, fixture.Preflight);
 
-			Assert.That(result.Result, Is.EqualTo(SggRdResult.InvalidArgument));
-			Assert.That(result.Warning, Is.EqualTo("renderdoc_embed_path_not_enabled"));
-			Assert.That(result.Artifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Failed));
+			Assert.That(result.Succeeded, Is.True, result.Warning);
+			Assert.That(result.Artifact.StorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.Embed));
+			Assert.That(result.Artifact.AuthorityState, Is.EqualTo(PerfMeterExternalArtifactAuthorityState.Observed));
+			Assert.That(result.Artifact.IsAuthoritative, Is.False);
+			Assert.That(result.Artifact.PostCopySha256, Is.Empty);
+			Assert.That(result.PayloadSource, Is.Not.Null);
+
+			string stagingPath = Path.Combine(
+				_projectRoot,
+				PerfMeterCaptureBundleExporter.RelativeBundleRoot,
+				".sgg-perfmeter-staging-" + Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(stagingPath);
+			File.WriteAllText(Path.Combine(stagingPath, ".sgg-perfmeter-bundle"), "sgg.perfmeter.capture-bundle\n1\n");
+			Assert.That(result.PayloadSource.TryStageEmbed(
+				stagingPath,
+				0L,
+				null,
+				out PerfMeterNativeEmbeddedArtifact staged,
+				out string stageError), Is.True, stageError);
+			Assert.That(staged.PayloadRelativePath, Is.EqualTo(PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedPayloadRelativePath));
+			Assert.That(staged.PayloadSizeBytes, Is.EqualTo(3L));
+			Assert.That(staged.PayloadSha256, Is.EqualTo(result.Artifact.ObservedSourceSha256));
+			Assert.That(File.Exists(Path.Combine(stagingPath, "external", "renderdoc", "capture.rdc")), Is.True);
+			Assert.That(result.PayloadSource.TryCompleteEmbed(false, out string completionWarning), Is.True, completionWarning);
 			AssertTerminal(fixture.Preflight.RootPath);
+		}
+
+		[Test]
+		public void EmbedPayloadSourceCommitsThroughNativeExporterAndEntersSharedPool()
+		{
+			const string captureId = "finalizer-embed";
+			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.Embed, new byte[] { 4, 5, 6, 7 });
+			PerfMeterRenderDocFinalizationResult finalization = CreateFinalizer().Run(
+				FakeBridge.Always(fixture.Path),
+				fixture.Token,
+				fixture.Preflight);
+			Assert.That(finalization.Succeeded, Is.True, finalization.Warning);
+
+			PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+				captureId,
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired,
+				PerfMeterExternalArtifactStorageMode.Embed);
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			coordinator.Start(options, new PerfMeterCaptureBundleOptions(false), CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
+			coordinator.ObserveCapture(
+				CaptureStatus(captureId, PerfMeterCaptureState.Completed),
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			PerfMeterNativeExternalArtifactSourceDescriptor source = new PerfMeterNativeExternalArtifactSourceDescriptor(
+				PerfMeterNativeExternalArtifactSourceKind.RenderDoc,
+				1u,
+				0u,
+				1u,
+				7u,
+				0u,
+				"managed_end_of_frame",
+				"wildcard_device_window",
+				fixture.Preflight.Reservation.Request.Generation,
+				finalization.Token.RequestNonce,
+				finalization.Token.CountBefore,
+				finalization.Token.StartUnixNanoseconds,
+				finalization.ObservedArtifact.Index,
+				finalization.ObservedArtifact.RenderDocTimestampSeconds,
+				finalization.ObservedArtifact.ObservedUnixNanoseconds,
+				finalization.PayloadSource);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(captureId, bundleId, finalization.Artifact, source), Is.True);
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+
+			string projectRoot = Path.GetFullPath(_projectRoot);
+			string bundleRoot = Path.GetFullPath(Path.Combine(projectRoot, PerfMeterCaptureBundleExporter.RelativeBundleRoot));
+			PerfMeterCaptureBundleExportEnvironment environment = new PerfMeterCaptureBundleExportEnvironment(
+				projectRoot,
+				bundleRoot,
+				Path.Combine(_projectRoot, "local"),
+				Path.Combine(_projectRoot, "user"),
+				false,
+				"test");
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/real-embed-" + Guid.NewGuid().ToString("N");
+			PerfMeterCaptureBundleExportResult export = PerfMeterCaptureBundleExporter.Export(
+				data,
+				relativePath,
+				null,
+				true,
+				environment,
+				CancellationToken.None,
+				null);
+
+			Assert.That(export.Success, Is.True, export.Error);
+			Assert.That(export.ExternalArtifact.IsAuthoritative, Is.True);
+			Assert.That(File.Exists(Path.Combine(_projectRoot, relativePath, "external", "renderdoc", "capture.rdc")), Is.True);
+			Assert.That(_storage.TryGetUsage(out PerfMeterRenderDocStorageUsage usage, out string usageError), Is.EqualTo(SggRdResult.Ok), usageError);
+			Assert.That(usage.CopyEmbed.TerminalItemCount, Is.EqualTo(1));
 		}
 
 		[Test]
@@ -410,6 +510,22 @@ namespace SGG.PerfMeter.Tests.EditMode
 		private static PerfMeterRenderDocFileSample Sample(long size, long write)
 		{
 			return new PerfMeterRenderDocFileSample(new byte[] { 1, 2, 3, 4 }, size, write);
+		}
+
+		private static PerfMeterCaptureStatusSnapshot CaptureStatus(string captureId, PerfMeterCaptureState state)
+		{
+			return new PerfMeterCaptureStatusSnapshot(
+				PerfMeterAvailability.Available,
+				state,
+				captureId,
+				PerfMeterCaptureTool.RenderDoc,
+				0,
+				1,
+				0,
+				0,
+				state == PerfMeterCaptureState.Completed ? 1 : 0,
+				0,
+				string.Empty);
 		}
 
 		private static bool TryCreateDirectoryJunction(string aliasRoot, string targetRoot)

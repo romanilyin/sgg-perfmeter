@@ -150,11 +150,6 @@ namespace SGG.PerfMeter
 				{
 					return SggRdResult.InvalidArgument;
 				}
-				if (options.ExternalArtifactStorageMode == PerfMeterExternalArtifactStorageMode.Embed)
-				{
-					return SggRdResult.InvalidArgument;
-				}
-
 				string opaqueSessionId = CreateOpaqueSessionId(options.CaptureId);
 				PerfMeterRenderDocStorageRequest request = new PerfMeterRenderDocStorageRequest(
 					opaqueSessionId,

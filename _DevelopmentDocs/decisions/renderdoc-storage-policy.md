@@ -1,8 +1,9 @@
 # RenderDoc Storage And Finalization Policy
 
-Status: `PM-RDOC-003A` policy accepted. Managed control, filesystem finalization,
-bundle provenance, and real Unity `.rdc` validation remain implementation gates.
-This decision does not enable native capture or make a support/release claim.
+Status: `PM-RDOC-003A` policy accepted and consumed by the package-only managed
+control, filesystem finalization, retained Copy, and real Embed implementation.
+Production registration and real-tool gates remain pending; this decision does
+not make a support/release claim.
 
 ## Scope
 
@@ -219,8 +220,11 @@ revalidation, payload mutation, cancelable export hashing, additive provenance,
 and exclusion of `.rdc` bytes from the generic 64 MiB bundle quota. Embed staging
 additionally requires an ownership marker before payload creation, fixed internal
 paths, independent staged-file size/hash verification, atomic authority upgrade,
-and abort/terminal callbacks; production remains fail-closed until the source
-implementation and shared Copy/Embed accounting consume that contract.
+and abort/terminal callbacks. The package-only source/accounting implementation
+also covers retained-source identity/hash validation, known non-native staging
+bytes in free-space admission, canonical committed-marker scanning, recursive
+safe-tree accounting, whole-bundle retention, reparse rejection, and deletion
+identity revalidation. Production registration remains gated separately.
 
 Related decisions: [`renderdoc-native-boundary.md`](renderdoc-native-boundary.md),
 [`capture-bundles.md`](capture-bundles.md), and

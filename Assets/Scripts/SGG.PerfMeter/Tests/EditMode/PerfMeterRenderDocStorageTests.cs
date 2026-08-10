@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using NUnit.Framework;
 
 namespace SGG.PerfMeter.Tests.EditMode
@@ -68,6 +69,27 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(preflight.SetTerminal(out string terminalError), Is.EqualTo(SggRdResult.Ok), terminalError);
 			Assert.That(preflight.ReleaseReservation(out string releaseError), Is.EqualTo(SggRdResult.Ok), releaseError);
 			Assert.That(storage.TryDeleteOwnedRoot(preflight.RootPath, out string deleteError), Is.EqualTo(SggRdResult.Ok), deleteError);
+		}
+
+		[Test]
+		public void PreflightAcceptsExplicitEmbedWithReviewPolicy()
+		{
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			PerfMeterRenderDocPreflightProvider provider = new PerfMeterRenderDocPreflightProvider(storage);
+			PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+				"storage-embed",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired,
+				PerfMeterExternalArtifactStorageMode.Embed);
+
+			Assert.That(provider.Prepare(options, 7, out PerfMeterRenderDocPreflight preflight), Is.EqualTo(SggRdResult.Ok));
+			Assert.That(preflight.ArtifactOptions.StorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.Embed));
+			Assert.That(preflight.ArtifactOptions.SharePolicy, Is.EqualTo(PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare));
+			Assert.That(preflight.Reservation.Request.Generation, Is.EqualTo(7u));
+			Assert.That(preflight.Abort(out string error), Is.EqualTo(SggRdResult.Ok), error);
 		}
 
 		[Test]
@@ -403,6 +425,137 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void EmbeddedBundleCountsAgainstCopyEmbedPoolAndExpiresAsAWhole()
+		{
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			DateTimeOffset now = _clock.UtcNow;
+			string bundlePath = CreateEmbeddedBundle(
+				"expired-embed",
+				0x8000u,
+				now - TimeSpan.FromDays(8),
+				new byte[] { 1, 2, 3, 4 });
+
+			Assert.That(storage.TryGetUsage(out PerfMeterRenderDocStorageUsage before, out string usageError), Is.EqualTo(SggRdResult.Ok), usageError);
+			Assert.That(before.CopyEmbed.TerminalItemCount, Is.EqualTo(1));
+			Assert.That(before.CopyEmbed.OwnedBytes, Is.GreaterThanOrEqualTo(4L));
+
+			Assert.That(storage.TryCleanup((session, generation) => false, out PerfMeterRenderDocStorageUsage after, out string cleanupError), Is.EqualTo(SggRdResult.Ok), cleanupError);
+			Assert.That(Directory.Exists(bundlePath), Is.False);
+			Assert.That(after.CopyEmbed.TerminalItemCount, Is.Zero);
+		}
+
+		[Test]
+		public void SharedCopyEmbedRetentionOrdersBundlesAndCopyRootsTogether()
+		{
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			string oldestBundle = CreateEmbeddedBundle(
+				"oldest-embed",
+				0x0800u,
+				_clock.UtcNow - TimeSpan.FromHours(1),
+				new byte[] { 1 });
+			for (int index = 0; index < PerfMeterRenderDocStoragePolicy.MaxTerminalItems; index++)
+			{
+				PerfMeterRenderDocStorageReservation reservation = ReserveCopy(storage, "shared-retention-" + index, 1L);
+				File.WriteAllBytes(Path.Combine(reservation.RootPath, "capture.rdc"), new byte[] { 1 });
+				Assert.That(reservation.SetState(PerfMeterRenderDocStorageState.Terminal, out string terminalError), Is.EqualTo(SggRdResult.Ok), terminalError);
+				Assert.That(reservation.Release(out string releaseError), Is.EqualTo(SggRdResult.Ok), releaseError);
+			}
+
+			Assert.That(storage.TryCleanup((session, generation) => false, out PerfMeterRenderDocStorageUsage usage, out string error), Is.EqualTo(SggRdResult.Ok), error);
+			Assert.That(Directory.Exists(oldestBundle), Is.False);
+			Assert.That(usage.CopyEmbed.TerminalItemCount, Is.EqualTo(PerfMeterRenderDocStoragePolicy.MaxTerminalItems));
+		}
+
+		[Test]
+		public void EmbeddedBundleRejectsNestedJunctionWithoutTouchingTarget()
+		{
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			string bundlePath = CreateEmbeddedBundle(
+				"junction-embed",
+				0x8001u,
+				_clock.UtcNow,
+				new byte[] { 1, 2, 3 });
+			string externalPath = Path.Combine(bundlePath, "unrelated");
+			string target = Path.Combine(_projectRoot, "junction-embed-target");
+			Directory.CreateDirectory(target);
+			string targetPayload = Path.Combine(target, "do-not-delete.txt");
+			File.WriteAllBytes(targetPayload, new byte[] { 1, 2, 3 });
+			if (!TryCreateDirectoryJunction(externalPath, target))
+			{
+				Assert.Ignore("The test host does not permit directory junctions.");
+			}
+
+			try
+			{
+				Assert.That(storage.TryGetUsage(out _, out string error), Is.EqualTo(SggRdResult.InvalidArgument), error);
+				Assert.That(File.Exists(targetPayload), Is.True);
+			}
+			finally
+			{
+				Directory.Delete(externalPath, false);
+			}
+		}
+
+		[Test]
+		public void EmbeddedBundleRejectsFutureAndNoncanonicalMarkers()
+		{
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			string futureBundle = CreateEmbeddedBundle(
+				"future-embed",
+				0x8002u,
+				_clock.UtcNow + TimeSpan.FromSeconds(1),
+				new byte[] { 1 });
+
+			Assert.That(storage.TryGetUsage(out _, out _), Is.EqualTo(SggRdResult.InvalidArgument));
+			Directory.Delete(futureBundle, true);
+
+			string noncanonicalBundle = CreateEmbeddedBundle(
+				"noncanonical-embed",
+				0x8003u,
+				_clock.UtcNow,
+				new byte[] { 2 });
+			string markerPath = Path.Combine(
+				noncanonicalBundle,
+				PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath);
+			File.WriteAllText(markerPath, File.ReadAllText(markerPath).Replace("generation=7\n", "generation=7\n\n"));
+
+			Assert.That(storage.TryGetUsage(out _, out _), Is.EqualTo(SggRdResult.InvalidArgument));
+		}
+
+		[Test]
+		public void EmbeddedBundleDeletionRevalidatesScannedIdentity()
+		{
+			string bundlePath = CreateEmbeddedBundle(
+				"identity-embed",
+				0x8004u,
+				_clock.UtcNow,
+				new byte[] { 3 });
+			PerfMeterRenderDocEmbeddedBundleStorage storage = new PerfMeterRenderDocEmbeddedBundleStorage(
+				_projectRoot,
+				() => _clock.UtcNow);
+			Assert.That(storage.TryScan(out List<PerfMeterRenderDocEmbeddedBundle> bundles, out string scanError), Is.EqualTo(SggRdResult.Ok), scanError);
+			Assert.That(bundles.Count, Is.EqualTo(1));
+
+			const ulong replacementNonce = 0x8005u;
+			string oldNonce = ((ulong)0x8004u).ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+			string newNonce = replacementNonce.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+			string envelopePath = Path.Combine(bundlePath, "external-artifact.json");
+			File.WriteAllText(envelopePath, File.ReadAllText(envelopePath).Replace(oldNonce, newNonce));
+			byte[] replacementMarker = PerfMeterRenderDocEmbeddedBundleStorage.CreateMarkerBytes(
+				new PerfMeterRenderDocStorageRequest("embedded-session", 7u),
+				replacementNonce,
+				_clock.UtcNow,
+				1L,
+				bundles[0].PayloadSha256);
+			File.WriteAllBytes(
+				Path.Combine(bundlePath, PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath),
+				replacementMarker);
+
+			Assert.That(storage.TryDelete(bundles[0], out _), Is.EqualTo(SggRdResult.InvalidArgument));
+			Assert.That(Directory.Exists(bundlePath), Is.True);
+		}
+
+		[Test]
 		public void PayloadValidationRequiresOwnedRdcAndAcceptsAStableNonemptyFile()
 		{
 			PerfMeterRenderDocStorage storage = CreateStorage();
@@ -450,6 +603,34 @@ namespace SGG.PerfMeter.Tests.EditMode
 			_freeSpace.AvailableBytes++;
 			PerfMeterRenderDocStorageReservation exact = ReserveSource(storage, "floor-exact");
 			CompleteAndDelete(storage, exact);
+		}
+
+		[Test]
+		public void EmbedFreeSpaceIncludesKnownNonNativeStagingBytes()
+		{
+			const long payloadBytes = 4L;
+			const long additionalStagingBytes = 32L;
+			long exactRequired = PerfMeterRenderDocStoragePolicy.FreeSpaceFloorBytes +
+				PerfMeterRenderDocStoragePolicy.MetadataReserveBytes +
+				payloadBytes +
+				additionalStagingBytes;
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			_freeSpace.AvailableBytes = exactRequired - 1L;
+			Assert.That(storage.TryReserveEmbed(
+				new PerfMeterRenderDocStorageRequest("embed-floor-fail", 1u),
+				payloadBytes,
+				additionalStagingBytes,
+				out _,
+				out string belowError), Is.EqualTo(SggRdResult.CaptureFailed), belowError);
+
+			_freeSpace.AvailableBytes = exactRequired;
+			Assert.That(storage.TryReserveEmbed(
+				new PerfMeterRenderDocStorageRequest("embed-floor-exact", 1u),
+				payloadBytes,
+				additionalStagingBytes,
+				out PerfMeterRenderDocStorageReservation exact,
+				out string exactError), Is.EqualTo(SggRdResult.Ok), exactError);
+			Assert.That(exact.Abort(out string abortError), Is.EqualTo(SggRdResult.Ok), abortError);
 		}
 
 		[Test]
@@ -550,6 +731,47 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(storage.TryCleanup((session, generation) => false, out _, out string cleanupError), Is.EqualTo(SggRdResult.Ok), cleanupError);
 			Assert.That(Directory.Exists(reservation.RootPath), Is.False);
 			Assert.That(attempts, Is.EqualTo(4));
+		}
+
+		private string CreateEmbeddedBundle(
+			string name,
+			ulong nonce,
+			DateTimeOffset stateUtc,
+			byte[] payload)
+		{
+			string bundleRoot = Path.Combine(_projectRoot, PerfMeterCaptureBundleExporter.RelativeBundleRoot);
+			string bundlePath = Path.Combine(bundleRoot, name);
+			Directory.CreateDirectory(Path.Combine(bundlePath, "external", "renderdoc"));
+			File.WriteAllText(Path.Combine(bundlePath, ".sgg-perfmeter-bundle"), "sgg.perfmeter.capture-bundle\n1\n");
+			File.WriteAllBytes(Path.Combine(bundlePath, "external", "renderdoc", "capture.rdc"), payload);
+			string hash;
+			using (SHA256 sha256 = SHA256.Create())
+			{
+				hash = BitConverter.ToString(sha256.ComputeHash(payload)).Replace("-", string.Empty).ToLowerInvariant();
+			}
+
+			const ulong generation = 7u;
+			string nonceText = nonce.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+			string envelope = "{\"schema\":\"sgg.perfmeter.external-artifact\",\"schema_version\":1" +
+				",\"authority_state\":\"Authenticated\"" +
+				",\"storage_mode\":\"Embed\"" +
+				",\"post_copy_sha256\":\"" + hash + "\"" +
+				",\"renderdoc_provenance\":{\"generation\":" + generation +
+				",\"request_nonce\":\"" + nonceText + "\"}}";
+			File.WriteAllText(Path.Combine(bundlePath, "external-artifact.json"), envelope);
+			File.WriteAllText(
+				Path.Combine(bundlePath, "manifest.json"),
+				"{\"schema\":\"sgg.perfmeter.capture-bundle\",\"schema_version\":1,\"bundle_id\":\"" + name + "\",\"files\":[]}");
+			byte[] marker = PerfMeterRenderDocEmbeddedBundleStorage.CreateMarkerBytes(
+				new PerfMeterRenderDocStorageRequest("embedded-session", generation),
+				nonce,
+				stateUtc,
+				payload.LongLength,
+				hash);
+			File.WriteAllBytes(
+				Path.Combine(bundlePath, PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath),
+				marker);
+			return bundlePath;
 		}
 
 		private PerfMeterRenderDocStorage CreateStorage(Action<string> deleteDirectory = null, TestRetryDelay retryDelay = null)

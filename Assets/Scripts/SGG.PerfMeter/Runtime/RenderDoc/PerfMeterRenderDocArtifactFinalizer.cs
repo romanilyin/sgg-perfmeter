@@ -133,12 +133,6 @@ namespace SGG.PerfMeter
 			}
 
 			PerfMeterExternalArtifactStorageMode storageMode = preflight.ArtifactOptions.StorageMode;
-			if (storageMode == PerfMeterExternalArtifactStorageMode.Embed)
-			{
-				FinishSource(sourceReservation);
-				return Failed(preflight, SggRdResult.InvalidArgument, "renderdoc_embed_path_not_enabled", 0L, string.Empty, string.Empty);
-			}
-
 			if (sourceReservation.SetState(PerfMeterRenderDocStorageState.AwaitingArtifact, out string stateError) != SggRdResult.Ok)
 			{
 				return Failed(preflight, SggRdResult.InternalError, stateError, 0L, string.Empty, string.Empty);
@@ -337,15 +331,23 @@ namespace SGG.PerfMeter
 					identityHash,
 					string.Empty,
 					true);
-				IPerfMeterNativeExternalArtifactPayloadSource payloadSource = copyReservation == null
-					? null
-					: new RetainedCopyPayloadSource(
+				IPerfMeterNativeExternalArtifactPayloadSource payloadSource = storageMode == PerfMeterExternalArtifactStorageMode.Copy
+					? new RetainedCopyPayloadSource(
 						_storage,
 						_fileBindings,
 						copyReservation,
 						retainedPath,
 						payloadBytes,
-						postCopyHash);
+						postCopyHash)
+					: storageMode == PerfMeterExternalArtifactStorageMode.Embed
+						? new RetainedEmbedPayloadSource(
+							_storage,
+							_fileBindings,
+							sourceReservation,
+							sourcePath,
+							payloadBytes,
+							sourceHash)
+						: null;
 				return new PerfMeterRenderDocFinalizationResult(
 					SggRdResult.Ok,
 					snapshot,
@@ -674,7 +676,9 @@ namespace SGG.PerfMeter
 				sizeBytes > 0L &&
 				!string.IsNullOrEmpty(sourceHash) &&
 				!string.IsNullOrEmpty(identityHash);
-			bool hasRequiredCopyEvidence = storageMode != PerfMeterExternalArtifactStorageMode.Copy ||
+			bool requiresPostCopyEvidence = storageMode == PerfMeterExternalArtifactStorageMode.Copy ||
+				storageMode == PerfMeterExternalArtifactStorageMode.Embed;
+			bool hasRequiredCopyEvidence = !requiresPostCopyEvidence ||
 				(!string.IsNullOrEmpty(postCopyHash) && string.Equals(sourceHash, postCopyHash, StringComparison.Ordinal));
 			bool authoritative = hasSourceEvidence && hasRequiredCopyEvidence;
 			return new PerfMeterExternalArtifactOptions(
@@ -718,7 +722,7 @@ namespace SGG.PerfMeter
 			}
 
 			SggRdResult terminalResult = reservation.SetState(PerfMeterRenderDocStorageState.Terminal, out error);
-			if (terminalResult == SggRdResult.Ok)
+			if (terminalResult == SggRdResult.Ok && reservation.Release(out error) == SggRdResult.Ok)
 			{
 				return true;
 			}
@@ -948,6 +952,7 @@ namespace SGG.PerfMeter
 
 			public bool TryStageEmbed(
 				string stagingPath,
+				long additionalStagingBytes,
 				Func<bool> shouldStop,
 				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
 				out string error)
@@ -961,6 +966,255 @@ namespace SGG.PerfMeter
 			{
 				warning = string.Empty;
 				return true;
+			}
+		}
+
+		private sealed class RetainedEmbedPayloadSource : IPerfMeterNativeExternalArtifactPayloadSource
+		{
+			private readonly object _gate = new object();
+			private readonly PerfMeterRenderDocStorage _storage;
+			private readonly IPerfMeterRenderDocFileBindingFactory _fileBindings;
+			private readonly PerfMeterRenderDocStorageRequest _request;
+			private readonly ulong _requestNonce;
+			private readonly string _rootPath;
+			private readonly string _payloadPath;
+			private readonly long _expectedBytes;
+			private readonly string _expectedHash;
+			private PerfMeterRenderDocStorageReservation _embedReservation;
+
+			internal RetainedEmbedPayloadSource(
+				PerfMeterRenderDocStorage storage,
+				IPerfMeterRenderDocFileBindingFactory fileBindings,
+				PerfMeterRenderDocStorageReservation reservation,
+				string payloadPath,
+				long expectedBytes,
+				string expectedHash)
+			{
+				_storage = storage;
+				_fileBindings = fileBindings;
+				_request = reservation.Request;
+				_requestNonce = reservation.RequestNonce;
+				_rootPath = reservation.RootPath;
+				_payloadPath = payloadPath ?? string.Empty;
+				_expectedBytes = expectedBytes;
+				_expectedHash = expectedHash ?? string.Empty;
+			}
+
+			public bool TryValidate(Func<bool> shouldStop, out string error)
+			{
+				lock (_gate)
+				{
+					return TryValidateSource(shouldStop, out error);
+				}
+			}
+
+			public bool TryStageEmbed(
+				string stagingPath,
+				long additionalStagingBytes,
+				Func<bool> shouldStop,
+				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
+				out string error)
+			{
+				lock (_gate)
+				{
+					stagedArtifact = default;
+					error = string.Empty;
+					if (_embedReservation != null ||
+						!IsSafeStagingPath(stagingPath) ||
+						!TryValidateSource(shouldStop, out error))
+					{
+						error = string.IsNullOrEmpty(error) ? "renderdoc_embed_staging_invalid" : error;
+						return false;
+					}
+
+					SggRdResult reserveResult = _storage.TryReserveEmbed(
+						_request,
+						_expectedBytes,
+						additionalStagingBytes,
+						out _embedReservation,
+						out error);
+					if (reserveResult != SggRdResult.Ok)
+					{
+						_embedReservation = null;
+						return false;
+					}
+
+					bool succeeded = false;
+					try
+					{
+						SggRdResult openResult = _fileBindings.TryOpen(
+							_payloadPath,
+							out IPerfMeterRenderDocFileBinding source,
+							out error);
+						if (openResult != SggRdResult.Ok)
+						{
+							return false;
+						}
+
+						string destinationPath = Path.Combine(stagingPath, "external", "renderdoc", "capture.rdc");
+						Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
+						using (source)
+						{
+							if (source.TrySample(out PerfMeterRenderDocFileSample before, out error) != SggRdResult.Ok ||
+								before.SizeBytes != _expectedBytes ||
+								source.TryComputeSha256(
+									PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+									shouldStop,
+									out string sourceHash,
+									out error) != SggRdResult.Ok ||
+								!string.Equals(sourceHash, _expectedHash, StringComparison.Ordinal) ||
+								source.TryCopyTo(
+									destinationPath,
+									PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+									shouldStop,
+									out error) != SggRdResult.Ok ||
+								source.TrySample(out PerfMeterRenderDocFileSample after, out error) != SggRdResult.Ok ||
+								!SamplesEqual(before, after))
+							{
+								error = string.IsNullOrEmpty(error) ? "renderdoc_embed_source_changed" : error;
+								return false;
+							}
+						}
+
+						SggRdResult destinationResult = _fileBindings.TryOpen(
+							destinationPath,
+							out IPerfMeterRenderDocFileBinding destination,
+							out error);
+						if (destinationResult != SggRdResult.Ok)
+						{
+							return false;
+						}
+						using (destination)
+						{
+							if (destination.TrySample(out PerfMeterRenderDocFileSample before, out error) != SggRdResult.Ok ||
+								before.SizeBytes != _expectedBytes ||
+								destination.TryComputeSha256(
+									PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+									shouldStop,
+									out string destinationHash,
+									out error) != SggRdResult.Ok ||
+								!string.Equals(destinationHash, _expectedHash, StringComparison.Ordinal) ||
+								destination.TrySample(out PerfMeterRenderDocFileSample after, out error) != SggRdResult.Ok ||
+								!SamplesEqual(before, after))
+							{
+								error = string.IsNullOrEmpty(error) ? "renderdoc_embed_destination_changed" : error;
+								return false;
+							}
+						}
+
+						byte[] markerBytes = PerfMeterRenderDocEmbeddedBundleStorage.CreateMarkerBytes(
+							_request,
+							_requestNonce,
+							_storage.CurrentUtc,
+							_expectedBytes,
+							_expectedHash);
+						string markerPath = Path.Combine(
+							stagingPath,
+							PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath);
+						using (FileStream marker = new FileStream(markerPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+						{
+							marker.Write(markerBytes, 0, markerBytes.Length);
+							marker.Flush(true);
+						}
+
+						using (SHA256 sha256 = SHA256.Create())
+						{
+							stagedArtifact = new PerfMeterNativeEmbeddedArtifact(
+								PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedPayloadRelativePath,
+								_expectedBytes,
+								_expectedHash,
+								PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath,
+								markerBytes.LongLength,
+								ToHex(sha256.ComputeHash(markerBytes)));
+						}
+						succeeded = true;
+						return true;
+					}
+					finally
+					{
+						if (!succeeded)
+						{
+							AbortEmbedReservation(out _);
+						}
+					}
+				}
+			}
+
+			public bool TryCompleteEmbed(bool committed, out string warning)
+			{
+				lock (_gate)
+				{
+					warning = string.Empty;
+					bool cleaned = AbortEmbedReservation(out warning);
+					if (!committed || !cleaned)
+					{
+						return cleaned;
+					}
+
+					SggRdResult retentionResult = _storage.TryCleanup(
+						(sessionId, generation) => false,
+						out _,
+						out warning);
+					return retentionResult == SggRdResult.Ok;
+				}
+			}
+
+			private bool TryValidateSource(Func<bool> shouldStop, out string error)
+			{
+				error = string.Empty;
+				if (IsCanceled(shouldStop))
+				{
+					error = "renderdoc_embed_validation_canceled";
+					return false;
+				}
+				SggRdResult inspectResult = _storage.TryInspectOwnedRoot(
+					_rootPath,
+					out PerfMeterRenderDocStorageMarker marker,
+					out _,
+					out error);
+				return inspectResult == SggRdResult.Ok &&
+					marker.State == PerfMeterRenderDocStorageState.Terminal &&
+					marker.RequestNonce == _requestNonce &&
+					marker.Generation == _request.Generation &&
+					string.Equals(marker.SessionId, _request.SessionId, StringComparison.Ordinal) &&
+					string.Equals(_payloadPath, Path.Combine(_rootPath, "capture.rdc"), StringComparison.OrdinalIgnoreCase);
+			}
+
+			private bool IsSafeStagingPath(string stagingPath)
+			{
+				try
+				{
+					string bundleRoot = Path.GetFullPath(Path.Combine(
+						_storage.ProjectRoot,
+						PerfMeterCaptureBundleExporter.RelativeBundleRoot));
+					string fullPath = Path.GetFullPath(stagingPath);
+					return string.Equals(
+						Path.GetDirectoryName(fullPath)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+						bundleRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+						StringComparison.OrdinalIgnoreCase) &&
+						Path.GetFileName(fullPath).StartsWith(".sgg-perfmeter-staging-", StringComparison.OrdinalIgnoreCase) &&
+						Directory.Exists(fullPath) &&
+						(File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) == 0 &&
+						File.Exists(Path.Combine(fullPath, ".sgg-perfmeter-bundle"));
+				}
+				catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ArgumentException || exception is NotSupportedException)
+				{
+					return false;
+				}
+			}
+
+			private bool AbortEmbedReservation(out string warning)
+			{
+				warning = string.Empty;
+				if (_embedReservation == null)
+				{
+					return true;
+				}
+
+				PerfMeterRenderDocStorageReservation reservation = _embedReservation;
+				_embedReservation = null;
+				SggRdResult result = reservation.Abort(out warning);
+				return result == SggRdResult.Ok;
 			}
 		}
 

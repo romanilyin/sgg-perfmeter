@@ -327,6 +327,7 @@ namespace SGG.PerfMeter
 		bool TryValidate(Func<bool> shouldStop, out string error);
 		bool TryStageEmbed(
 			string stagingPath,
+			long additionalStagingBytes,
 			Func<bool> shouldStop,
 			out PerfMeterNativeEmbeddedArtifact stagedArtifact,
 			out string error);
@@ -516,6 +517,7 @@ namespace SGG.PerfMeter
 
 		internal bool TryStageEmbed(
 			string stagingPath,
+			long additionalStagingBytes,
 			Func<bool> shouldStop,
 			out PerfMeterNativeEmbeddedArtifact stagedArtifact,
 			out string error)
@@ -529,7 +531,7 @@ namespace SGG.PerfMeter
 
 			try
 			{
-				return PayloadSource.TryStageEmbed(stagingPath, shouldStop, out stagedArtifact, out error);
+				return PayloadSource.TryStageEmbed(stagingPath, additionalStagingBytes, shouldStop, out stagedArtifact, out error);
 			}
 			catch (Exception exception)
 			{
