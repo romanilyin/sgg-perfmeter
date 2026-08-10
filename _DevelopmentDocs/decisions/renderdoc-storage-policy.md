@@ -216,7 +216,11 @@ hash mismatch, cancellation, and default privacy/share behavior. Retained Copy
 also covers generation/bundle-bound native descriptors, capability snapshot
 binding, legacy caller-path rejection, terminal marker/size/identity/hash
 revalidation, payload mutation, cancelable export hashing, additive provenance,
-and exclusion of `.rdc` bytes from the generic 64 MiB bundle quota.
+and exclusion of `.rdc` bytes from the generic 64 MiB bundle quota. Embed staging
+additionally requires an ownership marker before payload creation, fixed internal
+paths, independent staged-file size/hash verification, atomic authority upgrade,
+and abort/terminal callbacks; production remains fail-closed until the source
+implementation and shared Copy/Embed accounting consume that contract.
 
 Related decisions: [`renderdoc-native-boundary.md`](renderdoc-native-boundary.md),
 [`capture-bundles.md`](capture-bundles.md), and

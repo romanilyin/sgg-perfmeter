@@ -984,6 +984,7 @@ namespace SGG.PerfMeter
 				_operationCapabilityDetails.ApiPatch,
 				"managed_end_of_frame",
 				"wildcard_device_window",
+				unchecked((ulong)Math.Max(0, _operationGeneration)),
 				result.Token.RequestNonce,
 				result.Token.CountBefore,
 				result.Token.StartUnixNanoseconds,

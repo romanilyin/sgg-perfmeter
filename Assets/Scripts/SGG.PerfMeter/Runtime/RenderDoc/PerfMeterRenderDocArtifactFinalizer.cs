@@ -945,6 +945,23 @@ namespace SGG.PerfMeter
 
 				return true;
 			}
+
+			public bool TryStageEmbed(
+				string stagingPath,
+				Func<bool> shouldStop,
+				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
+				out string error)
+			{
+				stagedArtifact = default;
+				error = "native_embed_payload_source_unavailable";
+				return false;
+			}
+
+			public bool TryCompleteEmbed(bool committed, out string warning)
+			{
+				warning = string.Empty;
+				return true;
+			}
 		}
 
 		private sealed class StopwatchClock : IPerfMeterRenderDocMonotonicClock

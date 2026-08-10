@@ -61,7 +61,7 @@ namespace SGG.PerfMeter
 
 			bool hasNativeSource = data.NativeArtifactSource.IsAvailable;
 			if (requireAuthoritativeExternalArtifact &&
-				(!hasNativeSource || !data.Status.ExternalArtifact.IsAuthoritative))
+				(!hasNativeSource || !data.NativeArtifactSource.CanExportAuthoritatively(data.Status.CaptureId, data.Status.ExternalArtifact)))
 			{
 				return Result(false, PerfMeterCaptureBundleExportStatus.AuthorityRequired, string.Empty, "authoritative_external_metadata_unavailable", data.Status);
 			}
@@ -98,6 +98,8 @@ namespace SGG.PerfMeter
 			}
 
 			ExternalArtifactMetadata externalMetadata;
+			bool isNativeEmbed = hasNativeSource &&
+				data.Status.ExternalArtifact.StorageMode == PerfMeterExternalArtifactStorageMode.Embed;
 			try
 			{
 				if (hasNativeSource)
@@ -110,7 +112,7 @@ namespace SGG.PerfMeter
 					{
 						return Result(false, PerfMeterCaptureBundleExportStatus.Canceled, string.Empty, "export_canceled", data.Status);
 					}
-					if (!data.NativeArtifactSource.TryValidatePayload(() => cancellationToken.IsCancellationRequested, out pathError))
+					if (!isNativeEmbed && !data.NativeArtifactSource.TryValidatePayload(() => cancellationToken.IsCancellationRequested, out pathError))
 					{
 						if (cancellationToken.IsCancellationRequested)
 						{
@@ -131,14 +133,6 @@ namespace SGG.PerfMeter
 				return Result(false, PerfMeterCaptureBundleExportStatus.PathRejected, string.Empty, "invalid_external_artifact_path", data.Status);
 			}
 
-			Dictionary<string, byte[]> components = BuildComponents(data, externalMetadata, environment, string.IsNullOrEmpty(externalMetadata.SourcePath));
-			long componentBytes = GetTotalBytes(components);
-			long embeddedExternalBytes = string.IsNullOrEmpty(externalMetadata.SourcePath) ? 0L : externalMetadata.SizeBytes;
-			if (componentBytes > MaxBundleBytes || (data.ScreenshotBytes != null && data.ScreenshotBytes.LongLength > MaxScreenshotBytes))
-			{
-				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
-			}
-
 			if (!TryInspectMemorySnapshot(environment, data.MemorySnapshotArtifact, out MemoryArtifactMetadata memoryMetadata, out string memoryError))
 			{
 				PerfMeterCaptureBundleExportStatus status = string.Equals(memoryError, "memory_snapshot_size_limit_exceeded", StringComparison.Ordinal)
@@ -147,26 +141,86 @@ namespace SGG.PerfMeter
 				return Result(false, status, string.Empty, memoryError, data.Status);
 			}
 
-			if (!string.IsNullOrEmpty(externalMetadata.SourcePath) && externalMetadata.SizeBytes > MaxBundleBytes - componentBytes)
-			{
-				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
-			}
-
-			if (componentBytes + embeddedExternalBytes + memoryMetadata.SizeBytes > MaxBundleBytes + MaxMemorySnapshotBytes)
-			{
-				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
-			}
-
 			string stagingPath = Path.Combine(bundleRoot, StagingDirectoryPrefix + Guid.NewGuid().ToString("N"));
+			bool nativeEmbedLifecycleStarted = false;
+			bool nativeEmbedCommitted = false;
+			bool nativeEmbedCompleted = false;
 			try
 			{
 				Directory.CreateDirectory(bundleRoot);
 				CleanupStaleOwnedStaging(bundleRoot);
 				Directory.CreateDirectory(stagingPath);
-				List<FileManifestEntry> entries = new List<FileManifestEntry>(components.Count + 4);
 				byte[] ownershipMarker = Utf8(OwnershipMarker);
 				WriteFile(stagingPath, ".sgg-perfmeter-bundle", ownershipMarker);
+
+				PerfMeterExternalArtifactSnapshot nativeExternalArtifact = data.Status.ExternalArtifact;
+				PerfMeterNativeEmbeddedArtifact stagedNativeArtifact = default;
+				long embeddedNativeBytes = 0L;
+				if (isNativeEmbed)
+				{
+					nativeEmbedLifecycleStarted = true;
+					if (!data.NativeArtifactSource.TryStageEmbed(
+						stagingPath,
+						() => cancellationToken.IsCancellationRequested,
+						out stagedNativeArtifact,
+						out string embedError))
+					{
+						PerfMeterCaptureBundleExportStatus status = cancellationToken.IsCancellationRequested
+							? PerfMeterCaptureBundleExportStatus.Canceled
+							: PerfMeterCaptureBundleExportStatus.IoError;
+						return Result(false, status, string.Empty, cancellationToken.IsCancellationRequested
+							? "export_canceled"
+							: "native_embed_staging_failed: " + RedactSensitivePaths(embedError, environment), data.Status);
+					}
+					if (!TryValidateStagedNativeArtifact(
+						stagingPath,
+						stagedNativeArtifact,
+						cancellationToken))
+					{
+						return Result(false, PerfMeterCaptureBundleExportStatus.AuthorityRequired, string.Empty, "native_embed_staged_files_invalid", data.Status);
+					}
+					if (!data.NativeArtifactSource.TryCreateEmbeddedArtifactSnapshot(
+						data.Status.CaptureId,
+						data.Status.ExternalArtifact,
+						stagedNativeArtifact,
+						out nativeExternalArtifact))
+					{
+						return Result(false, PerfMeterCaptureBundleExportStatus.AuthorityRequired, string.Empty, "native_embed_evidence_invalid", data.Status);
+					}
+
+					externalMetadata = ExternalArtifactMetadata.Native(nativeExternalArtifact);
+					embeddedNativeBytes = stagedNativeArtifact.PayloadSizeBytes;
+				}
+
+				Dictionary<string, byte[]> components = BuildComponents(data, externalMetadata, environment, string.IsNullOrEmpty(externalMetadata.SourcePath));
+				long componentBytes = GetTotalBytes(components);
+				long embeddedExternalBytes = string.IsNullOrEmpty(externalMetadata.SourcePath) ? 0L : externalMetadata.SizeBytes;
+				if (componentBytes > MaxBundleBytes || (data.ScreenshotBytes != null && data.ScreenshotBytes.LongLength > MaxScreenshotBytes))
+				{
+					return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
+				}
+				if (!string.IsNullOrEmpty(externalMetadata.SourcePath) && externalMetadata.SizeBytes > MaxBundleBytes - componentBytes)
+				{
+					return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
+				}
+				if (componentBytes + embeddedExternalBytes + memoryMetadata.SizeBytes > MaxBundleBytes + MaxMemorySnapshotBytes)
+				{
+					return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
+				}
+
+				List<FileManifestEntry> entries = new List<FileManifestEntry>(components.Count + 6);
 				entries.Add(new FileManifestEntry(".sgg-perfmeter-bundle", ownershipMarker.LongLength, Sha256(ownershipMarker)));
+				if (isNativeEmbed)
+				{
+					entries.Add(new FileManifestEntry(
+						stagedNativeArtifact.PayloadRelativePath,
+						stagedNativeArtifact.PayloadSizeBytes,
+						stagedNativeArtifact.PayloadSha256));
+					entries.Add(new FileManifestEntry(
+						stagedNativeArtifact.MarkerRelativePath,
+						stagedNativeArtifact.MarkerSizeBytes,
+						stagedNativeArtifact.MarkerSha256));
+				}
 				ThrowIfCanceled(cancellationToken);
 				foreach (KeyValuePair<string, byte[]> component in components)
 				{
@@ -180,7 +234,7 @@ namespace SGG.PerfMeter
 					entries.Add(new FileManifestEntry(component.Key, component.Value.LongLength, Sha256(component.Value)));
 				}
 
-				Report(progress, PerfMeterCaptureBundleExportPhase.Serializing, 0.35f, componentBytes, Math.Max(componentBytes, componentBytes + embeddedExternalBytes + memoryMetadata.SizeBytes));
+				Report(progress, PerfMeterCaptureBundleExportPhase.Serializing, 0.35f, componentBytes + embeddedNativeBytes, Math.Max(componentBytes + embeddedNativeBytes, componentBytes + embeddedExternalBytes + embeddedNativeBytes + memoryMetadata.SizeBytes));
 
 				if (!string.IsNullOrEmpty(externalMetadata.SourcePath))
 				{
@@ -218,16 +272,20 @@ namespace SGG.PerfMeter
 					componentBytes += memoryMetadataBytes.LongLength;
 				}
 
-				PerfMeterExternalArtifactSnapshot externalArtifact = CreateExternalArtifactSnapshot(data, externalMetadata, environment);
-				PerfMeterCaptureExternalArtifactState externalArtifactState = string.IsNullOrEmpty(externalMetadata.SourcePath)
-					? data.Status.ExternalArtifactState
+				PerfMeterExternalArtifactSnapshot externalArtifact = hasNativeSource
+					? nativeExternalArtifact
+					: CreateExternalArtifactSnapshot(data, externalMetadata, environment);
+				PerfMeterCaptureExternalArtifactState externalArtifactState = hasNativeSource
+					? externalMetadata.State
+					: string.IsNullOrEmpty(externalMetadata.SourcePath)
+						? data.Status.ExternalArtifactState
 					: externalMetadata.State;
 				byte[] externalEnvelope = Utf8(BuildExternalArtifactEnvelope(externalArtifact, data.NativeArtifactSource));
 				WriteFile(stagingPath, "external-artifact.json", externalEnvelope);
 				entries.Add(new FileManifestEntry("external-artifact.json", externalEnvelope.LongLength, Sha256(externalEnvelope)));
 
 				byte[] manifest = Utf8(BuildManifest(data, externalMetadata, memoryMetadata, entries, environment));
-				if (GetTotalBytes(entries) + manifest.LongLength > MaxBundleBytes + MaxMemorySnapshotBytes)
+				if (GetTotalBytes(entries) - embeddedNativeBytes + manifest.LongLength > MaxBundleBytes + MaxMemorySnapshotBytes)
 				{
 					return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
 				}
@@ -238,6 +296,7 @@ namespace SGG.PerfMeter
 				try
 				{
 					CommitStagingDirectory(stagingPath, finalPath, cancellationToken);
+					nativeEmbedCommitted = isNativeEmbed;
 				}
 				catch (IOException) when (Directory.Exists(finalPath) || File.Exists(finalPath))
 				{
@@ -245,6 +304,15 @@ namespace SGG.PerfMeter
 				}
 
 				string retentionWarning = string.Empty;
+				if (isNativeEmbed)
+				{
+					bool completed = data.NativeArtifactSource.TryCompleteEmbed(true, out string embedWarning);
+					nativeEmbedCompleted = true;
+					if (!completed || !string.IsNullOrEmpty(embedWarning))
+					{
+						retentionWarning = string.IsNullOrEmpty(embedWarning) ? "native_embed_completion_failed" : embedWarning;
+					}
+				}
 				try
 				{
 					Report(progress, PerfMeterCaptureBundleExportPhase.Retaining, 0.95f, GetTotalBytes(entries) + manifest.LongLength, GetTotalBytes(entries) + manifest.LongLength);
@@ -252,7 +320,9 @@ namespace SGG.PerfMeter
 				}
 				catch (Exception exception) when (IsPathOrIoException(exception))
 				{
-					retentionWarning = "retention_warning: " + RedactSensitivePaths(exception.Message, environment);
+					retentionWarning = PerfMeterCaptureBundleCoordinator.CombineWarnings(
+						retentionWarning,
+						"retention_warning: " + RedactSensitivePaths(exception.Message, environment));
 				}
 
 				PerfMeterCaptureBundleStatusSnapshot exportedStatus = new PerfMeterCaptureBundleStatusSnapshot(
@@ -290,6 +360,10 @@ namespace SGG.PerfMeter
 			}
 			finally
 			{
+				if (nativeEmbedLifecycleStarted && !nativeEmbedCompleted)
+				{
+					data.NativeArtifactSource.TryCompleteEmbed(nativeEmbedCommitted, out _);
+				}
 				TryDeleteOwnedStaging(stagingPath);
 			}
 		}
@@ -495,8 +569,13 @@ namespace SGG.PerfMeter
 			builder.Append(",\"artifact_size_bytes\":").Append(metadata.SizeBytes);
 			builder.Append(",\"artifact_sha256\":").Append(JsonString(metadata.Hash));
 			builder.Append(",\"artifact_path_included\":false");
-			builder.Append(",\"artifact_file\":").Append(JsonString(metadata.IsNative || string.IsNullOrEmpty(metadata.Extension) ? string.Empty : "external-capture" + metadata.Extension));
-			builder.Append(",\"association_verified\":").Append(JsonBool(metadata.IsNative && data.Status.ExternalArtifact.IsAuthoritative)).Append('}');
+			builder.Append(",\"artifact_file\":").Append(JsonString(
+				!string.IsNullOrEmpty(metadata.EmbeddedRelativePath)
+					? metadata.EmbeddedRelativePath
+					: metadata.IsNative || string.IsNullOrEmpty(metadata.Extension)
+						? string.Empty
+						: "external-capture" + metadata.Extension));
+			builder.Append(",\"association_verified\":").Append(JsonBool(metadata.IsNative && metadata.State == PerfMeterCaptureExternalArtifactState.Authoritative)).Append('}');
 			return builder.ToString();
 		}
 
@@ -591,6 +670,7 @@ namespace SGG.PerfMeter
 				builder.Append(",\"app_api_patch\":").Append(sourceDescriptor.AppApiPatch);
 				builder.Append(",\"boundary_mode\":").Append(JsonString(sourceDescriptor.BoundaryMode));
 				builder.Append(",\"target_mode\":").Append(JsonString(sourceDescriptor.TargetMode));
+				builder.Append(",\"generation\":").Append(sourceDescriptor.Generation);
 				builder.Append(",\"request_nonce\":").Append(JsonString(sourceDescriptor.RequestNonce.ToString("x16", CultureInfo.InvariantCulture)));
 				builder.Append(",\"count_before\":").Append(sourceDescriptor.CountBefore);
 				builder.Append(",\"capture_index\":").Append(sourceDescriptor.CaptureIndex);
@@ -916,7 +996,7 @@ namespace SGG.PerfMeter
 					continue;
 				}
 
-				bundles.Add(new CommittedBundle(directory, GetDirectoryBytes(directory.FullName)));
+				bundles.Add(new CommittedBundle(directory, GetDirectoryBytesForGenericQuota(directory.FullName)));
 			}
 
 			bundles.Sort((left, right) => left.Directory.LastWriteTimeUtc.CompareTo(right.Directory.LastWriteTimeUtc));
@@ -1062,6 +1142,46 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		private static bool TryValidateStagedNativeArtifact(
+			string stagingPath,
+			PerfMeterNativeEmbeddedArtifact artifact,
+			CancellationToken cancellationToken)
+		{
+			if (!string.Equals(
+					artifact.PayloadRelativePath,
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedPayloadRelativePath,
+					StringComparison.Ordinal) ||
+				!string.Equals(
+					artifact.MarkerRelativePath,
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath,
+					StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			string payloadPath = Path.Combine(stagingPath, "external", "renderdoc", "capture.rdc");
+			string markerPath = Path.Combine(
+				stagingPath,
+				PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath);
+			if (!IsRegularFile(payloadPath, artifact.PayloadSizeBytes) ||
+				!IsRegularFile(markerPath, artifact.MarkerSizeBytes) ||
+				!IsNativeEmbedMarker(markerPath))
+			{
+				return false;
+			}
+
+			return string.Equals(HashFile(payloadPath, cancellationToken), artifact.PayloadSha256, StringComparison.Ordinal) &&
+				string.Equals(HashFile(markerPath, cancellationToken), artifact.MarkerSha256, StringComparison.Ordinal);
+		}
+
+		private static bool IsRegularFile(string path, long expectedBytes)
+		{
+			return expectedBytes > 0L &&
+				File.Exists(path) &&
+				(File.GetAttributes(path) & (FileAttributes.Directory | FileAttributes.ReparsePoint)) == 0 &&
+				new FileInfo(path).Length == expectedBytes;
+		}
+
 		private static FileManifestEntry CopyMemorySnapshot(
 			string stagingPath,
 			PerfMeterCaptureBundleExportEnvironment environment,
@@ -1172,16 +1292,54 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private static long GetDirectoryBytes(string path)
+		private static long GetDirectoryBytesForGenericQuota(string path)
 		{
 			long total = 0L;
+			bool hasNativeEmbedMarker = IsNativeEmbedMarker(Path.Combine(
+				path,
+				PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath));
 			string[] files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
 			for (int i = 0; i < files.Length; i++)
 			{
+				if (hasNativeEmbedMarker)
+				{
+					string relativePath = files[i].Substring(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1)
+						.Replace('\\', '/');
+					if (string.Equals(
+						relativePath,
+						PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedPayloadRelativePath,
+						StringComparison.Ordinal))
+					{
+						continue;
+					}
+				}
 				total += new FileInfo(files[i]).Length;
 			}
 
 			return total;
+		}
+
+		private static bool IsNativeEmbedMarker(string path)
+		{
+			try
+			{
+				if (!File.Exists(path) ||
+					(File.GetAttributes(path) & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0)
+				{
+					return false;
+				}
+
+				FileInfo info = new FileInfo(path);
+				return info.Length > PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerHeader.Length &&
+					info.Length <= 64L * 1024L &&
+					File.ReadAllText(path).StartsWith(
+						PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerHeader,
+						StringComparison.Ordinal);
+			}
+			catch (Exception exception) when (IsPathOrIoException(exception))
+			{
+				return false;
+			}
 		}
 
 		private static long GetTotalBytes(Dictionary<string, byte[]> components)
@@ -1356,7 +1514,15 @@ namespace SGG.PerfMeter
 
 		private readonly struct ExternalArtifactMetadata
 		{
-			internal ExternalArtifactMetadata(PerfMeterCaptureExternalArtifactState state, string extension, long sizeBytes, string observedSourceHash, string hash, string sourcePath, bool isNative = false)
+			internal ExternalArtifactMetadata(
+				PerfMeterCaptureExternalArtifactState state,
+				string extension,
+				long sizeBytes,
+				string observedSourceHash,
+				string hash,
+				string sourcePath,
+				bool isNative = false,
+				string embeddedRelativePath = "")
 			{
 				State = state;
 				Extension = extension ?? string.Empty;
@@ -1365,6 +1531,7 @@ namespace SGG.PerfMeter
 				Hash = hash ?? string.Empty;
 				SourcePath = sourcePath ?? string.Empty;
 				IsNative = isNative;
+				EmbeddedRelativePath = embeddedRelativePath ?? string.Empty;
 			}
 
 			internal static ExternalArtifactMetadata Unavailable => new ExternalArtifactMetadata(PerfMeterCaptureExternalArtifactState.Unavailable, string.Empty, 0L, string.Empty, string.Empty, string.Empty);
@@ -1375,6 +1542,7 @@ namespace SGG.PerfMeter
 			internal string Hash { get; }
 			internal string SourcePath { get; }
 			internal bool IsNative { get; }
+			internal string EmbeddedRelativePath { get; }
 
 			internal static ExternalArtifactMetadata Native(PerfMeterExternalArtifactSnapshot artifact)
 			{
@@ -1382,18 +1550,23 @@ namespace SGG.PerfMeter
 					? artifact.ObservedSourceSha256
 					: artifact.PostCopySha256;
 				return new ExternalArtifactMetadata(
-					PerfMeterCaptureExternalArtifactState.Authoritative,
+					artifact.IsAuthoritative
+						? PerfMeterCaptureExternalArtifactState.Authoritative
+						: PerfMeterCaptureExternalArtifactState.FileObserved,
 					".rdc",
 					artifact.SizeBytes,
 					artifact.ObservedSourceSha256,
 					hash,
 					string.Empty,
-					true);
+					true,
+					artifact.StorageMode == PerfMeterExternalArtifactStorageMode.Embed
+						? PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedPayloadRelativePath
+						: string.Empty);
 			}
 
 			internal ExternalArtifactMetadata WithObservedFile(long sizeBytes, string observedSourceHash, string hash)
 			{
-				return new ExternalArtifactMetadata(State, Extension, sizeBytes, observedSourceHash, hash, SourcePath, IsNative);
+				return new ExternalArtifactMetadata(State, Extension, sizeBytes, observedSourceHash, hash, SourcePath, IsNative, EmbeddedRelativePath);
 			}
 		}
 

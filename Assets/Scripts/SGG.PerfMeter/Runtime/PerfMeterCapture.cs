@@ -325,10 +325,45 @@ namespace SGG.PerfMeter
 	internal interface IPerfMeterNativeExternalArtifactPayloadSource
 	{
 		bool TryValidate(Func<bool> shouldStop, out string error);
+		bool TryStageEmbed(
+			string stagingPath,
+			Func<bool> shouldStop,
+			out PerfMeterNativeEmbeddedArtifact stagedArtifact,
+			out string error);
+		bool TryCompleteEmbed(bool committed, out string warning);
+	}
+
+	internal readonly struct PerfMeterNativeEmbeddedArtifact
+	{
+		internal PerfMeterNativeEmbeddedArtifact(
+			string payloadRelativePath,
+			long payloadSizeBytes,
+			string payloadSha256,
+			string markerRelativePath,
+			long markerSizeBytes,
+			string markerSha256)
+		{
+			PayloadRelativePath = payloadRelativePath ?? string.Empty;
+			PayloadSizeBytes = payloadSizeBytes;
+			PayloadSha256 = payloadSha256 ?? string.Empty;
+			MarkerRelativePath = markerRelativePath ?? string.Empty;
+			MarkerSizeBytes = markerSizeBytes;
+			MarkerSha256 = markerSha256 ?? string.Empty;
+		}
+
+		internal string PayloadRelativePath { get; }
+		internal long PayloadSizeBytes { get; }
+		internal string PayloadSha256 { get; }
+		internal string MarkerRelativePath { get; }
+		internal long MarkerSizeBytes { get; }
+		internal string MarkerSha256 { get; }
 	}
 
 	internal readonly struct PerfMeterNativeExternalArtifactSourceDescriptor
 	{
+		internal const string EmbeddedPayloadRelativePath = "external/renderdoc/capture.rdc";
+		internal const string EmbeddedMarkerRelativePath = ".sgg-perfmeter-renderdoc";
+		internal const string EmbeddedMarkerHeader = "sgg.perfmeter.renderdoc-embed\n1\n";
 		private const long NativePayloadQuotaBytes = 512L * 1024L * 1024L;
 		private const PerfMeterExternalArtifactPrivacyFlags NativePrivacyFlags =
 			PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
@@ -344,6 +379,7 @@ namespace SGG.PerfMeter
 			uint appApiPatch,
 			string boundaryMode,
 			string targetMode,
+			ulong generation,
 			ulong requestNonce,
 			uint countBefore,
 			ulong startUnixNanoseconds,
@@ -360,6 +396,7 @@ namespace SGG.PerfMeter
 			AppApiPatch = appApiPatch;
 			BoundaryMode = boundaryMode ?? string.Empty;
 			TargetMode = targetMode ?? string.Empty;
+			Generation = generation;
 			RequestNonce = requestNonce;
 			CountBefore = countBefore;
 			StartUnixNanoseconds = startUnixNanoseconds;
@@ -378,6 +415,7 @@ namespace SGG.PerfMeter
 		internal uint AppApiPatch { get; }
 		internal string BoundaryMode { get; }
 		internal string TargetMode { get; }
+		internal ulong Generation { get; }
 		internal ulong RequestNonce { get; }
 		internal uint CountBefore { get; }
 		internal ulong StartUnixNanoseconds { get; }
@@ -405,7 +443,6 @@ namespace SGG.PerfMeter
 				!string.Equals(artifact.RequestId, captureId, StringComparison.Ordinal) ||
 				artifact.AssociationState != PerfMeterExternalArtifactAssociationState.BridgeAuthenticated ||
 				!artifact.IsFinalized ||
-				!artifact.IsAuthoritative ||
 				artifact.ContainsGpuCaptureData != PerfMeterExternalArtifactContentState.Present ||
 				artifact.SizeBytes <= 0L ||
 				artifact.QuotaBytes != NativePayloadQuotaBytes ||
@@ -427,16 +464,35 @@ namespace SGG.PerfMeter
 
 			if (artifact.StorageMode == PerfMeterExternalArtifactStorageMode.MetadataOnly)
 			{
-				return PayloadSource == null &&
+				return artifact.IsAuthoritative &&
+					PayloadSource == null &&
 					string.IsNullOrEmpty(artifact.PostCopySha256) &&
 					artifact.SharePolicy == PerfMeterExternalArtifactSharePolicy.DoNotShare;
 			}
 
-			return artifact.StorageMode == PerfMeterExternalArtifactStorageMode.Copy &&
+			if (artifact.StorageMode == PerfMeterExternalArtifactStorageMode.Copy)
+			{
+				return artifact.IsAuthoritative &&
+					PayloadSource != null &&
+					IsSha256(artifact.PostCopySha256) &&
+					string.Equals(artifact.ObservedSourceSha256, artifact.PostCopySha256, StringComparison.Ordinal) &&
+					artifact.SharePolicy == PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare;
+			}
+
+			return artifact.StorageMode == PerfMeterExternalArtifactStorageMode.Embed &&
+				artifact.AuthorityState == PerfMeterExternalArtifactAuthorityState.Observed &&
+				!artifact.IsAuthoritative &&
 				PayloadSource != null &&
-				IsSha256(artifact.PostCopySha256) &&
-				string.Equals(artifact.ObservedSourceSha256, artifact.PostCopySha256, StringComparison.Ordinal) &&
+				string.IsNullOrEmpty(artifact.PostCopySha256) &&
 				artifact.SharePolicy == PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare;
+		}
+
+		internal bool CanExportAuthoritatively(
+			string captureId,
+			PerfMeterExternalArtifactSnapshot artifact)
+		{
+			return IsStructurallyValid(captureId, artifact) &&
+				(artifact.IsAuthoritative || artifact.StorageMode == PerfMeterExternalArtifactStorageMode.Embed);
 		}
 
 		internal bool TryValidatePayload(Func<bool> shouldStop, out string error)
@@ -454,6 +510,94 @@ namespace SGG.PerfMeter
 			catch (Exception exception)
 			{
 				error = "native_external_artifact_payload_validation_exception: " + exception.GetType().Name;
+				return false;
+			}
+		}
+
+		internal bool TryStageEmbed(
+			string stagingPath,
+			Func<bool> shouldStop,
+			out PerfMeterNativeEmbeddedArtifact stagedArtifact,
+			out string error)
+		{
+			stagedArtifact = default;
+			if (PayloadSource == null)
+			{
+				error = "native_embed_payload_source_unavailable";
+				return false;
+			}
+
+			try
+			{
+				return PayloadSource.TryStageEmbed(stagingPath, shouldStop, out stagedArtifact, out error);
+			}
+			catch (Exception exception)
+			{
+				error = "native_embed_staging_exception: " + exception.GetType().Name;
+				return false;
+			}
+		}
+
+		internal bool TryCreateEmbeddedArtifactSnapshot(
+			string captureId,
+			PerfMeterExternalArtifactSnapshot artifact,
+			PerfMeterNativeEmbeddedArtifact stagedArtifact,
+			out PerfMeterExternalArtifactSnapshot embeddedArtifact)
+		{
+			embeddedArtifact = PerfMeterExternalArtifactSnapshot.Empty;
+			if (!IsStructurallyValid(captureId, artifact) ||
+				artifact.StorageMode != PerfMeterExternalArtifactStorageMode.Embed ||
+				!string.Equals(stagedArtifact.PayloadRelativePath, EmbeddedPayloadRelativePath, StringComparison.Ordinal) ||
+				stagedArtifact.PayloadSizeBytes != artifact.SizeBytes ||
+				!IsSha256(stagedArtifact.PayloadSha256) ||
+				!string.Equals(stagedArtifact.PayloadSha256, artifact.ObservedSourceSha256, StringComparison.Ordinal) ||
+				!string.Equals(stagedArtifact.MarkerRelativePath, EmbeddedMarkerRelativePath, StringComparison.Ordinal) ||
+				stagedArtifact.MarkerSizeBytes <= 0L ||
+				stagedArtifact.MarkerSizeBytes > 64L * 1024L ||
+				!IsSha256(stagedArtifact.MarkerSha256))
+			{
+				return false;
+			}
+
+			embeddedArtifact = new PerfMeterExternalArtifactOptions(
+				artifact.ArtifactId,
+				artifact.ArtifactKind,
+				artifact.ToolId,
+				artifact.ToolVersion,
+				artifact.RequestId,
+				artifact.HostNamespace,
+				artifact.AssociationState,
+				artifact.FinalizationState,
+				PerfMeterExternalArtifactAuthorityState.Authenticated,
+				artifact.ContainsGpuCaptureData,
+				artifact.PrivacyFlags,
+				artifact.StorageMode,
+				artifact.QuotaBytes,
+				artifact.SharePolicy,
+				artifact.SizeBytes,
+				artifact.ObservedSourceSha256,
+				stagedArtifact.PayloadSha256,
+				artifact.Warning)
+				.WithSourceFileIdentitySha256(artifact.SourceFileIdentitySha256)
+				.ToSnapshot();
+			return true;
+		}
+
+		internal bool TryCompleteEmbed(bool committed, out string warning)
+		{
+			warning = string.Empty;
+			if (PayloadSource == null)
+			{
+				return true;
+			}
+
+			try
+			{
+				return PayloadSource.TryCompleteEmbed(committed, out warning);
+			}
+			catch (Exception exception)
+			{
+				warning = "native_embed_completion_exception: " + exception.GetType().Name;
 				return false;
 			}
 		}

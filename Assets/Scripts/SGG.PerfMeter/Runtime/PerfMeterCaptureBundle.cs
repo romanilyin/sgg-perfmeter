@@ -541,7 +541,9 @@ namespace SGG.PerfMeter
 			}
 
 			_record.ExternalArtifact = snapshot;
-			_record.ExternalArtifactState = PerfMeterCaptureExternalArtifactState.Authoritative;
+			_record.ExternalArtifactState = snapshot.IsAuthoritative
+				? PerfMeterCaptureExternalArtifactState.Authoritative
+				: PerfMeterCaptureExternalArtifactState.FileObserved;
 			_record.NativeArtifactSource = sourceDescriptor;
 			return true;
 		}
