@@ -64,6 +64,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(result.Succeeded, Is.True, result.Warning);
 			Assert.That(bridge.ArtifactCalls, Is.GreaterThanOrEqualTo(6));
+			Assert.That(bridge.CommentsCalls, Is.EqualTo(1));
+			Assert.That(bridge.LastCommentsPath, Is.EqualTo(fixture.Path));
+			Assert.That(bridge.LastComments, Does.Contain("sgg.perfmeter.renderdoc\nversion=1\n"));
+			Assert.That(bridge.LastComments, Does.Contain("request_nonce=" + fixture.Token.RequestNonce.ToString("x16")));
+			Assert.That(bridge.LastComments, Does.Contain("generation=7\n"));
+			Assert.That(bridge.LastComments, Does.Contain("storage_mode=MetadataOnly\n"));
+			Assert.That(bridge.LastComments, Does.Not.Contain(fixture.Path));
 			Assert.That(result.RetainedPayloadPath, Is.Empty);
 			Assert.That(result.Artifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Finalized));
 			Assert.That(result.Artifact.AssociationState, Is.EqualTo(PerfMeterExternalArtifactAssociationState.BridgeAuthenticated));
@@ -75,6 +82,22 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(result.Artifact.ObservedSourceSha256, Has.Length.EqualTo(64));
 			Assert.That(result.Artifact.SourceFileIdentitySha256, Has.Length.EqualTo(64));
 			Assert.That(result.Artifact.SourceFileIdentitySha256, Does.Not.Contain(fixture.Path));
+			AssertTerminal(fixture.Preflight.RootPath);
+		}
+
+		[Test]
+		public void CommentsFailureStopsBeforeFileAuthority()
+		{
+			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.MetadataOnly, new byte[] { 1 });
+			FakeBridge bridge = FakeBridge.Always(fixture.Path);
+			bridge.CommentsResult = SggRdResult.CaptureFailed;
+
+			PerfMeterRenderDocFinalizationResult result = CreateFinalizer().Run(bridge, fixture.Token, fixture.Preflight);
+
+			Assert.That(result.Result, Is.EqualTo(SggRdResult.CaptureFailed));
+			Assert.That(result.Warning, Is.EqualTo("renderdoc_capture_comments_failed"));
+			Assert.That(result.Artifact.IsAuthoritative, Is.False);
+			Assert.That(bridge.CommentsCalls, Is.EqualTo(1));
 			AssertTerminal(fixture.Preflight.RootPath);
 		}
 
@@ -582,6 +605,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			internal static FakeBridge Always(string path) => new FakeBridge(path, SggRdResult.Ok);
 			internal static FakeBridge Never() => new FakeBridge(string.Empty, SggRdResult.CaptureNotObserved);
 			internal int ArtifactCalls { get; private set; }
+			internal int CommentsCalls { get; private set; }
+			internal SggRdResult CommentsResult { get; set; } = SggRdResult.Ok;
+			internal string LastCommentsPath { get; private set; }
+			internal string LastComments { get; private set; }
 			internal Action OnArtifactCall { get; set; }
 
 			public SggRdResult TryGetNewArtifact(SggRdCaptureTokenV1 token, out SggRdArtifactV1 artifact, out string observedPath)
@@ -607,7 +634,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 			public SggRdResult BeginCapture(ulong requestNonce, string capturePathTemplate, string title, out SggRdCaptureTokenV1 token) { token = default; return SggRdResult.Ok; }
 			public SggRdResult EndCapture(SggRdCaptureTokenV1 token) => SggRdResult.Ok;
 			public SggRdResult DiscardCapture(SggRdCaptureTokenV1 token) => SggRdResult.Ok;
-			public SggRdResult SetCaptureComments(SggRdCaptureTokenV1 token, string observedPath, string comments) => SggRdResult.Ok;
+			public SggRdResult SetCaptureComments(SggRdCaptureTokenV1 token, string observedPath, string comments)
+			{
+				CommentsCalls++;
+				LastCommentsPath = observedPath;
+				LastComments = comments;
+				return CommentsResult;
+			}
 		}
 
 		private sealed class TestMonotonicClock : IPerfMeterRenderDocMonotonicClock

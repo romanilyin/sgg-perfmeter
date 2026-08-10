@@ -499,6 +499,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			public SggRdResult GetCapabilities(out SggRdCapabilitiesV1 capabilities)
 			{
+				bool supportsTitle = ApiMinor >= 6u;
 				capabilities = new SggRdCapabilitiesV1
 				{
 					StructSize = PerfMeterRenderDocAbiV1.CapabilitiesSizeAsUInt,
@@ -511,9 +512,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 					TargetControlConnected = 1u,
 					ApiMajor = 1u,
 					ApiMinor = ApiMinor,
+					FeatureFlags = (uint)(SggRdFeatureBitsV1.Discard |
+						SggRdFeatureBitsV1.Comments |
+						(supportsTitle ? SggRdFeatureBitsV1.Title : SggRdFeatureBitsV1.None)),
 					SupportsDiscard = 1u,
 					SupportsComments = 1u,
-					SupportsTitle = 1u,
+					SupportsTitle = supportsTitle ? 1u : 0u,
 					CaptureCount = 0u
 				};
 				return SggRdResult.Ok;

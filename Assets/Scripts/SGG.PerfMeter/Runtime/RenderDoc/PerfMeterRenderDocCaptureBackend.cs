@@ -407,10 +407,13 @@ namespace SGG.PerfMeter
 			_token = default;
 			try
 			{
+				string title = _operationCapabilityDetails.SupportsTitle
+					? _preflight.Title
+					: string.Empty;
 				beginResult = _bridge.BeginCapture(
 					_preflight.RequestNonce,
 					_preflight.CapturePathTemplate,
-					_preflight.Title,
+					title,
 					out returnedToken);
 				_token = returnedToken;
 			}
@@ -1119,15 +1122,32 @@ namespace SGG.PerfMeter
 
 			if (capabilities.ApiNegotiated == 0u ||
 				capabilities.ApiMajor != 1u ||
-				capabilities.ApiMinor < 4u ||
-				capabilities.SupportsDiscard == 0u ||
-				capabilities.SupportsComments == 0u)
+				capabilities.ApiMinor < 4u)
 			{
 				_capabilityDetails = new PerfMeterRenderDocCapabilitySnapshot(
 					PerfMeterAvailability.Unavailable,
 					SggRdResult.ApiNegotiationFailed,
 					capabilities);
 				return CreateUnavailable(SggRdResult.ApiNegotiationFailed, DescribeResult(SggRdResult.ApiNegotiationFailed));
+			}
+
+			SggRdFeatureBitsV1 featureFlags = (SggRdFeatureBitsV1)capabilities.FeatureFlags;
+			bool titleVersionEligible = capabilities.ApiMinor >= 6u;
+			if (!IsFeatureDeclarationConsistent(capabilities.SupportsDiscard, featureFlags, SggRdFeatureBitsV1.Discard) ||
+				!IsFeatureDeclarationConsistent(capabilities.SupportsComments, featureFlags, SggRdFeatureBitsV1.Comments) ||
+				!IsFeatureDeclarationConsistent(capabilities.SupportsTitle, featureFlags, SggRdFeatureBitsV1.Title) ||
+				!IsFeatureDeclarationConsistent(capabilities.SupportsAnnotations, featureFlags, SggRdFeatureBitsV1.Annotations) ||
+				capabilities.SupportsDiscard != 1u ||
+				capabilities.SupportsComments != 1u ||
+				(capabilities.SupportsTitle == 1u && !titleVersionEligible))
+			{
+				_capabilityDetails = new PerfMeterRenderDocCapabilitySnapshot(
+					PerfMeterAvailability.Unavailable,
+					SggRdResult.ApiNegotiationFailed,
+					capabilities);
+				return CreateUnavailable(
+					SggRdResult.ApiNegotiationFailed,
+					"RenderDoc capability feature declarations are inconsistent.");
 			}
 
 			if (capabilities.IsCapturing != 0u)
@@ -1172,17 +1192,28 @@ namespace SGG.PerfMeter
 				return false;
 			}
 
-			if (!PerfMeterRenderDocUtf8.TryEncode(
+			if (_operationCapabilityDetails.SupportsTitle &&
+				(!PerfMeterRenderDocUtf8.TryEncode(
 					preflight.Title,
 					PerfMeterRenderDocAbiV1.MaxTitleBytes,
-					true,
-					out _))
+					false,
+					out byte[] titleBytes) ||
+					titleBytes.Length == 0))
 			{
-				error = "RenderDoc preflight returned a title over the UTF-8 byte limit.";
+				error = "RenderDoc preflight returned an empty title or exceeded the UTF-8 byte limit.";
 				return false;
 			}
 
 			return true;
+		}
+
+		private static bool IsFeatureDeclarationConsistent(
+			uint capability,
+			SggRdFeatureBitsV1 featureFlags,
+			SggRdFeatureBitsV1 feature)
+		{
+			return capability <= 1u &&
+				(capability == 1u) == ((featureFlags & feature) == feature);
 		}
 
 		private void MarkBeginOwnership(bool uncertain)

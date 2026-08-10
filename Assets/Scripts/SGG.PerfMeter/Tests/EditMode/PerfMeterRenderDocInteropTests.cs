@@ -225,6 +225,26 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void CapabilityRejectsFeatureBitAndApiLevelTitleMismatches()
+		{
+			FakeBridge bridge = new FakeBridge();
+			PerfMeterRenderDocCaptureBackend backend = CreateBackend(bridge, SupportedPlatform());
+
+			bridge.Capabilities.FeatureFlags &= ~(uint)SggRdFeatureBitsV1.Comments;
+			Assert.That(backend.GetCapability(CreateOptions()).Warning, Does.Contain("inconsistent"));
+
+			bridge.Capabilities = ReadyCapabilities(7u, false, true);
+			Assert.That(backend.GetCapability(CreateOptions()).Availability, Is.EqualTo(PerfMeterAvailability.Available));
+
+			bridge.Capabilities = ReadyCapabilities(4u, true, false);
+			Assert.That(backend.GetCapability(CreateOptions()).NativeResultCode, Is.EqualTo((int)SggRdResult.ApiNegotiationFailed));
+
+			bridge.Capabilities = ReadyCapabilities(7u, true, true);
+			bridge.Capabilities.SupportsAnnotations = 2u;
+			Assert.That(backend.GetCapability(CreateOptions()).NativeResultCode, Is.EqualTo((int)SggRdResult.ApiNegotiationFailed));
+		}
+
+		[Test]
 		public void ProductionPreflightRemainsFailClosedUntilWorkerLifecycleWiring()
 		{
 			PerfMeterRenderDocPreflightProvider provider = new PerfMeterRenderDocPreflightProvider();
@@ -275,6 +295,22 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(backend.Snapshot.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.BeginExecuted));
 			Assert.That(backend.Snapshot.RequiresEndOfFrame, Is.True);
 			Assert.That(backend.Snapshot.HasActiveResources, Is.True);
+		}
+
+		[TestCase(4, false, "")]
+		[TestCase(6, true, "RenderDoc fake capture")]
+		[TestCase(7, false, "")]
+		public void BeginUsesTitleOnlyWhenCapabilitySupportsIt(int apiMinor, bool supportsTitle, string expectedTitle)
+		{
+			FakeBridge bridge = new FakeBridge
+			{
+				Capabilities = ReadyCapabilities((uint)apiMinor, supportsTitle, false)
+			};
+			PerfMeterRenderDocCaptureBackend backend = CreateBackend(bridge, SupportedPlatform());
+
+			Assert.That(backend.TryBegin(CreateOptions(), out string error), Is.True, error);
+
+			Assert.That(bridge.LastTitle, Is.EqualTo(expectedTitle));
 		}
 
 		[Test]

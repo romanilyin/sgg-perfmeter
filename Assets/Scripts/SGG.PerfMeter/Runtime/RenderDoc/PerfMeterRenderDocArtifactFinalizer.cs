@@ -160,6 +160,18 @@ namespace SGG.PerfMeter
 				return Failed(preflight, payloadResult, error, 0L, string.Empty, string.Empty);
 			}
 
+			if (!TryCreateCaptureComments(preflight, token, observedArtifact, out string comments))
+			{
+				FinishSource(sourceReservation);
+				return Failed(preflight, SggRdResult.InternalError, "renderdoc_capture_comments_invalid", 0L, string.Empty, string.Empty);
+			}
+			SggRdResult commentsResult = bridge.SetCaptureComments(token, sourcePath, comments);
+			if (commentsResult != SggRdResult.Ok)
+			{
+				FinishSource(sourceReservation);
+				return Failed(preflight, commentsResult, "renderdoc_capture_comments_failed", 0L, string.Empty, string.Empty);
+			}
+
 			if (sourceReservation.SetState(PerfMeterRenderDocStorageState.Finalizing, out stateError) != SggRdResult.Ok)
 			{
 				FinishSource(sourceReservation);
@@ -810,6 +822,28 @@ namespace SGG.PerfMeter
 			{
 				return ToHex(sha256.ComputeHash(input));
 			}
+		}
+
+		private static bool TryCreateCaptureComments(
+			PerfMeterRenderDocPreflight preflight,
+			SggRdCaptureTokenV1 token,
+			SggRdArtifactV1 artifact,
+			out string comments)
+		{
+			comments = "sgg.perfmeter.renderdoc\n" +
+				"version=1\n" +
+				"request_nonce=" + token.RequestNonce.ToString("x16", System.Globalization.CultureInfo.InvariantCulture) + "\n" +
+				"generation=" + preflight.Reservation.Request.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n" +
+				"storage_mode=" + preflight.ArtifactOptions.StorageMode + "\n" +
+				"capture_index=" + artifact.Index.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n" +
+				"start_unix_nanoseconds=" + token.StartUnixNanoseconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n" +
+				"renderdoc_timestamp_seconds=" + artifact.RenderDocTimestampSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n" +
+				"observed_unix_nanoseconds=" + artifact.ObservedUnixNanoseconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n";
+			return PerfMeterRenderDocUtf8.TryEncode(
+				comments,
+				PerfMeterRenderDocAbiV1.MaxCommentsBytes,
+				false,
+				out byte[] bytes) && bytes.Length > 0;
 		}
 
 		private static bool IsCanceled(Func<bool> predicate)
