@@ -59,9 +59,15 @@ namespace SGG.PerfMeter
 
 			Report(progress, PerfMeterCaptureBundleExportPhase.Serializing, 0f, 0L, 0L);
 
-			if (requireAuthoritativeExternalArtifact)
+			bool hasNativeSource = data.NativeArtifactSource.IsAvailable;
+			if (requireAuthoritativeExternalArtifact &&
+				(!hasNativeSource || !data.Status.ExternalArtifact.IsAuthoritative))
 			{
 				return Result(false, PerfMeterCaptureBundleExportStatus.AuthorityRequired, string.Empty, "authoritative_external_metadata_unavailable", data.Status);
+			}
+			if (hasNativeSource && !string.IsNullOrWhiteSpace(externalArtifactPath))
+			{
+				return Result(false, PerfMeterCaptureBundleExportStatus.PathRejected, string.Empty, "native_external_artifact_path_must_be_empty", data.Status);
 			}
 
 			if (string.IsNullOrWhiteSpace(path))
@@ -94,7 +100,28 @@ namespace SGG.PerfMeter
 			ExternalArtifactMetadata externalMetadata;
 			try
 			{
-				if (!TryObserveExternalArtifact(environment, data.CaptureOptions.Tool, externalArtifactPath, out externalMetadata, out pathError))
+				if (hasNativeSource)
+				{
+					if (!data.NativeArtifactSource.IsStructurallyValid(data.Status.CaptureId, data.Status.ExternalArtifact))
+					{
+						return Result(false, PerfMeterCaptureBundleExportStatus.AuthorityRequired, string.Empty, "native_external_artifact_descriptor_invalid", data.Status);
+					}
+					if (cancellationToken.IsCancellationRequested)
+					{
+						return Result(false, PerfMeterCaptureBundleExportStatus.Canceled, string.Empty, "export_canceled", data.Status);
+					}
+					if (!data.NativeArtifactSource.TryValidatePayload(() => cancellationToken.IsCancellationRequested, out pathError))
+					{
+						if (cancellationToken.IsCancellationRequested)
+						{
+							return Result(false, PerfMeterCaptureBundleExportStatus.Canceled, string.Empty, "export_canceled", data.Status);
+						}
+						return Result(false, PerfMeterCaptureBundleExportStatus.IoError, string.Empty, "native_external_artifact_validation_failed: " + RedactSensitivePaths(pathError, environment), data.Status);
+					}
+
+					externalMetadata = ExternalArtifactMetadata.Native(data.Status.ExternalArtifact);
+				}
+				else if (!TryObserveExternalArtifact(environment, data.CaptureOptions.Tool, externalArtifactPath, out externalMetadata, out pathError))
 				{
 					return Result(false, PerfMeterCaptureBundleExportStatus.PathRejected, string.Empty, pathError, data.Status);
 				}
@@ -106,6 +133,7 @@ namespace SGG.PerfMeter
 
 			Dictionary<string, byte[]> components = BuildComponents(data, externalMetadata, environment, string.IsNullOrEmpty(externalMetadata.SourcePath));
 			long componentBytes = GetTotalBytes(components);
+			long embeddedExternalBytes = string.IsNullOrEmpty(externalMetadata.SourcePath) ? 0L : externalMetadata.SizeBytes;
 			if (componentBytes > MaxBundleBytes || (data.ScreenshotBytes != null && data.ScreenshotBytes.LongLength > MaxScreenshotBytes))
 			{
 				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
@@ -124,7 +152,7 @@ namespace SGG.PerfMeter
 				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
 			}
 
-			if (componentBytes + externalMetadata.SizeBytes + memoryMetadata.SizeBytes > MaxBundleBytes + MaxMemorySnapshotBytes)
+			if (componentBytes + embeddedExternalBytes + memoryMetadata.SizeBytes > MaxBundleBytes + MaxMemorySnapshotBytes)
 			{
 				return Result(false, PerfMeterCaptureBundleExportStatus.QuotaExceeded, string.Empty, "bundle_size_limit_exceeded", data.Status);
 			}
@@ -152,7 +180,7 @@ namespace SGG.PerfMeter
 					entries.Add(new FileManifestEntry(component.Key, component.Value.LongLength, Sha256(component.Value)));
 				}
 
-				Report(progress, PerfMeterCaptureBundleExportPhase.Serializing, 0.35f, componentBytes, Math.Max(componentBytes, componentBytes + externalMetadata.SizeBytes + memoryMetadata.SizeBytes));
+				Report(progress, PerfMeterCaptureBundleExportPhase.Serializing, 0.35f, componentBytes, Math.Max(componentBytes, componentBytes + embeddedExternalBytes + memoryMetadata.SizeBytes));
 
 				if (!string.IsNullOrEmpty(externalMetadata.SourcePath))
 				{
@@ -194,7 +222,7 @@ namespace SGG.PerfMeter
 				PerfMeterCaptureExternalArtifactState externalArtifactState = string.IsNullOrEmpty(externalMetadata.SourcePath)
 					? data.Status.ExternalArtifactState
 					: externalMetadata.State;
-				byte[] externalEnvelope = Utf8(BuildExternalArtifactEnvelope(externalArtifact));
+				byte[] externalEnvelope = Utf8(BuildExternalArtifactEnvelope(externalArtifact, data.NativeArtifactSource));
 				WriteFile(stagingPath, "external-artifact.json", externalEnvelope);
 				entries.Add(new FileManifestEntry("external-artifact.json", externalEnvelope.LongLength, Sha256(externalEnvelope)));
 
@@ -335,8 +363,8 @@ namespace SGG.PerfMeter
 			builder.Append(",\"bundle_state\":").Append(JsonString(data.Status.State.ToString()));
 			builder.Append(",\"capture_state\":").Append(JsonString(data.Status.CaptureState.ToString()));
 			builder.Append(",\"requested_tool\":").Append(JsonString(data.Status.RequestedTool.ToString()));
-			builder.Append(",\"tool_identity\":\"unknown\"");
-			builder.Append(",\"tool_version\":\"unknown\"");
+			builder.Append(",\"tool_identity\":").Append(JsonString(externalMetadata.IsNative && !string.IsNullOrEmpty(data.Status.ExternalArtifact.ToolId) ? data.Status.ExternalArtifact.ToolId : "unknown"));
+			builder.Append(",\"tool_version\":").Append(JsonString(externalMetadata.IsNative && !string.IsNullOrEmpty(data.Status.ExternalArtifact.ToolVersion) ? data.Status.ExternalArtifact.ToolVersion : "unknown"));
 			builder.Append(",\"baseline_sample_count\":").Append(data.BaselineSamples.Length);
 			builder.Append(",\"capture_sample_count\":").Append(data.CaptureSamples.Length);
 			builder.Append(",\"dropped_capture_sample_count\":").Append(data.Status.DroppedCaptureSampleCount);
@@ -460,15 +488,15 @@ namespace SGG.PerfMeter
 			builder.Append("{\"schema\":\"sgg.perfmeter.external-capture\",\"schema_version\":1");
 			builder.Append(",\"capture_id\":").Append(JsonString(data.Status.CaptureId));
 			builder.Append(",\"requested_tool\":").Append(JsonString(data.Status.RequestedTool.ToString()));
-			builder.Append(",\"tool_identity\":\"unknown\"");
-			builder.Append(",\"tool_version\":\"unknown\"");
+			builder.Append(",\"tool_identity\":").Append(JsonString(metadata.IsNative && !string.IsNullOrEmpty(data.Status.ExternalArtifact.ToolId) ? data.Status.ExternalArtifact.ToolId : "unknown"));
+			builder.Append(",\"tool_version\":").Append(JsonString(metadata.IsNative && !string.IsNullOrEmpty(data.Status.ExternalArtifact.ToolVersion) ? data.Status.ExternalArtifact.ToolVersion : "unknown"));
 			builder.Append(",\"artifact_state\":").Append(JsonString(metadata.State.ToString()));
 			builder.Append(",\"artifact_extension\":").Append(JsonString(metadata.Extension));
 			builder.Append(",\"artifact_size_bytes\":").Append(metadata.SizeBytes);
 			builder.Append(",\"artifact_sha256\":").Append(JsonString(metadata.Hash));
 			builder.Append(",\"artifact_path_included\":false");
-			builder.Append(",\"artifact_file\":").Append(JsonString(string.IsNullOrEmpty(metadata.Extension) ? string.Empty : "external-capture" + metadata.Extension));
-			builder.Append(",\"association_verified\":false}");
+			builder.Append(",\"artifact_file\":").Append(JsonString(metadata.IsNative || string.IsNullOrEmpty(metadata.Extension) ? string.Empty : "external-capture" + metadata.Extension));
+			builder.Append(",\"association_verified\":").Append(JsonBool(metadata.IsNative && data.Status.ExternalArtifact.IsAuthoritative)).Append('}');
 			return builder.ToString();
 		}
 
@@ -528,7 +556,9 @@ namespace SGG.PerfMeter
 				warning: "External artifact was observed and copied without authenticated tool association.").ToSnapshot();
 		}
 
-		private static string BuildExternalArtifactEnvelope(PerfMeterExternalArtifactSnapshot artifact)
+		private static string BuildExternalArtifactEnvelope(
+			PerfMeterExternalArtifactSnapshot artifact,
+			PerfMeterNativeExternalArtifactSourceDescriptor sourceDescriptor)
 		{
 			StringBuilder builder = new StringBuilder(1024);
 			builder.Append("{\"schema\":\"sgg.perfmeter.external-artifact\",\"schema_version\":1");
@@ -551,6 +581,25 @@ namespace SGG.PerfMeter
 			builder.Append(",\"post_copy_sha256\":").Append(JsonString(artifact.PostCopySha256));
 			builder.Append(",\"source_file_identity_sha256\":").Append(JsonString(artifact.SourceFileIdentitySha256));
 			builder.Append(",\"warning\":").Append(JsonString(artifact.Warning));
+			if (sourceDescriptor.IsAvailable)
+			{
+				builder.Append(",\"renderdoc_provenance\":{");
+				builder.Append("\"bridge_abi_major\":").Append(sourceDescriptor.BridgeAbiMajor);
+				builder.Append(",\"bridge_abi_minor\":").Append(sourceDescriptor.BridgeAbiMinor);
+				builder.Append(",\"app_api_major\":").Append(sourceDescriptor.AppApiMajor);
+				builder.Append(",\"app_api_minor\":").Append(sourceDescriptor.AppApiMinor);
+				builder.Append(",\"app_api_patch\":").Append(sourceDescriptor.AppApiPatch);
+				builder.Append(",\"boundary_mode\":").Append(JsonString(sourceDescriptor.BoundaryMode));
+				builder.Append(",\"target_mode\":").Append(JsonString(sourceDescriptor.TargetMode));
+				builder.Append(",\"request_nonce\":").Append(JsonString(sourceDescriptor.RequestNonce.ToString("x16", CultureInfo.InvariantCulture)));
+				builder.Append(",\"count_before\":").Append(sourceDescriptor.CountBefore);
+				builder.Append(",\"capture_index\":").Append(sourceDescriptor.CaptureIndex);
+				builder.Append(",\"start_unix_nanoseconds\":").Append(sourceDescriptor.StartUnixNanoseconds);
+				builder.Append(",\"renderdoc_timestamp_seconds\":").Append(sourceDescriptor.RenderDocTimestampSeconds);
+				builder.Append(",\"observed_unix_nanoseconds\":").Append(sourceDescriptor.ObservedUnixNanoseconds);
+				builder.Append(",\"source_file_identity_sha256\":").Append(JsonString(artifact.SourceFileIdentitySha256));
+				builder.Append('}');
+			}
 			builder.Append('}');
 			return builder.ToString();
 		}
@@ -1307,7 +1356,7 @@ namespace SGG.PerfMeter
 
 		private readonly struct ExternalArtifactMetadata
 		{
-			internal ExternalArtifactMetadata(PerfMeterCaptureExternalArtifactState state, string extension, long sizeBytes, string observedSourceHash, string hash, string sourcePath)
+			internal ExternalArtifactMetadata(PerfMeterCaptureExternalArtifactState state, string extension, long sizeBytes, string observedSourceHash, string hash, string sourcePath, bool isNative = false)
 			{
 				State = state;
 				Extension = extension ?? string.Empty;
@@ -1315,6 +1364,7 @@ namespace SGG.PerfMeter
 				ObservedSourceHash = observedSourceHash ?? string.Empty;
 				Hash = hash ?? string.Empty;
 				SourcePath = sourcePath ?? string.Empty;
+				IsNative = isNative;
 			}
 
 			internal static ExternalArtifactMetadata Unavailable => new ExternalArtifactMetadata(PerfMeterCaptureExternalArtifactState.Unavailable, string.Empty, 0L, string.Empty, string.Empty, string.Empty);
@@ -1324,10 +1374,26 @@ namespace SGG.PerfMeter
 			internal string ObservedSourceHash { get; }
 			internal string Hash { get; }
 			internal string SourcePath { get; }
+			internal bool IsNative { get; }
+
+			internal static ExternalArtifactMetadata Native(PerfMeterExternalArtifactSnapshot artifact)
+			{
+				string hash = string.IsNullOrEmpty(artifact.PostCopySha256)
+					? artifact.ObservedSourceSha256
+					: artifact.PostCopySha256;
+				return new ExternalArtifactMetadata(
+					PerfMeterCaptureExternalArtifactState.Authoritative,
+					".rdc",
+					artifact.SizeBytes,
+					artifact.ObservedSourceSha256,
+					hash,
+					string.Empty,
+					true);
+			}
 
 			internal ExternalArtifactMetadata WithObservedFile(long sizeBytes, string observedSourceHash, string hash)
 			{
-				return new ExternalArtifactMetadata(State, Extension, sizeBytes, observedSourceHash, hash, SourcePath);
+				return new ExternalArtifactMetadata(State, Extension, sizeBytes, observedSourceHash, hash, SourcePath, IsNative);
 			}
 		}
 

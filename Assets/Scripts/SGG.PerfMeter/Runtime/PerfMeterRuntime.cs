@@ -2733,10 +2733,21 @@ namespace SGG.PerfMeter
 				PerfMeterCaptureBundleStatusSnapshot bundleStatus = CaptureBundles.GetStatus(completion.CaptureId);
 				if (string.Equals(bundleStatus.BundleId, _captureBundleId, StringComparison.Ordinal))
 				{
-					CaptureBundles.ObserveExternalArtifact(
-						completion.CaptureId,
-						bundleStatus.BundleId,
-						completion.Artifact);
+					if (completion.SourceDescriptor.IsAvailable)
+					{
+						CaptureBundles.ObserveNativeExternalArtifact(
+							completion.CaptureId,
+							bundleStatus.BundleId,
+							completion.Artifact,
+							completion.SourceDescriptor);
+					}
+					else
+					{
+						CaptureBundles.ObserveExternalArtifact(
+							completion.CaptureId,
+							bundleStatus.BundleId,
+							completion.Artifact);
+					}
 				}
 			}
 			if (!captureStatus.IsActive && !_captureCoordinator.HasActiveResources)

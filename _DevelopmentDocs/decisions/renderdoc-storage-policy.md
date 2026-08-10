@@ -32,6 +32,7 @@ adopted, retained, copied, or deleted by this lifecycle.
 | Storage metadata/staging reserve | 1 MiB (`1048576` bytes) per operation |
 | Source reservation before begin | 512 MiB plus the 1 MiB reserve and 1 GiB floor |
 | Transient filesystem attempts | 3 total attempts, with 25 ms and 50 ms delays before retries |
+| Persistent cleanup sweeps | 3 worker sweeps after failed immediate cleanup; marker ownership remains persisted after exhaustion |
 | First-candidate observation deadline | 30 seconds after successful end |
 | Candidate quiet window | At least 500 ms with no capture-count or matching-candidate change |
 | Artifact stabilization deadline | 60 seconds after first matching candidate |
@@ -155,6 +156,10 @@ nonterminal root becomes stale only after 24 hours and after no live
 session/generation can own it. Cleanup may delete only a root with a valid
 matching marker beneath the canonical source or Copy root and with no reparse
 point in its path. Unknown contents fail closed and remain for manual review.
+An in-process failed immediate cleanup retains the capture lease while up to
+three additional worker sweeps retry the exact persisted root. Exhaustion is
+terminal for that in-process flight rather than an unbounded loop; the marker
+remains eligible for the next-request or post-reload sweep.
 
 Canceled or failed Embed writes exist only in the existing marker-owned bundle
 staging directory and are removed by that staging cleanup contract. A failed
@@ -207,7 +212,11 @@ Copy/Embed pools independently: exact-limit acceptance, one-byte overflow,
 reservation/free-space rejection, count/age/quota retention ordering, active
 item preservation, stale marker ownership, retry/pending cleanup, polling and
 deadline boundaries, delayed second candidates, stable/growing/replaced files,
-hash mismatch, cancellation, and default privacy/share behavior.
+hash mismatch, cancellation, and default privacy/share behavior. Retained Copy
+also covers generation/bundle-bound native descriptors, capability snapshot
+binding, legacy caller-path rejection, terminal marker/size/identity/hash
+revalidation, payload mutation, cancelable export hashing, additive provenance,
+and exclusion of `.rdc` bytes from the generic 64 MiB bundle quota.
 
 Related decisions: [`renderdoc-native-boundary.md`](renderdoc-native-boundary.md),
 [`capture-bundles.md`](capture-bundles.md), and

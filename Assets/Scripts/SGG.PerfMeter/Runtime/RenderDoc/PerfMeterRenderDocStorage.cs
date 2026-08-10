@@ -43,6 +43,7 @@ namespace SGG.PerfMeter
 		internal const long FreeSpaceFloorBytes = 1L * 1024L * 1024L * 1024L;
 		internal const long MetadataReserveBytes = 1L * 1024L * 1024L;
 		internal const int IoAttempts = 3;
+		internal const int PersistentCleanupAttempts = 3;
 		internal const int FirstRetryDelayMilliseconds = 25;
 		internal const int SecondRetryDelayMilliseconds = 50;
 		internal const int MaxSessionIdLength = 128;
@@ -690,6 +691,43 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal SggRdResult TryRetryPendingCleanup(string rootPath, out string error)
+		{
+			error = string.Empty;
+			lock (_gate)
+			{
+				if (!TryValidateOwnedRootPath(
+						rootPath,
+						GetRootForCandidate(rootPath),
+						rejectTraversalInput: true,
+						out error))
+				{
+					return SggRdResult.InvalidArgument;
+				}
+
+				string tombstonePath = (rootPath ?? string.Empty) + ".cleanup";
+				if (Directory.Exists(tombstonePath) || File.Exists(tombstonePath))
+				{
+					return TryDeleteOwnedRootInternal(
+						tombstonePath,
+						allowLostSession: true,
+						allowStaleNonterminal: false,
+						out error);
+				}
+
+				if (Directory.Exists(rootPath) || File.Exists(rootPath))
+				{
+					return TryDeleteOwnedRootInternal(
+						rootPath,
+						allowLostSession: true,
+						allowStaleNonterminal: false,
+						out error);
+				}
+
+				return SggRdResult.Ok;
+			}
+		}
+
 		internal SggRdResult TryCleanup(
 			Func<string, ulong, bool> isSessionLive,
 			out PerfMeterRenderDocStorageUsage usage,
@@ -1079,7 +1117,8 @@ namespace SGG.PerfMeter
 				}
 			}
 
-			if (!TryDeleteDirectoryWithRetries(deletePath, out error))
+			SggRdResult deleteResult = TryDeleteDirectoryWithRetries(deletePath, marker, out error);
+			if (deleteResult != SggRdResult.Ok)
 			{
 				if (!_useAtomicOwnedDelete)
 				{
@@ -1095,7 +1134,7 @@ namespace SGG.PerfMeter
 					}
 				}
 
-				return SggRdResult.InternalError;
+				return deleteResult;
 			}
 
 			if (_reservations.TryGetValue(rootPath, out PerfMeterRenderDocStorageReservation reservation))
@@ -1107,34 +1146,57 @@ namespace SGG.PerfMeter
 			return SggRdResult.Ok;
 		}
 
-		private bool TryDeleteDirectoryWithRetries(string rootPath, out string error)
+		private SggRdResult TryDeleteDirectoryWithRetries(
+			string rootPath,
+			PerfMeterRenderDocStorageMarker marker,
+			out string error)
 		{
 			error = string.Empty;
-			Exception lastException = null;
 			for (int attempt = 0; attempt < PerfMeterRenderDocStoragePolicy.IoAttempts; attempt++)
 			{
 				try
 				{
 					if (!Directory.Exists(rootPath) && !File.Exists(rootPath))
 					{
-						return true;
+						return SggRdResult.Ok;
 					}
 
 					if (!IsSafePath(rootPath))
 					{
 						error = "renderdoc_storage_root_reparse_or_invalid";
-						return false;
+						return SggRdResult.InvalidArgument;
 					}
 
-					_deleteDirectory(rootPath);
+					if (_useAtomicOwnedDelete && PerfMeterRenderDocWindowsFileSystem.IsSupported)
+					{
+						byte[] markerBytes = StrictUtf8.GetBytes(SerializeMarker(marker));
+						SggRdResult handleDeleteResult = PerfMeterRenderDocWindowsFileSystem.TryDeleteOwnedRoot(
+							rootPath,
+							markerBytes,
+							out error);
+						if (handleDeleteResult == SggRdResult.InvalidArgument ||
+							handleDeleteResult == SggRdResult.UnsupportedPlatform)
+						{
+							return handleDeleteResult;
+						}
+						if (handleDeleteResult == SggRdResult.Ok)
+						{
+							return SggRdResult.Ok;
+						}
+						error = "renderdoc_storage_cleanup_pending";
+					}
+					else
+					{
+						_deleteDirectory(rootPath);
+					}
 					if (!Directory.Exists(rootPath) && !File.Exists(rootPath))
 					{
-						return true;
+						return SggRdResult.Ok;
 					}
 				}
 				catch (Exception exception) when (IsIoException(exception))
 				{
-					lastException = exception;
+					error = "renderdoc_storage_cleanup_pending";
 				}
 
 				if (attempt + 1 < PerfMeterRenderDocStoragePolicy.IoAttempts)
@@ -1146,8 +1208,8 @@ namespace SGG.PerfMeter
 				}
 			}
 
-			error = lastException == null ? "renderdoc_storage_cleanup_pending" : "renderdoc_storage_cleanup_pending";
-			return false;
+			error = "renderdoc_storage_cleanup_pending";
+			return SggRdResult.InternalError;
 		}
 
 		private SggRdResult TrySetStateInternal(

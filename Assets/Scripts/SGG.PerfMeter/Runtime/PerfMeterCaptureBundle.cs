@@ -519,6 +519,31 @@ namespace SGG.PerfMeter
 
 			_record.ExternalArtifact = snapshot;
 			_record.ExternalArtifactState = GetExternalArtifactState(snapshot);
+			_record.NativeArtifactSource = default;
+		}
+
+		internal bool ObserveNativeExternalArtifact(
+			string captureId,
+			string bundleId,
+			PerfMeterExternalArtifactSnapshot snapshot,
+			PerfMeterNativeExternalArtifactSourceDescriptor sourceDescriptor)
+		{
+			if (_record == null ||
+				_record.State == PerfMeterCaptureBundleState.Exported ||
+				_record.CaptureOptions.Tool != PerfMeterCaptureTool.RenderDoc ||
+				_record.CaptureOptions.BackendMode == PerfMeterCaptureBackendMode.GenericUnity ||
+				!string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal) ||
+				!string.Equals(_record.BundleId, bundleId, StringComparison.Ordinal) ||
+				snapshot.StorageMode != _record.CaptureOptions.ExternalArtifactStorageMode ||
+				!sourceDescriptor.IsStructurallyValid(captureId, snapshot))
+			{
+				return false;
+			}
+
+			_record.ExternalArtifact = snapshot;
+			_record.ExternalArtifactState = PerfMeterCaptureExternalArtifactState.Authoritative;
+			_record.NativeArtifactSource = sourceDescriptor;
+			return true;
 		}
 
 		private static PerfMeterCaptureExternalArtifactState GetExternalArtifactState(PerfMeterExternalArtifactSnapshot snapshot)
@@ -961,6 +986,7 @@ namespace SGG.PerfMeter
 			internal PerfMeterCaptureScreenshotState ScreenshotState { get; set; }
 			internal PerfMeterCaptureExternalArtifactState ExternalArtifactState { get; set; }
 			internal PerfMeterExternalArtifactSnapshot ExternalArtifact { get; set; } = PerfMeterExternalArtifactSnapshot.Empty;
+			internal PerfMeterNativeExternalArtifactSourceDescriptor NativeArtifactSource { get; set; }
 			internal PerfMeterMemorySnapshotState MemorySnapshotState { get; set; } = PerfMeterMemorySnapshotState.NotRequested;
 			internal PerfMeterMemorySnapshotArtifact MemorySnapshotArtifact { get; set; }
 			internal bool ScreenshotStarted { get; set; }
@@ -1169,7 +1195,8 @@ namespace SGG.PerfMeter
 					(PerfMeterAlertSnapshot[])AlertEvents.Clone(),
 					AlertEventsTruncated,
 					screenshot,
-					MemorySnapshotArtifact);
+					MemorySnapshotArtifact,
+					NativeArtifactSource);
 			}
 		}
 
@@ -1279,7 +1306,8 @@ namespace SGG.PerfMeter
 			PerfMeterAlertSnapshot[] alertEvents,
 			bool alertEventsTruncated,
 			byte[] screenshotBytes,
-			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact)
+			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact,
+			PerfMeterNativeExternalArtifactSourceDescriptor nativeArtifactSource = default)
 			: this(
 				status,
 				captureOptions,
@@ -1301,7 +1329,8 @@ namespace SGG.PerfMeter
 				alertEvents,
 				alertEventsTruncated,
 				screenshotBytes,
-				memorySnapshotArtifact)
+				memorySnapshotArtifact,
+				nativeArtifactSource)
 		{
 		}
 
@@ -1326,7 +1355,8 @@ namespace SGG.PerfMeter
 			PerfMeterAlertSnapshot[] alertEvents,
 			bool alertEventsTruncated,
 			byte[] screenshotBytes,
-			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact)
+			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact,
+			PerfMeterNativeExternalArtifactSourceDescriptor nativeArtifactSource = default)
 		{
 			Status = status;
 			CaptureOptions = captureOptions;
@@ -1349,6 +1379,7 @@ namespace SGG.PerfMeter
 			AlertEventsTruncated = alertEventsTruncated;
 			ScreenshotBytes = screenshotBytes;
 			MemorySnapshotArtifact = memorySnapshotArtifact;
+			NativeArtifactSource = nativeArtifactSource;
 		}
 
 		internal PerfMeterCaptureBundleStatusSnapshot Status { get; }
@@ -1372,6 +1403,7 @@ namespace SGG.PerfMeter
 		internal bool AlertEventsTruncated { get; }
 		internal byte[] ScreenshotBytes { get; }
 		internal PerfMeterMemorySnapshotArtifact MemorySnapshotArtifact { get; }
+		internal PerfMeterNativeExternalArtifactSourceDescriptor NativeArtifactSource { get; }
 
 		private static PerfMeterSessionTimelineSnapshot CopyTimeline(PerfMeterSessionTimelineSnapshot timeline)
 		{

@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Threading;
 
@@ -57,18 +56,27 @@ namespace SGG.PerfMeter
 			SggRdResult result,
 			PerfMeterExternalArtifactSnapshot artifact,
 			string retainedPayloadPath,
-			string warning)
+			string warning,
+			SggRdCaptureTokenV1 token = default,
+			SggRdArtifactV1 observedArtifact = default,
+			IPerfMeterNativeExternalArtifactPayloadSource payloadSource = null)
 		{
 			Result = result;
 			Artifact = artifact;
 			RetainedPayloadPath = retainedPayloadPath ?? string.Empty;
 			Warning = warning ?? string.Empty;
+			Token = token;
+			ObservedArtifact = observedArtifact;
+			PayloadSource = payloadSource;
 		}
 
 		internal SggRdResult Result { get; }
 		internal PerfMeterExternalArtifactSnapshot Artifact { get; }
 		internal string RetainedPayloadPath { get; }
 		internal string Warning { get; }
+		internal SggRdCaptureTokenV1 Token { get; }
+		internal SggRdArtifactV1 ObservedArtifact { get; }
+		internal IPerfMeterNativeExternalArtifactPayloadSource PayloadSource { get; }
 		internal bool Succeeded => Result == SggRdResult.Ok;
 	}
 
@@ -89,7 +97,7 @@ namespace SGG.PerfMeter
 		private readonly IPerfMeterRenderDocMonotonicClock _clock;
 
 		internal PerfMeterRenderDocArtifactFinalizer(PerfMeterRenderDocStorage storage)
-			: this(storage, new WindowsFileBindingFactory(), new StopwatchClock())
+			: this(storage, new PerfMeterRenderDocWindowsFileSystem.FileBindingFactory(), new StopwatchClock())
 		{
 		}
 
@@ -143,6 +151,7 @@ namespace SGG.PerfMeter
 				isCancellationRequested,
 				out string sourcePath,
 				out long candidateTimestamp,
+				out SggRdArtifactV1 observedArtifact,
 				out string error);
 			if (observeResult != SggRdResult.Ok)
 			{
@@ -266,6 +275,18 @@ namespace SGG.PerfMeter
 							sourceHash,
 							identityHash);
 					}
+					SggRdResult copyReleaseResult = copyReservation.Release(out string copyReleaseError);
+					if (copyReleaseResult != SggRdResult.Ok)
+					{
+						SggRdResult copyCleanupResult = _storage.TryDeleteOwnedRoot(copyReservation.RootPath, out string copyCleanupError);
+						return Failed(
+							preflight,
+							copyCleanupResult == SggRdResult.Ok ? copyReleaseResult : SggRdResult.InternalError,
+							CombineErrors(copyReleaseError, copyCleanupError),
+							payloadBytes,
+							sourceHash,
+							identityHash);
+					}
 				}
 
 				if (!TryFinishSource(sourceReservation, out string sourceTerminalError))
@@ -307,11 +328,32 @@ namespace SGG.PerfMeter
 						sourceHash,
 						identityHash);
 				}
+				PerfMeterExternalArtifactSnapshot snapshot = CreateSnapshot(
+					preflight,
+					storageMode,
+					payloadBytes,
+					sourceHash,
+					postCopyHash,
+					identityHash,
+					string.Empty,
+					true);
+				IPerfMeterNativeExternalArtifactPayloadSource payloadSource = copyReservation == null
+					? null
+					: new RetainedCopyPayloadSource(
+						_storage,
+						_fileBindings,
+						copyReservation,
+						retainedPath,
+						payloadBytes,
+						postCopyHash);
 				return new PerfMeterRenderDocFinalizationResult(
 					SggRdResult.Ok,
-					CreateSnapshot(preflight, storageMode, payloadBytes, sourceHash, postCopyHash, identityHash, string.Empty, true),
+					snapshot,
 					retainedPath,
-					string.Empty);
+					string.Empty,
+					token,
+					observedArtifact,
+					payloadSource);
 			}
 		}
 
@@ -322,10 +364,12 @@ namespace SGG.PerfMeter
 			Func<bool> isCancellationRequested,
 			out string sourcePath,
 			out long candidateTimestamp,
+			out SggRdArtifactV1 observedArtifact,
 			out string error)
 		{
 			sourcePath = string.Empty;
 			candidateTimestamp = 0L;
+			observedArtifact = default;
 			error = string.Empty;
 			SggRdArtifactV1 selectedArtifact = default;
 			long firstCandidate = 0L;
@@ -388,6 +432,7 @@ namespace SGG.PerfMeter
 
 					if (hasCandidate && ElapsedMilliseconds(firstCandidate, now) >= PerfMeterRenderDocFinalizationPolicy.QuietMilliseconds)
 					{
+						observedArtifact = selectedArtifact;
 						return SggRdResult.Ok;
 					}
 				}
@@ -428,6 +473,10 @@ namespace SGG.PerfMeter
 				{
 					binding?.Dispose();
 					binding = null;
+					if (openResult != SggRdResult.CaptureNotObserved)
+					{
+						return openResult;
+					}
 					_clock.Delay(TimeSpan.FromMilliseconds(PerfMeterRenderDocFinalizationPolicy.StableSampleMilliseconds));
 					continue;
 				}
@@ -621,6 +670,13 @@ namespace SGG.PerfMeter
 			bool finalized)
 		{
 			PerfMeterExternalArtifactOptions baseline = preflight.ArtifactOptions;
+			bool hasSourceEvidence = finalized &&
+				sizeBytes > 0L &&
+				!string.IsNullOrEmpty(sourceHash) &&
+				!string.IsNullOrEmpty(identityHash);
+			bool hasRequiredCopyEvidence = storageMode != PerfMeterExternalArtifactStorageMode.Copy ||
+				(!string.IsNullOrEmpty(postCopyHash) && string.Equals(sourceHash, postCopyHash, StringComparison.Ordinal));
+			bool authoritative = hasSourceEvidence && hasRequiredCopyEvidence;
 			return new PerfMeterExternalArtifactOptions(
 				artifactId: baseline.ArtifactId,
 				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
@@ -630,12 +686,8 @@ namespace SGG.PerfMeter
 				hostNamespace: baseline.HostNamespace,
 				associationState: finalized ? PerfMeterExternalArtifactAssociationState.BridgeAuthenticated : PerfMeterExternalArtifactAssociationState.Unverified,
 				finalizationState: finalized ? PerfMeterExternalArtifactFinalizationState.Finalized : PerfMeterExternalArtifactFinalizationState.Failed,
-				authorityState: finalized ? PerfMeterExternalArtifactAuthorityState.Observed : PerfMeterExternalArtifactAuthorityState.Unknown,
-				containsGpuCaptureData: storageMode == PerfMeterExternalArtifactStorageMode.MetadataOnly
-					? PerfMeterExternalArtifactContentState.Unknown
-					: finalized
-						? PerfMeterExternalArtifactContentState.Present
-						: PerfMeterExternalArtifactContentState.Absent,
+				authorityState: authoritative ? PerfMeterExternalArtifactAuthorityState.Authenticated : finalized ? PerfMeterExternalArtifactAuthorityState.Observed : PerfMeterExternalArtifactAuthorityState.Unknown,
+				containsGpuCaptureData: finalized ? PerfMeterExternalArtifactContentState.Present : PerfMeterExternalArtifactContentState.Absent,
 				privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
 					PerfMeterExternalArtifactPrivacyFlags.Sensitive |
 					PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
@@ -795,6 +847,106 @@ namespace SGG.PerfMeter
 			return new string(characters);
 		}
 
+		private sealed class RetainedCopyPayloadSource : IPerfMeterNativeExternalArtifactPayloadSource
+		{
+			private readonly PerfMeterRenderDocStorage _storage;
+			private readonly IPerfMeterRenderDocFileBindingFactory _fileBindings;
+			private readonly PerfMeterRenderDocStorageRequest _request;
+			private readonly ulong _requestNonce;
+			private readonly string _rootPath;
+			private readonly string _payloadPath;
+			private readonly long _expectedBytes;
+			private readonly string _expectedHash;
+
+			internal RetainedCopyPayloadSource(
+				PerfMeterRenderDocStorage storage,
+				IPerfMeterRenderDocFileBindingFactory fileBindings,
+				PerfMeterRenderDocStorageReservation reservation,
+				string payloadPath,
+				long expectedBytes,
+				string expectedHash)
+			{
+				_storage = storage;
+				_fileBindings = fileBindings;
+				_request = reservation.Request;
+				_requestNonce = reservation.RequestNonce;
+				_rootPath = reservation.RootPath;
+				_payloadPath = payloadPath ?? string.Empty;
+				_expectedBytes = expectedBytes;
+				_expectedHash = expectedHash ?? string.Empty;
+			}
+
+			public bool TryValidate(Func<bool> shouldStop, out string error)
+			{
+				error = string.Empty;
+				if (IsCanceled(shouldStop))
+				{
+					error = "renderdoc_copy_descriptor_validation_canceled";
+					return false;
+				}
+				SggRdResult inspectResult = _storage.TryInspectOwnedRoot(
+					_rootPath,
+					out PerfMeterRenderDocStorageMarker marker,
+					out _,
+					out error);
+				if (inspectResult != SggRdResult.Ok ||
+					marker.State != PerfMeterRenderDocStorageState.Terminal ||
+					marker.RequestNonce != _requestNonce ||
+					marker.Generation != _request.Generation ||
+					!string.Equals(marker.SessionId, _request.SessionId, StringComparison.Ordinal) ||
+					!string.Equals(_payloadPath, Path.Combine(_rootPath, "capture.rdc"), StringComparison.OrdinalIgnoreCase))
+				{
+					error = string.IsNullOrEmpty(error) ? "renderdoc_copy_descriptor_marker_invalid" : error;
+					return false;
+				}
+
+				SggRdResult openResult = _fileBindings.TryOpen(
+					_payloadPath,
+					out IPerfMeterRenderDocFileBinding binding,
+					out error);
+				if (openResult != SggRdResult.Ok)
+				{
+					error = string.IsNullOrEmpty(error) ? "renderdoc_copy_descriptor_open_failed" : error;
+					return false;
+				}
+
+				using (binding)
+				{
+					if (IsCanceled(shouldStop))
+					{
+						error = "renderdoc_copy_descriptor_validation_canceled";
+						return false;
+					}
+					SggRdResult sampleResult = binding.TrySample(out PerfMeterRenderDocFileSample before, out error);
+					if (sampleResult != SggRdResult.Ok || before.SizeBytes != _expectedBytes)
+					{
+						error = "renderdoc_copy_descriptor_size_changed";
+						return false;
+					}
+
+					SggRdResult hashResult = binding.TryComputeSha256(
+						PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+						shouldStop,
+						out string hash,
+						out error);
+					if (hashResult != SggRdResult.Ok || !string.Equals(hash, _expectedHash, StringComparison.Ordinal))
+					{
+						error = "renderdoc_copy_descriptor_hash_changed";
+						return false;
+					}
+
+					sampleResult = binding.TrySample(out PerfMeterRenderDocFileSample after, out error);
+					if (sampleResult != SggRdResult.Ok || !SamplesEqual(before, after))
+					{
+						error = "renderdoc_copy_descriptor_identity_changed";
+						return false;
+					}
+				}
+
+				return true;
+			}
+		}
+
 		private sealed class StopwatchClock : IPerfMeterRenderDocMonotonicClock
 		{
 			public long Timestamp => Stopwatch.GetTimestamp();
@@ -802,179 +954,5 @@ namespace SGG.PerfMeter
 			public void Delay(TimeSpan delay) => Thread.Sleep(delay);
 		}
 
-		private sealed class WindowsFileBindingFactory : IPerfMeterRenderDocFileBindingFactory
-		{
-			public SggRdResult TryOpen(string path, out IPerfMeterRenderDocFileBinding binding, out string error)
-			{
-				binding = null;
-				error = string.Empty;
-				if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-				{
-					error = "renderdoc_file_identity_unsupported";
-					return SggRdResult.UnsupportedPlatform;
-				}
-
-				try
-				{
-					binding = new WindowsFileBinding(path);
-					return SggRdResult.Ok;
-				}
-				catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ArgumentException || exception is NotSupportedException)
-				{
-					error = "renderdoc_file_open_failed";
-					return SggRdResult.CaptureNotObserved;
-				}
-			}
-		}
-
-		private sealed class WindowsFileBinding : IPerfMeterRenderDocFileBinding
-		{
-			private readonly FileStream _stream;
-
-			internal WindowsFileBinding(string path)
-			{
-				_stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 81920, FileOptions.SequentialScan);
-			}
-
-			public SggRdResult TrySample(out PerfMeterRenderDocFileSample sample, out string error)
-			{
-				sample = default;
-				error = string.Empty;
-				if (!GetFileInformationByHandle(_stream.SafeFileHandle.DangerousGetHandle(), out ByHandleFileInformation information))
-				{
-					error = "renderdoc_file_identity_failed";
-					return SggRdResult.InternalError;
-				}
-
-				byte[] identity = new byte[12];
-				WriteUInt32(identity, 0, information.VolumeSerialNumber);
-				WriteUInt32(identity, 4, information.FileIndexHigh);
-				WriteUInt32(identity, 8, information.FileIndexLow);
-				long size = ((long)information.FileSizeHigh << 32) | information.FileSizeLow;
-				long writeTicks = ((long)information.LastWriteTimeHigh << 32) | information.LastWriteTimeLow;
-				sample = new PerfMeterRenderDocFileSample(identity, size, writeTicks);
-				return SggRdResult.Ok;
-			}
-
-			public SggRdResult TryComputeSha256(
-				long maximumBytes,
-				Func<bool> shouldStop,
-				out string sha256,
-				out string error)
-			{
-				sha256 = string.Empty;
-				error = string.Empty;
-				try
-				{
-					_stream.Position = 0L;
-					using (SHA256 algorithm = SHA256.Create())
-					{
-						byte[] buffer = new byte[81920];
-						long total = 0L;
-						int read;
-						while ((read = _stream.Read(buffer, 0, buffer.Length)) > 0)
-						{
-							bool stopped = IsCanceled(shouldStop);
-							if (stopped || read > maximumBytes - total)
-							{
-								error = stopped ? "renderdoc_file_hash_stopped" : "renderdoc_storage_payload_limit_exceeded";
-								return SggRdResult.CaptureFailed;
-							}
-
-							algorithm.TransformBlock(buffer, 0, read, null, 0);
-							total += read;
-						}
-
-						algorithm.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-						if (IsCanceled(shouldStop))
-						{
-							error = "renderdoc_file_hash_stopped";
-							return SggRdResult.CaptureFailed;
-						}
-						sha256 = ToHex(algorithm.Hash);
-					}
-					return SggRdResult.Ok;
-				}
-				catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
-				{
-					error = "renderdoc_file_hash_failed";
-					return SggRdResult.InternalError;
-				}
-			}
-
-			public SggRdResult TryCopyTo(
-				string destinationPath,
-				long maximumBytes,
-				Func<bool> shouldStop,
-				out string error)
-			{
-				error = string.Empty;
-				try
-				{
-					_stream.Position = 0L;
-					using (FileStream destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.WriteThrough))
-					{
-						byte[] buffer = new byte[81920];
-						long total = 0L;
-						int read;
-						while ((read = _stream.Read(buffer, 0, buffer.Length)) > 0)
-						{
-							bool stopped = IsCanceled(shouldStop);
-							if (stopped || read > maximumBytes - total)
-							{
-								error = stopped ? "renderdoc_copy_stopped" : "renderdoc_storage_payload_limit_exceeded";
-								return SggRdResult.CaptureFailed;
-							}
-							destination.Write(buffer, 0, read);
-							total += read;
-						}
-						destination.Flush(true);
-						if (IsCanceled(shouldStop))
-						{
-							error = "renderdoc_copy_stopped";
-							return SggRdResult.CaptureFailed;
-						}
-					}
-					return SggRdResult.Ok;
-				}
-				catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ArgumentException || exception is NotSupportedException)
-				{
-					error = "renderdoc_copy_failed";
-					return SggRdResult.InternalError;
-				}
-			}
-
-			public void Dispose() => _stream.Dispose();
-
-			private static void WriteUInt32(byte[] bytes, int offset, uint value)
-			{
-				bytes[offset] = (byte)value;
-				bytes[offset + 1] = (byte)(value >> 8);
-				bytes[offset + 2] = (byte)(value >> 16);
-				bytes[offset + 3] = (byte)(value >> 24);
-			}
-
-			[DllImport("kernel32.dll", SetLastError = true)]
-			[return: MarshalAs(UnmanagedType.Bool)]
-			private static extern bool GetFileInformationByHandle(IntPtr file, out ByHandleFileInformation information);
-
-			[StructLayout(LayoutKind.Sequential)]
-			private struct ByHandleFileInformation
-			{
-				internal uint FileAttributes;
-				internal uint CreationTimeLow;
-				internal uint CreationTimeHigh;
-				internal uint LastAccessTimeLow;
-				internal uint LastAccessTimeHigh;
-				internal uint LastWriteTimeLow;
-				internal uint LastWriteTimeHigh;
-				internal uint VolumeSerialNumber;
-				internal uint FileSizeHigh;
-				internal uint FileSizeLow;
-				internal uint NumberOfLinks;
-				internal uint FileIndexHigh;
-				internal uint FileIndexLow;
-			}
-		}
 	}
 }

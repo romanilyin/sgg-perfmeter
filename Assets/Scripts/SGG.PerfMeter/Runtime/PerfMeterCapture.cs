@@ -316,6 +316,169 @@ namespace SGG.PerfMeter
 		Started = 2
 	}
 
+	internal enum PerfMeterNativeExternalArtifactSourceKind
+	{
+		None = 0,
+		RenderDoc = 1
+	}
+
+	internal interface IPerfMeterNativeExternalArtifactPayloadSource
+	{
+		bool TryValidate(Func<bool> shouldStop, out string error);
+	}
+
+	internal readonly struct PerfMeterNativeExternalArtifactSourceDescriptor
+	{
+		private const long NativePayloadQuotaBytes = 512L * 1024L * 1024L;
+		private const PerfMeterExternalArtifactPrivacyFlags NativePrivacyFlags =
+			PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
+			PerfMeterExternalArtifactPrivacyFlags.Sensitive |
+			PerfMeterExternalArtifactPrivacyFlags.RequiresReview;
+
+		internal PerfMeterNativeExternalArtifactSourceDescriptor(
+			PerfMeterNativeExternalArtifactSourceKind kind,
+			uint bridgeAbiMajor,
+			uint bridgeAbiMinor,
+			uint appApiMajor,
+			uint appApiMinor,
+			uint appApiPatch,
+			string boundaryMode,
+			string targetMode,
+			ulong requestNonce,
+			uint countBefore,
+			ulong startUnixNanoseconds,
+			uint captureIndex,
+			ulong renderDocTimestampSeconds,
+			ulong observedUnixNanoseconds,
+			IPerfMeterNativeExternalArtifactPayloadSource payloadSource = null)
+		{
+			Kind = kind;
+			BridgeAbiMajor = bridgeAbiMajor;
+			BridgeAbiMinor = bridgeAbiMinor;
+			AppApiMajor = appApiMajor;
+			AppApiMinor = appApiMinor;
+			AppApiPatch = appApiPatch;
+			BoundaryMode = boundaryMode ?? string.Empty;
+			TargetMode = targetMode ?? string.Empty;
+			RequestNonce = requestNonce;
+			CountBefore = countBefore;
+			StartUnixNanoseconds = startUnixNanoseconds;
+			CaptureIndex = captureIndex;
+			RenderDocTimestampSeconds = renderDocTimestampSeconds;
+			ObservedUnixNanoseconds = observedUnixNanoseconds;
+			PayloadSource = payloadSource;
+		}
+
+		internal bool IsAvailable => Kind == PerfMeterNativeExternalArtifactSourceKind.RenderDoc;
+		internal PerfMeterNativeExternalArtifactSourceKind Kind { get; }
+		internal uint BridgeAbiMajor { get; }
+		internal uint BridgeAbiMinor { get; }
+		internal uint AppApiMajor { get; }
+		internal uint AppApiMinor { get; }
+		internal uint AppApiPatch { get; }
+		internal string BoundaryMode { get; }
+		internal string TargetMode { get; }
+		internal ulong RequestNonce { get; }
+		internal uint CountBefore { get; }
+		internal ulong StartUnixNanoseconds { get; }
+		internal uint CaptureIndex { get; }
+		internal ulong RenderDocTimestampSeconds { get; }
+		internal ulong ObservedUnixNanoseconds { get; }
+		private IPerfMeterNativeExternalArtifactPayloadSource PayloadSource { get; }
+
+		internal bool IsStructurallyValid(
+			string captureId,
+			PerfMeterExternalArtifactSnapshot artifact)
+		{
+			if (!IsAvailable ||
+				BridgeAbiMajor != 1u ||
+				AppApiMajor != 1u ||
+				AppApiMinor < 4u ||
+				!string.Equals(BoundaryMode, "managed_end_of_frame", StringComparison.Ordinal) ||
+				!string.Equals(TargetMode, "wildcard_device_window", StringComparison.Ordinal) ||
+				RequestNonce == 0u ||
+				CaptureIndex < CountBefore ||
+				StartUnixNanoseconds == 0u ||
+				ObservedUnixNanoseconds < StartUnixNanoseconds ||
+				artifact.ArtifactKind != PerfMeterExternalArtifactKind.GpuCapture ||
+				!string.Equals(artifact.ToolId, "renderdoc", StringComparison.Ordinal) ||
+				!string.Equals(artifact.RequestId, captureId, StringComparison.Ordinal) ||
+				artifact.AssociationState != PerfMeterExternalArtifactAssociationState.BridgeAuthenticated ||
+				!artifact.IsFinalized ||
+				!artifact.IsAuthoritative ||
+				artifact.ContainsGpuCaptureData != PerfMeterExternalArtifactContentState.Present ||
+				artifact.SizeBytes <= 0L ||
+				artifact.QuotaBytes != NativePayloadQuotaBytes ||
+				artifact.SizeBytes > artifact.QuotaBytes ||
+				artifact.PrivacyFlags != NativePrivacyFlags ||
+				!IsSha256(artifact.ObservedSourceSha256) ||
+				!IsSha256(artifact.SourceFileIdentitySha256))
+			{
+				return false;
+			}
+
+			ulong startSeconds = StartUnixNanoseconds / 1000000000u;
+			ulong earliest = startSeconds > 5u ? startSeconds - 5u : 0u;
+			ulong latest = startSeconds > ulong.MaxValue - 30u ? ulong.MaxValue : startSeconds + 30u;
+			if (RenderDocTimestampSeconds < earliest || RenderDocTimestampSeconds > latest)
+			{
+				return false;
+			}
+
+			if (artifact.StorageMode == PerfMeterExternalArtifactStorageMode.MetadataOnly)
+			{
+				return PayloadSource == null &&
+					string.IsNullOrEmpty(artifact.PostCopySha256) &&
+					artifact.SharePolicy == PerfMeterExternalArtifactSharePolicy.DoNotShare;
+			}
+
+			return artifact.StorageMode == PerfMeterExternalArtifactStorageMode.Copy &&
+				PayloadSource != null &&
+				IsSha256(artifact.PostCopySha256) &&
+				string.Equals(artifact.ObservedSourceSha256, artifact.PostCopySha256, StringComparison.Ordinal) &&
+				artifact.SharePolicy == PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare;
+		}
+
+		internal bool TryValidatePayload(Func<bool> shouldStop, out string error)
+		{
+			if (PayloadSource == null)
+			{
+				error = string.Empty;
+				return true;
+			}
+
+			try
+			{
+				return PayloadSource.TryValidate(shouldStop, out error);
+			}
+			catch (Exception exception)
+			{
+				error = "native_external_artifact_payload_validation_exception: " + exception.GetType().Name;
+				return false;
+			}
+		}
+
+		private static bool IsSha256(string value)
+		{
+			if (string.IsNullOrEmpty(value) || value.Length != 64)
+			{
+				return false;
+			}
+
+			for (int index = 0; index < value.Length; index++)
+			{
+				char character = value[index];
+				if (!((character >= '0' && character <= '9') ||
+					(character >= 'a' && character <= 'f')))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+	}
+
 	internal readonly struct PerfMeterCaptureExternalArtifactCompletion
 	{
 		internal PerfMeterCaptureExternalArtifactCompletion(
@@ -323,17 +486,29 @@ namespace SGG.PerfMeter
 			int generation,
 			PerfMeterExternalArtifactSnapshot artifact,
 			string retainedPayloadPath)
+			: this(captureId, generation, artifact, retainedPayloadPath, default)
+		{
+		}
+
+		internal PerfMeterCaptureExternalArtifactCompletion(
+			string captureId,
+			int generation,
+			PerfMeterExternalArtifactSnapshot artifact,
+			string retainedPayloadPath,
+			PerfMeterNativeExternalArtifactSourceDescriptor sourceDescriptor)
 		{
 			CaptureId = captureId ?? string.Empty;
 			Generation = generation;
 			Artifact = artifact;
 			RetainedPayloadPath = retainedPayloadPath ?? string.Empty;
+			SourceDescriptor = sourceDescriptor;
 		}
 
 		internal string CaptureId { get; }
 		internal int Generation { get; }
 		internal PerfMeterExternalArtifactSnapshot Artifact { get; }
 		internal string RetainedPayloadPath { get; }
+		internal PerfMeterNativeExternalArtifactSourceDescriptor SourceDescriptor { get; }
 	}
 
 	internal interface IPerfMeterCaptureBackendV3 : IPerfMeterCaptureBackendV2

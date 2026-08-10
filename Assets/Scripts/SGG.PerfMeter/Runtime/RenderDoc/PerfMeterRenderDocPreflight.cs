@@ -92,7 +92,12 @@ namespace SGG.PerfMeter
 			out PerfMeterRenderDocPreflight preflight);
 	}
 
-	internal sealed class PerfMeterRenderDocPreflightProvider : IPerfMeterRenderDocPreflightProviderV2
+	internal interface IPerfMeterRenderDocCleanupProvider
+	{
+		SggRdResult RetryPendingCleanup(string rootPath, out string error);
+	}
+
+	internal sealed class PerfMeterRenderDocPreflightProvider : IPerfMeterRenderDocPreflightProviderV2, IPerfMeterRenderDocCleanupProvider
 	{
 		private const string StorageFailureWarning =
 			"RenderDoc native preflight remains fail-closed until PM-RDOC-003C/003D worker/lifecycle wiring is enabled.";
@@ -186,6 +191,17 @@ namespace SGG.PerfMeter
 
 				return SggRdResult.InternalError;
 			}
+		}
+
+		public SggRdResult RetryPendingCleanup(string rootPath, out string error)
+		{
+			if (_storage == null)
+			{
+				error = "renderdoc_storage_cleanup_unavailable";
+				return SggRdResult.InternalError;
+			}
+
+			return _storage.TryRetryPendingCleanup(rootPath, out error);
 		}
 
 		internal static string PolicyNotReadyMessage => StorageFailureWarning;

@@ -17,6 +17,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 		private FakeFinalizer _finalizer;
 		private PerfMeterRenderDocCaptureBackend _backend;
 		private PerfMeterCaptureCoordinator _coordinator;
+		private int _deleteAttempts;
+		private int _remainingDeleteFailures;
 
 		[SetUp]
 		public void SetUp()
@@ -25,12 +27,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 			_projectRoot = Path.Combine(Path.GetTempPath(), "sgg-perfmeter-renderdoc-lifecycle-" + Guid.NewGuid().ToString("N"));
+			_deleteAttempts = 0;
+			_remainingDeleteFailures = 0;
 			_storage = new PerfMeterRenderDocStorage(
 				_projectRoot,
 				new TestFreeSpace(),
 				new TestClock(),
 				new IncrementingNonceProvider(),
-				new NoRetryDelay());
+				new NoRetryDelay(),
+				path =>
+				{
+					_deleteAttempts++;
+					if (_remainingDeleteFailures > 0)
+					{
+						_remainingDeleteFailures--;
+						throw new IOException("synthetic cleanup lock");
+					}
+					Directory.Delete(path, true);
+				});
 			_worker = new ManualWorkerScheduler();
 			_bridge = new FakeBridge();
 			_finalizer = new FakeFinalizer();
@@ -92,6 +106,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(_coordinator.HasActiveResources, Is.True);
 			Assert.That(_backend.Snapshot.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.AwaitingArtifact));
 
+			_bridge.ApiMinor = 4u;
+			_backend.GetCapability(NativeOptions("capability-probe"));
 			_worker.CompleteNext();
 			_coordinator.Tick();
 
@@ -101,6 +117,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(completion.CaptureId, Is.EqualTo(options.CaptureId));
 			Assert.That(completion.Generation, Is.EqualTo(_coordinator.Generation));
 			Assert.That(completion.Artifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Finalized));
+			Assert.That(completion.SourceDescriptor.IsAvailable, Is.True);
+			Assert.That(completion.SourceDescriptor.AppApiMinor, Is.EqualTo(7u));
+			Assert.That(completion.SourceDescriptor.IsStructurallyValid(options.CaptureId, completion.Artifact), Is.True);
 			Assert.That(_coordinator.TryConsumeExternalArtifact(out _), Is.False);
 		}
 
@@ -176,6 +195,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void RuntimeDestructionRetainsPersistentCleanupRetry()
+		{
+			const string captureId = "destroy-persistent-cleanup";
+			_remainingDeleteFailures = PerfMeterRenderDocStoragePolicy.IoAttempts;
+			Assert.That(PerfMeterRuntime.EnsureRunning(), Is.True);
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(_backend);
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					NativeOptions(captureId),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			typeof(PerfMeterRuntime).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(runtime, null);
+			typeof(PerfMeterRuntime).GetMethod("OnDestroy", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(runtime, null);
+			UnityEngine.Object.DestroyImmediate(runtime.gameObject);
+
+			_worker.CompleteNext();
+			Assert.That(PerfMeterRuntime.EnsureRunning(), Is.False);
+			_worker.CompleteNext();
+			Assert.That(PerfMeterRuntime.EnsureRunning(), Is.False, "Failed immediate cleanup must schedule a persistent worker retry.");
+			Assert.That(_worker.PendingCount, Is.EqualTo(1));
+
+			_worker.CompleteNext();
+			Assert.That(PerfMeterRuntime.EnsureRunning(), Is.True);
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Canceled));
+			Assert.That(_deleteAttempts, Is.EqualTo(PerfMeterRenderDocStoragePolicy.IoAttempts + 1));
+			Assert.That(Directory.Exists(_storage.SourceRoot) && Directory.GetDirectories(_storage.SourceRoot).Length > 0, Is.False);
+		}
+
+		[Test]
 		public void BeginFailureRetainsResourcesUntilWorkerCleanupCompletes()
 		{
 			_bridge.BeginResult = SggRdResult.CaptureFailed;
@@ -221,6 +271,80 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(_coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Error));
 			Assert.That(_coordinator.HasActiveResources, Is.False);
 			Assert.That(Directory.Exists(_storage.SourceRoot) && Directory.GetDirectories(_storage.SourceRoot).Length > 0, Is.False);
+		}
+
+		[Test]
+		public void FailedImmediateCleanupRetriesPersistedRootOnWorker()
+		{
+			Assert.That(PerfMeterRenderDocStoragePolicy.PersistentCleanupAttempts, Is.EqualTo(3));
+			_remainingDeleteFailures = PerfMeterRenderDocStoragePolicy.IoAttempts;
+			_bridge.BeginResult = SggRdResult.CaptureFailed;
+			Assert.That(_coordinator.Request(NativeOptions("persistent-cleanup-success")), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			_worker.CompleteNext();
+			_coordinator.Tick();
+
+			_worker.CompleteNext();
+			_coordinator.Tick();
+
+			Assert.That(_coordinator.HasActiveResources, Is.True);
+			Assert.That(_worker.PendingCount, Is.EqualTo(1));
+			Assert.That(_deleteAttempts, Is.EqualTo(PerfMeterRenderDocStoragePolicy.IoAttempts));
+			Assert.That(
+				_storage.TryInspectOwnedRoot(_bridge.RootPath, out PerfMeterRenderDocStorageMarker marker, out _, out string markerError),
+				Is.EqualTo(SggRdResult.Ok),
+				markerError);
+			Assert.That(marker.State, Is.EqualTo(PerfMeterRenderDocStorageState.CleanupPending));
+
+			_worker.CompleteNext();
+			_coordinator.Tick();
+
+			Assert.That(_coordinator.HasActiveResources, Is.False);
+			Assert.That(_worker.PendingCount, Is.Zero);
+			Assert.That(_deleteAttempts, Is.EqualTo(PerfMeterRenderDocStoragePolicy.IoAttempts + 1));
+			Assert.That(Directory.Exists(_bridge.RootPath), Is.False);
+		}
+
+		[Test]
+		public void PersistentCleanupStopsAtBoundAndLeavesReloadableMarker()
+		{
+			int totalAttempts = PerfMeterRenderDocStoragePolicy.IoAttempts *
+				(PerfMeterRenderDocStoragePolicy.PersistentCleanupAttempts + 1);
+			_remainingDeleteFailures = totalAttempts;
+			_bridge.BeginResult = SggRdResult.CaptureFailed;
+			Assert.That(_coordinator.Request(NativeOptions("persistent-cleanup-bound")), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			_worker.CompleteNext();
+			_coordinator.Tick();
+
+			for (int operation = 0; operation <= PerfMeterRenderDocStoragePolicy.PersistentCleanupAttempts; operation++)
+			{
+				_worker.CompleteNext();
+				_coordinator.Tick();
+				Assert.That(
+					_coordinator.HasActiveResources,
+					Is.EqualTo(operation < PerfMeterRenderDocStoragePolicy.PersistentCleanupAttempts));
+			}
+
+			Assert.That(_worker.PendingCount, Is.Zero);
+			Assert.That(_deleteAttempts, Is.EqualTo(totalAttempts));
+			Assert.That(
+				_storage.TryInspectOwnedRoot(_bridge.RootPath, out PerfMeterRenderDocStorageMarker marker, out _, out string markerError),
+				Is.EqualTo(SggRdResult.Ok),
+				markerError);
+			Assert.That(marker.State, Is.EqualTo(PerfMeterRenderDocStorageState.CleanupPending));
+
+			_remainingDeleteFailures = 0;
+			PerfMeterRenderDocStorage restarted = new PerfMeterRenderDocStorage(
+				_projectRoot,
+				new TestFreeSpace(),
+				new TestClock(),
+				new IncrementingNonceProvider(),
+				new NoRetryDelay(),
+				path => Directory.Delete(path, true));
+			Assert.That(
+				restarted.TryCleanup((session, generation) => false, out _, out string cleanupError),
+				Is.EqualTo(SggRdResult.Ok),
+				cleanupError);
+			Assert.That(Directory.Exists(_bridge.RootPath), Is.False);
 		}
 
 		private static PerfMeterCaptureOptions NativeOptions(string captureId)
@@ -329,11 +453,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 					new PerfMeterExternalArtifactOptions(
 						artifactId: preflight.ArtifactOptions.ArtifactId,
 						artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+						toolId: "renderdoc",
 						requestId: preflight.ArtifactOptions.RequestId,
 						associationState: PerfMeterExternalArtifactAssociationState.BridgeAuthenticated,
 						finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
-						authorityState: PerfMeterExternalArtifactAuthorityState.Observed,
-						containsGpuCaptureData: PerfMeterExternalArtifactContentState.Unknown,
+						authorityState: PerfMeterExternalArtifactAuthorityState.Authenticated,
+						containsGpuCaptureData: PerfMeterExternalArtifactContentState.Present,
 						privacyFlags: preflight.ArtifactOptions.PrivacyFlags,
 						storageMode: PerfMeterExternalArtifactStorageMode.MetadataOnly,
 						quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
@@ -342,8 +467,16 @@ namespace SGG.PerfMeter.Tests.EditMode
 						observedSourceSha256: new string('a', 64))
 						.WithSourceFileIdentitySha256(new string('b', 64))
 						.ToSnapshot(),
-					preflight.CapturePathTemplate + ".rdc",
-					string.Empty);
+					string.Empty,
+					string.Empty,
+					token,
+					new SggRdArtifactV1
+					{
+						StructSize = PerfMeterRenderDocAbiV1.ArtifactSizeAsUInt,
+						Index = token.CountBefore,
+						RenderDocTimestampSeconds = 0u,
+						ObservedUnixNanoseconds = token.StartUnixNanoseconds
+					});
 			}
 
 			private static PerfMeterExternalArtifactSnapshot FailedArtifact(PerfMeterRenderDocPreflight preflight)
@@ -362,6 +495,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			internal int BeginCount { get; private set; }
 			internal string RootPath { get; private set; } = string.Empty;
 			internal SggRdResult BeginResult { get; set; } = SggRdResult.Ok;
+			internal uint ApiMinor { get; set; } = 7u;
 
 			public SggRdResult GetCapabilities(out SggRdCapabilitiesV1 capabilities)
 			{
@@ -376,7 +510,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 					ApiNegotiated = 1u,
 					TargetControlConnected = 1u,
 					ApiMajor = 1u,
-					ApiMinor = 7u,
+					ApiMinor = ApiMinor,
 					SupportsDiscard = 1u,
 					SupportsComments = 1u,
 					SupportsTitle = 1u,

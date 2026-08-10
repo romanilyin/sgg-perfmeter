@@ -1,6 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Security.Cryptography;
 using NUnit.Framework;
 
@@ -63,8 +66,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(result.RetainedPayloadPath, Is.Empty);
 			Assert.That(result.Artifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Finalized));
 			Assert.That(result.Artifact.AssociationState, Is.EqualTo(PerfMeterExternalArtifactAssociationState.BridgeAuthenticated));
-			Assert.That(result.Artifact.AuthorityState, Is.EqualTo(PerfMeterExternalArtifactAuthorityState.Observed));
-			Assert.That(result.Artifact.IsAuthoritative, Is.False);
+			Assert.That(result.Artifact.AuthorityState, Is.EqualTo(PerfMeterExternalArtifactAuthorityState.Authenticated));
+			Assert.That(result.Artifact.IsAuthoritative, Is.True);
 			Assert.That(result.Artifact.StorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.MetadataOnly));
 			Assert.That(result.Artifact.SharePolicy, Is.EqualTo(PerfMeterExternalArtifactSharePolicy.DoNotShare));
 			Assert.That(result.Artifact.SizeBytes, Is.EqualTo(4L));
@@ -156,6 +159,75 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void WindowsBindingReadsARegularFileThroughTheValidatedHandle()
+		{
+			if (!PerfMeterRenderDocWindowsFileSystem.IsSupported)
+			{
+				Assert.Ignore("Windows file-identity validation is unavailable on this host.");
+			}
+
+			Directory.CreateDirectory(_projectRoot);
+			string path = Path.Combine(_projectRoot, "regular-capture.rdc");
+			File.WriteAllBytes(path, new byte[] { 1, 2, 3 });
+			PerfMeterRenderDocWindowsFileSystem.FileBindingFactory factory =
+				new PerfMeterRenderDocWindowsFileSystem.FileBindingFactory();
+
+			Assert.That(
+				factory.TryOpen(path, out IPerfMeterRenderDocFileBinding binding, out string openError),
+				Is.EqualTo(SggRdResult.Ok),
+				openError);
+			using (binding)
+			{
+				Assert.That(binding.TrySample(out PerfMeterRenderDocFileSample sample, out string sampleError), Is.EqualTo(SggRdResult.Ok), sampleError);
+				Assert.That(sample.SizeBytes, Is.EqualTo(3L));
+				Assert.That(sample.Identity, Has.Length.EqualTo(12));
+				Assert.That(
+					binding.TryComputeSha256(3L, () => false, out string hash, out string hashError),
+					Is.EqualTo(SggRdResult.Ok),
+					hashError);
+				Assert.That(hash, Has.Length.EqualTo(64));
+			}
+		}
+
+		[Test]
+		public void WindowsBindingRejectsAncestorJunctionTraversal()
+		{
+			if (!PerfMeterRenderDocWindowsFileSystem.IsSupported)
+			{
+				Assert.Ignore("Windows file-identity validation is unavailable on this host.");
+			}
+
+			string targetRoot = Path.Combine(_projectRoot, "junction-target");
+			string aliasRoot = Path.Combine(_projectRoot, "junction-alias");
+			Directory.CreateDirectory(targetRoot);
+			string targetPath = Path.Combine(targetRoot, "capture.rdc");
+			File.WriteAllBytes(targetPath, new byte[] { 1, 2, 3 });
+			if (!TryCreateDirectoryJunction(aliasRoot, targetRoot))
+			{
+				Assert.Ignore("The test host does not permit directory junctions.");
+			}
+
+			try
+			{
+				PerfMeterRenderDocWindowsFileSystem.FileBindingFactory factory =
+					new PerfMeterRenderDocWindowsFileSystem.FileBindingFactory();
+				SggRdResult result = factory.TryOpen(
+					Path.Combine(aliasRoot, "capture.rdc"),
+					out IPerfMeterRenderDocFileBinding binding,
+					out string error);
+
+				binding?.Dispose();
+				Assert.That(result, Is.EqualTo(SggRdResult.CaptureFailed));
+				Assert.That(error, Is.EqualTo("renderdoc_file_path_reparse_or_changed"));
+				Assert.That(File.Exists(targetPath), Is.True);
+			}
+			finally
+			{
+				Directory.Delete(aliasRoot, false);
+			}
+		}
+
+		[Test]
 		public void StabilizationDeadlineExpiresAtExactBoundaryForZeroByteFile()
 		{
 			CaptureFixture fixture = CreateFixture(PerfMeterExternalArtifactStorageMode.MetadataOnly, Array.Empty<byte>());
@@ -195,6 +267,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(result.Artifact.StorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.Copy));
 			Assert.That(result.Artifact.SharePolicy, Is.EqualTo(PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare));
 			Assert.That(result.Artifact.PostCopySha256, Is.EqualTo(result.Artifact.ObservedSourceSha256));
+			Assert.That(result.Artifact.IsAuthoritative, Is.True);
+			Assert.That(result.Token.RequestNonce, Is.EqualTo(fixture.Token.RequestNonce));
+			Assert.That(result.ObservedArtifact.StructSize, Is.EqualTo(PerfMeterRenderDocAbiV1.ArtifactSizeAsUInt));
+			Assert.That(result.PayloadSource, Is.Not.Null);
+			IDictionary reservations = (IDictionary)typeof(PerfMeterRenderDocStorage)
+				.GetField("_reservations", BindingFlags.Instance | BindingFlags.NonPublic)
+				.GetValue(_storage);
+			Assert.That(reservations.Contains(Path.GetDirectoryName(result.RetainedPayloadPath)), Is.False);
+			Assert.That(result.PayloadSource.TryValidate(null, out string validationError), Is.True, validationError);
+			byte[] changedBytes = { 12, 11, 10 };
+			File.WriteAllBytes(result.RetainedPayloadPath, changedBytes);
+			_files.SetBytes(result.RetainedPayloadPath, changedBytes);
+			Assert.That(result.PayloadSource.TryValidate(null, out validationError), Is.False);
+			Assert.That(validationError, Is.EqualTo("renderdoc_copy_descriptor_hash_changed"));
 			Assert.That(_storage.TryGetUsage(out PerfMeterRenderDocStorageUsage usage, out string error), Is.EqualTo(SggRdResult.Ok), error);
 			Assert.That(usage.Source.TerminalItemCount, Is.EqualTo(1));
 			Assert.That(usage.CopyEmbed.TerminalItemCount, Is.EqualTo(1));
@@ -324,6 +410,30 @@ namespace SGG.PerfMeter.Tests.EditMode
 		private static PerfMeterRenderDocFileSample Sample(long size, long write)
 		{
 			return new PerfMeterRenderDocFileSample(new byte[] { 1, 2, 3, 4 }, size, write);
+		}
+
+		private static bool TryCreateDirectoryJunction(string aliasRoot, string targetRoot)
+		{
+			try
+			{
+				using (Process process = Process.Start(new ProcessStartInfo
+				{
+					FileName = "cmd.exe",
+					Arguments = "/c mklink /J \"" + aliasRoot + "\" \"" + targetRoot + "\"",
+					CreateNoWindow = true,
+					UseShellExecute = false,
+					RedirectStandardOutput = true,
+					RedirectStandardError = true
+				}))
+				{
+					process.WaitForExit();
+					return process.ExitCode == 0 && Directory.Exists(aliasRoot);
+				}
+			}
+			catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+			{
+				return false;
+			}
 		}
 
 		private readonly struct CaptureFixture

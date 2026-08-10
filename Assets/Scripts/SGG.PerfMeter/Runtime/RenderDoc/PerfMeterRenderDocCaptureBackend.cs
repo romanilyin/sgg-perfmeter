@@ -59,6 +59,8 @@ namespace SGG.PerfMeter
 		{
 			Availability = availability;
 			Result = result;
+			BridgeAbiMajor = capabilities.BridgeAbiMajor;
+			BridgeAbiMinor = capabilities.BridgeAbiMinor;
 			PlatformSupported = capabilities.PlatformSupported != 0u;
 			ModuleLoaded = capabilities.ModuleLoaded != 0u;
 			ExportAvailable = capabilities.ExportAvailable != 0u;
@@ -78,6 +80,8 @@ namespace SGG.PerfMeter
 
 		internal PerfMeterAvailability Availability { get; }
 		internal SggRdResult Result { get; }
+		internal uint BridgeAbiMajor { get; }
+		internal uint BridgeAbiMinor { get; }
 		internal bool PlatformSupported { get; }
 		internal bool ModuleLoaded { get; }
 		internal bool ExportAvailable { get; }
@@ -131,8 +135,10 @@ namespace SGG.PerfMeter
 		private readonly IPerfMeterRenderDocPlatformProvider _platformProvider;
 		private readonly IPerfMeterRenderDocWorkerScheduler _worker;
 		private readonly IPerfMeterRenderDocArtifactFinalizer _finalizer;
+		private readonly IPerfMeterRenderDocCleanupProvider _cleanupProvider;
 		private PerfMeterCaptureBackendV2Snapshot _snapshot;
 		private PerfMeterRenderDocCapabilitySnapshot _capabilityDetails;
+		private PerfMeterRenderDocCapabilitySnapshot _operationCapabilityDetails;
 		private bool _capabilityQueried;
 		private PerfMeterCaptureOptions _capabilityOptions;
 		private PerfMeterRenderDocPreflight _preflight;
@@ -152,6 +158,7 @@ namespace SGG.PerfMeter
 		private PerfMeterRenderDocCapturePhase _cleanupTerminalPhase;
 		private int _cleanupResultCode;
 		private string _cleanupWarning = string.Empty;
+		private int _persistentCleanupAttempts;
 		private bool _artifactCompletionAvailable;
 		private PerfMeterCaptureExternalArtifactCompletion _artifactCompletion;
 
@@ -186,6 +193,7 @@ namespace SGG.PerfMeter
 			}
 			_worker = worker;
 			_finalizer = finalizer;
+			_cleanupProvider = preflightProvider as IPerfMeterRenderDocCleanupProvider;
 			_snapshot = CreateSnapshot(
 				PerfMeterAvailability.Unknown,
 				PerfMeterRenderDocCapturePhase.None,
@@ -251,6 +259,7 @@ namespace SGG.PerfMeter
 
 				_operationOptions = options;
 				_operationGeneration = generation;
+				_operationCapabilityDetails = _capabilityDetails;
 				_workerCancellationRequested = false;
 				_artifactCompletionAvailable = false;
 				_preflightOperation = _worker.Start(() => PrepareOnWorker(options, generation));
@@ -339,6 +348,7 @@ namespace SGG.PerfMeter
 			{
 				return false;
 			}
+			_operationCapabilityDetails = _capabilityDetails;
 
 			_snapshot = CreateSnapshot(
 				PerfMeterAvailability.Available,
@@ -777,6 +787,7 @@ namespace SGG.PerfMeter
 			_cleanupTerminalPhase = terminalPhase;
 			_cleanupResultCode = resultCode;
 			_cleanupWarning = warning ?? string.Empty;
+			_persistentCleanupAttempts = 0;
 			_preflight = preflight;
 			_cleanupOperation = _worker.Start(() =>
 			{
@@ -854,11 +865,13 @@ namespace SGG.PerfMeter
 				bool canceled = _workerCancellationRequested;
 				if (!canceled)
 				{
+					PerfMeterNativeExternalArtifactSourceDescriptor sourceDescriptor = CreateSourceDescriptor(result);
 					_artifactCompletion = new PerfMeterCaptureExternalArtifactCompletion(
 						_operationOptions.CaptureId,
 						_operationGeneration,
 						result.Artifact,
-						result.RetainedPayloadPath);
+						result.RetainedPayloadPath,
+						sourceDescriptor);
 					_artifactCompletionAvailable = true;
 				}
 				_preflight = default;
@@ -912,8 +925,13 @@ namespace SGG.PerfMeter
 			{
 				PerfMeterRenderDocCleanupWorkerResult cleanup = _cleanupOperation.GetResult();
 				_cleanupOperation = null;
-				_preflight = default;
 				bool cleaned = cleanup.Result == SggRdResult.Ok;
+				if (!cleaned && TrySchedulePersistentCleanup(cleanup.Result, cleanup.Warning))
+				{
+					return;
+				}
+
+				_preflight = default;
 				_snapshot = CreateSnapshot(
 					cleaned && _cleanupTerminalPhase == PerfMeterRenderDocCapturePhase.Completed
 						? PerfMeterAvailability.Available
@@ -928,15 +946,78 @@ namespace SGG.PerfMeter
 			catch (Exception exception)
 			{
 				_cleanupOperation = null;
+				SggRdResult result = PerfMeterRenderDocPInvokeBridge.MapInteropException(exception);
+				string warning = FormatException(exception);
+				if (TrySchedulePersistentCleanup(result, warning))
+				{
+					return;
+				}
+
+				_preflight = default;
 				_snapshot = CreateSnapshot(
 					PerfMeterAvailability.Unavailable,
 					PerfMeterRenderDocCapturePhase.Failed,
-					(int)PerfMeterRenderDocPInvokeBridge.MapInteropException(exception),
-					CombineWarnings(_cleanupWarning, FormatException(exception)),
+					(int)result,
+					CombineWarnings(_cleanupWarning, warning),
 					false,
 					false,
 					false);
 			}
+		}
+
+		private PerfMeterNativeExternalArtifactSourceDescriptor CreateSourceDescriptor(
+			PerfMeterRenderDocFinalizationResult result)
+		{
+			if (!result.Succeeded ||
+				result.Token.StructSize < PerfMeterRenderDocAbiV1.CaptureTokenSizeAsUInt ||
+				result.ObservedArtifact.StructSize < PerfMeterRenderDocAbiV1.ArtifactSizeAsUInt)
+			{
+				return default;
+			}
+
+			return new PerfMeterNativeExternalArtifactSourceDescriptor(
+				PerfMeterNativeExternalArtifactSourceKind.RenderDoc,
+				_operationCapabilityDetails.BridgeAbiMajor,
+				_operationCapabilityDetails.BridgeAbiMinor,
+				_operationCapabilityDetails.ApiMajor,
+				_operationCapabilityDetails.ApiMinor,
+				_operationCapabilityDetails.ApiPatch,
+				"managed_end_of_frame",
+				"wildcard_device_window",
+				result.Token.RequestNonce,
+				result.Token.CountBefore,
+				result.Token.StartUnixNanoseconds,
+				result.ObservedArtifact.Index,
+				result.ObservedArtifact.RenderDocTimestampSeconds,
+				result.ObservedArtifact.ObservedUnixNanoseconds,
+				result.PayloadSource);
+		}
+
+		private bool TrySchedulePersistentCleanup(SggRdResult failedResult, string warning)
+		{
+			if (_worker == null || _cleanupProvider == null ||
+				_persistentCleanupAttempts >= PerfMeterRenderDocStoragePolicy.PersistentCleanupAttempts)
+			{
+				return false;
+			}
+
+			_persistentCleanupAttempts++;
+			_cleanupWarning = CombineWarnings(_cleanupWarning, warning);
+			string rootPath = _preflight.RootPath;
+			_cleanupOperation = _worker.Start(() =>
+			{
+				SggRdResult cleanupResult = _cleanupProvider.RetryPendingCleanup(rootPath, out string cleanupError);
+				return new PerfMeterRenderDocCleanupWorkerResult(cleanupResult, cleanupError);
+			});
+			_snapshot = CreateSnapshot(
+				PerfMeterAvailability.Unavailable,
+				_cleanupTerminalPhase,
+				(int)failedResult,
+				_cleanupWarning,
+				false,
+				true,
+				true);
+			return true;
 		}
 
 		private PerfMeterCaptureBackendV2Snapshot QueryCapability(PerfMeterCaptureOptions options)

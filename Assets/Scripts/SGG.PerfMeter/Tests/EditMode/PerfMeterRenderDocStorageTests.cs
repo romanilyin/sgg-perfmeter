@@ -125,6 +125,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterRenderDocStoragePolicy.FreeSpaceFloorBytes, Is.EqualTo(1073741824L));
 			Assert.That(PerfMeterRenderDocStoragePolicy.MetadataReserveBytes, Is.EqualTo(1048576L));
 			Assert.That(PerfMeterRenderDocStoragePolicy.IoAttempts, Is.EqualTo(3));
+			Assert.That(PerfMeterRenderDocStoragePolicy.PersistentCleanupAttempts, Is.EqualTo(3));
 			Assert.That(PerfMeterRenderDocStoragePolicy.FirstRetryDelayMilliseconds, Is.EqualTo(25));
 			Assert.That(PerfMeterRenderDocStoragePolicy.SecondRetryDelayMilliseconds, Is.EqualTo(50));
 		}
@@ -145,6 +146,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(storage.TryInspectOwnedRoot(outsideRoot, out _, out _, out _), Is.EqualTo(SggRdResult.InvalidArgument));
 			Assert.That(storage.TryDeleteOwnedRoot(outsideRoot, out _), Is.EqualTo(SggRdResult.InvalidArgument));
 			Assert.That(storage.TryDeleteOwnedRoot(unownedRoot, out _), Is.EqualTo(SggRdResult.InvalidArgument));
+			Assert.That(storage.TryRetryPendingCleanup(outsideRoot, out _), Is.EqualTo(SggRdResult.InvalidArgument));
+			Assert.That(
+				storage.TryRetryPendingCleanup(Path.Combine(storage.SourceRoot, "..", "outside"), out _),
+				Is.EqualTo(SggRdResult.InvalidArgument));
 			Assert.That(Directory.Exists(outsideRoot), Is.True);
 			Assert.That(Directory.Exists(unownedRoot), Is.True);
 		}
@@ -208,7 +213,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void CleanupPendingTombstoneIsRediscoveredAfterRestart()
+		public void PendingCleanupRetryFollowsTombstoneAfterRestart()
 		{
 			PerfMeterRenderDocStorage first = CreateStorage();
 			PerfMeterRenderDocStorageReservation reservation = ReserveSource(first, "cleanup-reload");
@@ -217,7 +222,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Directory.Move(reservation.RootPath, tombstone);
 
 			PerfMeterRenderDocStorage restarted = CreateStorage();
-			Assert.That(restarted.TryCleanup((session, generation) => false, out _, out string cleanupError), Is.EqualTo(SggRdResult.Ok), cleanupError);
+			Assert.That(restarted.TryRetryPendingCleanup(reservation.RootPath, out string cleanupError), Is.EqualTo(SggRdResult.Ok), cleanupError);
 			Assert.That(Directory.Exists(tombstone), Is.False);
 		}
 
@@ -274,6 +279,49 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(Directory.Exists(outsideRoot), Is.True);
 		}
 
+		[Test]
+		public void WindowsHandleDeleteRejectsAClaimReplacedByJunction()
+		{
+			if (!PerfMeterRenderDocWindowsFileSystem.IsSupported)
+			{
+				Assert.Ignore("Windows handle deletion is unavailable on this host.");
+			}
+
+			PerfMeterRenderDocStorage storage = CreateStorage();
+			PerfMeterRenderDocStorageReservation reservation = ReserveSource(storage, "delete-race");
+			Assert.That(
+				reservation.SetState(PerfMeterRenderDocStorageState.CleanupPending, out string pendingError),
+				Is.EqualTo(SggRdResult.Ok),
+				pendingError);
+			byte[] markerBytes = File.ReadAllBytes(reservation.MarkerPath);
+			string targetRoot = Path.Combine(_projectRoot, "delete-race-target");
+			Directory.CreateDirectory(targetRoot);
+			File.WriteAllBytes(Path.Combine(targetRoot, PerfMeterRenderDocStoragePolicy.MarkerFileName), markerBytes);
+			string targetPayload = Path.Combine(targetRoot, "capture.rdc");
+			File.WriteAllBytes(targetPayload, new byte[] { 1, 2, 3 });
+			Directory.Delete(reservation.RootPath, true);
+			if (!TryCreateDirectoryJunction(reservation.RootPath, targetRoot))
+			{
+				Assert.Ignore("The test host does not permit directory junctions.");
+			}
+
+			try
+			{
+				SggRdResult result = PerfMeterRenderDocWindowsFileSystem.TryDeleteOwnedRoot(
+					reservation.RootPath,
+					markerBytes,
+					out string error);
+
+				Assert.That(result, Is.EqualTo(SggRdResult.InvalidArgument));
+				Assert.That(error, Is.EqualTo("renderdoc_storage_root_reparse_or_changed"));
+				Assert.That(File.Exists(targetPayload), Is.True);
+			}
+			finally
+			{
+				Directory.Delete(reservation.RootPath, false);
+			}
+		}
+
 		private static bool TryCreateDirectorySymbolicLink(MethodInfo createSymbolicLink, string aliasRoot, string targetRoot)
 		{
 			try
@@ -304,6 +352,30 @@ namespace SGG.PerfMeter.Tests.EditMode
 				}
 			}
 			catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is PlatformNotSupportedException || exception is TargetInvocationException)
+			{
+				return false;
+			}
+		}
+
+		private static bool TryCreateDirectoryJunction(string aliasRoot, string targetRoot)
+		{
+			try
+			{
+				using (Process process = Process.Start(new ProcessStartInfo
+				{
+					FileName = "cmd.exe",
+					Arguments = "/c mklink /J \"" + aliasRoot + "\" \"" + targetRoot + "\"",
+					CreateNoWindow = true,
+					UseShellExecute = false,
+					RedirectStandardOutput = true,
+					RedirectStandardError = true
+				}))
+				{
+					process.WaitForExit();
+					return process.ExitCode == 0 && Directory.Exists(aliasRoot);
+				}
+			}
+			catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
 			{
 				return false;
 			}
