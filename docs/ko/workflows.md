@@ -191,7 +191,9 @@ Custom metrics는 API reads, session JSON export, MCP latest metrics, 그리고 
 
 `PerformanceMeter.GetSelfOverhead()` 또는 `PerformanceMeter.GetStatus().SelfOverhead`로 collector, custom providers, CPU-core provider, overlay, URP/HDRP integration의 CPU callback cost와 allocation을 진단합니다. 고정 120-frame window, invocation 기준 average, component별 CPU/allocation budget을 사용합니다.
 
-Inactive render integration은 `Unsupported`, 호출되지 않은 supported component는 `NotMeasured`, GPU self-timing은 `Unavailable`입니다. Accounting은 diagnostics 전용이며 PerfMeter는 기존 CPU/GPU metrics에서 overhead를 빼거나 값을 조정하지 않습니다.
+정확한 session/capture receipt에는 `PerformanceMeter.GetSelfOverheadWindow(kind, identity)`를 사용합니다. 결과에는 epoch, frame containment, quality/pipeline/renderer identity, feature installed/enabled/enqueued evidence, callback/invocation bounds, typed inactive reason이 포함됩니다. Capture/session JSON과 MCP status는 동일한 window identity를 유지하며 stale live data를 첨부하지 않고 `CaptureWindowMismatch` 또는 `UnknownInactiveReason`으로 fail closed합니다.
+
+URP value는 package-owned CPU-side `RecordRenderGraph()` registration과 current-thread allocation만 포함합니다. 여러 camera에서는 callback frame보다 많은 invocation이 발생할 수 있습니다. GPU attribution은 명시적으로 `Unavailable`이고 whole-frame CPU/GPU/hitch/GC는 별도 context로 유지됩니다. Accounting은 diagnostics 전용이며 PerfMeter는 기존 CPU/GPU metrics에서 overhead를 빼거나 값을 조정하지 않습니다.
 
 ## Agent Automation
 

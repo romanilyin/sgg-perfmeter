@@ -15,6 +15,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void SetUp()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterSelfObservability.Stop();
 			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
@@ -23,6 +24,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterSelfObservability.Stop();
 			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
@@ -936,6 +938,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void BundleExportCommitsAtomicallyAndRefusesExistingDestination()
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("atomic", includeScreenshot: false);
+			PerfMeterSelfObservability.Start(PerfMeterRenderPipelineKind.Universal);
+			PerfMeterSelfObservability.BeginBoundWindowForTesting(
+				PerfMeterSelfOverheadWindowKind.Capture,
+				"atomic",
+				10,
+				PerfMeterRenderPipelineKind.Universal);
+			PerfMeterSelfObservability.ReportUrpFeatureState(
+				PerfMeterUrpFeatureInstallationState.NotInstalled,
+				PerfMeterUrpFeatureEnabledState.Unknown,
+				false,
+				10,
+				"PC_Renderer",
+				"UniversalRendererData");
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow = PerfMeterSelfObservability.EndBoundWindow(
+				PerfMeterSelfOverheadWindowKind.Capture,
+				"atomic",
+				20);
+			coordinator.SetSelfOverheadWindow("atomic", selfOverheadWindow);
 			Assert.That(coordinator.TryGetExportData("atomic", out PerfMeterCaptureBundleExportData data), Is.True);
 			string directoryName = "test-atomic-" + Guid.NewGuid().ToString("N");
 			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/" + directoryName;
@@ -962,6 +982,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 				string context = File.ReadAllText(Path.Combine(fullPath, "context.json"));
 				Assert.That(context, Does.Contain("\"configured_settings\""));
 				Assert.That(context, Does.Contain("\"effective_settings\""));
+				Assert.That(context, Does.Contain("\"self_overhead_window\":{\"schema_version\":1"));
+				Assert.That(context, Does.Contain("\"kind\":\"Capture\",\"identity\":\"atomic\""));
+				Assert.That(context, Does.Contain("\"inactive_reason\":\"RendererFeatureNotInstalled\""));
+				Assert.That(context, Does.Contain("\"gpu_attribution_availability\":\"Unavailable\""));
 				byte[] originalManifest = File.ReadAllBytes(Path.Combine(fullPath, "manifest.json"));
 
 				PerfMeterCaptureBundleExportResult second = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
@@ -1451,6 +1475,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Completed));
 			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			PerfMeterSelfOverheadWindowSnapshot completedWindow = PerformanceMeter.GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Capture, captureId);
+			Assert.That(completedWindow.Identity, Is.EqualTo(captureId));
+			Assert.That(completedWindow.WindowComplete, Is.True, "The package window must stop at the capture terminal state, not after artifact cleanup.");
 			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(lease.LeaseId).IsHeld, Is.True);
 
 			backend.FinalizationCanComplete = true;
@@ -1600,10 +1627,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(omitted, Does.Contain("\"native_phase\":"));
 			Assert.That(omitted, Does.Contain("\"native_result_code\":"));
 			Assert.That(omitted, Does.Contain("\"fallback_reason\":"));
+			Assert.That(omitted, Does.Contain("\"self_overhead_window\":{\"schema_version\":1"));
+			Assert.That(omitted, Does.Contain("\"kind\":\"Capture\",\"identity\":\"mcp-default\""));
 
 			string omittedStatus = PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"mcp-default\"}");
 			Assert.That(omittedStatus, Does.Contain("\"requested_backend_mode\":\"GenericUnity\""));
 			Assert.That(omittedStatus, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+			Assert.That(omittedStatus, Does.Contain("\"identity\":\"mcp-default\""));
 
 			PerformanceMeter.Stop();
 

@@ -503,6 +503,18 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal void SetSelfOverheadWindow(string captureId, PerfMeterSelfOverheadWindowSnapshot snapshot)
+		{
+			if (_record != null &&
+				snapshot.Kind == PerfMeterSelfOverheadWindowKind.Capture &&
+				snapshot.Epoch > 0L &&
+				string.Equals(snapshot.Identity, captureId, StringComparison.Ordinal) &&
+				string.Equals(_record.CaptureOptions.CaptureId, captureId, StringComparison.Ordinal))
+			{
+				_record.SelfOverheadWindow = snapshot;
+			}
+		}
+
 		internal void ObserveExternalArtifact(
 			string captureId,
 			string bundleId,
@@ -972,6 +984,8 @@ namespace SGG.PerfMeter
 				ConfiguredSettings = configuredSettings;
 				EffectiveSettings = effectiveSettings;
 				RenderIntegration = PerfMeterRenderIntegrationSnapshot.NotObserved;
+				SelfOverheadWindow = PerfMeterSelfOverheadWindowSnapshot.Unavailable;
+				SessionSelfOverheadWindow = PerfMeterSelfOverheadWindowSnapshot.Unavailable;
 				State = PerfMeterCaptureBundleState.Recording;
 				ScreenshotState = bundleOptions.IncludeScreenshot ? PerfMeterCaptureScreenshotState.Pending : PerfMeterCaptureScreenshotState.NotRequested;
 				StartedUtc = DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
@@ -1002,6 +1016,8 @@ namespace SGG.PerfMeter
 			internal PerfMeterCameraSnapshot Camera { get; private set; }
 			internal PerfMeterRenderGraphSnapshot Render { get; private set; }
 			internal PerfMeterRenderIntegrationSnapshot RenderIntegration { get; private set; }
+			internal PerfMeterSelfOverheadWindowSnapshot SelfOverheadWindow { get; set; }
+			internal PerfMeterSelfOverheadWindowSnapshot SessionSelfOverheadWindow { get; private set; }
 			internal PerfMeterStatusSnapshot RuntimeStatus { get; private set; }
 			internal PerfMeterSessionSummarySnapshot SessionSummary { get; private set; }
 			internal PerfMeterSessionTimelineSnapshot SessionTimeline { get; private set; } = PerfMeterSessionTimelineSnapshot.Empty;
@@ -1135,6 +1151,9 @@ namespace SGG.PerfMeter
 
 				CompletedUtc = DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 				SessionSummary = sessionSummary;
+				SessionSelfOverheadWindow = string.IsNullOrEmpty(sessionSummary.SessionId)
+					? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+					: PerfMeterSelfObservability.GetBoundWindowSnapshot(PerfMeterSelfOverheadWindowKind.Session, sessionSummary.SessionId, runtimeStatus.CollectionFrame);
 				SessionTimeline = sessionTimeline;
 				BaselineSamples = CopySamples(baselineSamples);
 				RuntimeStatus = runtimeStatus;
@@ -1198,7 +1217,9 @@ namespace SGG.PerfMeter
 					AlertEventsTruncated,
 					screenshot,
 					MemorySnapshotArtifact,
-					NativeArtifactSource);
+					NativeArtifactSource,
+					SelfOverheadWindow,
+					SessionSelfOverheadWindow);
 			}
 		}
 
@@ -1309,7 +1330,9 @@ namespace SGG.PerfMeter
 			bool alertEventsTruncated,
 			byte[] screenshotBytes,
 			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact,
-			PerfMeterNativeExternalArtifactSourceDescriptor nativeArtifactSource = default)
+			PerfMeterNativeExternalArtifactSourceDescriptor nativeArtifactSource = default,
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow = default,
+			PerfMeterSelfOverheadWindowSnapshot sessionSelfOverheadWindow = default)
 			: this(
 				status,
 				captureOptions,
@@ -1332,7 +1355,9 @@ namespace SGG.PerfMeter
 				alertEventsTruncated,
 				screenshotBytes,
 				memorySnapshotArtifact,
-				nativeArtifactSource)
+				nativeArtifactSource,
+				selfOverheadWindow,
+				sessionSelfOverheadWindow)
 		{
 		}
 
@@ -1358,7 +1383,9 @@ namespace SGG.PerfMeter
 			bool alertEventsTruncated,
 			byte[] screenshotBytes,
 			PerfMeterMemorySnapshotArtifact memorySnapshotArtifact,
-			PerfMeterNativeExternalArtifactSourceDescriptor nativeArtifactSource = default)
+			PerfMeterNativeExternalArtifactSourceDescriptor nativeArtifactSource = default,
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow = default,
+			PerfMeterSelfOverheadWindowSnapshot sessionSelfOverheadWindow = default)
 		{
 			Status = status;
 			CaptureOptions = captureOptions;
@@ -1382,6 +1409,12 @@ namespace SGG.PerfMeter
 			ScreenshotBytes = screenshotBytes;
 			MemorySnapshotArtifact = memorySnapshotArtifact;
 			NativeArtifactSource = nativeArtifactSource;
+			SelfOverheadWindow = selfOverheadWindow.SchemaVersion == 0
+				? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+				: selfOverheadWindow;
+			SessionSelfOverheadWindow = sessionSelfOverheadWindow.SchemaVersion == 0
+				? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+				: sessionSelfOverheadWindow;
 		}
 
 		internal PerfMeterCaptureBundleStatusSnapshot Status { get; }
@@ -1401,6 +1434,8 @@ namespace SGG.PerfMeter
 		internal PerfMeterCameraSnapshot Camera { get; }
 		internal PerfMeterRenderGraphSnapshot Render { get; }
 		internal PerfMeterRenderIntegrationSnapshot RenderIntegration { get; }
+		internal PerfMeterSelfOverheadWindowSnapshot SelfOverheadWindow { get; }
+		internal PerfMeterSelfOverheadWindowSnapshot SessionSelfOverheadWindow { get; }
 		internal PerfMeterAlertSnapshot[] AlertEvents { get; }
 		internal bool AlertEventsTruncated { get; }
 		internal byte[] ScreenshotBytes { get; }

@@ -278,6 +278,16 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.SelfOverhead : PerfMeterSelfOverheadSnapshot.NotInitialized;
 		}
 
+		public static PerfMeterSelfOverheadWindowSnapshot GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind kind, string identity = null)
+		{
+			if (kind != PerfMeterSelfOverheadWindowKind.Session && kind != PerfMeterSelfOverheadWindowKind.Capture)
+			{
+				return PerfMeterSelfOverheadWindowSnapshot.Unavailable;
+			}
+
+			return PerfMeterSelfObservability.GetBoundWindowSnapshot(kind, identity, Time.frameCount);
+		}
+
 		public static PerfMeterAlertSnapshot[] GetLatestAlerts()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -725,7 +735,19 @@ namespace SGG.PerfMeter
 			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
 			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
 			PerfMeterSessionTimelineSnapshot timeline = runtime != null ? runtime.GetSessionTimeline() : PerfMeterSessionTimelineSnapshot.Empty;
-			return PerfMeterSessionExporter.ExportJson(path, summary, samples, timeline, GetStatus());
+			PerfMeterStatusSnapshot status = GetStatus();
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow = string.IsNullOrEmpty(summary.SessionId)
+				? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+				: GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId);
+			return PerfMeterSessionExporter.ExportJson(
+				path,
+				summary,
+				samples,
+				timeline,
+				status,
+				true,
+				PerfMeterSessionExporter.RuntimePackageIdentity,
+				selfOverheadWindow).Success;
 		}
 
 		public static bool ExportSessionCsv(string path)

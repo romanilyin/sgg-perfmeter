@@ -576,7 +576,10 @@ namespace SGG.PerfMeter.Editor.Mcp
 					RuntimePerformanceMeter.GetSessionTimeline(),
 					status,
 					false,
-					packageIdentity);
+					packageIdentity,
+					string.IsNullOrEmpty(summary.SessionId)
+						? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+						: RuntimePerformanceMeter.GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId));
 			}
 			else if (string.Equals(normalizedFormat, "csv", StringComparison.OrdinalIgnoreCase))
 			{
@@ -728,6 +731,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendCaptureStatus(builder, capture);
 			builder.Append(",\"bundle\":");
 			AppendCaptureBundleStatus(builder, bundle);
+			string captureId = !string.IsNullOrEmpty(capture.CaptureId) ? capture.CaptureId : bundle.CaptureId;
+			AppendCaptureSelfOverheadWindow(builder, captureId);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -741,6 +746,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendMemorySnapshotStatus(builder, status);
 			builder.Append(",\"bundle\":");
 			AppendCaptureBundleStatus(builder, bundle);
+			AppendCaptureSelfOverheadWindow(builder, !string.IsNullOrEmpty(status.CaptureId) ? status.CaptureId : bundle.CaptureId);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -803,6 +809,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			AppendCaptureBundleStatus(builder, result.Bundle);
 			builder.Append(",\"external_artifact\":");
 			AppendExternalArtifact(builder, result.ExternalArtifact);
+			AppendCaptureSelfOverheadWindow(builder, result.Bundle.CaptureId);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -815,6 +822,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"requested_export_id\":").Append(JsonString(requestedExportId));
 			builder.Append(",\"export\":");
 			AppendCaptureExportStatus(builder, status);
+			AppendCaptureSelfOverheadWindow(builder, status.CaptureId);
 			AppendEditorState(builder);
 			return builder.Append('}').ToString();
 		}
@@ -862,6 +870,16 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"fallback_reason\":").Append(JsonString(status.FallbackReason));
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
 			builder.Append('}');
+		}
+
+		private static void AppendCaptureSelfOverheadWindow(StringBuilder builder, string captureId)
+		{
+			builder.Append(",\"self_overhead_window\":");
+			PerfMeterSessionExporter.AppendSelfOverheadWindow(
+				builder,
+				string.IsNullOrEmpty(captureId)
+					? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+					: RuntimePerformanceMeter.GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Capture, captureId));
 		}
 
 		private static void AppendCaptureBundleStatus(StringBuilder builder, PerfMeterCaptureBundleStatusSnapshot status)
@@ -973,6 +991,12 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"status\":").Append(JsonString(status));
 			builder.Append(",\"summary\":");
 			AppendSessionSummary(builder, summary);
+			builder.Append(",\"self_overhead_window\":");
+			PerfMeterSessionExporter.AppendSelfOverheadWindow(
+				builder,
+				string.IsNullOrEmpty(summary.SessionId)
+					? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+					: RuntimePerformanceMeter.GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId));
 			if (!string.IsNullOrEmpty(mutationOperation))
 			{
 				builder.Append(",\"mutation\":");
@@ -1274,6 +1298,12 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"allocation_budget_bytes\":").Append(component.AllocationBudgetBytes);
 			builder.Append(",\"cpu_budget_state\":").Append(JsonString(component.CpuBudgetState.ToString()));
 			builder.Append(",\"allocation_budget_state\":").Append(JsonString(component.AllocationBudgetState.ToString()));
+			builder.Append(",\"epoch\":").Append(component.Epoch);
+			builder.Append(",\"measurement_first_frame\":").Append(component.MeasurementFirstFrame);
+			builder.Append(",\"measurement_last_frame\":").Append(component.MeasurementLastFrame);
+			builder.Append(",\"callback_frame_count\":").Append(component.CallbackFrameCount);
+			builder.Append(",\"inactive_reason\":").Append(JsonString(component.InactiveReason.ToString()));
+			builder.Append(",\"gpu_attribution_availability\":").Append(JsonString(component.GpuAttributionAvailability.ToString()));
 			builder.Append('}');
 		}
 

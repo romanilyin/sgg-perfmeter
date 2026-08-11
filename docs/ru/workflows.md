@@ -191,7 +191,9 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Используйте `PerformanceMeter.GetSelfOverhead()` или `PerformanceMeter.GetStatus().SelfOverhead` для диагностики стоимости CPU callbacks и allocations у collector, custom providers, CPU-core provider, overlay и URP/HDRP integration. Измерения используют фиксированные окна по 120 кадров, средние на один вызов и отдельные CPU/allocation budgets для компонентов.
 
-Неактивная render integration возвращает `Unsupported`, поддерживаемый компонент без вызовов — `NotMeasured`, а GPU self-timing — `Unavailable`. Accounting носит только диагностический характер: PerfMeter не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
+Для receipt, привязанного к точной session/capture, используйте `PerformanceMeter.GetSelfOverheadWindow(kind, identity)`. Результат содержит epoch и frame containment, quality/pipeline/renderer identity, evidence состояний feature installed/enabled/enqueued, границы callbacks/invocations и typed inactive reason. Capture/session JSON и MCP status сохраняют тот же window identity и fail closed с `CaptureWindowMismatch` или `UnknownInactiveReason`, а не присоединяют stale live data.
+
+URP value охватывает только package-owned CPU-side регистрацию `RecordRenderGraph()` и allocations текущего потока. Несколько камер могут дать больше invocations, чем кадров с callbacks. GPU attribution явно имеет состояние `Unavailable`, а whole-frame CPU/GPU/hitch/GC остаются отдельным контекстом. Accounting носит только диагностический характер: PerfMeter не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
 
 ## MCP-автоматизация
 

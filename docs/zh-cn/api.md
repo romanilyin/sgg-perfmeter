@@ -51,11 +51,16 @@ Counter availability 通过 `AvailableCounters`、`UnavailableCounters` 和 warn
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability 使用固定 120-frame window，以 low-overhead 方式报告 CPU callback cost。Average 按 invocation 计算。整体 state 为 `NotInitialized`、`Collecting` 或 `Ready`；component state 为 `NotMeasured`、`Collecting`、`Ready` 或 `Unsupported`。
 
-Components 包括 `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Overlay`、`UrpRenderIntegration` 和 `HdrpRenderIntegration`。每个 component 暴露 window/invocation count、average/maximum CPU milliseconds、total/average allocated bytes、budget 以及 `NotEvaluated`/`WithinBudget`/`Exceeded` state。
+Components 包括 `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Overlay`、`UrpRenderIntegration` 和 `HdrpRenderIntegration`。每个 component 暴露 window/invocation count、average/maximum CPU milliseconds、total/average allocated bytes、budget 以及 `NotEvaluated`/`WithinBudget`/`Exceeded` state。新增 provenance 包含 epoch、首个/最后 measurement frame、callback-frame count、typed inactive reason，以及明确的 GPU attribution availability。
+
+`GetSelfOverheadWindow(...)` 返回与精确 session 或 capture 绑定的 URP observation。它包含 identity、epoch、frame bounds、containment、quality/pipeline/renderer identity，以及 feature installed/enabled/enqueued evidence。Inactive result 使用 `RendererFeatureNotInstalled`、`RendererFeatureDisabled`、`PassNotEnqueued`、`NoCameraCallbackObserved`、`WindowIncomplete`、`CaptureWindowMismatch` 等 typed reason；evidence 不足时返回 `UnknownInactiveReason`，不会猜测。后续 capture 不能复用先前 completed epoch。
 
 | Component | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -65,7 +70,7 @@ Components 包括 `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`O
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing 明确为 `Unavailable`。这些 diagnostics 不会从现有 CPU/GPU metrics 中 subtract overhead，也不会调整其值。
+URP scope 只测量 package-owned CPU-side `RecordRenderGraph()` registration 和 current-thread allocation。多个 camera 可能使 invocation count 大于 callback-frame count。GPU attribution 明确为 `Unavailable`；whole-frame CPU/GPU/hitch/GC 保持为独立 context，不会仅因时间接近而归因给 PerfMeter。这些 diagnostics 不会从现有 CPU/GPU metrics 中 subtract overhead，也不会调整其值。
 
 ## Dynamic Profiler Metric Catalog
 

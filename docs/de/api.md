@@ -46,11 +46,16 @@ Counter-Verfuegbarkeit wird ueber `AvailableCounters`, `UnavailableCounters` und
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability meldet CPU-Callback-Kosten mit geringem Overhead in festen 120-Frame-Fenstern. Durchschnittswerte gelten pro Aufruf. Der Gesamtstatus ist `NotInitialized`, `Collecting` oder `Ready`; der Komponentenstatus ist `NotMeasured`, `Collecting`, `Ready` oder `Unsupported`.
 
-Komponenten sind `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` und `HdrpRenderIntegration`. Jede Komponente liefert Fenster-/Aufrufzahlen, durchschnittliche/maximale CPU-Millisekunden, gesamte/durchschnittliche Allokationen, Budgets und die Zustaende `NotEvaluated`/`WithinBudget`/`Exceeded`.
+Komponenten sind `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` und `HdrpRenderIntegration`. Jede Komponente liefert Fenster-/Aufrufzahlen, durchschnittliche/maximale CPU-Millisekunden, gesamte/durchschnittliche Allokationen, Budgets und die Zustaende `NotEvaluated`/`WithinBudget`/`Exceeded`. Additive Provenienz umfasst Epoch, ersten/letzten Mess-Frame, Callback-Frame-Anzahl, typisierten Inaktivitaetsgrund und explizite GPU-Attributionsverfuegbarkeit.
+
+`GetSelfOverheadWindow(...)` liefert die exakt an Session oder Capture gebundene URP-Beobachtung mit Identitaet, Epoch, Frame-Grenzen, Containment sowie Quality-/Pipeline-/Renderer- und Feature-Installed/Enabled/Enqueued-Evidence. Inaktive Ergebnisse verwenden typisierte Gruende wie `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete` oder `CaptureWindowMismatch`; fehlende Evidence ergibt `UnknownInactiveReason`. Eine spaetere Capture kann keine abgeschlossene fruehere Epoch wiederverwenden.
 
 | Komponente | CPU-Budget | Allokationsbudget |
 | --- | ---: | ---: |
@@ -60,7 +65,7 @@ Komponenten sind `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overl
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU-Self-Timing ist ausdruecklich `Unavailable`. Diese Diagnose zieht nichts von bestehenden CPU/GPU-Metriken ab und passt sie nicht an.
+Der URP-Scope misst nur package-eigene CPU-seitige `RecordRenderGraph()`-Registrierung und Current-Thread-Allokation. Bei mehreren Kameras kann die Zahl der Invocations die Callback-Frame-Anzahl uebersteigen. GPU-Attribution ist ausdruecklich `Unavailable`; Whole-Frame CPU, GPU, Hitches und GC bleiben Kontext und werden PerfMeter nicht zeitlich zugerechnet. Diese Diagnose zieht nichts von bestehenden CPU/GPU-Metriken ab und passt sie nicht an.
 
 ## Dynamischer Profiler-Metrikkatalog
 

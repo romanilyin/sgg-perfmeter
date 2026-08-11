@@ -64,11 +64,16 @@ Counter availability is exposed through `AvailableCounters`, `UnavailableCounter
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability reports low-overhead CPU callback measurements in fixed 120-frame windows. Averages are per invocation. Overall state is `NotInitialized`, `Collecting`, or `Ready`; component state is `NotMeasured`, `Collecting`, `Ready`, or `Unsupported`.
 
-Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, and `HdrpRenderIntegration`. Each component exposes window and invocation counts, average/maximum CPU milliseconds, total/average allocated bytes, configured budgets, and `NotEvaluated`/`WithinBudget`/`Exceeded` budget states.
+Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, and `HdrpRenderIntegration`. Each component exposes window and invocation counts, average/maximum CPU milliseconds, total/average allocated bytes, configured budgets, and `NotEvaluated`/`WithinBudget`/`Exceeded` budget states. Additive provenance includes an epoch, first/last measurement frame, callback-frame count, typed inactive reason, and explicit GPU attribution availability.
+
+`GetSelfOverheadWindow(...)` returns the exact session- or capture-bound URP observation. It includes identity and epoch, capture and measurement frame bounds, containment, active quality/pipeline/renderer evidence, feature installation/enabled state, and enqueue evidence. Inactive results use a closed typed reason such as `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete`, or `CaptureWindowMismatch`; missing evidence returns `UnknownInactiveReason` instead of guessing. A later capture cannot reuse a prior completed epoch.
 
 | Component | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -78,7 +83,7 @@ Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing is explicitly `Unavailable`. These diagnostics do not subtract from or adjust existing CPU/GPU metrics.
+The URP scope measures package-owned CPU-side `RecordRenderGraph()` registration and current-thread allocation. Its invocation count can exceed callback-frame count when multiple cameras run in one Unity frame. GPU self-timing is explicitly `Unavailable`; whole-frame CPU, GPU, hitch, and GC values remain context and are never attributed to PerfMeter from temporal proximity. These diagnostics do not subtract from or adjust existing CPU/GPU metrics.
 
 ## Dynamic Profiler Metric Catalog
 

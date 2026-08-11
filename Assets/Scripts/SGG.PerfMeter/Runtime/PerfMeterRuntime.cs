@@ -756,6 +756,14 @@ namespace SGG.PerfMeter
 			}
 
 			PerfMeterCaptureRequestResult result = _captureCoordinator.Request(options);
+			if (result == PerfMeterCaptureRequestResult.Started || result == PerfMeterCaptureRequestResult.Unavailable || result == PerfMeterCaptureRequestResult.Failed)
+			{
+				PerfMeterSelfObservability.BeginBoundWindow(PerfMeterSelfOverheadWindowKind.Capture, options.CaptureId, Time.frameCount);
+				if (result != PerfMeterCaptureRequestResult.Started)
+				{
+					PerfMeterSelfObservability.EndBoundWindow(PerfMeterSelfOverheadWindowKind.Capture, options.CaptureId, Time.frameCount);
+				}
+			}
 			if (result == PerfMeterCaptureRequestResult.Started)
 			{
 				RefreshPlatformTelemetryAtCaptureBoundary();
@@ -825,6 +833,7 @@ namespace SGG.PerfMeter
 				RefreshPlatformTelemetryAtCaptureBoundary();
 				PerfMeterMemorySnapshotStatusSnapshot status = _memorySnapshotCoordinator.GetStatus(now);
 				CaptureBundles.StartMemorySnapshot(options, status, _settings, GetEffectiveSettingsSnapshot(_settings));
+				PerfMeterSelfObservability.BeginBoundWindow(PerfMeterSelfOverheadWindowKind.Capture, options.CaptureId, Time.frameCount);
 				_captureBundleId = CaptureBundles.GetStatus(options.CaptureId).BundleId;
 				RecordCaptureBoundary(CaptureBundles.GetCaptureStatus(options.CaptureId), PerfMeterSessionTimelineCaptureBoundary.Begin);
 				ProcessMemorySnapshotCompletion();
@@ -968,6 +977,10 @@ namespace SGG.PerfMeter
 					{
 						return PerfMeterCaptureRequestResult.Failed;
 					}
+					PerfMeterSelfObservability.EndBoundWindow(
+						PerfMeterSelfOverheadWindowKind.Capture,
+						options.CaptureId,
+						Time.frameCount);
 
 					TryReleaseCaptureLeaseIfIdle();
 
@@ -1028,6 +1041,10 @@ namespace SGG.PerfMeter
 			{
 				PerfMeterCaptureStatusSnapshot captureStatus = _captureCoordinator.Status;
 				CaptureBundles.UpdateCaptureStatus(captureStatus);
+				if (!captureStatus.IsActive)
+				{
+					StoreCaptureSelfOverheadWindow(captureStatus.CaptureId, Time.frameCount);
+				}
 				if (!captureStatus.IsActive && !_captureCoordinator.HasActiveResources)
 				{
 					FinalizeCaptureBundle(captureStatus);
@@ -1246,6 +1263,12 @@ namespace SGG.PerfMeter
 				return;
 			}
 
+			PerfMeterSessionSummarySnapshot previousSummary = _sessionRecorder.GetSummary();
+			if (previousSummary.State == PerfMeterSessionState.Recording && !string.IsNullOrEmpty(previousSummary.SessionId))
+			{
+				PerfMeterSelfObservability.EndBoundWindow(PerfMeterSelfOverheadWindowKind.Session, previousSummary.SessionId, Time.frameCount);
+			}
+
 			PerfMeterSettingsSnapshot configuredSettings = _settings;
 			PerfMeterSettingsSnapshot effectiveSettings = GetEffectiveSettingsSnapshot(configuredSettings);
 			PerfMeterSessionOptions normalizedOptions = options.MaxSamples > 0 ? options : PerfMeterSessionOptions.FromSettings(configuredSettings);
@@ -1260,6 +1283,8 @@ namespace SGG.PerfMeter
 				_applicationFocused,
 				_applicationPaused,
 				effectiveSettings);
+			PerfMeterSessionSummarySnapshot summary = _sessionRecorder.GetSummary();
+			PerfMeterSelfObservability.BeginBoundWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId, Time.frameCount);
 			RefreshStatusOverlayState();
 		}
 
@@ -1278,6 +1303,11 @@ namespace SGG.PerfMeter
 			}
 
 			_sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+			PerfMeterSessionSummarySnapshot summary = _sessionRecorder.GetSummary();
+			if (!string.IsNullOrEmpty(summary.SessionId))
+			{
+				PerfMeterSelfObservability.EndBoundWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId, Time.frameCount);
+			}
 			RefreshStatusOverlayState();
 		}
 
@@ -1798,6 +1828,11 @@ namespace SGG.PerfMeter
 				_cpuCoreSamplingActive = false;
 				_overdrawController.Reset();
 				_sessionRecorder.Stop(Time.realtimeSinceStartupAsDouble);
+				PerfMeterSessionSummarySnapshot sessionSummary = _sessionRecorder.GetSummary();
+				if (!string.IsNullOrEmpty(sessionSummary.SessionId))
+				{
+					PerfMeterSelfObservability.EndBoundWindow(PerfMeterSelfOverheadWindowKind.Session, sessionSummary.SessionId, Time.frameCount);
+				}
 				FinalizeGraphicsStateCollectionForShutdown();
 				FinalizeMemorySnapshotForShutdown("Runtime disabled during memory snapshot capture.");
 				FinalizeCaptureBundleForShutdown("Runtime disabled during capture.");
@@ -2852,6 +2887,10 @@ namespace SGG.PerfMeter
 					}
 				}
 			}
+			if (!captureStatus.IsActive)
+			{
+				StoreCaptureSelfOverheadWindow(captureStatus.CaptureId, Time.frameCount);
+			}
 			if (!captureStatus.IsActive && !_captureCoordinator.HasActiveResources)
 			{
 				FinalizeCaptureBundle(captureStatus);
@@ -2874,6 +2913,7 @@ namespace SGG.PerfMeter
 					}
 
 					CaptureBundles.UpdateCaptureStatus(captureStatus);
+					StoreCaptureSelfOverheadWindow(captureStatus.CaptureId, Time.frameCount);
 					FinalizeCaptureBundle(
 						captureStatus,
 						captureStatus.EffectiveBackendKind != PerfMeterCaptureBackendKind.RenderDocNative);
@@ -2932,6 +2972,7 @@ namespace SGG.PerfMeter
 
 			PerfMeterCaptureStatusSnapshot captureStatus = PerfMeterCaptureBundleCoordinator.MemoryCaptureStatus(status);
 			CaptureBundles.UpdateCaptureStatus(captureStatus);
+			StoreCaptureSelfOverheadWindow(captureStatus.CaptureId, Time.frameCount);
 			RecordCaptureBoundary(captureStatus, PerfMeterSessionTimelineCaptureBoundary.End);
 			CaptureBundles.ObserveMemorySnapshot(
 				status,
@@ -3090,6 +3131,7 @@ namespace SGG.PerfMeter
 			}
 
 			PerfMeterCaptureBundleStatusSnapshot bundleStatus = CaptureBundles.GetStatus(captureStatus.CaptureId);
+			StoreCaptureSelfOverheadWindow(captureStatus.CaptureId, Time.frameCount);
 			if (bundleStatus.State != PerfMeterCaptureBundleState.Recording)
 			{
 				return;
@@ -3118,6 +3160,20 @@ namespace SGG.PerfMeter
 				alertsTruncated);
 			ClearPendingCaptureBundleFinalization(captureStatus.CaptureId);
 			ScheduleCaptureBundleScreenshot();
+		}
+
+		private static void StoreCaptureSelfOverheadWindow(string captureId, int frame)
+		{
+			if (string.IsNullOrEmpty(captureId))
+			{
+				return;
+			}
+
+			PerfMeterSelfOverheadWindowSnapshot snapshot = PerfMeterSelfObservability.EndBoundWindow(
+				PerfMeterSelfOverheadWindowKind.Capture,
+				captureId,
+				frame);
+			CaptureBundles.SetSelfOverheadWindow(captureId, snapshot);
 		}
 
 		private void RecordMissingTimeline(int frame, double timeSeconds, PerfMeterSessionTimelineReasonFlags reason, PerfMeterCaptureStatusSnapshot captureStatus)

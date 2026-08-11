@@ -64,11 +64,16 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability публикует low-overhead измерения стоимости CPU callbacks в фиксированных окнах по 120 кадров. Средние значения считаются на один вызов. Общее состояние: `NotInitialized`, `Collecting` или `Ready`; состояние компонента: `NotMeasured`, `Collecting`, `Ready` или `Unsupported`.
 
-Компоненты: `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` и `HdrpRenderIntegration`. Для каждого доступны число кадров и вызовов, среднее/максимальное CPU-время, общий/средний объем allocations, заданные бюджеты и состояния `NotEvaluated`/`WithinBudget`/`Exceeded`.
+Компоненты: `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` и `HdrpRenderIntegration`. Для каждого доступны число кадров и вызовов, среднее/максимальное CPU-время, общий/средний объем allocations, заданные бюджеты и состояния `NotEvaluated`/`WithinBudget`/`Exceeded`. Additive provenance включает epoch, первый/последний кадр измерения, число кадров с callbacks, typed inactive reason и явную доступность GPU attribution.
+
+`GetSelfOverheadWindow(...)` возвращает URP observation, привязанный к точной session или capture. Результат содержит identity, epoch, границы кадров, containment, quality/pipeline/renderer identity и evidence состояний feature installed/enabled/enqueued. Неактивные результаты используют typed reasons, включая `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete` и `CaptureWindowMismatch`; при нехватке evidence возвращается `UnknownInactiveReason` без догадок. Следующая capture не может использовать completed epoch предыдущей.
 
 | Компонент | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -78,7 +83,7 @@ Self-observability публикует low-overhead измерения стоим
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing явно имеет состояние `Unavailable`. Диагностика не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
+URP scope измеряет только package-owned CPU-side регистрацию `RecordRenderGraph()` и allocations текущего потока. При нескольких камерах число вызовов может быть больше числа кадров с callbacks. GPU attribution явно имеет состояние `Unavailable`; whole-frame CPU/GPU/hitch/GC остаются отдельным контекстом и не приписываются PerfMeter только по временной близости. Диагностика не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
 
 ## Динамический каталог Profiler-метрик
 
