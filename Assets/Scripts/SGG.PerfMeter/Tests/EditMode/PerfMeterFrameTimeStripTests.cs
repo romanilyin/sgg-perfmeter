@@ -104,5 +104,103 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(strip.LastFrame, Is.EqualTo(1000));
 			Assert.That(allocatedBytes, Is.Zero);
 		}
+
+		[Test]
+		public void CustomSeriesUseStableIdsIndependentSignedScalesAndExplicitGaps()
+		{
+			PerfMeterOverlay.PerfMeterFrameTimeStripElement strip = new PerfMeterOverlay.PerfMeterFrameTimeStripElement(16);
+			strip.ConfigureCustomMetricSeries(new[]
+			{
+				new PerfMeterCustomMetricGraphJson { metricId = "movement.horizontal", min = -10d, max = 10d, displayScale = 2d, color = "#FF3355", unit = "m/s" },
+				new PerfMeterCustomMetricGraphJson { metricId = "movement.vertical", min = -1d, max = 1d, displayScale = 0.1d, color = "#33CCFF", unit = "ratio" }
+			});
+
+			Assert.That(strip.CustomSeriesCount, Is.EqualTo(2));
+			Assert.That(strip.TryGetCustomSeriesConfiguration(0, out PerfMeterCustomMetricGraphConfiguration horizontal), Is.True);
+			Assert.That(horizontal.MetricId, Is.EqualTo("movement.horizontal"));
+			Assert.That(horizontal.Min, Is.EqualTo(-10d));
+			Assert.That(horizontal.Max, Is.EqualTo(10d));
+			Assert.That(horizontal.DisplayScale, Is.EqualTo(2d));
+			Assert.That(horizontal.Unit, Is.EqualTo("m/s"));
+
+			PerfMeterCustomMetricSnapshot[] firstFrame =
+			{
+				new PerfMeterCustomMetricSnapshot("movement.vertical", "Vertical", "movement", "raw", 7d),
+				new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "raw", -3d)
+			};
+			strip.AddCustomMetricSamples(10, firstFrame, firstFrame.Length);
+			strip.AddCustomMetricSamples(11, new[] { new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "raw", 0d, false) }, 1);
+
+			Assert.That(strip.TryGetCustomSeriesSample(0, 0, out double horizontalValue, out bool horizontalValid), Is.True);
+			Assert.That(horizontalValue, Is.EqualTo(-6d));
+			Assert.That(horizontalValid, Is.True);
+			Assert.That(strip.TryGetCustomSeriesSample(1, 0, out double verticalValue, out bool verticalValid), Is.True);
+			Assert.That(verticalValue, Is.EqualTo(0.7d).Within(0.000001d));
+			Assert.That(verticalValid, Is.True);
+			Assert.That(strip.TryGetCustomSeriesSample(0, 1, out _, out bool unavailableValid), Is.True);
+			Assert.That(unavailableValid, Is.False);
+			Assert.That(strip.TryGetCustomSeriesSample(1, 1, out _, out bool missingValid), Is.True);
+			Assert.That(missingValid, Is.False);
+		}
+
+		[Test]
+		public void CustomSeriesConfigurationIsBoundedAndRoundTripsAdditively()
+		{
+			PerfMeterOverlayPresetJson preset = PerfMeterOverlayPresetDefaults.CreateGraphs();
+			preset.customMetricGraphs = new[]
+			{
+				new PerfMeterCustomMetricGraphJson { metricId = "metric.0", min = -5d, max = 5d, displayScale = 2d, color = "#FF0000", unit = "m/s" },
+				new PerfMeterCustomMetricGraphJson { metricId = "metric.1", min = 0d, max = 100d, color = "#00FF00", unit = "%" },
+				new PerfMeterCustomMetricGraphJson { metricId = "metric.2", min = -1d, max = 1d, color = "#0000FF" },
+				new PerfMeterCustomMetricGraphJson { metricId = "metric.3", min = 0d, max = 1d, color = "#FFFFFF" },
+				new PerfMeterCustomMetricGraphJson { metricId = "metric.4", min = 0d, max = 1d, color = "#FFFF00" }
+			};
+
+			PerfMeterOverlayPresetValidationResult validation = PerfMeterOverlayPresetUtility.Validate(preset);
+			Assert.That(validation.IsValid, Is.True);
+			Assert.That(validation.Warning, Does.Contain("limit is 4"));
+
+			string json = PerfMeterOverlayPresetUtility.ToJson(preset);
+			Assert.That(PerfMeterOverlayPresetUtility.TryReadJson(json, out PerfMeterOverlayPresetJson parsed, out string warning), Is.True, warning);
+			Assert.That(parsed.customMetricGraphs, Has.Length.EqualTo(5));
+			Assert.That(parsed.customMetricGraphs[0].metricId, Is.EqualTo("metric.0"));
+			Assert.That(parsed.customMetricGraphs[0].min, Is.EqualTo(-5d));
+			Assert.That(parsed.customMetricGraphs[0].max, Is.EqualTo(5d));
+			Assert.That(parsed.customMetricGraphs[0].displayScale, Is.EqualTo(2d));
+			Assert.That(parsed.customMetricGraphs[0].unit, Is.EqualTo("m/s"));
+
+			PerfMeterOverlay.PerfMeterFrameTimeStripElement strip = new PerfMeterOverlay.PerfMeterFrameTimeStripElement(16);
+			strip.ConfigureCustomMetricSeries(parsed.customMetricGraphs);
+			Assert.That(strip.CustomSeriesCount, Is.EqualTo(PerfMeterOverlayPresetUtility.MaxCustomMetricGraphSeries));
+		}
+
+		[Test]
+		public void WarmedCustomSeriesUpdatesDoNotAllocate()
+		{
+			PerfMeterOverlay.PerfMeterFrameTimeStripElement strip = new PerfMeterOverlay.PerfMeterFrameTimeStripElement(120);
+			strip.ConfigureCustomMetricSeries(new[]
+			{
+				new PerfMeterCustomMetricGraphJson { metricId = "speed.x", min = -20d, max = 20d, displayScale = 1d, color = "#FF3355", unit = "m/s" },
+				new PerfMeterCustomMetricGraphJson { metricId = "speed.y", min = -10d, max = 10d, displayScale = 1d, color = "#33CCFF", unit = "m/s" }
+			});
+			PerfMeterCustomMetricSnapshot[] metrics =
+			{
+				new PerfMeterCustomMetricSnapshot("speed.x", "X", "movement", "m/s", -3d),
+				new PerfMeterCustomMetricSnapshot("speed.y", "Y", "movement", "m/s", 4d)
+			};
+			strip.AddCustomMetricSamples(0, metrics, metrics.Length);
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
+			GC.Collect();
+
+			long before = GC.GetAllocatedBytesForCurrentThread();
+			for (int frame = 1; frame <= 1000; frame++)
+			{
+				strip.AddCustomMetricSamples(frame, metrics, metrics.Length);
+			}
+			long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - before;
+
+			Assert.That(allocatedBytes, Is.Zero);
+		}
 	}
 }

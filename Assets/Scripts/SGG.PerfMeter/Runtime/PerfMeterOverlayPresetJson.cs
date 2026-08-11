@@ -15,6 +15,7 @@ namespace SGG.PerfMeter
 		public string[] tags = Array.Empty<string>();
 		public PerfMeterOverlayPresetStyleJson style = new PerfMeterOverlayPresetStyleJson();
 		public PerfMeterOverlayPresetWidgetJson[] widgets = Array.Empty<PerfMeterOverlayPresetWidgetJson>();
+		public PerfMeterCustomMetricGraphJson[] customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 	}
 
 	[Serializable]
@@ -38,6 +39,18 @@ namespace SGG.PerfMeter
 		public int order = 10;
 		public string variant = string.Empty;
 		public int height = 0;
+	}
+
+	[Serializable]
+	public sealed class PerfMeterCustomMetricGraphJson
+	{
+		public string metricId = string.Empty;
+		public bool enabled = true;
+		public double min = -1d;
+		public double max = 1d;
+		public double displayScale = 1d;
+		public string color = "#56C8FF";
+		public string unit = string.Empty;
 	}
 
 	[Serializable]
@@ -96,6 +109,28 @@ namespace SGG.PerfMeter
 
 		public bool IsValid { get; }
 		public string Warning { get; }
+	}
+
+	internal readonly struct PerfMeterCustomMetricGraphConfiguration
+	{
+		internal PerfMeterCustomMetricGraphConfiguration(string metricId, double min, double max, double displayScale, Color color, string colorText, string unit)
+		{
+			MetricId = metricId;
+			Min = min;
+			Max = max;
+			DisplayScale = displayScale;
+			Color = color;
+			ColorText = colorText;
+			Unit = unit;
+		}
+
+		internal string MetricId { get; }
+		internal double Min { get; }
+		internal double Max { get; }
+		internal double DisplayScale { get; }
+		internal Color Color { get; }
+		internal string ColorText { get; }
+		internal string Unit { get; }
 	}
 
 	public static class PerfMeterWidgetRegistry
@@ -175,6 +210,7 @@ namespace SGG.PerfMeter
 	{
 		public const string Schema = "sgg-perfmeter.overlay-preset";
 		public const int CurrentVersion = 1;
+		public const int MaxCustomMetricGraphSeries = 4;
 
 		public static string ToJson(PerfMeterOverlayPresetJson preset)
 		{
@@ -274,6 +310,8 @@ namespace SGG.PerfMeter
 				}
 			}
 
+			warning = CombineWarnings(warning, ValidateCustomMetricGraphs(preset.customMetricGraphs));
+
 			return new PerfMeterOverlayPresetValidationResult(true, warning);
 		}
 
@@ -285,6 +323,63 @@ namespace SGG.PerfMeter
 			}
 
 			return JsonUtility.FromJson<PerfMeterOverlayPresetJson>(JsonUtility.ToJson(preset));
+		}
+
+		internal static PerfMeterCustomMetricGraphJson[] CloneCustomMetricGraphs(PerfMeterCustomMetricGraphJson[] configurations)
+		{
+			if (configurations == null || configurations.Length == 0)
+			{
+				return Array.Empty<PerfMeterCustomMetricGraphJson>();
+			}
+
+			PerfMeterCustomMetricGraphJson[] copy = new PerfMeterCustomMetricGraphJson[configurations.Length];
+			for (int i = 0; i < configurations.Length; i++)
+			{
+				PerfMeterCustomMetricGraphJson source = configurations[i];
+				if (source == null)
+				{
+					continue;
+				}
+
+				copy[i] = new PerfMeterCustomMetricGraphJson
+				{
+					metricId = source.metricId ?? string.Empty,
+					enabled = source.enabled,
+					min = source.min,
+					max = source.max,
+					displayScale = source.displayScale,
+					color = source.color ?? string.Empty,
+					unit = source.unit ?? string.Empty
+				};
+			}
+
+			return copy;
+		}
+
+		internal static bool TryNormalizeCustomMetricGraph(PerfMeterCustomMetricGraphJson graph, out PerfMeterCustomMetricGraphConfiguration configuration)
+		{
+			configuration = default;
+			if (graph == null || !graph.enabled || string.IsNullOrWhiteSpace(graph.metricId) || !IsFinite(graph.min) || !IsFinite(graph.max) || graph.max <= graph.min || !IsFinite(graph.displayScale) || graph.displayScale == 0d)
+			{
+				return false;
+			}
+
+			string colorText = string.IsNullOrWhiteSpace(graph.color) ? "#56C8FF" : graph.color.Trim();
+			if (!ColorUtility.TryParseHtmlString(colorText, out Color color))
+			{
+				return false;
+			}
+
+			color.a = 1f;
+			configuration = new PerfMeterCustomMetricGraphConfiguration(
+				graph.metricId.Trim(),
+				graph.min,
+				graph.max,
+				graph.displayScale,
+				color,
+				colorText,
+				graph.unit?.Trim() ?? string.Empty);
+			return true;
 		}
 
 		internal static PerfMeterOverlayPresetJson FindById(PerfMeterOverlayPresetJson[] presets, string id)
@@ -438,7 +533,75 @@ namespace SGG.PerfMeter
 			preset.style.maxWidth = Mathf.Max(1, preset.style.maxWidth);
 			preset.style.gap = Mathf.Max(0, preset.style.gap);
 			preset.widgets = preset.widgets ?? Array.Empty<PerfMeterOverlayPresetWidgetJson>();
+			preset.customMetricGraphs = preset.customMetricGraphs ?? Array.Empty<PerfMeterCustomMetricGraphJson>();
+			for (int i = 0; i < preset.customMetricGraphs.Length; i++)
+			{
+				PerfMeterCustomMetricGraphJson graph = preset.customMetricGraphs[i];
+				if (graph == null)
+				{
+					continue;
+				}
+
+				graph.metricId = graph.metricId?.Trim() ?? string.Empty;
+				graph.color = string.IsNullOrWhiteSpace(graph.color) ? "#56C8FF" : graph.color.Trim();
+				graph.unit = graph.unit?.Trim() ?? string.Empty;
+			}
 			Array.Sort(preset.widgets, CompareWidgetOrder);
+		}
+
+		private static string ValidateCustomMetricGraphs(PerfMeterCustomMetricGraphJson[] graphs)
+		{
+			if (graphs == null || graphs.Length == 0)
+			{
+				return string.Empty;
+			}
+
+			string warning = string.Empty;
+			int validCount = 0;
+			for (int i = 0; i < graphs.Length; i++)
+			{
+				PerfMeterCustomMetricGraphJson graph = graphs[i];
+				if (graph == null || !graph.enabled)
+				{
+					continue;
+				}
+
+				if (!TryNormalizeCustomMetricGraph(graph, out PerfMeterCustomMetricGraphConfiguration configuration))
+				{
+					warning = CombineWarnings(warning, "Invalid custom metric graph at index " + i + " will be ignored.");
+					continue;
+				}
+
+				bool duplicate = false;
+				for (int previous = 0; previous < i; previous++)
+				{
+					if (TryNormalizeCustomMetricGraph(graphs[previous], out PerfMeterCustomMetricGraphConfiguration previousConfiguration) && string.Equals(previousConfiguration.MetricId, configuration.MetricId, StringComparison.Ordinal))
+					{
+						duplicate = true;
+						break;
+					}
+				}
+
+				if (duplicate)
+				{
+					warning = CombineWarnings(warning, "Duplicate custom metric graph id '" + configuration.MetricId + "' will be ignored.");
+					continue;
+				}
+
+				validCount++;
+				if (validCount > MaxCustomMetricGraphSeries)
+				{
+					warning = CombineWarnings(warning, "Custom metric graph limit is " + MaxCustomMetricGraphSeries + "; excess series will be ignored.");
+					break;
+				}
+			}
+
+			return warning;
+		}
+
+		private static bool IsFinite(double value)
+		{
+			return !double.IsNaN(value) && !double.IsInfinity(value);
 		}
 
 		internal static string CombineWarnings(string first, string second)

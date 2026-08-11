@@ -6,6 +6,7 @@
 - Added bounded platform telemetry cadence/cache metadata and forced capture-boundary sampling with explicit unavailable provenance.
 - Added typed runtime mutation results and truthful MCP mutation responses for lifecycle, mode, overlay, overdraw, and session operations.
 - Added a raw per-collected-frame hitch strip with bounded history, explicit timing gaps, budget severity, and peak-preserving pixel compression independent of throttled overlay text refresh.
+- Added up to four visual-preset custom metric graph channels selected by stable metric ID with independent signed ranges, display scales, colors, units, and unavailable gaps.
 
 ## 2026.8.11-1
 

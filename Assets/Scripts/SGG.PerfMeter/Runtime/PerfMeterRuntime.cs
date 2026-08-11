@@ -60,6 +60,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayFontFamily _overlayFontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
 		private string _visualOverlayPresetId = PerfMeterOverlayPresetDefaults.FullDiagnosticsId;
+		private PerfMeterCustomMetricGraphJson[] _customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 		private PerfMeterOverlayModule _overlayModules = PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
 		private float _overlayScale = 1f;
@@ -603,6 +604,7 @@ namespace SGG.PerfMeter
 			{
 				double ignoredSampleTimeSeconds = Time.realtimeSinceStartupAsDouble;
 				_overlay?.RecordFrameTimeSample(frame, collectedMetrics.CpuFrameTimeMs, false);
+				_overlay?.RecordCustomMetricSamples(frame, null, 0);
 				RecordMissingTimeline(frame, ignoredSampleTimeSeconds, PerfMeterSessionTimelineReasonFlags.InvalidTiming | PerfMeterSessionTimelineReasonFlags.FrameTimingUnavailable, captureStatus);
 				_lastCollectorWarning = warning;
 				UpdateDiagnostics(frame, ignoredSampleTimeSeconds, collectedMetrics.Bottleneck, frameTimingAvailability, true, collectedMetrics.GpuFrameTimeAvailable, warning);
@@ -624,6 +626,7 @@ namespace SGG.PerfMeter
 			_latestCustomMetricBuffer = customMetrics.Buffer;
 			_latestCustomMetricCount = customMetrics.Count;
 			_hasLatestCustomMetrics = true;
+			_overlay?.RecordCustomMetricSamples(frame, customMetrics.Buffer, customMetrics.Count);
 			double collectionTimeSeconds = Time.realtimeSinceStartupAsDouble;
 			_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Sample(collectionTimeSeconds);
 			PerfMeterProfilerInstrumentation.RecordThermalAvailability(_latestPlatformTelemetry.IsAvailable && _latestPlatformTelemetry.ThermalWarningLevelAvailable);
@@ -1562,6 +1565,7 @@ namespace SGG.PerfMeter
 
 			_overlayPreset = NormalizeOverlayPreset(preset);
 			_visualOverlayPresetId = _overlayPreset.ToString();
+			_customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 			_overlayModules = PerfMeterSettingsStore.GetPresetModules(_overlayPreset);
 			_overlayLayout = PerfMeterSettingsStore.GetPresetLayout(_overlayPreset);
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
@@ -1573,6 +1577,7 @@ namespace SGG.PerfMeter
 				_overlay.SetMode(_overlayMode);
 				_overlay.SetModules(_overlayModules);
 				_overlay.SetLayout(_overlayLayout);
+				_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 			}
 
 			ResetCpuCoreSamplerIfInactive();
@@ -1648,6 +1653,7 @@ namespace SGG.PerfMeter
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, PerfMeterOverlayMode.Full);
 			_overlayFontFamily = PerfMeterOverlayPresetUtility.GetFontFamily(preset);
 			_overlayModules = PerfMeterOverlayPresetUtility.GetEnabledModules(preset, out string widgetWarning);
+			_customMetricGraphs = PerfMeterOverlayPresetUtility.CloneCustomMetricGraphs(preset.customMetricGraphs);
 			_overlayScale = PerfMeterOverlayPresetUtility.GetScale(preset, _overlayScale);
 			_overlayOpacity = PerfMeterOverlayPresetUtility.GetOpacity(preset, _overlayOpacity);
 			_lastCollectorWarning = PerfMeterOverlayPresetUtility.CombineWarnings(_lastCollectorWarning, PerfMeterOverlayPresetUtility.CombineWarnings(validation.Warning, widgetWarning));
@@ -1661,6 +1667,7 @@ namespace SGG.PerfMeter
 				_overlay.SetLayout(_overlayLayout);
 				_overlay.SetFontFamily(_overlayFontFamily);
 				_overlay.SetModules(_overlayModules);
+				_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
 
@@ -1724,6 +1731,7 @@ namespace SGG.PerfMeter
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, settings.OverlayMode);
 			_overlayFontFamily = settings.OverlayFontFamily;
 			_visualOverlayPresetId = settings.ActiveOverlayPresetId;
+			_customMetricGraphs = PerfMeterOverlayPresetUtility.CloneCustomMetricGraphs(settings.ActiveOverlayPreset?.customMetricGraphs);
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
 			_structuredLogsEnabled = settings.StructuredLogsEnabled;
@@ -1736,6 +1744,7 @@ namespace SGG.PerfMeter
 				_overlay.SetTheme(_overlayTheme);
 				_overlay.SetLayout(_overlayLayout);
 				_overlay.SetFontFamily(_overlayFontFamily);
+				_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
 
@@ -2300,6 +2309,7 @@ namespace SGG.PerfMeter
 			_overlay.SetLayout(_overlayLayout);
 			_overlay.SetFontFamily(_overlayFontFamily);
 			_overlay.SetModules(_overlayModules);
+			_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 			_overlay.SetTargetFps(_targetFps);
 			_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			_overlay.SetVisible(_overlayRequestedVisible);

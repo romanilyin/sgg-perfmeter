@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added a raw per-collected-frame hitch strip with bounded history, explicit timing gaps, budget severity, and peak-preserving pixel compression independent of throttled overlay text refresh.
+- Added up to four visual-preset custom metric graph channels selected by stable metric ID with independent signed ranges, display scales, colors, units, and unavailable gaps.
 
 ## 2026.8.11-1
 

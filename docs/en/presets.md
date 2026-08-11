@@ -40,6 +40,35 @@ Wide diagnostic preset with all major high-level PerfMeter widgets enabled.
 
 ![Full Diagnostics preset](../assets/screenshots/presets/preset-full-diagnostics.png)
 
+## Custom Metric Graph Channels
+
+Visual preset JSON can add up to four channels to the raw frame-time strip. Matching is case-sensitive against `PerfMeterCustomMetricSnapshot.Id`. `displayScale` is applied to the provider value first; `min` and `max` are the explicit display-space range for that channel. Rendering clamps only the plotted position and never changes the raw metric. Missing, unavailable, or non-finite values create a gap rather than a zero.
+
+```json
+"customMetricGraphs": [
+  {
+    "metricId": "movement.horizontal-speed",
+    "enabled": true,
+    "min": -12.0,
+    "max": 12.0,
+    "displayScale": 1.0,
+    "color": "#FF5B78",
+    "unit": "m/s"
+  },
+  {
+    "metricId": "movement.vertical-speed",
+    "enabled": true,
+    "min": -4.0,
+    "max": 8.0,
+    "displayScale": 1.0,
+    "color": "#56C8FF",
+    "unit": "m/s"
+  }
+]
+```
+
+Channels are normalized only against their own configured range. PerfMeter does not infer units, normalize one channel against another, or substitute provider values for a missing stable ID. Invalid, duplicate, and excess configurations are reported by preset validation and ignored at runtime.
+
 ## FPS Color Scale
 
 The `FPS Only` preset colors FPS-family values against the selected target FPS:

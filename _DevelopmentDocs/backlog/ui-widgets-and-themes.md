@@ -18,6 +18,16 @@ Pending release after `2026.8.11-1`:
 - narrow plots use only a peak-preserving min/max envelope;
 - the warmed ring-buffer update allocates `0 B/frame` and does not rebuild the visual tree.
 
+### Implemented: Custom metric graph channels
+
+Pending release after `2026.8.11-1`:
+
+- visual preset JSON binds up to four series by case-sensitive stable metric ID;
+- each series has explicit signed display-space `min/max`, non-zero `displayScale`, color and unit;
+- missing, unavailable and non-finite samples advance as gaps instead of fake zero;
+- the renderer uses each channel's own configured range and never performs implicit cross-unit normalization;
+- configuration is additive to preset schema v1, while bounded histories and warmed updates remain allocation-free.
+
 ### Resolved: Text overflow and stable numeric geometry
 
 Implemented in `2026.8.5-2`:

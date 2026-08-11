@@ -198,22 +198,39 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			overlay.SetModules(PerfMeterOverlayModule.Graphs);
 			overlay.SetMode(PerfMeterOverlayMode.Full);
 			overlay.SetTuning(1f, 0.84f, 12f, 2f, 120);
+			overlay.SetCustomMetricGraphs(new[]
+			{
+				new PerfMeterCustomMetricGraphJson { metricId = "movement.horizontal", min = -10d, max = 10d, displayScale = 2d, color = "#FF3355", unit = "m/s" }
+			});
 			yield return null;
 
 			VisualElement container = overlay.OwnedContainer;
 			int childCount = container.childCount;
 			Assert.That(container[childCount - 1].name, Is.EqualTo("sgg-perfmeter-frame-time-strip-block"));
 			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+			Label customLegend = container.Q<Label>("sgg-perfmeter-frame-time-strip-custom-legend-0");
+			Assert.That(customLegend, Is.Not.Null);
+			Assert.That(customLegend.text, Does.Contain("movement.horizontal [-10..10] m/s x2"));
 
 			overlay.RecordFrameTimeSample(100, 16d, true);
+			overlay.RecordCustomMetricSamples(100, new[] { new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "m/s", -3d) }, 1);
 			overlay.RecordFrameTimeSample(101, 80d, true);
+			overlay.RecordCustomMetricSamples(101, null, 0);
 			overlay.RecordFrameTimeSample(102, 0d, false);
+			overlay.RecordCustomMetricSamples(102, new[] { new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "m/s", 0d, false) }, 1);
 			Assert.That(overlay.FrameTimeStripSampleCount, Is.EqualTo(3));
 			Assert.That(overlay.FrameTimeStripLastFrame, Is.EqualTo(102));
+			Assert.That(overlay.FrameTimeStripCustomSeriesCount, Is.EqualTo(1));
+			Assert.That(overlay.TryGetFrameTimeStripCustomSample(0, 0, out double customValue, out bool customValid), Is.True);
+			Assert.That(customValue, Is.EqualTo(-6d));
+			Assert.That(customValid, Is.True);
+			Assert.That(overlay.TryGetFrameTimeStripCustomSample(0, 1, out _, out bool missingValid), Is.True);
+			Assert.That(missingValid, Is.False);
 
 			for (int frame = 103; frame < 303; frame++)
 			{
 				overlay.RecordFrameTimeSample(frame, 16d, true);
+				overlay.RecordCustomMetricSamples(frame, null, 0);
 			}
 
 			Assert.That(overlay.FrameTimeStripSampleCount, Is.EqualTo(120));

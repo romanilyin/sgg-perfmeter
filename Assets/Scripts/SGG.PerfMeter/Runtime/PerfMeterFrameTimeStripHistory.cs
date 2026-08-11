@@ -13,9 +13,11 @@ namespace SGG.PerfMeter
 		private int _index;
 		private int _count;
 		private int _lastFrame = -1;
+		private readonly bool _requirePositive;
 
-		internal PerfMeterFrameTimeStripHistory(int capacity)
+		internal PerfMeterFrameTimeStripHistory(int capacity, bool requirePositive = true)
 		{
+			_requirePositive = requirePositive;
 			SetCapacity(capacity);
 		}
 
@@ -59,14 +61,21 @@ namespace SGG.PerfMeter
 				return false;
 			}
 
-			bool finitePositive = frameTimeMs > 0d && !double.IsNaN(frameTimeMs) && !double.IsInfinity(frameTimeMs);
+			bool finiteValue = !double.IsNaN(frameTimeMs) && !double.IsInfinity(frameTimeMs) && (!_requirePositive || frameTimeMs > 0d);
 			_frames[_index] = frame;
-			_values[_index] = finitePositive ? frameTimeMs : 0d;
-			_valid[_index] = valid && finitePositive;
+			_values[_index] = finiteValue ? frameTimeMs : 0d;
+			_valid[_index] = valid && finiteValue;
 			_index = (_index + 1) % _capacity;
 			_count = Math.Min(_count + 1, _capacity);
 			_lastFrame = frame;
 			return true;
+		}
+
+		internal void Clear()
+		{
+			_index = 0;
+			_count = 0;
+			_lastFrame = -1;
 		}
 
 		internal bool TryGetSample(int sample, out int frame, out double frameTimeMs, out bool valid)
