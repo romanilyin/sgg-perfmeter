@@ -1,9 +1,8 @@
 # RenderDoc Storage And Finalization Policy
 
-Status: `PM-RDOC-003A` policy accepted and consumed by the package-only managed
-control, filesystem finalization, retained Copy, and real Embed implementation.
-Production registration and real-tool gates remain pending; this decision does
-not make a support/release claim.
+Status: `PM-RDOC-003A` policy implemented by production control, filesystem
+finalization, retained Copy, and Embed. The initial real-tool D3D11/D3D12/Vulkan
+gates passed for the `2026.8.11-1` Windows x64 Editor release candidate.
 
 ## Scope
 
@@ -224,7 +223,8 @@ and abort/terminal callbacks. The package-only source/accounting implementation
 also covers retained-source identity/hash validation, known non-native staging
 bytes in free-space admission, canonical committed-marker scanning, recursive
 safe-tree accounting, whole-bundle retention, reparse rejection, and deletion
-identity revalidation. Production registration remains gated separately.
+identity revalidation. Production registration and the initial real-tool matrix
+are complete; broader platform/player rows remain separate.
 
 Related decisions: [`renderdoc-native-boundary.md`](renderdoc-native-boundary.md),
 [`capture-bundles.md`](capture-bundles.md), and

@@ -8,6 +8,8 @@ SGG PerfMeter は `com.sungeargames.perfmeter` という Unity package として
 - Render Graph path を使う URP `17.4+`、または HDRP `17.4+` Custom Pass integration。
 - UI Toolkit runtime support。
 - build で FrameTimingManager に依存する前に Frame Timing Stats を有効化。
+- Optional native RenderDoc capture は Windows x64 Unity Editor の Direct3D 11、Direct3D 12、Vulkan のみをサポートします。Development Player、Linux native、IL2CPP、mobile、macOS native は unsupported です。
+- UPM package は binary-free のままで、RenderDoc 自体を install しません。FTUE は別配布 artifact の byte length、SHA-256、AMD64 native PE contract が一致する bridge だけを download または local install し、その後 Editor restart が必要です。
 
 Package metadata は、import と compile checks の import-safety floor として Unity `2022.3` を保持しています。現在の supported runtime target は Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration です。
 

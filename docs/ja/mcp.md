@@ -40,7 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.stop` | recording を停止して summary を返します。 |
 | `perfmeter.session.summary` | current session summary を読み取ります。 |
 | `perfmeter.session.export` | current session を project-local JSON または CSV に export します。 |
-| `perfmeter.capture.request` | bounded external GPU capture と correlated bundle を request します。 |
+| `perfmeter.capture.request` | bounded GPU capture を request。optional `backend_mode`: `GenericUnity`、`NativePreferred`、`NativeRequired`。Native storage mode は C# API だけで選択します。 |
 | `perfmeter.capture.status` | capture と bundle の state を読み取ります。 |
 | `perfmeter.capture.cancel` | 一致する active capture を cancel します。 |
 | `perfmeter.capture.export` | ready bundle を project-local root に atomic export します。 |

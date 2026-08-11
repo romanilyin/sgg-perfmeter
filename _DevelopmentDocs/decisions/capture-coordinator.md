@@ -10,14 +10,14 @@ Only `Capturing` owns the existing alert capture scope and invokes the backend. 
 
 ## Backend Contract
 
-The production backend wraps `UnityEngine.Experimental.Rendering.ExternalGPUProfiler` behind `UNITY_EDITOR || DEVELOPMENT_BUILD`. It requires an already attached external profiler and evaluates an explicit requested tool against this matrix:
+The `GenericUnity` production backend wraps `UnityEngine.Experimental.Rendering.ExternalGPUProfiler` behind `UNITY_EDITOR || DEVELOPMENT_BUILD`. It requires an already attached external profiler and evaluates an explicit requested tool against this matrix:
 
 | Tool | Platform | Graphics API |
 | --- | --- | --- |
 | RenderDoc | Windows or Linux desktop | Direct3D 11, Direct3D 12, or Vulkan |
 | PIX | Windows desktop | Direct3D 12 |
 
-Unity does not expose attached-tool identity or authoritative artifact paths through this API. Callers therefore select `RenderDoc` or `Pix` explicitly. `Completed` confirms only that the guarded Unity begin/end lifecycle completed; it does not claim that `.rdc` or `.wpix` bytes exist.
+Unity does not expose attached-tool identity or authoritative artifact paths through this generic API. Callers therefore select `RenderDoc` or `Pix` explicitly. Generic `Completed` confirms only the guarded begin/end lifecycle. The optional `NativePreferred`/`NativeRequired` RenderDoc path is generation-bound and separately limited to Windows x64 Unity Editor D3D11/D3D12/Vulkan.
 
 Automated tests use the internal backend/scope seams. Real RenderDoc/PIX attachment and artifact confirmation are release-candidate gates.
 
@@ -31,4 +31,4 @@ Automated tests use the internal backend/scope seams. Real RenderDoc/PIX attachm
 ## Implemented By PM-CAP-002
 
 - Bundle manifests, atomic artifact export, correlated samples/context/screenshots, truthful provenance, path validation, and MCP capture control are defined in [`capture-bundles.md`](capture-bundles.md).
-- Native RenderDoc or PIX SDK integration remains separate future work.
+- Native RenderDoc control/provenance is implemented for the `2026.8.11-1` candidate; native PIX remains separate future work.

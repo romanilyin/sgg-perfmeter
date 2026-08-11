@@ -15,7 +15,7 @@ SGG PerfMeter erkennt Frame-Bottlenecks, vergleicht Performance-Aenderungen, zei
 - Bottleneck-Kontext direkt waehrend des Spiels sehen.
 - Zwischen Presets, Graphen, Metrikleisten, kompakten Layouts und Custom-Metric-Zeilen wechseln.
 - Reproduzierbare Profiling-Sessions mit Warm-up, Szenenbezug, Worst-Frame-Zusammenfassung und JSON/CSV-Export aufzeichnen.
-- Eine explizite, begrenzte RenderDoc/PIX-Anfrage mit deterministischen Pre-Roll-, Capture- und Post-Roll-Zustaenden koordinieren, wenn ein externer GPU-Profiler bereits angehaengt ist; die guarded Koordination ist auf Editor/Development Build begrenzt und beansprucht keinen autoritativen Artefaktpfad.
+- RenderDoc/PIX generisch ueber Unity koordinieren oder optional den separat verteilten, SHA-256-geprueften RenderDoc-Bridge fuer authentifizierte `.rdc`-Artefakte im Windows-x64-Editor mit D3D11, D3D12 oder Vulkan verwenden. Das UPM-Paket bleibt binaerfrei und installiert RenderDoc nicht.
 - Alerts, strukturierte Logs, Callbacks und Editor-Warnungs-Cooldowns nutzen, ohne den Overlay dauerhaft beobachten zu muessen.
 - Tools und Agents strukturierte Daten fuer Vergleiche, A/B-Tests und Hotspot-Suche geben.
 

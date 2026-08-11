@@ -58,6 +58,10 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string OptionalRenderDocCopySnippetButtonElementName = "ftue-optional-renderdoc-copy-snippet";
 		internal const string OptionalRenderDocGuideButtonElementName = "ftue-optional-renderdoc-guide";
 		internal const string OptionalRenderDocOpenRuntimeButtonElementName = "ftue-optional-renderdoc-open-runtime";
+		internal const string OptionalRenderDocDownloadBridgeButtonElementName = "ftue-optional-renderdoc-download-bridge";
+		internal const string OptionalRenderDocInstallLocalBridgeButtonElementName = "ftue-optional-renderdoc-install-local-bridge";
+		internal const string OptionalRenderDocCancelBridgeDownloadButtonElementName = "ftue-optional-renderdoc-cancel-bridge-download";
+		internal const string OptionalRenderDocRemoveBridgeButtonElementName = "ftue-optional-renderdoc-remove-bridge";
 		internal const string OptionalRenderDocGuidanceElementName = "ftue-optional-renderdoc-guidance";
 		internal const string SaveLoggingSettingsButtonElementName = "ftue-save-logging-settings";
 
@@ -68,7 +72,7 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string MemoryProfilerGuidance = "Workflow: enter Play Mode, request a one-shot snapshot or configure an explicit runtime trigger, monitor Runtime status, then open the resulting .snap file from Temp/PerfMeter/MemorySnapshots in Memory Profiler. A later request or runtime cleanup can remove the owned source snapshot.";
 		internal const string ProfileAnalyzerGuidance = "Workflow: begin recording in Unity Profiler, start and stop a PerfMeter session while recording, then load that Profiler data in Profile Analyzer and search for the copied session ID. PerfMeter does not load or filter Profiler data automatically.";
 		internal const string GraphicsStateCollectionGuidance = "Workflow: keep the PerfMeter session active, trace Play Mode frames, wait for the artifact under Temp/PerfMeter/GraphicsStateCollections, then copy its reported relative path into the prewarm request. FTUE never starts trace or prewarm automatically.";
-		internal const string RenderDocGuidance = "Workflow: install RenderDoc, then use Load RenderDoc from the Game or Scene View tab menu, or launch the Editor or Development Build through RenderDoc. Check attachment, enter Play Mode, and request capture. Unity cannot identify the attached external profiler, and PerfMeter does not return the external capture path.";
+		internal const string RenderDocGuidance = "Workflow: optionally install the verified SGG bridge through Download Verified Bridge or select the exact release DLL with Install Local Bridge, then restart the Editor. Install RenderDoc separately, use Load RenderDoc from the Game or Scene View tab menu or launch the Editor through RenderDoc, check attachment, enter Play Mode, and request native capture. PerfMeter never installs or loads RenderDoc itself.";
 
 		private readonly VisualElement _root;
 		private readonly Action _selectSetup;
@@ -128,6 +132,11 @@ namespace SGG.PerfMeter.Editor.UI
 		internal void Refresh()
 		{
 			PerfMeterOptionalDependencyInstaller.Update();
+			PerfMeterRenderDocBridgeInstaller.Update();
+			if (PerfMeterRenderDocBridgeInstaller.TryConsumeLastResult(out _, out string bridgeResult))
+			{
+				Report(bridgeResult);
+			}
 			RefreshLogging();
 
 			PerfMeterSetupUtility.PerfMeterSetupStatus setupStatus = null;
@@ -247,7 +256,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private void BuildOptionalSection(VisualElement parent)
 		{
 			VisualElement section = AddSection(parent, "Optional Packages and Capture Tools");
-			AddInfo(section, "Optional packages are detected by registered package version. RenderDoc and PIX are external tools, not bundled with PerfMeter. GraphicsStateCollection is bundled as an optional integration and needs no package install.");
+			AddInfo(section, "Optional packages are detected by registered package version. RenderDoc and PIX are external tools and are never bundled. The verified SGG RenderDoc bridge can be installed separately into this project. GraphicsStateCollection is bundled as an optional integration and needs no package install.");
 
 			_packageRows.Add(AddPackageRow(
 				section,
@@ -286,7 +295,7 @@ namespace SGG.PerfMeter.Editor.UI
 				"Open Runtime");
 			_renderDocRow = AddCapabilityRow(
 				section,
-				"RenderDoc (Optional, external, not bundled)",
+				"RenderDoc + SGG Bridge (Optional)",
 				OptionalRenderDocElementName,
 				PerfMeterFtueState.RenderDocId,
 				() => OpenExternalTool("RenderDoc", RenderDocDownloadUrl),
@@ -417,6 +426,14 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private void AddRenderDocContinuationActions(OptionalCapabilityRow row)
 		{
+			row.DownloadBridgeButton = AddButton(row.Checklist.Row, "Download Verified Bridge", DownloadRenderDocBridge);
+			row.DownloadBridgeButton.name = OptionalRenderDocDownloadBridgeButtonElementName;
+			row.InstallLocalBridgeButton = AddButton(row.Checklist.Row, "Install Local Bridge", InstallLocalRenderDocBridge);
+			row.InstallLocalBridgeButton.name = OptionalRenderDocInstallLocalBridgeButtonElementName;
+			row.CancelBridgeDownloadButton = AddButton(row.Checklist.Row, "Cancel Bridge Download", CancelRenderDocBridgeDownload);
+			row.CancelBridgeDownloadButton.name = OptionalRenderDocCancelBridgeDownloadButtonElementName;
+			row.RemoveBridgeButton = AddButton(row.Checklist.Row, "Remove Bridge", RemoveRenderDocBridge);
+			row.RemoveBridgeButton.name = OptionalRenderDocRemoveBridgeButtonElementName;
 			row.CheckAttachmentButton = AddButton(row.Checklist.Row, "Check Attachment", CheckRenderDocAttachment);
 			row.CheckAttachmentButton.name = OptionalRenderDocCheckAttachmentButtonElementName;
 			row.CopySnippetButton = AddButton(row.Checklist.Row, "Copy Capture Snippet", CopyRenderDocCaptureSnippet);
@@ -848,7 +865,28 @@ namespace SGG.PerfMeter.Editor.UI
 				PerfMeterFtueState.IsSkipped(PerfMeterFtueState.RenderDocId));
 
 			RefreshExternalRow(_renderDocRow, "RenderDoc", renderDocCapability, renderDocAvailable, renderDocCapabilityAvailable && pixCapabilityAvailable);
+			RefreshRenderDocBridgeControls(PerfMeterRenderDocBridgeInstaller.GetStatus());
 			RefreshExternalRow(_pixRow, "PIX", pixCapability, pixAvailable, renderDocCapabilityAvailable && pixCapabilityAvailable);
+		}
+
+		private void RefreshRenderDocBridgeControls(PerfMeterRenderDocBridgeInstallStatus status)
+		{
+			if (_renderDocRow == null)
+			{
+				return;
+			}
+
+			bool skipped = PerfMeterFtueState.IsSkipped(_renderDocRow.OptionalId);
+			_renderDocRow.Checklist.Value.text += " Bridge: " + status.Message;
+			bool downloading = status.State == PerfMeterRenderDocBridgeInstallState.Downloading;
+			bool manageable = PerfMeterRenderDocBridgeInstaller.CanManageInstalledAsset(out _);
+			bool installable = status.State == PerfMeterRenderDocBridgeInstallState.NotInstalled ||
+				(status.State == PerfMeterRenderDocBridgeInstallState.Invalid && manageable);
+			SetButtonVisible(_renderDocRow.DownloadBridgeButton, !skipped && installable);
+			SetButtonVisible(_renderDocRow.InstallLocalBridgeButton, !skipped && installable);
+			SetButtonVisible(_renderDocRow.CancelBridgeDownloadButton, !skipped && downloading);
+			SetButtonVisible(_renderDocRow.RemoveBridgeButton, !skipped && (status.IsInstalled ||
+				(status.State == PerfMeterRenderDocBridgeInstallState.Invalid && manageable)));
 		}
 
 		private static PerfMeterCaptureBackendCapability GetExternalCapability(PerfMeterCaptureTool tool)
@@ -1097,6 +1135,82 @@ namespace SGG.PerfMeter.Editor.UI
 			Report("RenderDoc attachment checked. Unity can confirm only that an external GPU profiler is attached; it cannot identify RenderDoc versus PIX.");
 		}
 
+		private void DownloadRenderDocBridge()
+		{
+			bool confirmed = EditorUtility.DisplayDialog(
+				"Install Optional SGG RenderDoc Bridge",
+				"Download and install the verified Windows x64 Editor bridge " +
+				PerfMeterRenderDocBridgeInstaller.ArtifactVersion + "?\n\n" +
+				"The archive SHA-256 is pinned in this package. This does not install RenderDoc and requires an Editor restart.",
+				"Download and Install",
+				"Cancel");
+			if (!confirmed)
+			{
+				return;
+			}
+
+			if (!PerfMeterRenderDocBridgeInstaller.TryStartDownload(out string error))
+			{
+				Report("Bridge download failed to start: " + error);
+			}
+			else
+			{
+				Report("Verified bridge download started from the SGG PerfMeter GitHub Release.");
+			}
+			Refresh();
+		}
+
+		private void InstallLocalRenderDocBridge()
+		{
+			string path = EditorUtility.OpenFilePanel(
+				"Select Verified SGG RenderDoc Bridge",
+				string.Empty,
+				"dll");
+			if (string.IsNullOrEmpty(path))
+			{
+				return;
+			}
+
+			bool confirmed = EditorUtility.DisplayDialog(
+				"Install Local SGG RenderDoc Bridge",
+				"Install only if the selected file came from the SGG PerfMeter " +
+				PerfMeterRenderDocBridgeInstaller.ArtifactVersion +
+				" release. The installer will reject every other hash and configure an Editor-only Windows x86_64 plugin.",
+				"Verify and Install",
+				"Cancel");
+			if (!confirmed)
+			{
+				return;
+			}
+
+			bool installed = PerfMeterRenderDocBridgeInstaller.TryInstallLocal(path, out string message);
+			Report((installed ? string.Empty : "Bridge install failed: ") + message);
+			Refresh();
+		}
+
+		private void CancelRenderDocBridgeDownload()
+		{
+			PerfMeterRenderDocBridgeInstaller.CancelDownload();
+			Refresh();
+		}
+
+		private void RemoveRenderDocBridge()
+		{
+			bool confirmed = EditorUtility.DisplayDialog(
+				"Remove SGG RenderDoc Bridge",
+				"Remove the verified project-local bridge? RenderDoc itself is not affected. Restart the Editor after removal.",
+				"Remove",
+				"Cancel");
+			if (!confirmed)
+			{
+				return;
+			}
+
+			bool removed = PerfMeterRenderDocBridgeInstaller.TryRemove(out string message);
+			Report((removed ? string.Empty : "Bridge removal failed: ") + message);
+			Refresh();
+		}
+
 		private void RevealGraphicsStateCollectionArtifacts()
 		{
 			PerfMeterGraphicsStateCollectionCapabilitiesSnapshot capabilities = RuntimePerformanceMeter.GetGraphicsStateCollectionCapabilities();
@@ -1224,7 +1338,14 @@ namespace SGG.PerfMeter.Editor.UI
 		{
 			return "using SGG.PerfMeter;\n\n" +
 				"PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(\n" +
-				"    new PerfMeterCaptureOptions(\"ftue-renderdoc-capture\", PerfMeterCaptureTool.RenderDoc, 1));";
+				"    new PerfMeterCaptureOptions(\n" +
+				"        \"ftue-renderdoc-capture\",\n" +
+				"        PerfMeterCaptureTool.RenderDoc,\n" +
+				"        captureFrames: 1,\n" +
+				"        preRollFrames: 0,\n" +
+				"        postRollFrames: 0,\n" +
+				"        backendMode: PerfMeterCaptureBackendMode.NativeRequired,\n" +
+				"        externalArtifactStorageMode: PerfMeterExternalArtifactStorageMode.Copy));";
 		}
 
 		internal static string FormatMemoryProfilerInstalledStatus(string version, string minimumVersion)
@@ -1575,6 +1696,10 @@ namespace SGG.PerfMeter.Editor.UI
 			internal Button CopyTraceButton { get; set; }
 			internal Button CopyPrewarmButton { get; set; }
 			internal Button RevealArtifactsButton { get; set; }
+			internal Button DownloadBridgeButton { get; set; }
+			internal Button InstallLocalBridgeButton { get; set; }
+			internal Button CancelBridgeDownloadButton { get; set; }
+			internal Button RemoveBridgeButton { get; set; }
 			internal Button CheckAttachmentButton { get; set; }
 			internal Button CopySnippetButton { get; set; }
 			internal Button GuideButton { get; set; }

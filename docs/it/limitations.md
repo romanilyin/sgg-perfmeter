@@ -23,8 +23,10 @@ I profiler counter variano per piattaforma, versione Unity, impostazioni render 
 ## External GPU Capture
 
 - Il coordinator consente una richiesta attiva e avanza in modo deterministico attraverso `PreRoll`, `Capturing`, `PostRoll` e `Completed`. Lo stesso ID attivo e idempotente; un ID attivo diverso viene rifiutato per sovrapposizione.
-- Il backend usa l'`ExternalGPUProfiler` sperimentale di Unity solo nell'Editor o nei Development Builds, quando uno strumento esterno e gia collegato. `RenderDoc` e limitato al desktop Windows/Linux con Direct3D 11, Direct3D 12 o Vulkan; `PIX` e limitato al desktop Windows con Direct3D 12.
-- `Completed` conferma solo il wrapper lifecycle di Unity. Non dimostra che esista un artefatto esterno `.rdc`/`.wpix` e non fornisce un path dell'artefatto.
+- `GenericUnity` usa l'`ExternalGPUProfiler` sperimentale di Unity in Editor/Development Build. La sua matrice resta RenderDoc su desktop Windows/Linux con D3D11/D3D12/Vulkan e PIX su desktop Windows con D3D12; completion non autentica tool o artefatto.
+- Il percorso nativo opzionale supporta solo RenderDoc nell'Editor Unity Windows x64 con D3D11, D3D12 o Vulkan. Development Player, Linux nativo, IL2CPP, mobile e macOS nativo non sono supportati.
+- Il pacchetto UPM resta senza binari. Il bridge separato e fissato usa solo una `renderdoc.dll` gia caricata e non installa, carica, avvia o inietta mai RenderDoc.
+- Native MetadataOnly usa `DoNotShare` per default; Copy/Embed sono sensibili, con quote separate e `ReviewBeforeShare`. Gli artefatti generic/caller restano observed, non autorevoli.
 - I test automatizzati usano un fake backend. La conferma dello strumento esterno reale e dell'artefatto resta un release gate.
 - Correlated bundles e MCP capture control sono disponibili, ma un `.rdc`/`.wpix` fornito resta solo un artefatto osservato e con hash: Unity non puo autenticare lo strumento collegato o l'associazione con il capture. La verifica con uno strumento reale resta un release-candidate gate.
 

@@ -164,11 +164,11 @@ if (capture.IsActive && userRequestedCancellation)
 
 Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。重复相同的 active ID 是 idempotent；不同的 active ID 会因 overlap 被 reject。`Canceled`、`Unavailable` 和 `Error` 是明确的 terminal state。
 
-内置 backend 仅在 Editor 或 Development Build、external tool 已 attach 且 desktop platform/API 组合受支持时 wrap Unity 的 experimental `ExternalGPUProfiler`。支持的组合是 Windows/Linux desktop 上使用 Direct3D 11、Direct3D 12 或 Vulkan 的 `RenderDoc`，以及 Windows desktop 上使用 Direct3D 12 的 `PIX`。由于 Unity 不会暴露 attached tool identity，请显式选择 `RenderDoc` 或 `Pix`。`Status.Tool` 仅表示 requested tool，不是 verified attached-tool identity。`Completed` 只确认 Unity wrapper lifecycle，不验证或返回 external `.rdc`/`.wpix` artifact，也不返回 artifact path。Automated tests 使用 fake backend；real external tool 和 artifact 的确认仍是 release gate。
+`PerfMeterCaptureBackendMode.GenericUnity` 仍是 `ExternalGPUProfiler` 的 compatibility default，不会 authenticate tool/artifact identity。`NativePreferred` 请求 optional Windows x64 Editor bridge，只能在 native begin 前 fallback；`NativeRequired` 不会 fallback。Native path 支持 D3D11、D3D12 和 Vulkan。status 报告 `RequestedBackendMode`、`EffectiveBackendKind`、`NativePhase`、result code 和 fallback reason。
 
 `PerfMeterCaptureOptions` 的默认值是 `captureFrames: 1`、`preRollFrames: 0` 和 `postRollFrames: 0`。有效的 `RequestCapture` 会自动启动 runtime。不带 ID 的 `CancelCapture()` 会取消当前报告的 active request；传入 ID 可以防止误取消更新的 request。
 
-`PerfMeterCaptureBundleOptions` overload 会将 capture samples 与 baseline session 分离，并可包含 opt-in screenshot。当 `PerformanceMeter.GetCaptureBundleStatus(captureId).IsExportReady` 后，`PerformanceMeter.ExportCaptureBundle(captureId)` 会在 `Temp/PerfMeter/CaptureBundles` 下原子创建 versioned bundle，其中包含 SHA-256 manifest、samples、alerts、context、optional screenshot 和 external artifact metadata。project-local `.rdc`/`.wpix` 仅是 observed artifact，绝不标记为 authoritative；traversal、reparse point 和项目外文件会被拒绝。
+Generic 或 caller-supplied `.rdc`/`.wpix` 保持 observed。只有 generation-bound native descriptor 可以 authenticate finalized `.rdc`。Native MetadataOnly 使用 `DoNotShare`；Copy/Embed 使用 separate quota 并要求 `ReviewBeforeShare`。Traversal、reparse point 和 owned root 之外的文件会被拒绝。
 
 Capture bundle export 还提供 non-blocking single-flight API：`RequestCaptureBundleExport(..., out exportId)`、`GetCaptureBundleExportStatus(exportId)` 和 `CancelCaptureBundleExport(exportId)`。Status 会报告 phase、progress、字节数、cancellation、retry、commit path，以及通用 external-artifact envelope。现有 `ExportCaptureBundle(...)` API 仍作为 blocking compatibility wrapper，而 serialization、文件 I/O、hashing、retention 和 atomic commit 均在 worker thread 上运行。
 

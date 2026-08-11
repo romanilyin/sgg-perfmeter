@@ -8,6 +8,8 @@ SGG PerfMeter распространяется как пакет Unity с име
 - URP `17.4+` с Render Graph path или HDRP `17.4+` с Custom Pass integration.
 - Поддержка UI Toolkit во время выполнения.
 - Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
+- Опциональный native RenderDoc capture поддерживается только в Windows x64 Unity Editor с Direct3D 11, Direct3D 12 или Vulkan; Development Player, Linux native, IL2CPP, mobile и macOS native не поддерживаются.
+- UPM-пакет остается без бинарников и никогда не устанавливает RenderDoc. FTUE загружает или локально устанавливает только отдельно опубликованный bridge с точным совпадением размера, SHA-256 и AMD64 native PE contract; после этого требуется перезапуск Editor.
 
 Метаданные пакета используют Unity `2022.3` как import-safety floor для проверок импорта и компиляции. Актуальная поддерживаемая runtime-цель - Unity `6000.4+` с URP `17.4+` Render Graph или HDRP `17.4+` Custom Pass integration.
 

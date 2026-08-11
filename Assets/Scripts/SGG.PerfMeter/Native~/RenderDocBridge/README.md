@@ -23,15 +23,18 @@ static MSVC runtime and embed the requested artifact version in the PE resource.
 
 ## Package Release Artifact
 
-After a successful Release build and CTest run, create the deterministic
-Windows x64 ZIP and checksum from the package root:
+From a clean release commit, create the deterministic Windows x64 ZIP and
+checksum from the package root:
 
 ```powershell
-./package-release.ps1 -PackageRoot <package-root> -BuildDirectory <build-directory> -OutputDirectory <output-directory> -PackageVersion <package-version> -SourceCommit <git-commit>
+./package-release.ps1 -PackageRoot <package-root> -BuildDirectory <new-empty-build-directory> -OutputDirectory <output-directory> -PackageVersion <package-version> -SourceCommit <full-git-head>
 ```
 
-The archive contains only `sgg_renderdoc_bridge.dll`, an artifact manifest and
-the required package/third-party notices. It never contains RenderDoc binaries.
+The packager clean-builds the configured Release/MSVC x64 tree, runs CTest, and
+verifies the package/CMake/PE versions, exports and static-runtime imports before
+writing the artifact. The archive contains only `sgg_renderdoc_bridge.dll`, an
+artifact manifest and the required package/third-party notices. It never
+contains RenderDoc binaries.
 
 ## Live Resolver Probe
 

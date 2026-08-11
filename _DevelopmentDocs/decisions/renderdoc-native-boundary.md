@@ -1,6 +1,6 @@
 # Native RenderDoc Boundary Decision
 
-Status: `PM-RDOC-001` ADR accepted. The isolated `PM-RDOC-002` source bridge is implemented and validated without public/managed wiring; `PM-RDOC-003` and real Unity `.rdc` validation are pending. This decision and the bridge evidence are not a support or release claim.
+Status: `PM-RDOC-001..003` implemented for the `2026.8.11-1` release candidate. The initial Windows x64 Unity Editor D3D11/D3D12/Vulkan rows passed production-wired real `.rdc` validation. Broader platforms/players and replay analysis remain deferred.
 
 ## Context And Scope
 
@@ -18,9 +18,9 @@ The initial native matrix has exactly these independent smoke rows:
 | Windows x64 | Unity Editor | D3D12 |
 | Windows x64 | Unity Editor | Vulkan |
 
-Each row requires its own attached real RenderDoc smoke before any future support statement. Development Player, Linux x64, IL2CPP, mobile, and macOS are deferred and are not claimed. Linux can be considered only after the Windows path is stable.
+Each row passed its own attached real RenderDoc smoke with authenticated artifact, title/comments, replay XML/thumbnail, and stall evidence. Development Player, Linux x64, IL2CPP, mobile, and macOS are deferred and are not claimed.
 
-Rollout is deliberately staged: `PM-RDOC-001` is this accepted ADR; `PM-RDOC-002` is the completed isolated Windows bridge and test slice with no public capture wiring; `PM-RDOC-003` adds managed selection, provenance, quota/privacy behavior, and the real smoke gates. `PM-RDA` remains a separate later rollout.
+The staged rollout is complete through `PM-RDOC-003`: the accepted ADR, fixed Windows bridge, managed selection/provenance/storage, production registration, real smoke gates, and separately verified optional bridge distribution form the `2026.8.11-1` candidate. `PM-RDA` remains a separate later rollout.
 
 ## Already-Loaded Native Boundary
 
@@ -33,15 +33,15 @@ GetProcAddress(module, "RENDERDOC_GetAPI")
 
 If the module or export is absent, the bridge reports that condition. It must never call `LoadLibrary`, accept a DLL path from MCP or settings, bundle or install RenderDoc, elevate privileges, inject or self-inject, or otherwise attach a production player. The RenderDoc installation remains user-owned. The optional Windows x64 Editor plugin and managed adapter have no core dependency; no RenderDoc binary or vendor SDK is shipped.
 
-`PM-RDOC-002` pins the public RenderDoc app header to upstream commit [`7db2264afa00a5313154022f8c4ae0628a641300`](https://github.com/baldurk/renderdoc/commit/7db2264afa00a5313154022f8c4ae0628a641300), verifies SHA-256 at configure time, and retains its MIT license notice. Windows x64 Editor plugin import settings remain a `PM-RDOC-003` gate because this isolated slice ships source but no DLL.
+`PM-RDOC-002` pins the public RenderDoc app header to upstream commit [`7db2264afa00a5313154022f8c4ae0628a641300`](https://github.com/baldurk/renderdoc/commit/7db2264afa00a5313154022f8c4ae0628a641300), verifies SHA-256 at configure time, and retains its MIT license notice. The binary-free UPM package pins the separately published bridge bytes; FTUE installs them only as a Windows x64 Editor-only plugin with every player target disabled.
 
 ## Coordinator And Frame Boundary
 
-Native capture reuses the existing capture coordinator and lease resources; it does not introduce an independent overlap policy. The current synchronous `IPerfMeterCaptureBackend.TryBegin/TryEnd` contract cannot represent deferred frame hooks or artifact finalization. `PM-RDOC-002` is not auto-wired to public capture. `PM-RDOC-003` must add a narrow internal asynchronous control/artifact-observer seam with generation-bound phases for preflight, begin scheduled/executed, end scheduled/executed, awaiting artifact, finalizing artifact, and terminal completion. The existing generic backend remains a synchronous adapter, while public enums, results, MCP IDs, bundle schemas, and timeline schemas stay compatible.
+Native capture reuses the existing capture coordinator and lease resources; it does not introduce an independent overlap policy. `PM-RDOC-003` adds the internal asynchronous control/artifact-observer seam with generation-bound preflight, begin, end, artifact wait/finalization, and terminal phases. The generic backend remains the compatibility default; existing results, MCP IDs, bundle schemas, and timeline schemas remain compatible.
 
 The capture lease remains held from storage preflight until the native operation reaches an artifact terminal state and its immutable capture/bundle/generation association is frozen. A later request cannot supersede an operation waiting for an artifact. Domain reload or runtime stop marks a nonterminal operation `LostSession`, never resumes authority from path evidence alone, and performs only marker-owned cleanup that can be proven safe.
 
-The MVP accepts the request on the Unity main thread, begins before the intended captured render, and schedules end through `WaitForEndOfFrame`; the recorded boundary mode is `managed_end_of_frame`. This requires `PM-RDOC-003` to replace the current native-path `Update`-time synchronous end call. A later render-plugin callback, if adopted, may perform only short RenderDoc app-API operations. Filesystem preflight, polling, copying, hashing, replay, and other blocking work never run on the Unity main or render-frame path.
+The implemented path accepts the request on the Unity main thread, begins before the intended captured render, and schedules end through `WaitForEndOfFrame`; the recorded boundary mode is `managed_end_of_frame`. Filesystem preflight, polling, copying, hashing, and retention run on the task worker, not the main or render-frame path.
 
 The initial bridge uses RenderDoc's `(NULL, NULL)` active-context target and records `target_mode = wildcard_active_context`; it does not claim a specific Editor window or graphics-device handle. More than one matching artifact, an unexpected context, or a multi-window result that cannot be disambiguated is non-authoritative and fails the native association gate. A future explicit device/window target requires a new versioned bridge capability and real matrix evidence.
 
@@ -91,9 +91,9 @@ Bridge result, coordinator result, lease reason, native operation phase, and art
 
 An unverified file that is stable and hashed maps to `AssociationState.Unverified` (`PerfMeterExternalArtifactAssociationState.Unverified`), `FinalizationState.Finalized` (`PerfMeterExternalArtifactFinalizationState.Finalized`), and `AuthorityState.Observed` (`PerfMeterExternalArtifactAuthorityState.Observed`); it is never authoritative. A RenderDoc-authenticated result may set `AuthorityState.Authenticated` only when all of these are true: `AssociationState.BridgeAuthenticated` (`PerfMeterExternalArtifactAssociationState.BridgeAuthenticated`), `FinalizationState.Finalized`, `ContainsGpuCaptureData = PerfMeterExternalArtifactContentState.Present`, and a valid source SHA-256. Copy and Embed additionally require a valid post-copy SHA-256. `ToolAuthenticated` is reserved for a stronger tool-provided association.
 
-The existing `IsAuthoritative` predicate is necessary but not sufficient for the native path. `PM-RDOC-003` must enforce the additional RenderDoc preconditions above before publishing authority, without changing the existing public envelope enums, results, MCP IDs, or schemas.
+The existing `IsAuthoritative` predicate is necessary but not sufficient for the native path. The native descriptor enforces the additional RenderDoc preconditions above before publishing authority without changing existing public envelope enums, results, MCP IDs, or schemas.
 
-The current caller-supplied exporter path always creates a legacy `Unverified`/`Observed` embedded snapshot and cannot consume native authority. `PM-RDOC-003` must add a separate internal, generation-bound source descriptor carrying the already validated generic snapshot and RenderDoc provenance; it must not reinterpret the legacy caller path. The outer compatibility state maps no artifact to `Unavailable`, an observed/non-authoritative file to `FileObserved`, and only a fully authenticated native snapshot to `Authoritative`. `require_authoritative_external_artifact` may succeed only through this native descriptor path.
+The caller-supplied exporter path always creates a legacy `Unverified`/`Observed` snapshot and cannot consume native authority. The separate internal generation-bound source descriptor carries validated RenderDoc provenance without reinterpreting that legacy path. Only a fully authenticated native snapshot maps to `Authoritative` and may satisfy `require_authoritative_external_artifact`.
 
 The versioned `external-artifact.json` output adds a RenderDoc-specific provenance object containing bridge ABI, negotiated app API, boundary mode, target mode, request nonce, `count_before`, capture index/timestamps, and an opaque SHA-256 binding for the source file identity. Raw Windows volume/file IDs stay internal under the storage/privacy policy. These are additive provenance fields, not substitutions for `ToolVersion`; schema/unknown-field fixtures are required before wiring.
 
@@ -101,18 +101,18 @@ The versioned `external-artifact.json` output adds a RenderDoc-specific provenan
 
 An `.rdc` is sensitive GPU-capture data. The default is `MetadataOnly` plus `DoNotShare`; an export request must explicitly move to `ReviewBeforeShare`. There is no automatic upload. Public and MCP surfaces expose only relative project-local metadata, never an absolute source path. `Copy` and `Embed` are explicit opt-in modes.
 
-Native source and copied/embed storage quotas are separate from the current generic 64 MiB/default bundle quota. The accepted [`PM-RDOC-003A` policy](renderdoc-storage-policy.md) fixes the initial per-file, aggregate, retention, free-space, polling, cleanup/retry, privacy, and stall values; implementation and tests remain mandatory before enabling the backend. `PM-RDOC-002` alone cannot expose production capture. Cleanup may delete only marker- or token-owned paths; unknown or external captures are never deleted.
+Native source and Copy/Embed storage quotas are separate from the generic 64 MiB/default bundle quota. The implemented [`PM-RDOC-003A` policy](renderdoc-storage-policy.md) fixes the initial per-file, aggregate, retention, free-space, polling, cleanup/retry, privacy, and stall values. Cleanup may delete only marker- or token-owned paths; unknown or external captures are never deleted.
 
 ## Capability Vocabulary
 
-Future capability snapshots may add fields for static eligibility, module loaded, API negotiated, capture ready, and provenance available. Existing `renderdoc_supported` remains compatibility/static eligibility only; a requested tool is not verified identity. `PM-RDOC-003` must expose the explicit backend-selection mode and the exact pre-begin fallback reason without changing the default behavior of existing API/MCP calls.
+Capability snapshots expose static eligibility, module/API readiness, backend-selection mode, native phase, result code, and exact pre-begin fallback reason. Existing `renderdoc_supported` remains compatibility/static eligibility only; a requested tool is not verified identity.
 
 ## Validation Gates And Non-Goals
 
-The isolated bridge requires fake-table, missing-module, missing-export, API `1.4`/`1.6`/`1.7` negotiation, mandatory discard, capture-count, zero/multiple/foreign candidates, path-buffer, invalid UTF-8, template restoration, concurrency rejection, and C/C++ ABI/result baselines. `PM-RDOC-003` managed/filesystem tests must cover traversal/reparse rejection, unique nonce roots, wildcard/multi-window ambiguity, file replacement/growth/deletion, lease retention through artifact wait, cancel, domain reload, scene load, runtime stop, and successful/uncertain begin. Privacy/storage tests cover selection defaults, metadata/copy/embed transitions, quota/free-space/retention, share confirmation, and marker-owned cleanup. Compile/tests must cover the optional assembly boundary before managed wiring.
+Automated coverage includes fake-table, missing module/export, API negotiation, discard, capture count, candidate ambiguity, path/UTF-8/template/concurrency cases, fixed ABI baselines, traversal/reparse and replacement races, nonce ownership, lease retention, cancel/reload/scene/runtime teardown, MetadataOnly/Copy/Embed, quota/free-space/retention, privacy, and cleanup.
 
-Each initial Windows matrix row then needs a manual attached `.rdc` smoke that opens in the matching RenderDoc build, contains the intended GPU frame, preserves comments and, for API `1.6+`, the capture title, binds the expected path/index/timestamp/file identity and hashes, rejects overlap/foreign hotkeys, and passes the fixed `PM-RDOC-003A` main/render-thread stall budget.
+Each initial Windows matrix row passed a manual attached `.rdc` smoke in the matching RenderDoc build with intended GPU-frame content, live title, persisted comments, bound path/index/timestamp/file identity and hashes, overlap/foreign-hotkey rejection, and the fixed `PM-RDOC-003A` main/render-thread stall budget.
 
-The original research intake was static. The later `PM-RDOC-002` validation compiled the C ABI and DLL with MSVC, passed the fake table suite, and launched a non-capturing production-resolver probe through portable RenderDoc v1.46 at the pinned commit; the probe observed the already-loaded module/export and negotiated app API `1.7.0`. It did not run a Unity frame capture, create/open an `.rdc`, or validate any D3D11/D3D12/Vulkan matrix row, so no support or release readiness is claimed. Replay, counters, analyzer protocol, and expensive analysis stay out-of-process under `PM-RDA`; no replay DLL/controller belongs in Unity.
+The initial isolated `PM-RDOC-002` probe was later superseded by production-wired D3D11/D3D12/Vulkan validation under portable RenderDoc v1.46 at the pinned commit and negotiated app API `1.7.0`. Replay, counters, analyzer protocol, and expensive analysis stay out-of-process under `PM-RDA`; no replay DLL/controller belongs in Unity.
 
 Related decisions: [`renderdoc-storage-policy.md`](renderdoc-storage-policy.md), [`capture-coordinator.md`](capture-coordinator.md), [`capture-bundles.md`](capture-bundles.md), and [`roadmap.md`](../backlog/roadmap.md). Research intake: `C:\Work\Unity\perfmeter-temp\00-index.md` and `C:\Work\Unity\perfmeter-temp\02-renderdoc-native-recommendations.md`.

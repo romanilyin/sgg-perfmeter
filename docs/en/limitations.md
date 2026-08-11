@@ -22,12 +22,14 @@ Profiler counters vary by platform, Unity version, render pipeline settings, and
 
 ## External GPU Capture
 
-- The coordinator uses Unity's experimental `ExternalGPUProfiler`; it does not ship, inject, launch, or identify RenderDoc or PIX.
-- Capture is available only in the Editor or Development Builds when the requested external profiler is already attached.
-- RenderDoc support is limited to Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan. PIX support is limited to Windows desktop with Direct3D 12.
+- `GenericUnity` uses Unity's experimental `ExternalGPUProfiler`; it does not ship, inject, launch, or identify RenderDoc or PIX. It is available only in the Editor or Development Builds when the requested profiler is already attached.
+- The generic requested-tool matrix remains RenderDoc on Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan, and PIX on Windows desktop with Direct3D 12. Generic completion cannot authenticate tool or artifact identity.
+- The optional native RenderDoc path is supported only in the Windows x64 Unity Editor with Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are unsupported.
+- The UPM package remains binary-free. Its separately published pinned bridge resolves only an already-loaded `renderdoc.dll`; neither the package nor bridge installs, loads, launches, injects, or bundles RenderDoc/replay binaries.
 - One capture request can be active at a time. Heavy capture is always explicit and opt-in.
-- `Completed` confirms the Unity begin/end wrapper lifecycle only. It does not prove that an external `.rdc`/`.wpix` artifact exists and does not provide an artifact path.
-- Automated tests use a fake backend. Correlated bundles and MCP capture control are available, but a caller-supplied `.rdc`/`.wpix` remains only an observed, hashed artifact because Unity cannot authenticate the attached tool or artifact association. Real external-tool confirmation remains a release-candidate gate.
+- Generic `Completed` confirms only Unity's wrapper lifecycle. Native status additionally exposes backend kind and generation-bound phase; authority requires exactly selected, finalized, bridge-authenticated `.rdc` evidence with stable identity and hashes.
+- Native MetadataOnly defaults to `DoNotShare`; Copy/Embed data is sensitive, separately quota-managed, marker-owned, and `ReviewBeforeShare`. Caller-supplied artifacts always remain observed and non-authoritative.
+- Real attached RenderDoc validation covers the initial native D3D11/D3D12/Vulkan Editor rows; broader platforms and players remain release gates rather than inferred support.
 
 ## Overdraw Cost And Support
 

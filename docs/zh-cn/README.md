@@ -24,7 +24,7 @@ SGG PerfMeter 可识别帧瓶颈、对比性能变化、记录可复现的会话
 - FrameTimingManager CPU/GPU timing：CPU frame、main thread、render thread、present wait，以及可用时的 GPU frame time。
 - ProfilerRecorder render counters：draw calls、SetPass、batches、vertices、SRP Batcher、BRG/GRD、uploads、memory，以及可用时的 GPU memory。
 - GPU、CPU main、CPU render、present/VSync、balanced 或 unknown 的瓶颈分类。
-- 当 external GPU profiler 已 attach 时，协调一个明确且 bounded 的 RenderDoc/PIX request，并使用 deterministic 的 pre-roll、capture、post-roll state；这种 guarded coordination 仅限 Editor/Development Build，且不宣称 authoritative artifact path。
+- 通过 Unity generic path 协调 RenderDoc/PIX，或选择使用单独分发并经过 SHA-256 验证的 RenderDoc bridge，在 Windows x64 Editor 的 D3D11/D3D12/Vulkan 上生成 authenticated `.rdc` artifact。UPM package 保持 binary-free，也不会安装 RenderDoc。
 - 通过 URP Render Graph 显式启用的 overdraw measurement 和 visual overdraw heatmap；HDRP overdraw/heatmap unsupported，但 core diagnostics 仍可用。
 - 面向代码和 MCP automation 的 device、URP/HDRP camera、render integration、status、metrics、alerts、sessions 和 custom metrics snapshots。
 

@@ -64,6 +64,7 @@ target_include_directories(sgg_renderdoc_bridge
         "${BRIDGE_RENDERDOC_INCLUDE_DIR}")
 target_compile_definitions(sgg_renderdoc_bridge PRIVATE SGG_RD_BUILD_DLL=1)
 target_compile_options(sgg_renderdoc_bridge PRIVATE /W4 /WX /permissive- /EHsc)
+target_link_options(sgg_renderdoc_bridge PRIVATE /Brepro)
 target_link_libraries(sgg_renderdoc_bridge PRIVATE kernel32)
 
 include(CTest)

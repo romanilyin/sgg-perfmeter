@@ -49,7 +49,7 @@ RenderDoc e uma ferramenta externa e nao vem incluido com o PerfMeter. Siga o fl
        new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
    ```
 
-5. Use **Open Runtime** para o status da captura. A solicitacao copiada nao e persistida nem invocada automaticamente. Ela esta sujeita aos requisitos de Editor/Development Build, ferramenta conectada, plataforma desktop e graphics API. `Completed` confirma somente o wrapper lifecycle do Unity; nao identifica a ferramenta conectada, nao autentica um artefato `.rdc` e nao retorna um caminho de artefato.
+5. No Editor Windows x64, voce pode primeiro usar **Download Verified Bridge** ou **Install Local Bridge**; somente o bridge separado exatamente fixado e instalado como plugin Editor-only, nunca o RenderDoc. Reinicie o Editor. A solicitacao nativa copiada usa `NativeRequired` + `Copy`; MetadataOnly e `DoNotShare` e Copy/Embed sao `ReviewBeforeShare`.
 
 ### GraphicsStateCollection
 
@@ -142,9 +142,9 @@ PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 ```
 
-O coordinator permite apenas uma solicitacao ativa e avanca deterministicamente por `PreRoll`, `Capturing`, `PostRoll` e `Completed`. O mesmo ID ativo e idempotente; um ID diferente e rejeitado como sobreposicao. Pre-roll e post-roll contam frames da Unity; somente `Capturing` abre o alert capture scope e invoca o `ExternalGPUProfiler` experimental da Unity. Os gates obrigatorios sao Editor ou Development Build e uma ferramenta conectada. `RenderDoc` e permitido no desktop Windows/Linux com Direct3D 11, Direct3D 12 ou Vulkan; `PIX` e permitido no desktop Windows com Direct3D 12.
+`GenericUnity` preserva a matriz anterior de `ExternalGPUProfiler` e nao pode autenticar tool/artifact. `NativePreferred` so pode fazer fallback antes de begin; `NativeRequired` nunca. Native RenderDoc e suportado somente no Editor Unity Windows x64 com D3D11, D3D12 ou Vulkan.
 
-`Completed` significa somente que o wrapper lifecycle protegido terminou. A Unity nao expoe a identidade da ferramenta conectada nem um path autoritativo do artefato; `Status.Tool` e somente a ferramenta solicitada. O overload com `PerfMeterCaptureBundleOptions` separa samples baseline/capture e exporta atomicamente um bundle local ao projeto; um artefato externo permanece observed, nao authoritative. Para automacao use `perfmeter.capture.request/status/cancel/export/capabilities`.
+Generic `Completed` continua sendo apenas wrapper lifecycle. O status nativo informa backend kind e generation-bound phase e pode autenticar um `.rdc` finalizado. Artefatos generic/caller continuam observed. MCP aceita `backend_mode`, mas o storage mode e selecionado na API C#.
 
 ## Diagnosticos De Overdraw
 

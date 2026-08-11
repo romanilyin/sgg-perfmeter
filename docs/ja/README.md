@@ -25,7 +25,7 @@ SGG PerfMeter は、フレームが CPU、GPU、レンダースレッド、prese
 - **Runtime overlay**: live inspection 用の visual presets、compact layouts、graphs、metric bars、custom metric rows。
 - **Public C# API**: status、metrics、device、camera、Render Graph、alerts、sessions、custom metrics の immutable snapshots。
 - **Session recording**: warm-up、scene scope、worst frames、device/camera metadata、JSON/CSV export を持つ bounded captures。
-- **External GPU capture**: external GPU profiler が attach 済みの場合に、明示的で bounded な RenderDoc/PIX request を deterministic な pre-roll、capture、post-roll state とともに調整します。guarded coordination は Editor/Development Build に限られ、authoritative artifact path は主張しません。
+- **External GPU capture**: Unity の generic path で RenderDoc/PIX を調整するか、別配布で SHA-256 検証された RenderDoc bridge を使用して、Windows x64 Editor の D3D11/D3D12/Vulkan で authenticated `.rdc` artifact を生成できます。UPM package は binary-free のままで、RenderDoc 自体は install しません。
 - **Alerts**: structured logs、callbacks、Editor warning cooldowns、latest-alert snapshots。
 - **Agent layer**: MCP command metadata により、agents が project inspection、run comparison、A/B test、hotspot search を構造化データで実行できます。
 
