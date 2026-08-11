@@ -51,11 +51,16 @@ Counter availability는 `AvailableCounters`, `UnavailableCounters`, warnings를 
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability는 고정 120-frame window에서 CPU callback cost를 low-overhead로 측정합니다. Average는 invocation 기준입니다. 전체 state는 `NotInitialized`, `Collecting`, `Ready`이고 component state는 `NotMeasured`, `Collecting`, `Ready`, `Unsupported`입니다.
 
-Component는 `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, `HdrpRenderIntegration`입니다. 각 component는 window/invocation count, average/maximum CPU milliseconds, total/average allocated bytes, budget 및 `NotEvaluated`/`WithinBudget`/`Exceeded` state를 노출합니다.
+Component는 `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, `HdrpRenderIntegration`입니다. 각 component는 window/invocation count, average/maximum CPU milliseconds, total/average allocated bytes, budget 및 `NotEvaluated`/`WithinBudget`/`Exceeded` state를 노출합니다. 추가 provenance에는 epoch, 첫/마지막 measurement frame, callback-frame count, typed inactive reason, 명시적 GPU attribution availability가 포함됩니다.
+
+`GetSelfOverheadWindow(...)`는 session 또는 capture에 정확히 바인딩된 URP observation을 반환합니다. identity, epoch, frame bounds, containment, quality/pipeline/renderer identity, feature installed/enabled/enqueued evidence를 포함합니다. Inactive result는 `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete`, `CaptureWindowMismatch` 같은 typed reason을 사용하고 evidence가 부족하면 추측하지 않고 `UnknownInactiveReason`을 반환합니다. 이후 capture가 이전 completed epoch를 재사용할 수 없습니다.
 
 | Component | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -65,7 +70,7 @@ Component는 `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`,
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing은 명시적으로 `Unavailable`입니다. 이 diagnostics는 기존 CPU/GPU metrics에서 overhead를 빼거나 값을 조정하지 않습니다.
+URP scope는 package-owned CPU-side `RecordRenderGraph()` registration과 current-thread allocation만 측정합니다. 여러 camera가 있으면 invocation count가 callback-frame count보다 클 수 있습니다. GPU attribution은 명시적으로 `Unavailable`이고 whole-frame CPU/GPU/hitch/GC는 별도 context로 유지되며 시간적 근접성만으로 PerfMeter에 귀속되지 않습니다. 이 diagnostics는 기존 CPU/GPU metrics에서 overhead를 빼거나 값을 조정하지 않습니다.
 
 ## Dynamic Profiler Metric Catalog
 

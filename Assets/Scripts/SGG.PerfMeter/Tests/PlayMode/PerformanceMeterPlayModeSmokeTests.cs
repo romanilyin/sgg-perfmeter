@@ -202,18 +202,34 @@ namespace SGG.PerfMeter.Tests.PlayMode
 
 			PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 			PerfMeterSessionSummarySnapshot recordingSummary = PerformanceMeter.GetSessionSummary();
+			PerfMeterSelfOverheadWindowSnapshot recordingWindow = PerformanceMeter.GetSelfOverheadWindow(
+				PerfMeterSelfOverheadWindowKind.Session,
+				recordingSummary.SessionId);
 			Assert.That(status.IsSessionRecording, Is.True);
 			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Recording));
 			Assert.That(recordingSummary.SampleCount, Is.LessThanOrEqualTo(2));
 			Assert.That(recordingSummary.Options.MaxSamples, Is.EqualTo(2));
+			Assert.That(recordingWindow.Identity, Is.EqualTo(recordingSummary.SessionId));
+			Assert.That(recordingWindow.WindowComplete, Is.False);
 
 			PerformanceMeter.StopSession();
 			yield return null;
 
 			PerfMeterSessionSummarySnapshot stoppedSummary = PerformanceMeter.GetSessionSummary();
+			PerfMeterSelfOverheadWindowSnapshot stoppedWindow = PerformanceMeter.GetSelfOverheadWindow(
+				PerfMeterSelfOverheadWindowKind.Session,
+				stoppedSummary.SessionId);
 			Assert.That(stoppedSummary.State, Is.EqualTo(PerfMeterSessionState.Stopped));
 			Assert.That(PerformanceMeter.IsSessionRecording, Is.False);
 			Assert.That(stoppedSummary.Device.UnityVersion, Is.Not.Empty);
+			Assert.That(stoppedWindow.Identity, Is.EqualTo(stoppedSummary.SessionId));
+			Assert.That(stoppedWindow.WindowComplete, Is.True);
+			Assert.That(stoppedWindow.Epoch, Is.EqualTo(recordingWindow.Epoch));
+			if (stoppedWindow.RenderPipeline.Kind == PerfMeterRenderPipelineKind.Universal)
+			{
+				Assert.That(stoppedWindow.FeatureInstallation, Is.EqualTo(PerfMeterUrpFeatureInstallationState.NotInstalled));
+				Assert.That(stoppedWindow.UrpRenderIntegration.InactiveReason, Is.EqualTo(PerfMeterSelfOverheadInactiveReason.RendererFeatureNotInstalled));
+			}
 
 			string jsonPath = Path.Combine(Application.temporaryCachePath, "sgg-perfmeter-session-smoke.json");
 			string csvPath = Path.Combine(Application.temporaryCachePath, "sgg-perfmeter-session-smoke.csv");
@@ -231,7 +247,10 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(PerformanceMeter.ExportSessionCsv(csvPath), Is.True);
 			Assert.That(File.Exists(jsonPath), Is.True);
 			Assert.That(File.Exists(csvPath), Is.True);
-			Assert.That(File.ReadAllText(jsonPath), Does.Contain("\"samples\""));
+			string sessionJson = File.ReadAllText(jsonPath);
+			Assert.That(sessionJson, Does.Contain("\"samples\""));
+			Assert.That(sessionJson, Does.Contain("\"self_overhead_window\":{\"schema_version\":1"));
+			Assert.That(sessionJson, Does.Contain("\"identity\":\"" + stoppedSummary.SessionId + "\""));
 			Assert.That(File.ReadAllText(csvPath), Does.StartWith("frame,time_seconds,scene,bottleneck"));
 		}
 
@@ -304,6 +323,11 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(status.ArtifactSizeBytes, Is.GreaterThan(0L));
 			Assert.That(status.CaptureId, Does.StartWith("memory-systemmemorythreshold-"));
 			Assert.That(PerformanceMeter.GetCaptureBundleStatus(status.CaptureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			PerfMeterSelfOverheadWindowSnapshot captureWindow = PerformanceMeter.GetSelfOverheadWindow(
+				PerfMeterSelfOverheadWindowKind.Capture,
+				status.CaptureId);
+			Assert.That(captureWindow.Identity, Is.EqualTo(status.CaptureId));
+			Assert.That(captureWindow.WindowComplete, Is.True);
 
 			yield return null;
 			yield return null;
@@ -316,6 +340,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 				PerfMeterCaptureBundleExportResult result = PerformanceMeter.ExportCaptureBundle(status.CaptureId, relativePath);
 				Assert.That(result.Success, Is.True, result.Error);
 				Assert.That(File.Exists(Path.Combine(fullPath, "memory-snapshot.snap")), Is.True);
+				string context = File.ReadAllText(Path.Combine(fullPath, "context.json"));
+				Assert.That(context, Does.Contain("\"self_overhead_window\":{\"schema_version\":1"));
+				Assert.That(context, Does.Contain("\"kind\":\"Capture\",\"identity\":\"" + status.CaptureId + "\""));
 				Assert.That(File.Exists(backend.LastPath), Is.False, "Owned temporary snapshot should be deleted after atomic bundle export.");
 			}
 			finally

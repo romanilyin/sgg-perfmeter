@@ -49,7 +49,96 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.CpuPerformanceLevel, Is.EqualTo(2));
 			Assert.That(snapshot.GpuPerformanceLevel, Is.EqualTo(3));
 			Assert.That(snapshot.PerformanceBottleneck, Is.EqualTo(PerfMeterAdaptiveBottleneck.Gpu));
+			Assert.That(snapshot.LastAttemptResult, Is.EqualTo(PerfMeterPlatformTelemetryCollectionResult.Collected));
+			Assert.That(snapshot.Freshness, Is.EqualTo(PerfMeterPlatformTelemetryFreshness.Fresh));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void SamplerUsesBoundedCadenceAndPublishesSampleAge()
+		{
+			FakeProvider provider = new FakeProvider("cadence", CreateTelemetry("cadence", PerfMeterThermalWarningLevel.Nominal));
+			PerformanceMeter.RegisterPlatformTelemetryProvider(provider);
+
+			PerfMeterPlatformTelemetrySnapshot first = PerfMeterPlatformTelemetryRegistry.Sample(10d);
+			PerfMeterPlatformTelemetrySnapshot cached = PerfMeterPlatformTelemetryRegistry.Sample(10.1d);
+			PerfMeterPlatformTelemetrySnapshot next = PerfMeterPlatformTelemetryRegistry.Sample(10.25d);
+
+			Assert.That(provider.CollectCount, Is.EqualTo(2));
+			Assert.That(first.LastAttemptTimeSeconds, Is.EqualTo(10d));
+			Assert.That(cached.LastAttemptTimeSeconds, Is.EqualTo(10d));
+			Assert.That(cached.SampleAgeSeconds, Is.EqualTo(0.1d).Within(0.0001d));
+			Assert.That(next.LastAttemptTimeSeconds, Is.EqualTo(10.25d));
+			Assert.That(next.SampleAgeSeconds, Is.Zero);
+		}
+
+		[Test]
+		public void ForcedCaptureBoundaryBypassesCadence()
+		{
+			FakeProvider provider = new FakeProvider("capture", CreateTelemetry("capture", PerfMeterThermalWarningLevel.Nominal));
+			PerformanceMeter.RegisterPlatformTelemetryProvider(provider);
+			PerfMeterPlatformTelemetryRegistry.Sample(20d);
+
+			PerfMeterPlatformTelemetrySnapshot forced = PerfMeterPlatformTelemetryRegistry.Sample(20.01d, force: true, captureBoundary: true);
+
+			Assert.That(provider.CollectCount, Is.EqualTo(2));
+			Assert.That(forced.ForcedAtCaptureBoundary, Is.True);
+			Assert.That(forced.LastAttemptTimeSeconds, Is.EqualTo(20.01d));
+			Assert.That(forced.LastSuccessTimeSeconds, Is.EqualTo(20.01d));
+		}
+
+		[Test]
+		public void MemoryCaptureBoundaryForcesRuntimeTelemetryAttempt()
+		{
+			FakeProvider provider = new FakeProvider("capture.runtime", CreateTelemetry("capture.runtime", PerfMeterThermalWarningLevel.Nominal));
+			PerformanceMeter.RegisterPlatformTelemetryProvider(provider);
+
+			PerfMeterMemorySnapshotRequestResult result = PerformanceMeter.RequestMemorySnapshot(new PerfMeterMemorySnapshotOptions(
+				"telemetry-boundary",
+				minimumFreeDiskBytes: 0L,
+				cooldownSeconds: 0d));
+			PerfMeterPlatformTelemetrySnapshot telemetry = PerformanceMeter.GetPlatformTelemetry();
+
+			Assert.That(result, Is.EqualTo(PerfMeterMemorySnapshotRequestResult.Unavailable));
+			Assert.That(provider.CollectCount, Is.EqualTo(1));
+			Assert.That(telemetry.ForcedAtCaptureBoundary, Is.True);
+			Assert.That(telemetry.LastAttemptResult, Is.EqualTo(PerfMeterPlatformTelemetryCollectionResult.Collected));
+		}
+
+		[Test]
+		public void FailedAttemptPreservesUnavailableProvenanceAndLastSuccessAge()
+		{
+			FakeProvider provider = new FakeProvider("failure", CreateTelemetry("failure", PerfMeterThermalWarningLevel.Nominal));
+			PerformanceMeter.RegisterPlatformTelemetryProvider(provider);
+			PerfMeterPlatformTelemetryRegistry.Sample(30d);
+			provider.ReturnNoSample = true;
+
+			PerfMeterPlatformTelemetrySnapshot failed = PerfMeterPlatformTelemetryRegistry.Sample(30.1d, force: true);
+
+			Assert.That(failed.Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
+			Assert.That(failed.ProviderId, Is.EqualTo("failure"));
+			Assert.That(failed.LastAttemptResult, Is.EqualTo(PerfMeterPlatformTelemetryCollectionResult.ProviderReturnedNoSample));
+			Assert.That(failed.LastSuccessTimeSeconds, Is.EqualTo(30d));
+			Assert.That(failed.SampleAgeSeconds, Is.EqualTo(0.1d).Within(0.0001d));
+			Assert.That(failed.Freshness, Is.EqualTo(PerfMeterPlatformTelemetryFreshness.Fresh));
+		}
+
+		[Test]
+		public void CachedTelemetryBecomesExplicitlyStale()
+		{
+			PerfMeterPlatformTelemetrySampler sampler = new PerfMeterPlatformTelemetrySampler(sampleIntervalSeconds: 10d, staleAfterSeconds: 0.5d);
+			PerfMeterPlatformTelemetryCollector collector = delegate(out PerfMeterPlatformTelemetryCollectionResult result)
+			{
+				result = PerfMeterPlatformTelemetryCollectionResult.Collected;
+				return CreateTelemetry("stale", PerfMeterThermalWarningLevel.Nominal);
+			};
+			sampler.Sample(40d, false, false, collector);
+
+			PerfMeterPlatformTelemetrySnapshot stale = sampler.Sample(41d, false, false, collector);
+
+			Assert.That(stale.IsAvailable, Is.True);
+			Assert.That(stale.Freshness, Is.EqualTo(PerfMeterPlatformTelemetryFreshness.Stale));
+			Assert.That(stale.SampleAgeSeconds, Is.EqualTo(1d));
 		}
 
 		[Test]
@@ -128,6 +217,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"availability\":\"Available\""));
 			Assert.That(json, Does.Contain("\"provider_id\":\"mcp.provider\""));
 			Assert.That(json, Does.Contain("\"temperature_level\":0.75"));
+			Assert.That(json, Does.Contain("\"last_attempt_result\":\"Collected\""));
+			Assert.That(json, Does.Contain("\"freshness\":\"Fresh\""));
+			Assert.That(json, Does.Contain("\"forced_at_capture_boundary\":false"));
 			Assert.That(json, Does.Contain("\"is_playing\":"));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
 
@@ -184,16 +276,19 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			public string Id { get; }
 			internal bool ThrowOnCollect { get; set; }
+			internal bool ReturnNoSample { get; set; }
+			internal int CollectCount { get; private set; }
 
 			public bool TryCollect(out PerfMeterPlatformTelemetrySnapshot snapshot)
 			{
+				CollectCount++;
 				if (ThrowOnCollect)
 				{
 					throw new InvalidOperationException("provider failure");
 				}
 
 				snapshot = _snapshot;
-				return true;
+				return !ReturnNoSample;
 			}
 		}
 	}

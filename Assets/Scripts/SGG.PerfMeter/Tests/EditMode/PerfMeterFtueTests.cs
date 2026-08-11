@@ -98,7 +98,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(metadataVersion, Is.Not.Empty);
 			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo(metadataVersion));
-			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo("2026.8.11-1"));
+			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo("2026.8.11-2"));
 			Assert.That(PerfMeterFtueState.ProjectKey, Is.Not.Empty);
 		}
 

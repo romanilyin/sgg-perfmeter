@@ -51,11 +51,16 @@ Counter availability は `AvailableCounters`、`UnavailableCounters`、warnings 
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability は、固定 120-frame window で CPU callback cost を low-overhead に計測します。average は invocation 単位です。全体 state は `NotInitialized`、`Collecting`、`Ready`、component state は `NotMeasured`、`Collecting`、`Ready`、`Unsupported` です。
 
-Components は `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Overlay`、`UrpRenderIntegration`、`HdrpRenderIntegration` です。各 component は window/invocation count、average/maximum CPU milliseconds、total/average allocated bytes、budget、`NotEvaluated`/`WithinBudget`/`Exceeded` state を公開します。
+Components は `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Overlay`、`UrpRenderIntegration`、`HdrpRenderIntegration` です。各 component は window/invocation count、average/maximum CPU milliseconds、total/average allocated bytes、budget、`NotEvaluated`/`WithinBudget`/`Exceeded` state を公開します。追加の provenance には epoch、最初/最後の measurement frame、callback-frame count、typed inactive reason、明示的な GPU attribution availability が含まれます。
+
+`GetSelfOverheadWindow(...)` は session または capture に厳密に紐づく URP observation を返します。identity、epoch、frame bounds、containment、quality/pipeline/renderer identity、feature installed/enabled/enqueued evidence を含みます。Inactive result は `RendererFeatureNotInstalled`、`RendererFeatureDisabled`、`PassNotEnqueued`、`NoCameraCallbackObserved`、`WindowIncomplete`、`CaptureWindowMismatch` などの typed reason を使用し、evidence が不足する場合は推測せず `UnknownInactiveReason` を返します。後続 capture が以前の completed epoch を再利用することはありません。
 
 | Component | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -65,7 +70,7 @@ Components は `Collector`、`CustomMetricProviders`、`CpuCoreProvider`、`Over
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing は明示的に `Unavailable` です。これらの diagnostics は既存の CPU/GPU metrics から overhead を差し引かず、値を補正しません。
+URP scope が測定するのは package-owned の CPU-side `RecordRenderGraph()` registration と current-thread allocation だけです。複数 camera がある場合、invocation count が callback-frame count を上回ることがあります。GPU attribution は明示的に `Unavailable` で、whole-frame CPU/GPU/hitch/GC は context のままです。時間的な近さだけで PerfMeter に帰属させません。これらの diagnostics は既存の CPU/GPU metrics から overhead を差し引かず、値を補正しません。
 
 ## Dynamic Profiler Metric Catalog
 

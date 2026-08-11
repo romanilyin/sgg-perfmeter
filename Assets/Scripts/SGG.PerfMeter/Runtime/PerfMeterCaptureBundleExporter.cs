@@ -415,7 +415,7 @@ namespace SGG.PerfMeter
 			Dictionary<string, byte[]> components = new Dictionary<string, byte[]>(StringComparer.Ordinal)
 			{
 				{ ".sgg-perfmeter-bundle", Utf8(OwnershipMarker) },
-				{ "session.json", Utf8(RedactSensitivePaths(PerfMeterSessionExporter.BuildJson(data.SessionSummary, data.BaselineSamples, data.RuntimeStatus, PerfMeterSessionExporter.RuntimePackageIdentity, data.SessionTimeline), environment)) },
+				{ "session.json", Utf8(RedactSensitivePaths(PerfMeterSessionExporter.BuildJson(data.SessionSummary, data.BaselineSamples, data.RuntimeStatus, PerfMeterSessionExporter.RuntimePackageIdentity, data.SessionTimeline, data.SessionSelfOverheadWindow), environment)) },
 				{ "capture-samples.json", Utf8(RedactSensitivePaths(PerfMeterSessionExporter.BuildCaptureSamplesJson(data.Status.CaptureId, data.CaptureSamples, data.CaptureTimeline), environment)) },
 				{ "alerts.json", Utf8(BuildAlerts(data, environment)) },
 				{ "context.json", Utf8(RedactSensitivePaths(BuildContext(data, environment), environment)) }
@@ -558,6 +558,8 @@ namespace SGG.PerfMeter
 			builder.Append('}');
 			builder.Append(",\"render_integration\":");
 			PerfMeterSessionExporter.AppendRenderIntegration(builder, data.RenderIntegration);
+			builder.Append(",\"self_overhead_window\":");
+			PerfMeterSessionExporter.AppendSelfOverheadWindow(builder, data.SelfOverheadWindow);
 			builder.Append(",\"runtime\":{");
 			builder.Append("\"state\":").Append(JsonString(runtime.State.ToString()));
 			builder.Append(",\"collection_frame\":").Append(runtime.CollectionFrame);

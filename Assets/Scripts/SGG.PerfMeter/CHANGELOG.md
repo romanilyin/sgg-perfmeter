@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+## 2026.8.11-2
+
+- Added stable hysteresis-based bottleneck diagnostics with typed evidence flags, confidence, coverage, freshness, and raw-warning preservation while retaining instantaneous raw metrics.
+- Added bounded platform telemetry cadence/cache metadata and forced capture-boundary sampling with explicit unavailable provenance.
+- Added typed runtime mutation results and truthful MCP mutation responses for lifecycle, mode, overlay, overdraw, and session operations.
+- Added a raw per-collected-frame hitch strip with bounded history, explicit timing gaps, budget severity, and peak-preserving pixel compression independent of throttled overlay text refresh.
+- Added up to four visual-preset custom metric graph channels selected by stable metric ID with independent signed ranges, display scales, colors, units, and unavailable gaps.
+- Activated bounded visual layout descriptors, module-backed extension widget descriptors, raw-strip height/width/gap controls, responsive graph columns, and public semantic theme manifests without steady-state visual-tree rebuilds.
+- Added exact session/capture-bound URP self-overhead provenance with epoch/frame/callback bounds, renderer feature installed/enabled/enqueued evidence, typed inactive reasons, stale-window rejection, and explicit unavailable GPU attribution while keeping whole-frame CPU/GPU/GC as context only.
+
 ## 2026.8.11-1
 
 - Added an optional separately distributed, SHA-256-pinned Windows x64 Editor RenderDoc bridge with verified FTUE download, local-file installation, update, and removal while keeping the UPM package binary-free and RenderDoc user-owned.

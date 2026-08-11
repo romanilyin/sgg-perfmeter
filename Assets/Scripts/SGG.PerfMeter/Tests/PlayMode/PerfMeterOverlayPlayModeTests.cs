@@ -188,6 +188,102 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			AssertBudgetChildrenWithin(root, "gpu-budget");
 		}
 
+		[UnityTest]
+		public IEnumerator RawFrameTimeStripAdvancesIndependentlyOfTextRefreshWithoutRebuildingTree()
+		{
+			_owner = new GameObject("PerfMeter Raw Frame Time Strip Test");
+			PerfMeterOverlay overlay = _owner.AddComponent<PerfMeterOverlay>();
+			yield return WaitForOverlay(overlay);
+
+			overlay.SetModules(PerfMeterOverlayModule.Graphs);
+			overlay.SetMode(PerfMeterOverlayMode.Full);
+			overlay.SetTuning(1f, 0.84f, 12f, 2f, 120);
+			overlay.SetCustomMetricGraphs(new[]
+			{
+				new PerfMeterCustomMetricGraphJson { metricId = "movement.horizontal", min = -10d, max = 10d, displayScale = 2d, color = "#FF3355", unit = "m/s" }
+			});
+			yield return null;
+
+			VisualElement container = overlay.OwnedContainer;
+			int childCount = container.childCount;
+			Assert.That(container[childCount - 1].name, Is.EqualTo("sgg-perfmeter-frame-time-strip-block"));
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+			Label customLegend = container.Q<Label>("sgg-perfmeter-frame-time-strip-custom-legend-0");
+			Assert.That(customLegend, Is.Not.Null);
+			Assert.That(customLegend.text, Does.Contain("movement.horizontal [-10..10] m/s x2"));
+
+			overlay.RecordFrameTimeSample(100, 16d, true);
+			overlay.RecordCustomMetricSamples(100, new[] { new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "m/s", -3d) }, 1);
+			overlay.RecordFrameTimeSample(101, 80d, true);
+			overlay.RecordCustomMetricSamples(101, null, 0);
+			overlay.RecordFrameTimeSample(102, 0d, false);
+			overlay.RecordCustomMetricSamples(102, new[] { new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "m/s", 0d, false) }, 1);
+			Assert.That(overlay.FrameTimeStripSampleCount, Is.EqualTo(3));
+			Assert.That(overlay.FrameTimeStripLastFrame, Is.EqualTo(102));
+			Assert.That(overlay.FrameTimeStripCustomSeriesCount, Is.EqualTo(1));
+			Assert.That(overlay.TryGetFrameTimeStripCustomSample(0, 0, out double customValue, out bool customValid), Is.True);
+			Assert.That(customValue, Is.EqualTo(-6d));
+			Assert.That(customValid, Is.True);
+			Assert.That(overlay.TryGetFrameTimeStripCustomSample(0, 1, out _, out bool missingValid), Is.True);
+			Assert.That(missingValid, Is.False);
+
+			for (int frame = 103; frame < 303; frame++)
+			{
+				overlay.RecordFrameTimeSample(frame, 16d, true);
+				overlay.RecordCustomMetricSamples(frame, null, 0);
+			}
+
+			Assert.That(overlay.FrameTimeStripSampleCount, Is.EqualTo(120));
+			Assert.That(overlay.FrameTimeStripLastFrame, Is.EqualTo(302));
+			Assert.That(container.childCount, Is.EqualTo(childCount));
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+		}
+
+		[UnityTest]
+		public IEnumerator LayoutDescriptorAppliesBoundedWidthGapAndHeightWithoutSteadyStateRebuild()
+		{
+			_owner = new GameObject("PerfMeter Overlay Descriptor Test");
+			PerfMeterOverlay overlay = _owner.AddComponent<PerfMeterOverlay>();
+			yield return WaitForOverlay(overlay);
+
+			PerfMeterOverlayPresetJson preset = PerfMeterOverlayPresetDefaults.CreateGraphs();
+			preset.style.maxWidth = 480;
+			preset.style.gap = 12;
+			for (int i = 0; i < preset.widgets.Length; i++)
+			{
+				if (preset.widgets[i] != null && preset.widgets[i].id == "graphs.raw-frame-time")
+				{
+					preset.widgets[i].height = 96;
+				}
+			}
+
+			overlay.SetModules(PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.CpuCoreBars);
+			overlay.SetMode(PerfMeterOverlayMode.Full);
+			overlay.SetLayoutDescriptor(preset);
+			yield return null;
+			yield return null;
+
+			VisualElement container = overlay.OwnedContainer;
+			VisualElement graphBlock = container.Q<VisualElement>("sgg-perfmeter-graph-block");
+			VisualElement stripBlock = container.Q<VisualElement>("sgg-perfmeter-frame-time-strip-block");
+			VisualElement strip = container.Q<VisualElement>("sgg-perfmeter-frame-time-strip");
+			Assert.That(graphBlock.resolvedStyle.width, Is.LessThanOrEqualTo(480.01f));
+			Assert.That(stripBlock.resolvedStyle.width, Is.LessThanOrEqualTo(480.01f));
+			Assert.That(container.resolvedStyle.width, Is.LessThanOrEqualTo(480.01f));
+			Assert.That(stripBlock.resolvedStyle.marginTop, Is.EqualTo(12f).Within(0.01f));
+			Assert.That(strip.resolvedStyle.height, Is.EqualTo(96f).Within(0.01f));
+
+			int childCount = container.childCount;
+			for (int frame = 1; frame <= 200; frame++)
+			{
+				overlay.RecordFrameTimeSample(frame, frame == 100 ? 80d : 16d, true);
+			}
+
+			Assert.That(overlay.OwnedContainer, Is.SameAs(container));
+			Assert.That(container.childCount, Is.EqualTo(childCount));
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.SameAs(strip));
+		}
+
 		private static void AssertCardChildrenWithin(VisualElement root, string id)
 		{
 			string cardName = "sgg-perfmeter-widget-card-" + id;

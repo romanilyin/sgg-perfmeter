@@ -13,8 +13,18 @@ All read APIs are safe before the runtime starts. Reads return stopped/default s
 ```csharp
 PerformanceMeter.EnsureRunning();
 PerformanceMeter.Stop();
-PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
+	PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```
+
+Additive result-returning mutations are available when rejection, normalization, or unsupported behavior must not be silent:
+
+```csharp
+PerfMeterMutationResultSnapshot modeResult = PerformanceMeter.TrySetCollectionMode(PerfMeterCollectionMode.Background);
+PerfMeterMutationResultSnapshot sessionResult = PerformanceMeter.TryStartSession(PerfMeterSessionOptions.Default);
+PerfMeterMutationResultSnapshot overdrawResult = PerformanceMeter.TryRequestOverdrawMeasurement(60);
+```
+
+`Status` is `Applied`, `NoChange`, `Normalized`, `Rejected`, `Unavailable`, or `Unsupported`; `Reason`, `RequestedValue`, and `EffectiveValue` preserve the machine-readable outcome. Existing `void` lifecycle/session/overdraw methods remain compatibility wrappers. `TryApplyOverlayConfiguration(...)` provides the same contract for a complete overlay configuration.
 
 Collection modes:
 
@@ -28,6 +38,7 @@ Collection modes:
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
+PerfMeterDiagnosticsSnapshot diagnostics = PerformanceMeter.GetDiagnostics();
 
 if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 {
@@ -46,16 +57,23 @@ Key metric groups:
 
 Counter availability is exposed through `AvailableCounters`, `UnavailableCounters`, and warnings.
 
+`metrics.Bottleneck` remains the instantaneous classification and raw timings remain unchanged. `diagnostics.StableBottleneck` is a separate hysteresis-based result with `Availability`, `Freshness`, `Provenance`, `Confidence`, `Coverage`, typed `Flags`, verification steps, evidence counts/age, and the unmodified latest collector warning. Insufficient, oscillating, or stale evidence publishes `Unknown` instead of a confident stable bottleneck.
+
 ## Self-Observability And Overhead Budgets
 
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability reports low-overhead CPU callback measurements in fixed 120-frame windows. Averages are per invocation. Overall state is `NotInitialized`, `Collecting`, or `Ready`; component state is `NotMeasured`, `Collecting`, `Ready`, or `Unsupported`.
 
-Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, and `HdrpRenderIntegration`. Each component exposes window and invocation counts, average/maximum CPU milliseconds, total/average allocated bytes, configured budgets, and `NotEvaluated`/`WithinBudget`/`Exceeded` budget states.
+Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration`, and `HdrpRenderIntegration`. Each component exposes window and invocation counts, average/maximum CPU milliseconds, total/average allocated bytes, configured budgets, and `NotEvaluated`/`WithinBudget`/`Exceeded` budget states. Additive provenance includes an epoch, first/last measurement frame, callback-frame count, typed inactive reason, and explicit GPU attribution availability.
+
+`GetSelfOverheadWindow(...)` returns the exact session- or capture-bound URP observation. It includes identity and epoch, capture and measurement frame bounds, containment, active quality/pipeline/renderer evidence, feature installation/enabled state, and enqueue evidence. Inactive results use a closed typed reason such as `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete`, or `CaptureWindowMismatch`; missing evidence returns `UnknownInactiveReason` instead of guessing. A later capture cannot reuse a prior completed epoch.
 
 | Component | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -65,7 +83,7 @@ Components are `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing is explicitly `Unavailable`. These diagnostics do not subtract from or adjust existing CPU/GPU metrics.
+The URP scope measures package-owned CPU-side `RecordRenderGraph()` registration and current-thread allocation. Its invocation count can exceed callback-frame count when multiple cameras run in one Unity frame. GPU self-timing is explicitly `Unavailable`; whole-frame CPU, GPU, hitch, and GC values remain context and are never attributed to PerfMeter from temporal proximity. These diagnostics do not subtract from or adjust existing CPU/GPU metrics.
 
 ## Dynamic Profiler Metric Catalog
 
@@ -84,9 +102,12 @@ PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
 PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapshot();
 PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
+PerfMeterPlatformTelemetrySnapshot platformTelemetry = PerformanceMeter.GetPlatformTelemetry();
 ```
 
 Device snapshots include Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots include scene, transform, projection, clipping, pixel rect, target display, and URP/HDRP camera settings when available.
+
+Platform telemetry uses a core-owned bounded 0.25-second cadence rather than invoking the optional provider every frame. The snapshot reports `LastAttemptTimeSeconds`, `LastSuccessTimeSeconds`, `SampleAgeSeconds`, `Freshness`, `LastAttemptResult`, and whether the latest attempt was forced at a capture boundary. A failed forced attempt remains explicitly `Unavailable`; it is not replaced by an older available sample.
 
 ## Settings JSON And Explicit Bootstrap
 
@@ -121,6 +142,30 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 ```
 
 Legacy overlay modes and semantic module flags remain available for compatibility and filtering.
+
+Visual preset descriptors are bounded by `PerfMeterOverlayLayoutLimits`. Built-in semantic theme colors are available through `PerfMeterOverlayThemeRegistry.GetManifest(...)` / `GetAllManifests()`. Projects can register at most 16 additional module-backed descriptor IDs through `PerfMeterWidgetRegistry.TryRegisterDescriptor(...)`; an extension descriptor composes existing `PerfMeterOverlayModule` rendering only and cannot install arbitrary renderer callbacks.
+
+```csharp
+PerfMeterOverlayThemeManifest theme =
+    PerfMeterOverlayThemeRegistry.GetManifest(PerfMeterOverlayTheme.Cyber);
+
+var descriptor = new PerfMeterWidgetDescriptor(
+    "project.movement-panel",
+    "Movement panel",
+    "Project",
+    "Panel",
+    "CustomMetrics",
+    "Project movement metrics rendered by the existing custom-metric panel.",
+    isPresetBlock: true,
+    isDebugOnly: false,
+    overlayModules: PerfMeterOverlayModule.CustomMetrics,
+    requiredProviders: new[] { "CustomMetrics" });
+
+if (!PerfMeterWidgetRegistry.TryRegisterDescriptor(descriptor, out string warning))
+{
+    UnityEngine.Debug.LogWarning(warning);
+}
+```
 
 ## Sessions
 

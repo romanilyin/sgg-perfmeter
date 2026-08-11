@@ -13,8 +13,18 @@ using SGG.PerfMeter;
 ```csharp
 PerformanceMeter.EnsureRunning();
 PerformanceMeter.Stop();
-PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
+	PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```
+
+Для операций, где нельзя молча скрывать rejection, normalization или unsupported state, доступны additive mutation methods с результатом:
+
+```csharp
+PerfMeterMutationResultSnapshot modeResult = PerformanceMeter.TrySetCollectionMode(PerfMeterCollectionMode.Background);
+PerfMeterMutationResultSnapshot sessionResult = PerformanceMeter.TryStartSession(PerfMeterSessionOptions.Default);
+PerfMeterMutationResultSnapshot overdrawResult = PerformanceMeter.TryRequestOverdrawMeasurement(60);
+```
+
+`Status` принимает значения `Applied`, `NoChange`, `Normalized`, `Rejected`, `Unavailable` или `Unsupported`; `Reason`, `RequestedValue` и `EffectiveValue` сохраняют machine-readable outcome. Существующие `void` lifecycle/session/overdraw methods остаются compatibility wrappers. Для полной конфигурации overlay доступен `TryApplyOverlayConfiguration(...)` с тем же контрактом.
 
 Режимы сбора:
 
@@ -28,6 +38,7 @@ PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
+PerfMeterDiagnosticsSnapshot diagnostics = PerformanceMeter.GetDiagnostics();
 
 if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 {
@@ -46,16 +57,23 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 
 Доступность счетчиков видна через `AvailableCounters`, `UnavailableCounters` и warnings.
 
+`metrics.Bottleneck` остается instantaneous-классификацией, а raw timings не меняются. `diagnostics.StableBottleneck` — отдельный hysteresis-based результат с `Availability`, `Freshness`, `Provenance`, `Confidence`, `Coverage`, typed `Flags`, verification steps, количеством/возрастом evidence и неизмененным последним warning коллектора. При недостаточном, осциллирующем или stale evidence публикуется `Unknown`.
+
 ## Self-observability и бюджеты overhead
 
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 Self-observability публикует low-overhead измерения стоимости CPU callbacks в фиксированных окнах по 120 кадров. Средние значения считаются на один вызов. Общее состояние: `NotInitialized`, `Collecting` или `Ready`; состояние компонента: `NotMeasured`, `Collecting`, `Ready` или `Unsupported`.
 
-Компоненты: `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` и `HdrpRenderIntegration`. Для каждого доступны число кадров и вызовов, среднее/максимальное CPU-время, общий/средний объем allocations, заданные бюджеты и состояния `NotEvaluated`/`WithinBudget`/`Exceeded`.
+Компоненты: `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` и `HdrpRenderIntegration`. Для каждого доступны число кадров и вызовов, среднее/максимальное CPU-время, общий/средний объем allocations, заданные бюджеты и состояния `NotEvaluated`/`WithinBudget`/`Exceeded`. Additive provenance включает epoch, первый/последний кадр измерения, число кадров с callbacks, typed inactive reason и явную доступность GPU attribution.
+
+`GetSelfOverheadWindow(...)` возвращает URP observation, привязанный к точной session или capture. Результат содержит identity, epoch, границы кадров, containment, quality/pipeline/renderer identity и evidence состояний feature installed/enabled/enqueued. Неактивные результаты используют typed reasons, включая `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete` и `CaptureWindowMismatch`; при нехватке evidence возвращается `UnknownInactiveReason` без догадок. Следующая capture не может использовать completed epoch предыдущей.
 
 | Компонент | CPU budget | Allocation budget |
 | --- | ---: | ---: |
@@ -65,7 +83,7 @@ Self-observability публикует low-overhead измерения стоим
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-GPU self-timing явно имеет состояние `Unavailable`. Диагностика не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
+URP scope измеряет только package-owned CPU-side регистрацию `RecordRenderGraph()` и allocations текущего потока. При нескольких камерах число вызовов может быть больше числа кадров с callbacks. GPU attribution явно имеет состояние `Unavailable`; whole-frame CPU/GPU/hitch/GC остаются отдельным контекстом и не приписываются PerfMeter только по временной близости. Диагностика не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
 
 ## Динамический каталог Profiler-метрик
 
@@ -84,9 +102,12 @@ PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
 PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapshot();
 PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
+PerfMeterPlatformTelemetrySnapshot platformTelemetry = PerformanceMeter.GetPlatformTelemetry();
 ```
 
 Снимки устройства содержат информацию о Unity, платформе, OS, CPU, GPU, API, дисплее, окне и поддержке возможностей. Снимки камеры содержат scene, transform, projection, clipping, pixel rect, target display и URP/HDRP camera settings, когда доступно.
+
+Platform telemetry использует core-owned ограниченный интервал 0.25 секунды вместо вызова optional provider на каждом кадре. Snapshot сообщает `LastAttemptTimeSeconds`, `LastSuccessTimeSeconds`, `SampleAgeSeconds`, `Freshness`, `LastAttemptResult` и факт принудительного вызова на capture boundary. Неуспешный forced attempt остается явно `Unavailable`, а не заменяется старым available sample.
 
 ## Загрузка CPU-ядер
 

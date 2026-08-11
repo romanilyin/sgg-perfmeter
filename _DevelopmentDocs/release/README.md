@@ -4,7 +4,7 @@
 
 ## Current Release
 
-- Release candidate: none.
+- Release candidate: `2026.8.11-2`.
 - Current published release: `2026.8.11-1`
 - Current npm `latest`: `2026.8.11-1`
 - Previous published release: `2026.8.9-1`
@@ -30,7 +30,7 @@
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
 Current release record: `_DevelopmentDocs/release/2026.8.11-1-renderdoc-bridge-release.md`.
-Current release candidate record: none.
+Current release candidate record: `_DevelopmentDocs/release/2026.8.11-2-diagnostics-overlay-release.md`.
 Previous published release record: `_DevelopmentDocs/release/2026.8.9-1-core-hardening-release.md`.
 Earlier published release record: `_DevelopmentDocs/release/2026.8.8-1-ftue-continuation-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.

@@ -51,11 +51,16 @@ A disponibilidade de counters e exposta por `AvailableCounters`, `UnavailableCou
 ```csharp
 PerfMeterSelfOverheadSnapshot overhead = PerformanceMeter.GetSelfOverhead();
 PerfMeterSelfOverheadSnapshot statusOverhead = PerformanceMeter.GetStatus().SelfOverhead;
+PerfMeterSelfOverheadWindowSnapshot sessionOverhead = PerformanceMeter.GetSelfOverheadWindow(
+    PerfMeterSelfOverheadWindowKind.Session,
+    PerformanceMeter.GetSessionSummary().SessionId);
 ```
 
 A self-observability publica medicoes low-overhead do custo dos callbacks CPU em janelas fixas de 120 frames. As medias sao por invocacao. O estado geral e `NotInitialized`, `Collecting` ou `Ready`; o estado de componente e `NotMeasured`, `Collecting`, `Ready` ou `Unsupported`.
 
-Os componentes sao `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` e `HdrpRenderIntegration`. Cada um expoe contagens de frames/invocacoes, milissegundos CPU medios/maximos, bytes alocados totais/medios, budgets e estados `NotEvaluated`/`WithinBudget`/`Exceeded`.
+Os componentes sao `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Overlay`, `UrpRenderIntegration` e `HdrpRenderIntegration`. Cada um expoe contagens de frames/invocacoes, milissegundos CPU medios/maximos, bytes alocados totais/medios, budgets e estados `NotEvaluated`/`WithinBudget`/`Exceeded`. A provenance aditiva inclui epoch, primeiro/ultimo frame medido, contagem de callback frames, motivo de inatividade tipado e disponibilidade explicita de atribuicao GPU.
+
+`GetSelfOverheadWindow(...)` retorna a observacao URP vinculada exatamente a uma session ou capture, com identidade, epoch, limites de frames, containment e evidence de quality/pipeline/renderer e feature installed/enabled/enqueued. Resultados inativos usam motivos tipados como `RendererFeatureNotInstalled`, `RendererFeatureDisabled`, `PassNotEnqueued`, `NoCameraCallbackObserved`, `WindowIncomplete` ou `CaptureWindowMismatch`; quando falta evidence, retorna `UnknownInactiveReason`. Uma capture posterior nao pode reutilizar uma epoch concluida anteriormente.
 
 | Componente | Budget CPU | Budget de alocacao |
 | --- | ---: | ---: |
@@ -65,7 +70,7 @@ Os componentes sao `Collector`, `CustomMetricProviders`, `CpuCoreProvider`, `Ove
 | Overlay | 2.0 ms | 131072 B |
 | URP/HDRP render integration | 0.5 ms | 0 B |
 
-O self-timing de GPU e explicitamente `Unavailable`. Esses diagnostics nao subtraem nem ajustam as metricas CPU/GPU existentes.
+O scope URP mede apenas o registro CPU-side de `RecordRenderGraph()` pertencente ao package e a alocacao da current thread. Com varias cameras, as invocacoes podem superar os callback frames. A atribuicao GPU e explicitamente `Unavailable`; CPU, GPU, hitches e GC whole-frame continuam sendo contexto e nao sao atribuidos ao PerfMeter por proximidade temporal. Esses diagnostics nao subtraem nem ajustam as metricas CPU/GPU existentes.
 
 ## Catalogo Dinamico De Metricas Do Profiler
 

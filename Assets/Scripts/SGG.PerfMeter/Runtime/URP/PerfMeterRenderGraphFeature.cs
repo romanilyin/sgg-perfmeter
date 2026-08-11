@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -26,6 +27,7 @@ namespace SGG.PerfMeter
 
 		public override void Create()
 		{
+			PerfMeterUrpConfigurationProbe.EnsureRegistered();
 			_overlayMarkerPass ??= new OverlayMarkerPass();
 			ApplySettingsToPass();
 		}
@@ -40,11 +42,13 @@ namespace SGG.PerfMeter
 		{
 			if (_settings == null || !_settings.Enabled)
 			{
+				ReportFeatureState(renderer, PerfMeterUrpFeatureEnabledState.Disabled, false);
 				return;
 			}
 
 			if (!_settings.RecordOverlayMarkerPass && !PerfMeterRuntime.IsOverdrawMeasurementActive && !PerfMeterRuntime.IsOverdrawHeatmapVisible)
 			{
+				ReportFeatureState(renderer, PerfMeterUrpFeatureEnabledState.Enabled, false);
 				return;
 			}
 
@@ -52,6 +56,19 @@ namespace SGG.PerfMeter
 			ApplySettingsToPass();
 			PerfMeterRenderGraphAnalytics.PrepareObservation(renderingData.cameraData.camera);
 			renderer.EnqueuePass(_overlayMarkerPass);
+			ReportFeatureState(renderer, PerfMeterUrpFeatureEnabledState.Enabled, true);
+		}
+
+		private static void ReportFeatureState(ScriptableRenderer renderer, PerfMeterUrpFeatureEnabledState enabled, bool enqueued)
+		{
+			string rendererType = renderer != null ? renderer.GetType().FullName : string.Empty;
+			PerfMeterSelfObservability.ReportUrpFeatureState(
+				PerfMeterUrpFeatureInstallationState.Installed,
+				enabled,
+				enqueued,
+				Time.frameCount,
+				string.Empty,
+				rendererType);
 		}
 
 		private void ApplySettingsToPass()
@@ -106,6 +123,109 @@ namespace SGG.PerfMeter
 			public bool GameCamerasOnly => _gameCamerasOnly;
 
 			public string CameraNameFilter => _cameraNameFilter;
+		}
+
+		private static class PerfMeterUrpConfigurationProbe
+		{
+			private const BindingFlags InstanceFields = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+			private static bool _registered;
+
+			[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+			private static void Register()
+			{
+				EnsureRegistered();
+			}
+
+			internal static void EnsureRegistered()
+			{
+				if (_registered)
+				{
+					return;
+				}
+
+				_registered = true;
+				PerfMeterSelfObservability.RegisterUrpConfigurationProbe(InspectActivePipeline);
+			}
+
+			private static PerfMeterSelfObservability.UrpConfigurationEvidence InspectActivePipeline()
+			{
+				RenderPipelineAsset pipelineAsset = GraphicsSettings.currentRenderPipeline ?? GraphicsSettings.defaultRenderPipeline;
+				if (!(pipelineAsset is UniversalRenderPipelineAsset urpAsset))
+				{
+					return new PerfMeterSelfObservability.UrpConfigurationEvidence(
+						PerfMeterUrpFeatureInstallationState.Unknown,
+						PerfMeterUrpFeatureEnabledState.Unknown,
+						string.Empty,
+						string.Empty);
+				}
+
+				FieldInfo rendererDataListField = typeof(UniversalRenderPipelineAsset).GetField("m_RendererDataList", InstanceFields);
+				ScriptableRendererData[] rendererDataList = rendererDataListField?.GetValue(urpAsset) as ScriptableRendererData[];
+				if (rendererDataList == null || rendererDataList.Length == 0)
+				{
+					return new PerfMeterSelfObservability.UrpConfigurationEvidence(
+						PerfMeterUrpFeatureInstallationState.Unknown,
+						PerfMeterUrpFeatureEnabledState.Unknown,
+						string.Empty,
+						string.Empty);
+				}
+
+				int rendererCount = 0;
+				int rendererCountWithFeature = 0;
+				int rendererCountWithEnabledFeature = 0;
+				FieldInfo defaultRendererIndexField = typeof(UniversalRenderPipelineAsset).GetField("m_DefaultRendererIndex", InstanceFields);
+				int defaultRendererIndex = defaultRendererIndexField?.GetValue(urpAsset) is int value ? value : 0;
+				ScriptableRendererData identifiedRenderer = defaultRendererIndex >= 0 && defaultRendererIndex < rendererDataList.Length
+					? rendererDataList[defaultRendererIndex]
+					: null;
+				for (int i = 0; i < rendererDataList.Length; i++)
+				{
+					ScriptableRendererData rendererData = rendererDataList[i];
+					if (rendererData == null)
+					{
+						continue;
+					}
+
+					rendererCount++;
+					bool rendererHasFeature = false;
+					bool rendererHasEnabledFeature = false;
+					IReadOnlyList<ScriptableRendererFeature> features = rendererData.rendererFeatures;
+					if (features == null)
+					{
+						continue;
+					}
+
+					for (int featureIndex = 0; featureIndex < features.Count; featureIndex++)
+					{
+						if (features[featureIndex] is PerfMeterRenderGraphFeature feature)
+						{
+							rendererHasFeature = true;
+							rendererHasEnabledFeature |= feature.isActive && feature._settings != null && feature._settings.Enabled;
+						}
+					}
+
+					rendererCountWithFeature += rendererHasFeature ? 1 : 0;
+					rendererCountWithEnabledFeature += rendererHasEnabledFeature ? 1 : 0;
+				}
+
+				return new PerfMeterSelfObservability.UrpConfigurationEvidence(
+					rendererCount > 0
+						? rendererCountWithFeature == 0
+							? PerfMeterUrpFeatureInstallationState.NotInstalled
+							: rendererCountWithFeature == rendererCount
+								? PerfMeterUrpFeatureInstallationState.Installed
+								: PerfMeterUrpFeatureInstallationState.Unknown
+						: PerfMeterUrpFeatureInstallationState.Unknown,
+					rendererCountWithFeature == rendererCount && rendererCount > 0
+						? rendererCountWithEnabledFeature == rendererCount
+							? PerfMeterUrpFeatureEnabledState.Enabled
+							: rendererCountWithEnabledFeature == 0
+								? PerfMeterUrpFeatureEnabledState.Disabled
+								: PerfMeterUrpFeatureEnabledState.Unknown
+						: PerfMeterUrpFeatureEnabledState.Unknown,
+					identifiedRenderer != null ? identifiedRenderer.name : string.Empty,
+					identifiedRenderer != null ? identifiedRenderer.GetType().FullName : string.Empty);
+			}
 		}
 
 		private sealed class OverlayMarkerPass : ScriptableRenderPass

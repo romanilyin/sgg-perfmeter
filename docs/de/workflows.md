@@ -179,7 +179,9 @@ Die Instrumentierung ist intern und nur beim Profiling des Editors, eines Develo
 
 Nutze `PerformanceMeter.GetSelfOverhead()` oder `PerformanceMeter.GetStatus().SelfOverhead`, um CPU-Callback-Kosten und Allokationen fuer Collector, Custom Provider, CPU-Core-Provider, Overlay sowie URP/HDRP-Integration zu diagnostizieren. Die Messung verwendet feste 120-Frame-Fenster, Durchschnitt pro Aufruf und komponentenspezifische CPU-/Allokationsbudgets.
 
-Die inaktive Render-Integration meldet `Unsupported`, eine unterstuetzte Komponente ohne Aufruf `NotMeasured` und GPU-Self-Timing `Unavailable`. Das Accounting ist rein diagnostisch: PerfMeter zieht keinen Overhead von bestehenden CPU/GPU-Metriken ab und passt diese nicht an.
+Nutze `PerformanceMeter.GetSelfOverheadWindow(kind, identity)` fuer einen exakt gebundenen Session-/Capture-Receipt. Das Ergebnis enthaelt Epoch und Frame-Containment, Quality-/Pipeline-/Renderer-Identitaet, Feature-Installed/Enabled/Enqueued-Evidence, Callback-/Invocation-Grenzen und einen typisierten Inaktivitaetsgrund. Capture-/Session-JSON und MCP-Status behalten dieselbe Window-Identitaet und schlagen mit `CaptureWindowMismatch` oder `UnknownInactiveReason` geschlossen fehl, statt stale Live-Daten anzufuegen.
+
+Der URP-Wert umfasst nur package-eigene CPU-seitige `RecordRenderGraph()`-Registrierung und Current-Thread-Allokation. Mehrere Kameras koennen mehr Invocations als Callback-Frames erzeugen. GPU-Attribution ist ausdruecklich `Unavailable`; Whole-Frame CPU/GPU/Hitch/GC bleibt separater Kontext. Das Accounting ist rein diagnostisch: PerfMeter zieht keinen Overhead von bestehenden CPU/GPU-Metriken ab und passt diese nicht an.
 
 ## Agent-Automation
 

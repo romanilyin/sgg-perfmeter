@@ -191,7 +191,9 @@ Custom metrics 会通过 API reads、session JSON export、MCP latest metrics �
 
 使用 `PerformanceMeter.GetSelfOverhead()` 或 `PerformanceMeter.GetStatus().SelfOverhead` 诊断 collector、custom providers、CPU-core provider、overlay 和 URP/HDRP integration 的 CPU callback cost 与 allocation。测量使用固定 120-frame window、invocation average 和 component-specific CPU/allocation budget。
 
-Inactive render integration 报告 `Unsupported`，未调用的 supported component 报告 `NotMeasured`，GPU self-timing 报告 `Unavailable`。Accounting 仅用于 diagnostics：PerfMeter 不会从现有 CPU/GPU metrics 中 subtract overhead，也不会调整其值。
+使用 `PerformanceMeter.GetSelfOverheadWindow(kind, identity)` 获取与精确 session/capture 绑定的 receipt。结果包含 epoch、frame containment、quality/pipeline/renderer identity、feature installed/enabled/enqueued evidence、callback/invocation bounds 和 typed inactive reason。Capture/session JSON 与 MCP status 保留同一 window identity，并以 `CaptureWindowMismatch` 或 `UnknownInactiveReason` fail closed，不会附加 stale live data。
+
+URP value 只覆盖 package-owned CPU-side `RecordRenderGraph()` registration 和 current-thread allocation。多个 camera 可能产生多于 callback frame 的 invocation。GPU attribution 明确为 `Unavailable`，whole-frame CPU/GPU/hitch/GC 保持为独立 context。Accounting 仅用于 diagnostics：PerfMeter 不会从现有 CPU/GPU metrics 中 subtract overhead，也不会调整其值。
 
 ## Agent Automation
 

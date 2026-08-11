@@ -52,6 +52,22 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal static PerfMeterSessionExportResult ExportJson(
+			string path,
+			PerfMeterSessionSummarySnapshot summary,
+			PerfMeterSessionSampleSnapshot[] samples,
+			PerfMeterSessionTimelineSnapshot timeline,
+			PerfMeterStatusSnapshot status,
+			bool overwriteExisting,
+			PerfMeterPackageIdentity packageIdentity,
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow)
+		{
+			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
+			{
+				return Export(path, BuildJson(summary, samples, status, packageIdentity, timeline, selfOverheadWindow), overwriteExisting);
+			}
+		}
+
 		internal static PerfMeterSessionExportResult ExportCsv(string path, PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, bool overwriteExisting)
 		{
 			using (PerfMeterProfilerInstrumentation.ExportCsvMarker.Auto())
@@ -76,6 +92,17 @@ namespace SGG.PerfMeter
 			PerfMeterStatusSnapshot status,
 			PerfMeterPackageIdentity packageIdentity,
 			PerfMeterSessionTimelineSnapshot timeline)
+		{
+			return BuildJson(summary, samples, status, packageIdentity, timeline, PerfMeterSelfOverheadWindowSnapshot.Unavailable);
+		}
+
+		internal static string BuildJson(
+			PerfMeterSessionSummarySnapshot summary,
+			PerfMeterSessionSampleSnapshot[] samples,
+			PerfMeterStatusSnapshot status,
+			PerfMeterPackageIdentity packageIdentity,
+			PerfMeterSessionTimelineSnapshot timeline,
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow)
 		{
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
 			StringBuilder builder = new StringBuilder(2048 + safeSamples.Length * 768);
@@ -106,6 +133,8 @@ namespace SGG.PerfMeter
 			builder.Append(",\"application_focused\":").Append(JsonBool(status.ApplicationFocused));
 			builder.Append(",\"application_paused\":").Append(JsonBool(status.ApplicationPaused));
 			builder.Append('}');
+			builder.Append(",\"self_overhead_window\":");
+			AppendSelfOverheadWindow(builder, selfOverheadWindow);
 			builder.Append(",\"samples\":[");
 			for (int i = 0; i < safeSamples.Length; i++)
 			{
@@ -121,6 +150,67 @@ namespace SGG.PerfMeter
 			AppendTimeline(builder, timeline);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		internal static void AppendSelfOverheadWindow(StringBuilder builder, PerfMeterSelfOverheadWindowSnapshot window)
+		{
+			builder.Append("{\"schema_version\":").Append(window.SchemaVersion);
+			builder.Append(",\"package\":").Append(JsonString(PackageIdentity.Name));
+			builder.Append(",\"package_version\":").Append(JsonString(PackageIdentity.Version));
+			builder.Append(",\"package_version_source\":").Append(JsonString(PackageIdentity.Source));
+			builder.Append(",\"kind\":").Append(JsonString(window.Kind.ToString()));
+			builder.Append(",\"identity\":").Append(JsonString(window.Identity));
+			builder.Append(",\"epoch\":").Append(window.Epoch);
+			builder.Append(",\"window_start_frame\":").Append(window.WindowStartFrame);
+			builder.Append(",\"window_end_frame\":").Append(window.WindowEndFrame);
+			builder.Append(",\"window_complete\":").Append(JsonBool(window.WindowComplete));
+			builder.Append(",\"measurement_contained\":").Append(JsonBool(window.MeasurementContained));
+			builder.Append(",\"render_pipeline\":{");
+			builder.Append("\"kind\":").Append(JsonString(window.RenderPipeline.Kind.ToString()));
+			builder.Append(",\"asset_name\":").Append(JsonString(window.RenderPipeline.AssetName));
+			builder.Append(",\"asset_type\":").Append(JsonString(window.RenderPipeline.AssetTypeName));
+			builder.Append(",\"runtime_type\":").Append(JsonString(window.RenderPipeline.RuntimeTypeName));
+			builder.Append(",\"asset_source\":").Append(JsonString(window.PipelineAssetSource.ToString()));
+			builder.Append(",\"asset_entity_id\":").Append(JsonString(window.PipelineAssetEntityId.ToString(CultureInfo.InvariantCulture)));
+			builder.Append('}');
+			builder.Append(",\"quality_level\":").Append(window.QualityLevel);
+			builder.Append(",\"quality_level_name\":").Append(JsonString(window.QualityLevelName));
+			builder.Append(",\"renderer_name\":").Append(JsonString(window.RendererName));
+			builder.Append(",\"renderer_type\":").Append(JsonString(window.RendererType));
+			builder.Append(",\"feature_installation\":").Append(JsonString(window.FeatureInstallation.ToString()));
+			builder.Append(",\"feature_enabled\":").Append(JsonString(window.FeatureEnabled.ToString()));
+			builder.Append(",\"enqueue_count\":").Append(window.EnqueueCount);
+			builder.Append(",\"first_enqueue_frame\":").Append(window.FirstEnqueueFrame);
+			builder.Append(",\"last_enqueue_frame\":").Append(window.LastEnqueueFrame);
+			builder.Append(",\"urp_render_integration\":");
+			AppendSelfOverheadComponent(builder, window.UrpRenderIntegration);
+			builder.Append(",\"callback_semantics\":\"RecordRenderGraph scope invocation per enqueued camera callback; invocation_count may exceed callback_frame_count.\"");
+			builder.Append(",\"attribution_scope\":\"CPU time and allocation cover package-owned RecordRenderGraph registration only; whole-frame CPU, GPU, hitch, and GC values are context only.\"");
+			builder.Append(",\"warning\":").Append(JsonString(window.Warning));
+			builder.Append('}');
+		}
+
+		private static void AppendSelfOverheadComponent(StringBuilder builder, PerfMeterSelfOverheadComponentSnapshot component)
+		{
+			builder.Append("{\"component\":").Append(JsonString(component.Component.ToString()));
+			builder.Append(",\"state\":").Append(JsonString(component.State.ToString()));
+			builder.Append(",\"epoch\":").Append(component.Epoch);
+			builder.Append(",\"window_frame_count\":").Append(component.WindowFrameCount);
+			builder.Append(",\"invocation_count\":").Append(component.InvocationCount);
+			builder.Append(",\"callback_frame_count\":").Append(component.CallbackFrameCount);
+			builder.Append(",\"measurement_first_frame\":").Append(component.MeasurementFirstFrame);
+			builder.Append(",\"measurement_last_frame\":").Append(component.MeasurementLastFrame);
+			builder.Append(",\"average_cpu_time_ms\":").Append(JsonNumber(component.AverageCpuTimeMs));
+			builder.Append(",\"max_cpu_time_ms\":").Append(JsonNumber(component.MaxCpuTimeMs));
+			builder.Append(",\"allocated_bytes\":").Append(component.AllocatedBytes);
+			builder.Append(",\"average_allocated_bytes\":").Append(JsonNumber(component.AverageAllocatedBytes));
+			builder.Append(",\"cpu_budget_ms\":").Append(JsonNumber(component.CpuBudgetMs));
+			builder.Append(",\"allocation_budget_bytes\":").Append(component.AllocationBudgetBytes);
+			builder.Append(",\"cpu_budget_state\":").Append(JsonString(component.CpuBudgetState.ToString()));
+			builder.Append(",\"allocation_budget_state\":").Append(JsonString(component.AllocationBudgetState.ToString()));
+			builder.Append(",\"inactive_reason\":").Append(JsonString(component.InactiveReason.ToString()));
+			builder.Append(",\"gpu_attribution_availability\":").Append(JsonString(component.GpuAttributionAvailability.ToString()));
+			builder.Append('}');
 		}
 
 		internal static string BuildCsv(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)

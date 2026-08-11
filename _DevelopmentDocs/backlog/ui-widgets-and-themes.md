@@ -8,6 +8,37 @@
 
 `StructuredLog` toggle, stable numeric geometry и versioned owned panel host выпущены в package version `2026.8.5-2`.
 
+### Implemented: Frame-accurate hitch strip
+
+Pending release after `2026.8.11-1`:
+
+- a dedicated full-width bottom strip advances once per collected frame independently of overlay text refresh;
+- invalid timing advances the bounded history as an explicit gap instead of fake zero;
+- one-frame hitches retain raw height and budget severity without temporal smoothing;
+- narrow plots use only a peak-preserving min/max envelope;
+- the warmed ring-buffer update allocates `0 B/frame` and does not rebuild the visual tree.
+
+### Implemented: Custom metric graph channels
+
+Pending release after `2026.8.11-1`:
+
+- visual preset JSON binds up to four series by case-sensitive stable metric ID;
+- each series has explicit signed display-space `min/max`, non-zero `displayScale`, color and unit;
+- missing, unavailable and non-finite samples advance as gaps instead of fake zero;
+- the renderer uses each channel's own configured range and never performs implicit cross-unit normalization;
+- configuration is additive to preset schema v1, while bounded histories and warmed updates remain allocation-free.
+
+### Implemented: Bounded descriptors and theme manifests
+
+Pending release after `2026.8.11-1`:
+
+- visual presets now apply bounded width, gap, ordered admission and supported explicit height metadata at configuration boundaries while retaining a safe fixed block order;
+- narrow graph layouts hide fixed legend and scale columns before plot overflow;
+- `PerfMeterOverlayThemeRegistry` exposes read-only manifests for built-in semantic tokens and explicit optional asset paths;
+- projects can register at most 16 stable-ID descriptors that compose existing overlay modules, without arbitrary renderer execution;
+- limits are explicit for widgets, graph points, active full graphs, width, gap and height;
+- steady-state value/history updates keep the existing visual tree.
+
 ### Resolved: Text overflow and stable numeric geometry
 
 Implemented in `2026.8.5-2`:

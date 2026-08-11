@@ -1,6 +1,6 @@
 # Implemented Widgets
 
-SGG PerfMeter currently ships 16 high-level runtime overlay widgets. These are the preset composition blocks shown in the setup window and used by visual overlay presets.
+SGG PerfMeter currently ships 17 high-level runtime overlay widgets. These are the preset composition blocks shown in the setup window and used by visual overlay presets.
 
 `FPS Only` is a preset/layout mode, not a separate widget. It reuses FPS and timing data in a single compact row.
 
@@ -19,6 +19,7 @@ Runtime overlay text is not localized, so localized docs use the same widget scr
 | `timing.gpu-budget-bar` | <img src="../assets/screenshots/widgets/timing-gpu-budget-bar.png" alt="GPU budget bar" width="360"> | Budget bar | GPU timing | GPU frame time against the selected target-FPS budget. |
 | `graphs.cpu-timing` | <img src="../assets/screenshots/widgets/graphs-cpu-timing.png" alt="CPU timing graph" width="360"> | Graph | Graphs / Timing | CPU frame, main thread, render thread, and other timing history. |
 | `graphs.gpu-timing` | <img src="../assets/screenshots/widgets/graphs-gpu-timing.png" alt="GPU timing graph" width="360"> | Graph | Graphs / GPU timing | GPU frame timing history with target budget line. |
+| `graphs.raw-frame-time` | Runtime-only strip | Graph | Graphs / Timing / Custom metrics | Raw frame time for every collected frame plus up to four configured stable-ID custom metric channels. Frame hitches retain budget severity; each custom channel uses its own explicit signed range, display scale, color, and unit. Missing or unavailable values produce gaps. |
 | `cpu.cores-bars` | <img src="../assets/screenshots/widgets/cpu-cores-bars.png" alt="CPU core bars" width="360"> | Panel | CPU core sampling | Per-logical-core CPU load bars where platform sampling is available. |
 | `cpu.cores-graphs` | <img src="../assets/screenshots/widgets/cpu-cores-graphs.png" alt="CPU core graphs" width="360"> | Panel | CPU core sampling / Graphs | Per-logical-core CPU load history graphs. |
 | `custom-metrics.panel` | <img src="../assets/screenshots/widgets/custom-metrics-panel.png" alt="Custom metrics panel" width="360"> | Panel | Custom metrics | Values supplied by project `IPerfMeterCustomMetricProvider` implementations. |
@@ -44,6 +45,9 @@ The default `MetricBars` layout renders compact rows for frequently watched cate
 ## Notes
 
 - Presets can enable a subset of these widgets and choose a layout such as `MetricBars`, `CompactCards`, `Graphs`, or `DiagnosticsWide`.
+- Preset descriptors are bounded by `PerfMeterOverlayLayoutLimits`: at most 24 admitted widgets, 600 graph points per widget, four active full graphs, width `360..780`, gap `0..24`, and explicit widget height `24..240`.
+- `PerfMeterWidgetRegistry.TryRegisterDescriptor(...)` admits at most 16 project extension descriptors. Extensions map a stable widget ID to existing `PerfMeterOverlayModule` composition; they do not execute arbitrary renderer code or bypass package history/graph limits.
+- `PerfMeterOverlayThemeRegistry` publishes read-only manifests for built-in themes with semantic CPU/GPU/frame/warning/accent/unavailable/grid/budget colors and explicit empty optional asset paths.
 - Text-row and metric-bar rows are lower-level renderers behind the layout system and expose textual versions of the same metric groups that may appear as cards, budget bars, or graphs in other layouts.
 - Numeric values use stable reserved numeric slots and a numeric monospace role, so changing values do not shift their columns; labels keep the selected overlay font family.
 - At narrow logical widths, cards and metric bars wrap. `FpsOnly` uses a deterministic bounded two-row fallback when its single row does not fit; this is a bounded layout behavior, not a promise for every arbitrary resolution or scale.

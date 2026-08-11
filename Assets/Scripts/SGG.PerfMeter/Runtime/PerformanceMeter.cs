@@ -43,7 +43,7 @@ namespace SGG.PerfMeter
 		public static PerfMeterPlatformTelemetrySnapshot GetPlatformTelemetry()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			return runtime != null ? runtime.LatestPlatformTelemetry : PerfMeterPlatformTelemetryRegistry.Collect();
+			return runtime != null ? runtime.LatestPlatformTelemetry : PerfMeterPlatformTelemetryRegistry.Sample(Time.realtimeSinceStartupAsDouble);
 		}
 
 		public static PerfMeterProfilerLeaseCapabilitiesSnapshot GetProfilerLeaseCapabilities()
@@ -243,6 +243,12 @@ namespace SGG.PerfMeter
 			return runtime != null ? runtime.LatestMetrics : PerfMeterMetricsSnapshot.Stopped;
 		}
 
+		public static PerfMeterDiagnosticsSnapshot GetDiagnostics()
+		{
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			return runtime != null ? runtime.Diagnostics : PerfMeterDiagnosticsSnapshot.NotRunning;
+		}
+
 		public static PerfMeterGraphicsDiagnosticsSnapshot GetGraphicsDiagnostics()
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
@@ -270,6 +276,16 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null ? runtime.SelfOverhead : PerfMeterSelfOverheadSnapshot.NotInitialized;
+		}
+
+		public static PerfMeterSelfOverheadWindowSnapshot GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind kind, string identity = null)
+		{
+			if (kind != PerfMeterSelfOverheadWindowKind.Session && kind != PerfMeterSelfOverheadWindowKind.Capture)
+			{
+				return PerfMeterSelfOverheadWindowSnapshot.Unavailable;
+			}
+
+			return PerfMeterSelfObservability.GetBoundWindowSnapshot(kind, identity, Time.frameCount);
 		}
 
 		public static PerfMeterAlertSnapshot[] GetLatestAlerts()
@@ -537,12 +553,43 @@ namespace SGG.PerfMeter
 
 		public static void EnsureRunning()
 		{
-			PerfMeterRuntime.EnsureRunning();
+			TryEnsureRunning();
 		}
 
 		public static void Stop()
 		{
+			TryStop();
+		}
+
+		public static PerfMeterMutationResultSnapshot TryEnsureRunning()
+		{
+			bool wasRunning = PerfMeterRuntime.Instance != null && PerfMeterRuntime.Instance.AcceptsMutations;
+			if (!PerfMeterRuntime.EnsureRunning() || PerfMeterRuntime.Instance == null || !PerfMeterRuntime.Instance.AcceptsMutations)
+			{
+				return RuntimeUnavailableMutation(PerfMeterRuntimeState.Running, GetStatus().State);
+			}
+
+			return MutationResult(
+				wasRunning ? PerfMeterMutationStatus.NoChange : PerfMeterMutationStatus.Applied,
+				wasRunning ? PerfMeterMutationReason.AlreadyInRequestedState : PerfMeterMutationReason.None,
+				PerfMeterRuntimeState.Running,
+				GetStatus().State);
+		}
+
+		public static PerfMeterMutationResultSnapshot TryStop()
+		{
+			bool hadRuntime = PerfMeterRuntime.Instance != null;
 			PerfMeterRuntime.StopRunning();
+			if (PerfMeterRuntime.Instance != null)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.PendingCleanup, PerfMeterRuntimeState.Stopped, GetStatus().State);
+			}
+
+			return MutationResult(
+				hadRuntime ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
+				hadRuntime ? PerfMeterMutationReason.None : PerfMeterMutationReason.AlreadyInRequestedState,
+				PerfMeterRuntimeState.Stopped,
+				PerfMeterRuntimeState.Stopped);
 		}
 
 		public static void ResetStats()
@@ -565,22 +612,43 @@ namespace SGG.PerfMeter
 
 		public static void SetCollectionMode(PerfMeterCollectionMode mode)
 		{
+			TrySetCollectionMode(mode);
+		}
+
+		public static PerfMeterMutationResultSnapshot TrySetCollectionMode(PerfMeterCollectionMode mode)
+		{
 			if (mode == PerfMeterCollectionMode.Stopped)
 			{
-				Stop();
-				return;
+				return TryStop();
 			}
 
-			if (!PerfMeterRuntime.EnsureRunning())
+			PerfMeterCollectionMode normalizedMode = NormalizeCollectionMode(mode);
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
 			{
-				return;
+				return RuntimeUnavailableMutation(mode, CollectionMode);
 			}
 
-			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
+			PerfMeterCollectionMode previousMode = runtime.CollectionMode;
+			runtime.SetCollectionMode(normalizedMode);
+			PerfMeterCollectionMode effectiveMode = runtime.CollectionMode;
+			if (effectiveMode != normalizedMode)
 			{
-				runtime.SetCollectionMode(mode);
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, mode, effectiveMode);
 			}
+			if (normalizedMode != mode)
+			{
+				return MutationResult(PerfMeterMutationStatus.Normalized, PerfMeterMutationReason.ValueNormalized, mode, effectiveMode);
+			}
+			if (normalizedMode == PerfMeterCollectionMode.OverdrawDiagnostic && PerfMeterRuntime.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported)
+			{
+				return MutationResult(PerfMeterMutationStatus.Unsupported, PerfMeterMutationReason.UnsupportedRenderPipeline, mode, effectiveMode);
+			}
+
+			return MutationResult(
+				previousMode == effectiveMode ? PerfMeterMutationStatus.NoChange : PerfMeterMutationStatus.Applied,
+				previousMode == effectiveMode ? PerfMeterMutationReason.AlreadyInRequestedState : PerfMeterMutationReason.None,
+				mode,
+				effectiveMode);
 		}
 
 		public static bool IsSessionRecording
@@ -599,25 +667,48 @@ namespace SGG.PerfMeter
 
 		public static void StartSession(PerfMeterSessionOptions options)
 		{
-			if (!PerfMeterRuntime.EnsureRunning())
+			TryStartSession(options);
+		}
+
+		public static PerfMeterMutationResultSnapshot TryStartSession(PerfMeterSessionOptions options)
+		{
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
 			{
-				return;
+				return RuntimeUnavailableMutation(PerfMeterSessionState.Recording, GetSessionSummary().State);
 			}
 
-			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
-			{
-				runtime.StartSession(options);
-			}
+			runtime.StartSession(options);
+			PerfMeterSessionState effectiveState = runtime.GetSessionSummary().State;
+			return effectiveState == PerfMeterSessionState.Recording
+				? MutationResult(PerfMeterMutationStatus.Applied, PerfMeterMutationReason.None, PerfMeterSessionState.Recording, effectiveState)
+				: MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, PerfMeterSessionState.Recording, effectiveState);
 		}
 
 		public static void StopSession()
 		{
+			TryStopSession();
+		}
+
+		public static PerfMeterMutationResultSnapshot TryStopSession()
+		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
+			if (runtime == null)
 			{
-				runtime.StopSession();
+				return MutationResult(PerfMeterMutationStatus.NoChange, PerfMeterMutationReason.NoActiveOperation, PerfMeterSessionState.Stopped, PerfMeterSessionState.Idle);
 			}
+			if (!runtime.AcceptsMutations)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, PerfMeterSessionState.Stopped, runtime.GetSessionSummary().State);
+			}
+
+			PerfMeterSessionState previousState = runtime.GetSessionSummary().State;
+			runtime.StopSession();
+			PerfMeterSessionState effectiveState = runtime.GetSessionSummary().State;
+			return MutationResult(
+				previousState == PerfMeterSessionState.Recording && effectiveState == PerfMeterSessionState.Stopped ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
+				previousState == PerfMeterSessionState.Recording ? PerfMeterMutationReason.None : PerfMeterMutationReason.NoActiveOperation,
+				PerfMeterSessionState.Stopped,
+				effectiveState);
 		}
 
 		public static PerfMeterSessionSummarySnapshot GetSessionSummary()
@@ -644,7 +735,19 @@ namespace SGG.PerfMeter
 			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
 			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
 			PerfMeterSessionTimelineSnapshot timeline = runtime != null ? runtime.GetSessionTimeline() : PerfMeterSessionTimelineSnapshot.Empty;
-			return PerfMeterSessionExporter.ExportJson(path, summary, samples, timeline, GetStatus());
+			PerfMeterStatusSnapshot status = GetStatus();
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow = string.IsNullOrEmpty(summary.SessionId)
+				? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+				: GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId);
+			return PerfMeterSessionExporter.ExportJson(
+				path,
+				summary,
+				samples,
+				timeline,
+				status,
+				true,
+				PerfMeterSessionExporter.RuntimePackageIdentity,
+				selfOverheadWindow).Success;
 		}
 
 		public static bool ExportSessionCsv(string path)
@@ -657,29 +760,65 @@ namespace SGG.PerfMeter
 
 		public static void RequestOverdrawMeasurement(int frameCount = 0)
 		{
+			TryRequestOverdrawMeasurement(frameCount);
+		}
+
+		public static PerfMeterMutationResultSnapshot TryRequestOverdrawMeasurement(int frameCount = 0)
+		{
 			PerfMeterSettingsSnapshot settings = GetOperationSettings();
 			int normalizedFrameCount = frameCount <= 0
 				? settings.OverdrawDefaultFrameCount
 				: Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount);
-			if (!PerfMeterRuntime.EnsureRunning())
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
 			{
-				return;
+				return RuntimeUnavailableMutation(frameCount, 0);
 			}
 
-			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
+			runtime.RequestOverdrawMeasurement(normalizedFrameCount);
+			PerfMeterOverdrawMeasurementState state = PerfMeterRuntime.OverdrawState;
+			if (state == PerfMeterOverdrawMeasurementState.Unsupported)
 			{
-				runtime.RequestOverdrawMeasurement(normalizedFrameCount);
+				return MutationResult(PerfMeterMutationStatus.Unsupported, PerfMeterMutationReason.UnsupportedRenderPipeline, frameCount, normalizedFrameCount);
 			}
+			if (state != PerfMeterOverdrawMeasurementState.Measuring)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, frameCount, normalizedFrameCount);
+			}
+
+			bool normalized = frameCount != normalizedFrameCount;
+			return MutationResult(
+				normalized ? PerfMeterMutationStatus.Normalized : PerfMeterMutationStatus.Applied,
+				normalized ? PerfMeterMutationReason.ValueNormalized : PerfMeterMutationReason.None,
+				frameCount,
+				normalizedFrameCount);
 		}
 
 		public static void CancelOverdrawMeasurement()
 		{
+			TryCancelOverdrawMeasurement();
+		}
+
+		public static PerfMeterMutationResultSnapshot TryCancelOverdrawMeasurement()
+		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
+			if (runtime == null)
 			{
-				runtime.CancelOverdrawMeasurement();
+				return MutationResult(PerfMeterMutationStatus.NoChange, PerfMeterMutationReason.NoActiveOperation, PerfMeterOverdrawMeasurementState.Canceled, PerfMeterOverdrawMeasurementState.Off);
 			}
+			if (!runtime.AcceptsMutations)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, PerfMeterOverdrawMeasurementState.Canceled, PerfMeterRuntime.OverdrawState);
+			}
+
+			PerfMeterOverdrawMeasurementState previousState = PerfMeterRuntime.OverdrawState;
+			runtime.CancelOverdrawMeasurement();
+			PerfMeterOverdrawMeasurementState effectiveState = PerfMeterRuntime.OverdrawState;
+			bool hadOperation = previousState != PerfMeterOverdrawMeasurementState.Off && previousState != PerfMeterOverdrawMeasurementState.Canceled;
+			return MutationResult(
+				hadOperation && effectiveState == PerfMeterOverdrawMeasurementState.Canceled ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
+				hadOperation ? PerfMeterMutationReason.None : PerfMeterMutationReason.NoActiveOperation,
+				PerfMeterOverdrawMeasurementState.Canceled,
+				effectiveState);
 		}
 
 		public static bool IsOverdrawHeatmapVisible
@@ -693,16 +832,33 @@ namespace SGG.PerfMeter
 
 		public static void SetOverdrawHeatmapVisible(bool visible)
 		{
-			if (!PerfMeterRuntime.EnsureRunning())
+			TrySetOverdrawHeatmapVisible(visible);
+		}
+
+		public static PerfMeterMutationResultSnapshot TrySetOverdrawHeatmapVisible(bool visible)
+		{
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
 			{
-				return;
+				return RuntimeUnavailableMutation(visible, IsOverdrawHeatmapVisible);
 			}
 
-			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
+			bool previousValue = PerfMeterRuntime.IsOverdrawHeatmapVisible;
+			runtime.SetOverdrawHeatmapVisible(visible);
+			bool effectiveValue = PerfMeterRuntime.IsOverdrawHeatmapVisible;
+			if (visible && PerfMeterRenderPipelineDetector.GetActiveKind() == PerfMeterRenderPipelineKind.HighDefinition)
 			{
-				runtime.SetOverdrawHeatmapVisible(visible);
+				return MutationResult(PerfMeterMutationStatus.Unsupported, PerfMeterMutationReason.UnsupportedRenderPipeline, visible, effectiveValue);
 			}
+			if (effectiveValue != visible)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, visible, effectiveValue);
+			}
+
+			return MutationResult(
+				previousValue == effectiveValue ? PerfMeterMutationStatus.NoChange : PerfMeterMutationStatus.Applied,
+				previousValue == effectiveValue ? PerfMeterMutationReason.AlreadyInRequestedState : PerfMeterMutationReason.None,
+				visible,
+				effectiveValue);
 		}
 
 		public static bool IsOverlayVisible
@@ -825,6 +981,68 @@ namespace SGG.PerfMeter
 			{
 				runtime.SetOverlayVisible(visible);
 			}
+		}
+
+		public static PerfMeterMutationResultSnapshot TryApplyOverlayConfiguration(PerfMeterOverlayConfiguration configuration)
+		{
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
+			{
+				return RuntimeUnavailableMutation(
+					FormatOverlayConfiguration(configuration),
+					FormatOverlayConfiguration(GetEffectiveOverlayConfiguration()));
+			}
+
+			PerfMeterOverlayConfiguration normalized = NormalizeOverlayConfiguration(configuration);
+			PerfMeterOverlayConfiguration previous = GetEffectiveOverlayConfiguration(runtime);
+			if (runtime.OverlayPreset != normalized.Preset)
+			{
+				runtime.SetOverlayPreset(normalized.Preset);
+			}
+			if (runtime.OverlayCorner != normalized.Corner)
+			{
+				runtime.SetOverlayCorner(normalized.Corner);
+			}
+			if (runtime.OverlayTheme != normalized.Theme)
+			{
+				runtime.SetOverlayTheme(normalized.Theme);
+			}
+			if (runtime.OverlayLayout != normalized.Layout)
+			{
+				runtime.SetOverlayLayout(normalized.Layout);
+			}
+			if (runtime.OverlayFontFamily != normalized.FontFamily)
+			{
+				runtime.SetOverlayFontFamily(normalized.FontFamily);
+			}
+			if (runtime.OverlayModules != normalized.Modules)
+			{
+				runtime.SetOverlayModules(normalized.Modules);
+			}
+			if (runtime.TargetFps != normalized.TargetFps)
+			{
+				runtime.SetTargetFps(normalized.TargetFps);
+			}
+			if (runtime.OverlayRequestedVisible != normalized.Visible)
+			{
+				runtime.SetOverlayVisible(normalized.Visible);
+			}
+			PerfMeterOverlayConfiguration effective = GetEffectiveOverlayConfiguration(runtime);
+			if (!OverlayConfigurationsEqual(effective, normalized))
+			{
+				return MutationResult(
+					PerfMeterMutationStatus.Rejected,
+					PerfMeterMutationReason.RuntimeRejected,
+					FormatOverlayConfiguration(configuration),
+					FormatOverlayConfiguration(effective));
+			}
+
+			bool wasNormalized = !OverlayConfigurationsEqual(configuration, normalized);
+			bool changed = !OverlayConfigurationsEqual(previous, effective);
+			return MutationResult(
+				wasNormalized ? PerfMeterMutationStatus.Normalized : changed ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
+				wasNormalized ? PerfMeterMutationReason.ValueNormalized : changed ? PerfMeterMutationReason.None : PerfMeterMutationReason.AlreadyInRequestedState,
+				FormatOverlayConfiguration(configuration),
+				FormatOverlayConfiguration(effective));
 		}
 
 		public static void SetOverlayCorner(PerfMeterOverlayCorner corner)
@@ -1018,6 +1236,169 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			return runtime != null ? runtime.ConfiguredSettings : GetSettings();
+		}
+
+		private static bool TryGetMutableRuntime(out PerfMeterRuntime runtime)
+		{
+			if (!PerfMeterRuntime.EnsureRunning())
+			{
+				runtime = PerfMeterRuntime.Instance;
+				return false;
+			}
+
+			runtime = PerfMeterRuntime.Instance;
+			return runtime != null && runtime.AcceptsMutations;
+		}
+
+		private static PerfMeterMutationResultSnapshot MutationResult(
+			PerfMeterMutationStatus status,
+			PerfMeterMutationReason reason,
+			object requestedValue,
+			object effectiveValue)
+		{
+			return new PerfMeterMutationResultSnapshot(
+				status,
+				reason,
+				requestedValue?.ToString() ?? string.Empty,
+				effectiveValue?.ToString() ?? string.Empty);
+		}
+
+		private static PerfMeterMutationResultSnapshot RuntimeUnavailableMutation(object requestedValue, object effectiveValue)
+		{
+			bool pendingCleanup = PerfMeterRuntime.Instance != null && PerfMeterRuntime.Instance.HasPendingCleanup;
+			return MutationResult(
+				pendingCleanup ? PerfMeterMutationStatus.Rejected : PerfMeterMutationStatus.Unavailable,
+				pendingCleanup ? PerfMeterMutationReason.PendingCleanup : PerfMeterMutationReason.RuntimeUnavailable,
+				requestedValue,
+				effectiveValue);
+		}
+
+		private static PerfMeterCollectionMode NormalizeCollectionMode(PerfMeterCollectionMode mode)
+		{
+			switch (mode)
+			{
+				case PerfMeterCollectionMode.Background:
+				case PerfMeterCollectionMode.Overlay:
+				case PerfMeterCollectionMode.OverdrawDiagnostic:
+					return mode;
+				default:
+					return PerfMeterCollectionMode.Overlay;
+			}
+		}
+
+		private static PerfMeterOverlayConfiguration GetEffectiveOverlayConfiguration(PerfMeterRuntime runtime = null)
+		{
+			runtime = runtime ?? PerfMeterRuntime.Instance;
+			if (runtime == null)
+			{
+				return new PerfMeterOverlayConfiguration(
+					false,
+					PerfMeterOverlayCorner.TopRight,
+					PerfMeterOverlayPreset.FullDiagnostics,
+					PerfMeterOverlayTheme.ClassicDark,
+					PerfMeterOverlayLayout.MetricBars,
+					PerfMeterOverlayFontFamily.Manrope,
+					PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics),
+					PerfMeterTargetFps.Fps60);
+			}
+
+			return new PerfMeterOverlayConfiguration(
+				runtime.OverlayRequestedVisible,
+				runtime.OverlayCorner,
+				runtime.OverlayPreset,
+				runtime.OverlayTheme,
+				runtime.OverlayLayout,
+				runtime.OverlayFontFamily,
+				runtime.OverlayModules,
+				runtime.TargetFps);
+		}
+
+		private static PerfMeterOverlayConfiguration NormalizeOverlayConfiguration(PerfMeterOverlayConfiguration configuration)
+		{
+			PerfMeterOverlayPreset preset = NormalizeOverlayPreset(configuration.Preset);
+			PerfMeterOverlayLayout layout = PerfMeterSettingsStore.NormalizeOverlayLayout(configuration.Layout);
+			PerfMeterOverlayModule modules = configuration.Modules & PerfMeterOverlayModule.All;
+			if (modules == PerfMeterOverlayModule.None)
+			{
+				modules = PerfMeterSettingsStore.GetPresetModules(preset);
+			}
+			if (preset != PerfMeterOverlayPreset.Custom &&
+				(layout != PerfMeterSettingsStore.GetPresetLayout(preset) || modules != PerfMeterSettingsStore.GetPresetModules(preset)))
+			{
+				preset = PerfMeterOverlayPreset.Custom;
+			}
+
+			return new PerfMeterOverlayConfiguration(
+				configuration.Visible,
+				NormalizeOverlayCorner(configuration.Corner),
+				preset,
+				PerfMeterSettingsStore.NormalizeOverlayTheme(configuration.Theme),
+				layout,
+				PerfMeterSettingsStore.NormalizeOverlayFontFamily(configuration.FontFamily),
+				modules,
+				NormalizeTargetFps(configuration.TargetFps));
+		}
+
+		private static PerfMeterOverlayCorner NormalizeOverlayCorner(PerfMeterOverlayCorner corner)
+		{
+			switch (corner)
+			{
+				case PerfMeterOverlayCorner.TopLeft:
+				case PerfMeterOverlayCorner.TopRight:
+				case PerfMeterOverlayCorner.BottomLeft:
+				case PerfMeterOverlayCorner.BottomRight:
+					return corner;
+				default:
+					return PerfMeterOverlayCorner.TopRight;
+			}
+		}
+
+		private static PerfMeterOverlayPreset NormalizeOverlayPreset(PerfMeterOverlayPreset preset)
+		{
+			return preset >= PerfMeterOverlayPreset.Custom && preset <= PerfMeterOverlayPreset.AgentDebug
+				? preset
+				: PerfMeterOverlayPreset.FullDiagnostics;
+		}
+
+		private static PerfMeterTargetFps NormalizeTargetFps(PerfMeterTargetFps targetFps)
+		{
+			switch (targetFps)
+			{
+				case PerfMeterTargetFps.Fps15:
+				case PerfMeterTargetFps.Fps30:
+				case PerfMeterTargetFps.Fps60:
+				case PerfMeterTargetFps.Fps90:
+				case PerfMeterTargetFps.Fps120:
+				case PerfMeterTargetFps.Fps144:
+				case PerfMeterTargetFps.Fps240:
+					return targetFps;
+				default:
+					return PerfMeterTargetFps.Fps60;
+			}
+		}
+
+		private static bool OverlayConfigurationsEqual(PerfMeterOverlayConfiguration first, PerfMeterOverlayConfiguration second)
+		{
+			return first.Visible == second.Visible &&
+				first.Corner == second.Corner &&
+				first.Preset == second.Preset &&
+				first.Theme == second.Theme &&
+				first.Layout == second.Layout &&
+				first.FontFamily == second.FontFamily &&
+				first.Modules == second.Modules &&
+				first.TargetFps == second.TargetFps;
+		}
+
+		private static string FormatOverlayConfiguration(PerfMeterOverlayConfiguration configuration)
+		{
+			return "visible=" + configuration.Visible +
+				";corner=" + configuration.Corner +
+				";preset=" + configuration.Preset +
+				";theme=" + configuration.Theme +
+				";layout=" + configuration.Layout +
+				";font_family=" + configuration.FontFamily +
+				";modules=" + configuration.Modules +
+				";target_fps=" + (int)configuration.TargetFps;
 		}
 
 		internal static void ApplyOverlayTuning(PerfMeterSettingsSnapshot settings)
