@@ -4,35 +4,35 @@
 
 ## Current Release
 
-- Release candidate: `2026.8.11-1`.
-- Current published release: `2026.8.9-1`
-- Current npm `latest`: `2026.8.9-1`
-- Previous published release: `2026.8.8-1`
+- Release candidate: none.
+- Current published release: `2026.8.11-1`
+- Current npm `latest`: `2026.8.11-1`
+- Previous published release: `2026.8.9-1`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- Release PR: [#22](https://github.com/romanilyin/sgg-perfmeter/pull/22) merged to `main` as commit `b3894a0ce87c423f200f46e3d9caf64ce5dde2fb`
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.9-1 (published 2026-08-09)
-- Git tag `2026.8.9-1` points to main merge commit `b3894a0ce87c423f200f46e3d9caf64ce5dde2fb`
-- Last published npm: `com.sungeargames.perfmeter@2026.8.9-1` through Trusted Publishing OIDC with verified SLSA provenance v1
-- npm dist-tag: `latest` -> `2026.8.9-1`
-- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31300896015 (completed successfully and published npm)
-- Last published npm SHA-1: `bccd958a68c99de0bf2af3beb56b51307436ac5a`
-- Last published npm integrity: `sha512-GZ50UNnkMAhT7swIhOPSl03zsMi9r9O2/xuKMVy9zlH3AnESGkd5CeyDohX8zurfJtMswjRzq8zyh7tfl5YK8Q==`
+- Release PR: [#24](https://github.com/romanilyin/sgg-perfmeter/pull/24) merged to `main` as commit `9edc828a10d0ba39ff22f5056bf21e2b9fd4c6dc`
+- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.11-1 (published 2026-08-11)
+- Git tag `2026.8.11-1` points to main merge commit `9edc828a10d0ba39ff22f5056bf21e2b9fd4c6dc`
+- Last published npm: `com.sungeargames.perfmeter@2026.8.11-1` through Trusted Publishing OIDC with verified SLSA provenance v1
+- npm dist-tag: `latest` -> `2026.8.11-1`
+- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31480015134 (completed successfully and published npm)
+- Last published npm SHA-1: `2c2d775d96ff3c6fa5904994e9bb757b0bb1f39b`
+- Last published npm integrity: `sha512-PPcvWsjqkLqrX2ew2wKDUPHptMG0wMAa1HehDMbktJasy2aclIEonmpQvYtyRHeU56TCJn7JJgy40eZnhnJzoA==`
 - Registry signature key ID: `SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U`
 - npm audit signatures: one registry signature and one attestation verified.
-- SLSA provenance v1 resolves `refs/tags/2026.8.9-1`, commit `b3894a0ce87c423f200f46e3d9caf64ce5dde2fb`, and workflow run `31300896015`.
-- Public npm and Git UPM install pins point to published `2026.8.9-1`; they were updated only after verified GitHub and npm publication.
+- SLSA provenance v1 resolves `refs/tags/2026.8.11-1`, commit `9edc828a10d0ba39ff22f5056bf21e2b9fd4c6dc`, and workflow run `31480015134`.
+- Public npm and Git UPM install pins point to published `2026.8.11-1`; they were updated only after verified GitHub/npm publication and clean-consumer installs.
 - Package: `com.sungeargames.perfmeter`
-- Last published Unity validation matrix: `6000.4.12f1`
-- Published release Unity validation evidence: `6000.4.12f1`; see the current release record for targeted and full-suite results.
+- Last published Unity validation matrix: `6000.4.12f1`, `6000.5.6f1`, `6000.6.0b7`, and `6000.7.0a4`
+- Published release Unity validation evidence covers all four rows; see the current release record for targeted, full-suite, and attached RenderDoc results.
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-08-09
+- Release work date: 2026-08-11
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Current release record: `_DevelopmentDocs/release/2026.8.9-1-core-hardening-release.md`.
-Current release candidate record: `_DevelopmentDocs/release/2026.8.11-1-renderdoc-bridge-release.md`.
-Previous published release record: `_DevelopmentDocs/release/2026.8.8-1-ftue-continuation-release.md`.
-Earlier published release record: `_DevelopmentDocs/release/2026.8.7-2-setup-ftue-release.md`.
+Current release record: `_DevelopmentDocs/release/2026.8.11-1-renderdoc-bridge-release.md`.
+Current release candidate record: none.
+Previous published release record: `_DevelopmentDocs/release/2026.8.9-1-core-hardening-release.md`.
+Earlier published release record: `_DevelopmentDocs/release/2026.8.8-1-ftue-continuation-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
