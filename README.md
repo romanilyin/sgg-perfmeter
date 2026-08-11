@@ -72,6 +72,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
 - **Public C# API**: immutable snapshots for status, metrics, device, camera, integration-neutral render context (with a legacy Render Graph facade), alerts, sessions, timelines, external artifacts, profiler leases, and custom metrics.
+- **Frame-accurate hitch visibility**: a full-width raw frame-time strip advances on every collected frame, preserves one-frame peaks at narrow widths, and remains independent of the throttled text refresh.
 - **External GPU capture**: guarded generic Editor/Development Build coordination for attached RenderDoc or PIX, plus an optional Windows x64 Editor native RenderDoc path with authenticated artifacts on Direct3D 11, Direct3D 12, and Vulkan.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.

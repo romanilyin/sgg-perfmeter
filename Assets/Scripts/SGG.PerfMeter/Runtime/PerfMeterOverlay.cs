@@ -27,6 +27,7 @@ namespace SGG.PerfMeter
 		private const float GraphLegendStatWidth = 38f;
 		private const float CpuGraphHeight = 86f;
 		private const float GpuGraphHeight = 52f;
+		private const float FrameTimeStripGraphHeight = 72f;
 		private const float CpuCoreGraphCellHeight = 44f;
 		private const float CpuCoreGraphGap = 5f;
 		private const float FpsOnlyHeight = 30f;
@@ -141,6 +142,7 @@ namespace SGG.PerfMeter
 		private VisualElement _contentRow;
 		private VisualElement _widgetBlock;
 		private VisualElement _graphBlock;
+		private VisualElement _frameTimeStripBlock;
 		private VisualElement _cpuCoreBarsBlock;
 		private VisualElement _cpuCoreGraphsBlock;
 		private VisualElement _textBlock;
@@ -170,6 +172,8 @@ namespace SGG.PerfMeter
 		private PerfMeterBudgetBar _gpuBudgetBar;
 		private PerfMeterGraphElement _cpuGraph;
 		private PerfMeterGraphElement _gpuGraph;
+		private PerfMeterFrameTimeStripElement _frameTimeStrip;
+		private Label _frameTimeStripStatusLabel;
 		private PerfMeterCpuCoreBarsElement _cpuCoreBars;
 		private PerfMeterCpuCoreGraphsElement _cpuCoreGraphs;
 		private Label _cpuCoreBarsStatusLabel;
@@ -212,6 +216,8 @@ namespace SGG.PerfMeter
 		internal GameObject PanelHostObject => _panelHost?.HostObject;
 		internal bool FpsOnlyUsesTwoRows => _fpsOnlyTwoRows;
 		internal float FpsOnlyRequiredWidth => GetFpsOnlyRequiredWidth();
+		internal int FrameTimeStripSampleCount => _frameTimeStrip?.SampleCount ?? 0;
+		internal int FrameTimeStripLastFrame => _frameTimeStrip?.LastFrame ?? -1;
 
 		internal static bool ShouldUseFpsOnlyTwoRows(float requiredWidth, float availableWidth)
 		{
@@ -373,6 +379,8 @@ namespace SGG.PerfMeter
 			{
 				_gpuGraph.SetFrameBudgetMs(frameBudgetMs);
 			}
+
+			_frameTimeStrip?.SetFrameBudgetMs(frameBudgetMs);
 		}
 
 		internal void SetTuning(float scale, float opacity, float fontSize, float refreshIntervalSeconds, int graphHistoryLength)
@@ -386,8 +394,20 @@ namespace SGG.PerfMeter
 			ApplyTuningToVisuals();
 			_cpuGraph?.SetHistoryCapacity(_graphHistoryLength);
 			_gpuGraph?.SetHistoryCapacity(_graphHistoryLength);
+			_frameTimeStrip?.SetHistoryCapacity(_graphHistoryLength);
 			_cpuCoreGraphs?.SetHistoryCapacity(_graphHistoryLength);
 			RequestGeometryRecalculation();
+		}
+
+		internal void RecordFrameTimeSample(int collectionFrame, double frameTimeMs, bool valid)
+		{
+			if (!_isVisible || !isActiveAndEnabled || _frameTimeStrip == null || !ShouldShowFrameTimeStrip())
+			{
+				return;
+			}
+
+			using PerfMeterSelfObservability.MeasurementScope selfOverheadScope = PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.Overlay);
+			_frameTimeStrip.AddSample(collectionFrame, frameTimeMs, valid);
 		}
 
 		private bool EnsurePanelHost()
@@ -528,6 +548,11 @@ namespace SGG.PerfMeter
 			if (_widgetBlock != null)
 			{
 				_widgetBlock.style.width = width;
+			}
+
+			if (_frameTimeStripBlock != null)
+			{
+				_frameTimeStripBlock.style.width = width;
 			}
 
 			_fpsCard?.SetAvailableWidth(width);
@@ -755,10 +780,15 @@ namespace SGG.PerfMeter
 			_contentRow.Add(_textBlock);
 			_contentRow.Add(_cpuCoreBarsBlock);
 
+			_frameTimeStripBlock = CreateBlock("sgg-perfmeter-frame-time-strip-block", GraphBlockWidth);
+			_frameTimeStripBlock.style.marginTop = BlockGap;
+			BuildFrameTimeStripRow();
+
 			_container.Add(_widgetBlock);
 			_container.Add(_graphBlock);
 			_container.Add(_cpuCoreGraphsBlock);
 			_container.Add(_contentRow);
+			_container.Add(_frameTimeStripBlock);
 			root.Add(_container);
 			ApplyModeLayout();
 			ApplyCorner();
@@ -818,6 +848,7 @@ namespace SGG.PerfMeter
 			_contentRow = null;
 			_widgetBlock = null;
 			_graphBlock = null;
+			_frameTimeStripBlock = null;
 			_cpuCoreBarsBlock = null;
 			_cpuCoreGraphsBlock = null;
 			_textBlock = null;
@@ -843,6 +874,8 @@ namespace SGG.PerfMeter
 			_gpuBudgetBar = null;
 			_cpuGraph = null;
 			_gpuGraph = null;
+			_frameTimeStrip = null;
+			_frameTimeStripStatusLabel = null;
 			_cpuCoreBars = null;
 			_cpuCoreGraphs = null;
 			_cpuCoreBarsStatusLabel = null;
@@ -974,6 +1007,30 @@ namespace SGG.PerfMeter
 			gpuRow.Add(_gpuGraph);
 			gpuRow.Add(gpuLegend);
 			_graphs.Add(gpuRow);
+		}
+
+		private void BuildFrameTimeStripRow()
+		{
+			VisualElement header = new VisualElement
+			{
+				pickingMode = PickingMode.Ignore
+			};
+			header.style.height = 18f;
+			header.style.flexDirection = FlexDirection.Row;
+			header.style.alignItems = Align.Center;
+
+			Label title = CreateSmallLabel("RAW FRAME TIME", FrameColor, TextAnchor.MiddleLeft, PerfMeterOverlayFontRole.Medium);
+			title.style.marginRight = 8f;
+			header.Add(title);
+			Label cadence = CreateSmallLabel("per collected frame / no smoothing", MutedTextColor, TextAnchor.MiddleLeft);
+			cadence.style.flexGrow = 1f;
+			header.Add(cadence);
+			_frameTimeStripStatusLabel = CreateSmallLabel("waiting for timing", UnavailableColor, TextAnchor.MiddleRight, PerfMeterOverlayFontRole.Numeric);
+			header.Add(_frameTimeStripStatusLabel);
+			_frameTimeStripBlock.Add(header);
+
+			_frameTimeStrip = new PerfMeterFrameTimeStripElement(_graphHistoryLength);
+			_frameTimeStripBlock.Add(_frameTimeStrip);
 		}
 
 		private void BuildCpuCoreBarRows()
@@ -1298,6 +1355,7 @@ namespace SGG.PerfMeter
 
 			bool showWidgets = ShouldShowWidgetBlock();
 			bool showGraphs = (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
+			bool showFrameTimeStrip = ShouldShowFrameTimeStrip();
 			bool showCpuCoreBarsBlock = ShouldShowCpuCoreBarsBlock();
 			bool showCpuCoreGraphsBlock = ShouldShowCpuCoreGraphsBlock();
 			float availableWidth = GetAvailableLogicalPanelWidth(GetPanelWidth());
@@ -1310,6 +1368,12 @@ namespace SGG.PerfMeter
 			}
 
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
+			if (_frameTimeStripBlock != null)
+			{
+				_frameTimeStripBlock.style.display = showFrameTimeStrip ? DisplayStyle.Flex : DisplayStyle.None;
+				_frameTimeStripBlock.style.height = showFrameTimeStrip ? StyleKeyword.Auto : 0f;
+				_frameTimeStripBlock.style.width = responsiveGraphWidth;
+			}
 			if (_cpuCoreGraphsBlock != null)
 			{
 				_cpuCoreGraphsBlock.style.display = showCpuCoreGraphsBlock ? DisplayStyle.Flex : DisplayStyle.None;
@@ -1326,7 +1390,7 @@ namespace SGG.PerfMeter
 
 			float textWidth = GetTextBlockWidth();
 			float contentRowWidth = textWidth + (showCpuCoreBarsBlock ? BlockGap + CpuCoreBarsSidePanelWidth : 0f);
-			float primaryBlockWidth = showGraphs || showCpuCoreGraphsBlock ? GraphBlockWidth : showWidgets ? responsiveGraphWidth : 0f;
+			float primaryBlockWidth = showGraphs || showCpuCoreGraphsBlock ? GraphBlockWidth : showWidgets || showFrameTimeStrip ? responsiveGraphWidth : 0f;
 			float containerWidth = Mathf.Max(primaryBlockWidth, contentRowWidth);
 			_container.style.width = containerWidth;
 			_contentRow.style.width = contentRowWidth;
@@ -1358,6 +1422,11 @@ namespace SGG.PerfMeter
 		private bool ShouldShowWidgetBlock()
 		{
 			return _mode != PerfMeterOverlayMode.FpsOnly && _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
+		}
+
+		private bool ShouldShowFrameTimeStrip()
+		{
+			return (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && HasModule(PerfMeterOverlayModule.Graphs);
 		}
 
 		private bool ShouldShowCpuCoreBarsBlock()
@@ -1432,6 +1501,11 @@ namespace SGG.PerfMeter
 			if (_graphBlock != null)
 			{
 				_graphBlock.style.backgroundColor = background;
+			}
+
+			if (_frameTimeStripBlock != null)
+			{
+				_frameTimeStripBlock.style.backgroundColor = background;
 			}
 
 			if (_textBlock != null)
@@ -1667,6 +1741,10 @@ namespace SGG.PerfMeter
 			_textBlock.style.alignSelf = Align.FlexStart;
 			_widgetBlock.style.alignSelf = align;
 			_graphBlock.style.alignSelf = align;
+			if (_frameTimeStripBlock != null)
+			{
+				_frameTimeStripBlock.style.alignSelf = align;
+			}
 			if (_cpuCoreGraphsBlock != null)
 			{
 				_cpuCoreGraphsBlock.style.alignSelf = align;
@@ -1755,6 +1833,7 @@ namespace SGG.PerfMeter
 			{
 				UpdateGraphs(status, metrics, recordSample);
 			}
+			UpdateFrameTimeStripStatus();
 
 			UpdateMetricWidgets(status, metrics, warning);
 			UpdateCpuCorePanel();
@@ -1860,6 +1939,39 @@ namespace SGG.PerfMeter
 				gpuLegendReferenceMs,
 				metrics.GpuFrameTimeAvailable ? GpuColor : UnavailableColor,
 				metrics.GpuFrameTimeAvailable);
+		}
+
+		private void UpdateFrameTimeStripStatus()
+		{
+			if (_frameTimeStripStatusLabel == null || _frameTimeStrip == null || !ShouldShowFrameTimeStrip())
+			{
+				return;
+			}
+
+			_valueBuilder.Length = 0;
+			if (_frameTimeStrip.TryGetLatest(out double latestFrameTimeMs, out bool latestValid) && latestValid)
+			{
+				_valueBuilder.Append("latest ");
+				AppendDouble(_valueBuilder, latestFrameTimeMs, "0.00");
+				_valueBuilder.Append(" ms / peak ");
+				AppendDouble(_valueBuilder, _frameTimeStrip.PeakFrameTimeMs, "0.00");
+				_valueBuilder.Append(" ms");
+				_frameTimeStripStatusLabel.style.color = latestFrameTimeMs > _frameTimeStrip.FrameBudgetMs ? WarningColor : MutedTextColor;
+			}
+			else if (_frameTimeStrip.SampleCount > 0)
+			{
+				_valueBuilder.Append("latest gap / peak ");
+				AppendDouble(_valueBuilder, _frameTimeStrip.PeakFrameTimeMs, "0.00");
+				_valueBuilder.Append(" ms");
+				_frameTimeStripStatusLabel.style.color = UnavailableColor;
+			}
+			else
+			{
+				_valueBuilder.Append("waiting for timing");
+				_frameTimeStripStatusLabel.style.color = UnavailableColor;
+			}
+
+			_frameTimeStripStatusLabel.text = _valueBuilder.ToString();
 		}
 
 		private void UpdateCpuCorePanel()
@@ -5060,6 +5172,170 @@ namespace SGG.PerfMeter
 			internal double Average { get; }
 			internal double OnePercent { get; }
 			internal double PointOnePercent { get; }
+		}
+
+		internal sealed class PerfMeterFrameTimeStripElement : VisualElement
+		{
+			private readonly PerfMeterFrameTimeStripHistory _history;
+			private double _frameBudgetMs = PerfMeterCollector.DefaultFrameBudgetMs;
+
+			internal PerfMeterFrameTimeStripElement(int historyCapacity)
+			{
+				name = "sgg-perfmeter-frame-time-strip";
+				pickingMode = PickingMode.Ignore;
+				style.width = Length.Percent(100f);
+				style.height = FrameTimeStripGraphHeight;
+				style.marginTop = 4f;
+				style.backgroundColor = GraphBackgroundColor;
+				_history = new PerfMeterFrameTimeStripHistory(historyCapacity);
+				generateVisualContent += OnGenerateVisualContent;
+			}
+
+			internal int SampleCount => _history.Count;
+			internal int LastFrame => _history.LastFrame;
+			internal double FrameBudgetMs => _frameBudgetMs;
+			internal double PeakFrameTimeMs => _history.GetPeak();
+
+			internal void SetHistoryCapacity(int historyCapacity)
+			{
+				int normalized = Mathf.Clamp(historyCapacity, PerfMeterSettingsStore.MinOverlayGraphHistoryLength, PerfMeterSettingsStore.MaxOverlayGraphHistoryLength);
+				_history.SetCapacity(normalized);
+				MarkDirtyRepaint();
+			}
+
+			internal void SetFrameBudgetMs(double frameBudgetMs)
+			{
+				double normalized = frameBudgetMs > 0d && !double.IsNaN(frameBudgetMs) && !double.IsInfinity(frameBudgetMs)
+					? frameBudgetMs
+					: PerfMeterCollector.DefaultFrameBudgetMs;
+				if (Math.Abs(_frameBudgetMs - normalized) < 0.000001d)
+				{
+					return;
+				}
+
+				_frameBudgetMs = normalized;
+				MarkDirtyRepaint();
+			}
+
+			internal void AddSample(int collectionFrame, double frameTimeMs, bool valid)
+			{
+				if (_history.AddSample(collectionFrame, frameTimeMs, valid))
+				{
+					MarkDirtyRepaint();
+				}
+			}
+
+			internal bool TryGetLatest(out double frameTimeMs, out bool valid)
+			{
+				return _history.TryGetLatest(out frameTimeMs, out valid);
+			}
+
+			private void OnGenerateVisualContent(MeshGenerationContext context)
+			{
+				Rect rect = contentRect;
+				if (rect.width <= 1f || rect.height <= 1f)
+				{
+					return;
+				}
+
+				Painter2D painter = context.painter2D;
+				DrawBackground(painter, rect);
+				double scaleMs = Math.Max(_frameBudgetMs * 2d, PeakFrameTimeMs * 1.05d);
+				scaleMs = Math.Max(1d, Math.Ceiling(scaleMs));
+				DrawGuideLine(painter, rect, scaleMs * 0.5d, scaleMs, GridColor);
+				DrawGuideLine(painter, rect, _frameBudgetMs, scaleMs, BudgetColor);
+				DrawSamples(painter, rect, scaleMs);
+			}
+
+			private static void DrawBackground(Painter2D painter, Rect rect)
+			{
+				painter.fillColor = GraphBackgroundColor;
+				painter.BeginPath();
+				painter.MoveTo(new Vector2(rect.xMin, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMax));
+				painter.LineTo(new Vector2(rect.xMin, rect.yMax));
+				painter.ClosePath();
+				painter.Fill();
+
+				painter.lineWidth = 1f;
+				painter.strokeColor = WithAlpha(TextColor, 0.22f);
+				painter.BeginPath();
+				painter.MoveTo(new Vector2(rect.xMin, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMin));
+				painter.LineTo(new Vector2(rect.xMax, rect.yMax));
+				painter.LineTo(new Vector2(rect.xMin, rect.yMax));
+				painter.ClosePath();
+				painter.Stroke();
+			}
+
+			private static void DrawGuideLine(Painter2D painter, Rect rect, double value, double scale, Color color)
+			{
+				float y = ValueToY(rect, value, scale);
+				painter.lineWidth = 1f;
+				painter.strokeColor = color;
+				painter.BeginPath();
+				painter.MoveTo(new Vector2(rect.xMin, y));
+				painter.LineTo(new Vector2(rect.xMax, y));
+				painter.Stroke();
+			}
+
+			private void DrawSamples(Painter2D painter, Rect rect, double scaleMs)
+			{
+				int columnCount = Math.Min(_history.Count, Mathf.Max(1, Mathf.FloorToInt(rect.width)));
+				if (columnCount <= 0)
+				{
+					return;
+				}
+
+				float columnWidth = rect.width / columnCount;
+				float lineWidth = Mathf.Max(1f, columnWidth);
+				for (int column = 0; column < columnCount; column++)
+				{
+					if (!_history.TryGetEnvelope(column, columnCount, out double min, out double max))
+					{
+						continue;
+					}
+
+					float x = rect.xMin + (column + 0.5f) * columnWidth;
+					float maxY = ValueToY(rect, max, scaleMs);
+					float minY = ValueToY(rect, min, scaleMs);
+					Color severity = GetSeverityColor(max);
+					painter.lineWidth = lineWidth;
+					painter.strokeColor = WithAlpha(severity, 0.28f);
+					painter.BeginPath();
+					painter.MoveTo(new Vector2(x, rect.yMax));
+					painter.LineTo(new Vector2(x, maxY));
+					painter.Stroke();
+
+					painter.strokeColor = severity;
+					painter.BeginPath();
+					painter.MoveTo(new Vector2(x, maxY));
+					painter.LineTo(new Vector2(x, Mathf.Min(rect.yMax, Mathf.Max(maxY + 1.5f, minY))));
+					painter.Stroke();
+				}
+			}
+
+			private Color GetSeverityColor(double frameTimeMs)
+			{
+				if (frameTimeMs >= _frameBudgetMs * 2d)
+				{
+					return FpsCriticalColor;
+				}
+
+				if (frameTimeMs > _frameBudgetMs)
+				{
+					return WarningColor;
+				}
+
+				return FrameColor;
+			}
+
+			private static float ValueToY(Rect rect, double value, double scaleMs)
+			{
+				float normalized = Mathf.Clamp01((float)(value / scaleMs));
+				return rect.yMax - normalized * rect.height;
+			}
 		}
 
 		private sealed class PerfMeterGraphElement : VisualElement

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added a raw per-collected-frame hitch strip with bounded history, explicit timing gaps, budget severity, and peak-preserving pixel compression independent of throttled overlay text refresh.
+
 ## 2026.8.11-1
 
 - Added an optional separately distributed, SHA-256-pinned Windows x64 Editor RenderDoc bridge with verified FTUE download, local-file installation, update, and removal while keeping the UPM package binary-free and RenderDoc user-owned.

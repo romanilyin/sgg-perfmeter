@@ -1,6 +1,6 @@
 # Implemented Widgets
 
-SGG PerfMeter currently ships 16 high-level runtime overlay widgets. These are the preset composition blocks shown in the setup window and used by visual overlay presets.
+SGG PerfMeter currently ships 17 high-level runtime overlay widgets. These are the preset composition blocks shown in the setup window and used by visual overlay presets.
 
 `FPS Only` is a preset/layout mode, not a separate widget. It reuses FPS and timing data in a single compact row.
 
@@ -19,6 +19,7 @@ Runtime overlay text is not localized, so localized docs use the same widget scr
 | `timing.gpu-budget-bar` | <img src="../assets/screenshots/widgets/timing-gpu-budget-bar.png" alt="GPU budget bar" width="360"> | Budget bar | GPU timing | GPU frame time against the selected target-FPS budget. |
 | `graphs.cpu-timing` | <img src="../assets/screenshots/widgets/graphs-cpu-timing.png" alt="CPU timing graph" width="360"> | Graph | Graphs / Timing | CPU frame, main thread, render thread, and other timing history. |
 | `graphs.gpu-timing` | <img src="../assets/screenshots/widgets/graphs-gpu-timing.png" alt="GPU timing graph" width="360"> | Graph | Graphs / GPU timing | GPU frame timing history with target budget line. |
+| `graphs.raw-frame-time` | Runtime-only strip | Graph | Graphs / Timing | Raw frame time for every collected frame, including explicit unavailable gaps, budget severity, and peak-preserving narrow-width compression without temporal smoothing. |
 | `cpu.cores-bars` | <img src="../assets/screenshots/widgets/cpu-cores-bars.png" alt="CPU core bars" width="360"> | Panel | CPU core sampling | Per-logical-core CPU load bars where platform sampling is available. |
 | `cpu.cores-graphs` | <img src="../assets/screenshots/widgets/cpu-cores-graphs.png" alt="CPU core graphs" width="360"> | Panel | CPU core sampling / Graphs | Per-logical-core CPU load history graphs. |
 | `custom-metrics.panel` | <img src="../assets/screenshots/widgets/custom-metrics-panel.png" alt="Custom metrics panel" width="360"> | Panel | Custom metrics | Values supplied by project `IPerfMeterCustomMetricProvider` implementations. |

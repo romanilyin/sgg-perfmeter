@@ -602,6 +602,7 @@ namespace SGG.PerfMeter
 			if (frameTimingSampleIgnored)
 			{
 				double ignoredSampleTimeSeconds = Time.realtimeSinceStartupAsDouble;
+				_overlay?.RecordFrameTimeSample(frame, collectedMetrics.CpuFrameTimeMs, false);
 				RecordMissingTimeline(frame, ignoredSampleTimeSeconds, PerfMeterSessionTimelineReasonFlags.InvalidTiming | PerfMeterSessionTimelineReasonFlags.FrameTimingUnavailable, captureStatus);
 				_lastCollectorWarning = warning;
 				UpdateDiagnostics(frame, ignoredSampleTimeSeconds, collectedMetrics.Bottleneck, frameTimingAvailability, true, collectedMetrics.GpuFrameTimeAvailable, warning);
@@ -614,6 +615,10 @@ namespace SGG.PerfMeter
 			_latestMetrics = collectedMetrics;
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
+			_overlay?.RecordFrameTimeSample(
+				frame,
+				_latestMetrics.CpuFrameTimeMs,
+				frameTimingAvailability == PerfMeterFrameTimingAvailability.Available && PerfMeterCollector.IsValidFrameTimingSampleMs(_latestMetrics.CpuFrameTimeMs));
 			UpdateCpuCoreSampler(Time.unscaledTime);
 			PerfMeterCustomMetricCollection customMetrics = PerfMeterCustomMetricRegistry.Collect();
 			_latestCustomMetricBuffer = customMetrics.Buffer;

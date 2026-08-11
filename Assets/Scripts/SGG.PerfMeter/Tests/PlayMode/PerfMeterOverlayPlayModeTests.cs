@@ -188,6 +188,40 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			AssertBudgetChildrenWithin(root, "gpu-budget");
 		}
 
+		[UnityTest]
+		public IEnumerator RawFrameTimeStripAdvancesIndependentlyOfTextRefreshWithoutRebuildingTree()
+		{
+			_owner = new GameObject("PerfMeter Raw Frame Time Strip Test");
+			PerfMeterOverlay overlay = _owner.AddComponent<PerfMeterOverlay>();
+			yield return WaitForOverlay(overlay);
+
+			overlay.SetModules(PerfMeterOverlayModule.Graphs);
+			overlay.SetMode(PerfMeterOverlayMode.Full);
+			overlay.SetTuning(1f, 0.84f, 12f, 2f, 120);
+			yield return null;
+
+			VisualElement container = overlay.OwnedContainer;
+			int childCount = container.childCount;
+			Assert.That(container[childCount - 1].name, Is.EqualTo("sgg-perfmeter-frame-time-strip-block"));
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+
+			overlay.RecordFrameTimeSample(100, 16d, true);
+			overlay.RecordFrameTimeSample(101, 80d, true);
+			overlay.RecordFrameTimeSample(102, 0d, false);
+			Assert.That(overlay.FrameTimeStripSampleCount, Is.EqualTo(3));
+			Assert.That(overlay.FrameTimeStripLastFrame, Is.EqualTo(102));
+
+			for (int frame = 103; frame < 303; frame++)
+			{
+				overlay.RecordFrameTimeSample(frame, 16d, true);
+			}
+
+			Assert.That(overlay.FrameTimeStripSampleCount, Is.EqualTo(120));
+			Assert.That(overlay.FrameTimeStripLastFrame, Is.EqualTo(302));
+			Assert.That(container.childCount, Is.EqualTo(childCount));
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+		}
+
 		private static void AssertCardChildrenWithin(VisualElement root, string id)
 		{
 			string cardName = "sgg-perfmeter-widget-card-" + id;

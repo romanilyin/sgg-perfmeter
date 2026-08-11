@@ -8,6 +8,16 @@
 
 `StructuredLog` toggle, stable numeric geometry и versioned owned panel host выпущены в package version `2026.8.5-2`.
 
+### Implemented: Frame-accurate hitch strip
+
+Pending release after `2026.8.11-1`:
+
+- a dedicated full-width bottom strip advances once per collected frame independently of overlay text refresh;
+- invalid timing advances the bounded history as an explicit gap instead of fake zero;
+- one-frame hitches retain raw height and budget severity without temporal smoothing;
+- narrow plots use only a peak-preserving min/max envelope;
+- the warmed ring-buffer update allocates `0 B/frame` and does not rebuild the visual tree.
+
 ### Resolved: Text overflow and stable numeric geometry
 
 Implemented in `2026.8.5-2`:
