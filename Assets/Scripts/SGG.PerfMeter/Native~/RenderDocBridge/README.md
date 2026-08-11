@@ -1,9 +1,10 @@
 # SGG PerfMeter RenderDoc Bridge
 
-This directory contains the isolated `PM-RDOC-002` Windows x64 source bridge. It
-has no managed or public capture wiring, ships no RenderDoc or bridge binary,
-and never loads or injects RenderDoc. Production resolution accepts only an
-already-loaded `renderdoc.dll`.
+This directory contains the `PM-RDOC-002` Windows x64 source bridge used by the
+optional managed RenderDoc backend. The UPM package remains binary-free. A
+release may publish the bridge as a separate verified artifact for project-local
+Editor-only installation. The bridge never loads or injects RenderDoc;
+production resolution accepts only an already-loaded `renderdoc.dll`.
 
 ## Build And Test
 
@@ -11,13 +12,26 @@ Run from an x64 Visual Studio developer environment and keep the build directory
 outside the package source:
 
 ```powershell
-cmake -S <bridge-source> -B <build-directory> -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake -S <bridge-source> -B <build-directory> -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DSGG_RD_ARTIFACT_VERSION=<package-version> -DSGG_RD_FILE_VERSION=<year>,<month>,<day>,<revision>
 cmake --build <build-directory>
 ctest --test-dir <build-directory> --output-on-failure
 ```
 
 CMake downloads `renderdoc_app.h` from the exact revision recorded in
-`ThirdPartyNotices.md` and rejects any SHA-256 mismatch.
+`ThirdPartyNotices.md` and rejects any SHA-256 mismatch. Release builds use the
+static MSVC runtime and embed the requested artifact version in the PE resource.
+
+## Package Release Artifact
+
+After a successful Release build and CTest run, create the deterministic
+Windows x64 ZIP and checksum from the package root:
+
+```powershell
+./package-release.ps1 -PackageRoot <package-root> -BuildDirectory <build-directory> -OutputDirectory <output-directory> -PackageVersion <package-version> -SourceCommit <git-commit>
+```
+
+The archive contains only `sgg_renderdoc_bridge.dll`, an artifact manifest and
+the required package/third-party notices. It never contains RenderDoc binaries.
 
 ## Live Resolver Probe
 

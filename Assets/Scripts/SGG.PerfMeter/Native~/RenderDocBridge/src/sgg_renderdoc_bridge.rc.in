@@ -1,0 +1,34 @@
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION @SGG_RD_FILE_VERSION@
+ PRODUCTVERSION @SGG_RD_FILE_VERSION@
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+ FILEFLAGS VS_FF_DEBUG
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_DLL
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "SunGear Games\0"
+            VALUE "FileDescription", "SGG PerfMeter RenderDoc Bridge\0"
+            VALUE "FileVersion", "@SGG_RD_ARTIFACT_VERSION@\0"
+            VALUE "InternalName", "sgg_renderdoc_bridge\0"
+            VALUE "LegalCopyright", "Copyright (c) SunGear Games\0"
+            VALUE "OriginalFilename", "sgg_renderdoc_bridge.dll\0"
+            VALUE "ProductName", "SGG PerfMeter\0"
+            VALUE "ProductVersion", "@SGG_RD_ARTIFACT_VERSION@\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

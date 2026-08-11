@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
+cmake_policy(SET CMP0091 NEW)
 
 project(SggRenderDocBridge VERSION 1.0 LANGUAGES C CXX)
 
@@ -9,6 +10,14 @@ endif()
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "PM-RDOC-002 requires a Windows x64 target (8-byte pointers).")
 endif()
+
+if(NOT MSVC)
+    message(FATAL_ERROR "PM-RDOC-002 release artifacts require the MSVC Windows x64 toolchain.")
+endif()
+
+set(SGG_RD_ARTIFACT_VERSION "development" CACHE STRING "Bridge artifact version string")
+set(SGG_RD_FILE_VERSION "1,0,0,0" CACHE STRING "Four-component Windows file version")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(RENDERDOC_HEADER_URL
     "https://raw.githubusercontent.com/baldurk/renderdoc/7db2264afa00a5313154022f8c4ae0628a641300/renderdoc/api/app/renderdoc_app.h")
@@ -41,8 +50,14 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(BRIDGE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(BRIDGE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/sgg_renderdoc_bridge.cpp")
 set(BRIDGE_RENDERDOC_INCLUDE_DIR "${RENDERDOC_HEADER_DIR}")
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/sgg_renderdoc_bridge.rc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/sgg_renderdoc_bridge.rc"
+    @ONLY)
 
-add_library(sgg_renderdoc_bridge SHARED "${BRIDGE_SOURCE}")
+add_library(sgg_renderdoc_bridge SHARED
+    "${BRIDGE_SOURCE}"
+    "${CMAKE_CURRENT_BINARY_DIR}/sgg_renderdoc_bridge.rc")
 target_include_directories(sgg_renderdoc_bridge
     PRIVATE
         "${BRIDGE_INCLUDE_DIR}"
