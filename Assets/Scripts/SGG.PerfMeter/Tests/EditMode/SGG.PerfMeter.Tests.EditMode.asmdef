@@ -3,7 +3,8 @@
     "rootNamespace": "SGG.PerfMeter.Tests.EditMode",
     "references": [
         "SGG.PerfMeter",
-        "SGG.PerfMeter.Editor"
+        "SGG.PerfMeter.Editor",
+        "SGG.PerfMeter.RenderDoc"
     ],
     "includePlatforms": [
         "Editor"

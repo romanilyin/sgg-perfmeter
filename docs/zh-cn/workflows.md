@@ -49,7 +49,7 @@ RenderDoc 是外部 tool，不随 PerfMeter 一起提供。请遵循 Unity 的�
        new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
    ```
 
-5. 使用 **Open Runtime** 查看 capture status。复制的 request 不会持久化，也不会自动调用。它受 Editor/Development Build、attached-tool、desktop platform 和 graphics API 要求约束。`Completed` 只确认 Unity wrapper lifecycle 已结束；它不会识别 attached tool，不会验证 `.rdc` artifact，也不会返回 artifact path。
+5. 在 Windows x64 Editor 中，可以先使用 **Download Verified Bridge** 或 **Install Local Bridge**；只会把 exact pinned 的单独 bridge 安装为 Editor-only plugin，绝不会安装 RenderDoc。之后重启 Editor。复制的 native request 使用 `NativeRequired` + `Copy`；MetadataOnly 为 `DoNotShare`，Copy/Embed 为 `ReviewBeforeShare`。
 
 ### GraphicsStateCollection
 
@@ -142,9 +142,9 @@ PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 ```
 
-Coordinator 只允许一个 active request，并以 deterministic 顺序经过 `PreRoll`、`Capturing`、`PostRoll` 和 `Completed`。相同的 active ID 是 idempotent，不同的 ID 会作为 overlap 被 reject。Pre-roll 和 post-roll 统计 Unity frames；只有 `Capturing` 会打开 alert capture scope 并调用 Unity 的 experimental `ExternalGPUProfiler`。Editor 或 Development Build 以及 attached tool 是 mandatory gates。`RenderDoc` 支持 Windows/Linux desktop 的 Direct3D 11、Direct3D 12 或 Vulkan；`PIX` 支持 Windows desktop 的 Direct3D 12。
+`GenericUnity` 保留原有 `ExternalGPUProfiler` matrix，不能 authenticate tool/artifact。`NativePreferred` 只能在 begin 前 fallback；`NativeRequired` 不会 fallback。Native RenderDoc 仅支持 Windows x64 Unity Editor 的 D3D11、D3D12 或 Vulkan。
 
-`Completed` 仅表示 guarded Unity wrapper lifecycle 已结束。Unity 不会暴露 attached tool identity 或 authoritative artifact path，因此 `Status.Tool` 只表示 requested tool。`PerfMeterCaptureBundleOptions` overload 会分离 baseline/capture samples，并原子导出 project-local bundle；external artifact 仅为 observed，不是 authoritative。自动化使用 `perfmeter.capture.request/status/cancel/export/capabilities`。
+Generic `Completed` 仍只表示 wrapper lifecycle。Native status 会报告 backend kind 和 generation-bound phase，并可 authenticate finalized `.rdc`。Generic/caller artifact 保持 observed。MCP 接受 `backend_mode`，但 storage mode 通过 C# API 选择。
 
 ## Overdraw Diagnostics
 

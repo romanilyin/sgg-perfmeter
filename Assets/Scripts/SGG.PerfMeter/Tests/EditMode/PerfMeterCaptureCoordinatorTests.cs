@@ -11,6 +11,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			PerformanceMeter.Stop();
 			PerfMeterProfilerInstrumentation.Reset();
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 		}
 
 		[TearDown]
@@ -18,6 +19,421 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			PerformanceMeter.Stop();
 			PerfMeterProfilerInstrumentation.Reset();
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
+		}
+
+		[Test]
+		public void RenderDocBackendEnumsAndLegacyDefaultsHaveStableValues()
+		{
+			Assert.That((int)PerfMeterCaptureBackendMode.GenericUnity, Is.EqualTo(0));
+			Assert.That((int)PerfMeterCaptureBackendMode.NativePreferred, Is.EqualTo(1));
+			Assert.That((int)PerfMeterCaptureBackendMode.NativeRequired, Is.EqualTo(2));
+			Assert.That((int)PerfMeterCaptureBackendKind.GenericUnity, Is.EqualTo(0));
+			Assert.That((int)PerfMeterCaptureBackendKind.RenderDocNative, Is.EqualTo(1));
+			Assert.That((int)PerfMeterRenderDocCapturePhase.None, Is.EqualTo(0));
+			Assert.That((int)PerfMeterRenderDocCapturePhase.LostSession, Is.EqualTo(10));
+
+			PerfMeterCaptureOptions legacy = new PerfMeterCaptureOptions("legacy", PerfMeterCaptureTool.RenderDoc);
+			Assert.That(legacy.BackendMode, Is.EqualTo(PerfMeterCaptureBackendMode.GenericUnity));
+			Assert.That(legacy.ExternalArtifactStorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.MetadataOnly));
+			Assert.That(typeof(PerfMeterCaptureOptions).GetConstructor(new[]
+			{
+				typeof(string),
+				typeof(PerfMeterCaptureTool),
+				typeof(int),
+				typeof(int),
+				typeof(int)
+			}), Is.Not.Null, "The released five-argument constructor must remain binary-compatible.");
+			Assert.That(typeof(PerfMeterCaptureOptions).GetConstructor(new[]
+			{
+				typeof(string),
+				typeof(PerfMeterCaptureTool),
+				typeof(int),
+				typeof(int),
+				typeof(int),
+				typeof(PerfMeterCaptureBackendMode)
+			}), Is.Not.Null, "The released six-argument constructor must remain binary-compatible.");
+			PerfMeterCaptureOptions copied = new PerfMeterCaptureOptions(
+				"copy",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired,
+				PerfMeterExternalArtifactStorageMode.Copy);
+			Assert.That(copied.ExternalArtifactStorageMode, Is.EqualTo(PerfMeterExternalArtifactStorageMode.Copy));
+			PerfMeterCaptureStatusSnapshot oldStatus = new PerfMeterCaptureStatusSnapshot(
+				PerfMeterAvailability.Available,
+				PerfMeterCaptureState.Capturing,
+				"legacy",
+				PerfMeterCaptureTool.RenderDoc,
+				0,
+				1,
+				0,
+				0,
+				0,
+				0,
+				string.Empty);
+			Assert.That(oldStatus.RequestedBackendMode, Is.EqualTo(PerfMeterCaptureBackendMode.GenericUnity));
+			Assert.That(oldStatus.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.GenericUnity));
+			Assert.That(oldStatus.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.None));
+			Assert.That(oldStatus.NativeResultCode, Is.EqualTo(-1));
+			Assert.That(oldStatus.FallbackReason, Is.Empty);
+		}
+
+		[Test]
+		public void NativeRequiredUnavailableDoesNotInvokeGenericFallback()
+		{
+			FakeCaptureBackend generic = new FakeCaptureBackend();
+			PerfMeterCaptureBackendRouter router = new PerfMeterCaptureBackendRouter(generic);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator((IPerfMeterCaptureBackendV2)router, new FakeCaptureScope());
+
+			PerfMeterCaptureRequestResult result = coordinator.Request(new PerfMeterCaptureOptions(
+				"required",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired));
+
+			Assert.That(result, Is.EqualTo(PerfMeterCaptureRequestResult.Unavailable));
+			Assert.That(generic.BeginCount, Is.Zero);
+			Assert.That(coordinator.Status.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.RenderDocNative));
+			Assert.That(coordinator.Status.NativeResultCode, Is.EqualTo(PerfMeterNativeCaptureResultCodes.UnsupportedPlatform));
+			Assert.That(coordinator.Status.FallbackReason, Is.Empty);
+		}
+
+		[TestCase(PerfMeterNativeCaptureResultCodes.NotLoaded, PerfMeterCaptureFallbackReasons.NotLoaded)]
+		[TestCase(PerfMeterNativeCaptureResultCodes.ExportMissing, PerfMeterCaptureFallbackReasons.ExportMissing)]
+		[TestCase(PerfMeterNativeCaptureResultCodes.ApiNegotiationFailed, PerfMeterCaptureFallbackReasons.ApiNegotiationFailed)]
+		[TestCase(PerfMeterNativeCaptureResultCodes.UnsupportedPlatform, PerfMeterCaptureFallbackReasons.UnsupportedPlatform)]
+		public void NativePreferredUnavailableAndBeginFailureUseOnlyAllowedFallback(int beginFailureCode, string expectedFallbackReason)
+		{
+			FakeCaptureBackend generic = new FakeCaptureBackend();
+			PerfMeterCaptureBackendRouter absentRouter = new PerfMeterCaptureBackendRouter(generic);
+			PerfMeterCaptureCoordinator absentCoordinator = new PerfMeterCaptureCoordinator((IPerfMeterCaptureBackendV2)absentRouter, new FakeCaptureScope());
+
+			Assert.That(absentCoordinator.Request(new PerfMeterCaptureOptions(
+				"preferred-absent",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(generic.BeginCount, Is.EqualTo(1));
+			Assert.That(absentCoordinator.Status.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.GenericUnity));
+			Assert.That(absentCoordinator.Status.FallbackReason, Is.EqualTo(PerfMeterCaptureFallbackReasons.BackendUnavailable));
+
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				BeginSucceeds = false,
+				BeginFailureCode = beginFailureCode,
+				BeginFailurePhase = PerfMeterRenderDocCapturePhase.Failed
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			FakeCaptureBackend beginFallbackGeneric = new FakeCaptureBackend();
+			PerfMeterCaptureBackendRouter beginFallbackRouter = new PerfMeterCaptureBackendRouter(beginFallbackGeneric);
+			PerfMeterCaptureCoordinator beginFallbackCoordinator = new PerfMeterCaptureCoordinator((IPerfMeterCaptureBackendV2)beginFallbackRouter, new FakeCaptureScope());
+
+			Assert.That(beginFallbackCoordinator.Request(new PerfMeterCaptureOptions(
+				"preferred-begin",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(native.BeginCount, Is.EqualTo(1));
+			Assert.That(beginFallbackGeneric.BeginCount, Is.EqualTo(1));
+			Assert.That(beginFallbackCoordinator.Status.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.GenericUnity));
+			Assert.That(beginFallbackCoordinator.Status.FallbackReason, Is.EqualTo(expectedFallbackReason));
+			beginFallbackCoordinator.Tick();
+			Assert.That(beginFallbackGeneric.EndCount, Is.EqualTo(1));
+			Assert.That(native.ScheduleEndCount, Is.Zero);
+			Assert.That(native.DiscardCount, Is.Zero);
+		}
+
+		[TestCase(PerfMeterNativeCaptureResultCodes.InternalError)]
+		[TestCase(12)]
+		public void NativePreferredDoesNotFallbackForDisallowedResult(int resultCode)
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				BeginSucceeds = false,
+				BeginFailureCode = resultCode,
+				BeginFailurePhase = PerfMeterRenderDocCapturePhase.Failed
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			FakeCaptureBackend generic = new FakeCaptureBackend();
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(generic),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions(
+				"disallowed",
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.Failed));
+			Assert.That(generic.BeginCount, Is.Zero);
+			Assert.That(coordinator.Status.FallbackReason, Is.Empty);
+		}
+
+		[Test]
+		public void NativePreferredNeverFallsBackAfterBeginUncertaintyOrSuccess()
+		{
+			FakeNativeCaptureBackend uncertain = new FakeNativeCaptureBackend
+			{
+				BeginSucceeds = false,
+				BeginFailureCode = PerfMeterNativeCaptureResultCodes.NotLoaded,
+				BeginFailurePhase = PerfMeterRenderDocCapturePhase.BeginExecuted
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(uncertain);
+			FakeCaptureBackend generic = new FakeCaptureBackend();
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator((IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(generic), new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("uncertain", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.Failed));
+			Assert.That(generic.BeginCount, Is.Zero);
+
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
+			FakeNativeCaptureBackend successful = new FakeNativeCaptureBackend();
+			PerfMeterNativeCaptureBackendRegistry.Register(successful);
+			generic = new FakeCaptureBackend();
+			coordinator = new PerfMeterCaptureCoordinator((IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(generic), new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("successful", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(generic.BeginCount, Is.Zero);
+			Assert.That(coordinator.Status.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.RenderDocNative));
+		}
+
+		[TestCase(PerfMeterRenderDocCapturePhase.Failed)]
+		[TestCase(PerfMeterRenderDocCapturePhase.Preflight)]
+		public void NativePreferredDoesNotFallbackWhenBeginFailureRetainsResources(PerfMeterRenderDocCapturePhase phase)
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				BeginSucceeds = false,
+				BeginFailureCode = PerfMeterNativeCaptureResultCodes.NotLoaded,
+				BeginFailurePhase = phase,
+				BeginFailureHasActiveResources = true
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			FakeCaptureBackend generic = new FakeCaptureBackend();
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(generic),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions(
+				"uncertain-resources-" + phase,
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.Failed));
+			Assert.That(generic.BeginCount, Is.Zero);
+			Assert.That(native.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void NativeEndRunsOnlyAtEndOfFrameAndOncePerGeneration()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend { RequiresEndOfFrame = true };
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("eof", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			int generation = coordinator.Generation;
+			Assert.That(coordinator.EndOfFramePending, Is.False);
+			coordinator.Tick();
+			Assert.That(native.ScheduleEndCount, Is.Zero);
+			Assert.That(coordinator.EndOfFramePending, Is.True);
+			Assert.That(coordinator.Status.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.EndScheduled));
+
+			Assert.That(coordinator.TickAtEndOfFrame(generation), Is.True);
+			Assert.That(native.ScheduleEndCount, Is.EqualTo(1));
+			Assert.That(coordinator.TickAtEndOfFrame(generation), Is.False);
+			Assert.That(native.ScheduleEndCount, Is.EqualTo(1));
+			Assert.That(coordinator.EndOfFramePending, Is.False);
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Completed));
+
+			coordinator.Reset();
+			Assert.That(coordinator.TickAtEndOfFrame(generation), Is.False);
+			Assert.That(native.ScheduleEndCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void NativeCancelUsesDiscardInsteadOfEnd()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend { RequiresEndOfFrame = true };
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("cancel", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			coordinator.Tick();
+			Assert.That(coordinator.Cancel("cancel"), Is.True);
+			Assert.That(native.DiscardCount, Is.EqualTo(1));
+			Assert.That(native.ScheduleEndCount, Is.Zero);
+		}
+
+		[Test]
+		public void FailedCancelInvalidatesScheduledEndAndCanRetryDiscard()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend { RequiresEndOfFrame = true, DiscardSucceeds = false };
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("discard-retry", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			int scheduledGeneration = coordinator.Generation;
+			coordinator.Tick();
+			Assert.That(coordinator.EndOfFramePending, Is.True);
+
+			Assert.That(coordinator.Cancel("discard-retry"), Is.False);
+			Assert.That(coordinator.HasActiveResources, Is.True);
+			Assert.That(coordinator.EndOfFramePending, Is.False);
+			Assert.That(coordinator.TickAtEndOfFrame(scheduledGeneration), Is.False);
+			Assert.That(coordinator.TickAtEndOfFrame(coordinator.Generation), Is.False);
+			Assert.That(native.ScheduleEndCount, Is.Zero);
+
+			native.DiscardSucceeds = true;
+			Assert.That(coordinator.Cancel("discard-retry"), Is.True);
+			Assert.That(native.DiscardCount, Is.EqualTo(2));
+			Assert.That(coordinator.HasActiveResources, Is.False);
+			Assert.That(native.ScheduleEndCount, Is.Zero);
+		}
+
+		[Test]
+		public void AcceptedDiscardCleanupKeepsTickingUntilResourcesClear()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				RequiresEndOfFrame = true,
+				PendingAfterDiscard = true
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("discard-pending", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(coordinator.Cancel("discard-pending"), Is.False);
+			Assert.That(coordinator.HasPendingCompletion, Is.True);
+			Assert.That(coordinator.HasActiveResources, Is.True);
+
+			native.CompletePending = true;
+			coordinator.Tick();
+
+			Assert.That(native.TickCount, Is.EqualTo(1));
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Canceled));
+			Assert.That(coordinator.HasPendingCompletion, Is.False);
+			Assert.That(coordinator.HasActiveResources, Is.False);
+		}
+
+		[Test]
+		public void AcceptedDiscardCleanupCannotHideOwnedScope()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				RequiresEndOfFrame = true,
+				PendingAfterDiscard = true
+			};
+			FakeCaptureScope scope = new FakeCaptureScope { EndSucceeds = false };
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				scope);
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("discard-scope", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(coordinator.Cancel("discard-scope"), Is.False);
+
+			native.CompletePending = true;
+			coordinator.Tick();
+
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(coordinator.ScopeActive, Is.True);
+			Assert.That(coordinator.HasActiveResources, Is.True);
+			Assert.That(native.DiscardCount, Is.EqualTo(1));
+
+			scope.EndSucceeds = true;
+			Assert.That(coordinator.Cancel("discard-scope"), Is.True);
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Canceled));
+			Assert.That(coordinator.HasActiveResources, Is.False);
+			Assert.That(native.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void FailedAcceptedDiscardCleanupRemainsErrorAfterCancelRetry()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				RequiresEndOfFrame = true,
+				PendingAfterDiscard = true
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("discard-failed", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(coordinator.Cancel("discard-failed"), Is.False);
+
+			native.CompletePending = true;
+			native.FailPendingCompletion = true;
+			Assert.That(coordinator.Cancel("discard-failed"), Is.False);
+
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(coordinator.Status.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.Failed));
+			Assert.That(coordinator.HasActiveResources, Is.False);
+			Assert.That(native.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void FailedDiscardWithoutResourcesRemainsError()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend
+			{
+				DiscardSucceeds = false,
+				DiscardFailureReleasesResources = true
+			};
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("discard-terminal-error", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			Assert.That(coordinator.Cancel("discard-terminal-error"), Is.False);
+
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(coordinator.Status.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.Failed));
+			Assert.That(coordinator.HasActiveResources, Is.False);
+			Assert.That(native.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void NativePendingCompletionRetainsCoordinatorResourcesUntilTickCompletes()
+		{
+			FakeNativeCaptureBackend native = new FakeNativeCaptureBackend { RequiresEndOfFrame = true, PendingAfterEnd = true };
+			PerfMeterNativeCaptureBackendRegistry.Register(native);
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("pending", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			coordinator.Tick();
+			Assert.That(coordinator.TickAtEndOfFrame(coordinator.Generation), Is.True);
+			Assert.That(coordinator.Status.State, Is.EqualTo(PerfMeterCaptureState.Completed));
+			Assert.That(coordinator.HasActiveResources, Is.True);
+			Assert.That(coordinator.HasPendingCompletion, Is.True);
+
+			native.CompletePending = true;
+			coordinator.Tick();
+			Assert.That(coordinator.HasActiveResources, Is.False);
+			Assert.That(coordinator.HasPendingCompletion, Is.False);
 		}
 
 		[Test]
@@ -164,6 +580,25 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void ResetClearsNativeStatusMetadata()
+		{
+			PerfMeterCaptureCoordinator coordinator = new PerfMeterCaptureCoordinator(
+				(IPerfMeterCaptureBackendV2)new PerfMeterCaptureBackendRouter(new FakeCaptureBackend()),
+				new FakeCaptureScope());
+
+			Assert.That(coordinator.Request(new PerfMeterCaptureOptions("reset-status", PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.Unavailable));
+			Assert.That(coordinator.Status.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.RenderDocNative));
+			Assert.That(coordinator.Reset(), Is.True);
+
+			PerfMeterCaptureStatusSnapshot status = coordinator.Status;
+			Assert.That(status.State, Is.EqualTo(PerfMeterCaptureState.Idle));
+			Assert.That(status.EffectiveBackendKind, Is.EqualTo(PerfMeterCaptureBackendKind.GenericUnity));
+			Assert.That(status.NativePhase, Is.EqualTo(PerfMeterRenderDocCapturePhase.None));
+			Assert.That(status.NativeResultCode, Is.EqualTo(-1));
+			Assert.That(status.FallbackReason, Is.Empty);
+		}
+
+		[Test]
 		public void FailedResetPreservesBackendOwnershipForRetry()
 		{
 			FakeCaptureBackend backend = new FakeCaptureBackend { EndSucceeds = false };
@@ -259,6 +694,166 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerformanceMeter.CancelCapture("capture-1"), Is.True);
 		}
 
+		private sealed class FakeNativeCaptureBackend : IPerfMeterCaptureBackendV2
+		{
+			private PerfMeterCaptureBackendV2Snapshot _snapshot;
+
+			internal PerfMeterAvailability CapabilityAvailability { get; set; } = PerfMeterAvailability.Available;
+			internal string CapabilityWarning { get; set; } = string.Empty;
+			internal bool BeginSucceeds { get; set; } = true;
+			internal int BeginFailureCode { get; set; } = PerfMeterNativeCaptureResultCodes.NotLoaded;
+			internal PerfMeterRenderDocCapturePhase BeginFailurePhase { get; set; } = PerfMeterRenderDocCapturePhase.Failed;
+			internal bool BeginFailureHasActiveResources { get; set; }
+			internal bool BeginFailureHasPendingCompletion { get; set; }
+			internal bool RequiresEndOfFrame { get; set; }
+			internal bool PendingAfterEnd { get; set; }
+			internal bool PendingAfterDiscard { get; set; }
+			internal bool CompletePending { get; set; }
+			internal bool FailPendingCompletion { get; set; }
+			internal bool EndSucceeds { get; set; } = true;
+			internal bool ScheduleEndSucceeds
+			{
+				get => EndSucceeds;
+				set => EndSucceeds = value;
+			}
+			internal bool DiscardSucceeds { get; set; } = true;
+			internal bool DiscardFailureReleasesResources { get; set; }
+			internal int BeginCount { get; private set; }
+			internal int ScheduleEndCount { get; private set; }
+			internal int DiscardCount { get; private set; }
+			internal int TickCount { get; private set; }
+
+			internal PerfMeterCaptureBackendV2Snapshot Snapshot => _snapshot;
+			PerfMeterCaptureBackendV2Snapshot IPerfMeterCaptureBackendV2.Snapshot => Snapshot;
+
+			public PerfMeterCaptureBackendV2Snapshot GetCapability(PerfMeterCaptureOptions options)
+			{
+				_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+					CapabilityAvailability,
+					CapabilityWarning,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					PerfMeterRenderDocCapturePhase.Preflight,
+					PerfMeterNativeCaptureResultCodes.Ok,
+					string.Empty,
+					RequiresEndOfFrame,
+					false,
+					false);
+				return _snapshot;
+			}
+
+			public bool TryBegin(PerfMeterCaptureOptions options, out string error)
+			{
+				BeginCount++;
+				if (!BeginSucceeds)
+				{
+					error = "begin failed";
+					_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+						PerfMeterAvailability.Unavailable,
+						error,
+						PerfMeterCaptureBackendKind.RenderDocNative,
+						BeginFailurePhase,
+						BeginFailureCode,
+						string.Empty,
+						RequiresEndOfFrame,
+						BeginFailureHasPendingCompletion,
+						BeginFailureHasActiveResources);
+					return false;
+				}
+
+				error = string.Empty;
+				_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					PerfMeterRenderDocCapturePhase.BeginExecuted,
+					PerfMeterNativeCaptureResultCodes.Ok,
+					string.Empty,
+					RequiresEndOfFrame,
+					false,
+					true);
+				return true;
+			}
+
+			public bool ScheduleEnd(out string error)
+			{
+				ScheduleEndCount++;
+				if (!EndSucceeds)
+				{
+					error = "end failed";
+					return false;
+				}
+
+				error = string.Empty;
+				_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					PendingAfterEnd ? PerfMeterRenderDocCapturePhase.AwaitingArtifact : PerfMeterRenderDocCapturePhase.EndExecuted,
+					PerfMeterNativeCaptureResultCodes.Ok,
+					string.Empty,
+					RequiresEndOfFrame,
+					PendingAfterEnd,
+					PendingAfterEnd);
+				return true;
+			}
+
+			public bool TryDiscard(out string error)
+			{
+				DiscardCount++;
+				if (!DiscardSucceeds)
+				{
+					error = "discard failed";
+					if (DiscardFailureReleasesResources)
+					{
+						_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+							PerfMeterAvailability.Unavailable,
+							error,
+							PerfMeterCaptureBackendKind.RenderDocNative,
+							PerfMeterRenderDocCapturePhase.Failed,
+							PerfMeterNativeCaptureResultCodes.InternalError,
+							_snapshot.FallbackReason,
+							RequiresEndOfFrame,
+							false,
+							false);
+					}
+					return false;
+				}
+
+				error = string.Empty;
+				_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					PendingAfterDiscard && !CompletePending
+						? PerfMeterRenderDocCapturePhase.FinalizingArtifact
+						: PerfMeterRenderDocCapturePhase.Completed,
+					_snapshot.NativeResultCode,
+					_snapshot.FallbackReason,
+					RequiresEndOfFrame,
+					PendingAfterDiscard && !CompletePending,
+					PendingAfterDiscard && !CompletePending);
+				return true;
+			}
+
+			public void Tick()
+			{
+				TickCount++;
+				if (CompletePending && _snapshot.HasPendingCompletion)
+				{
+					_snapshot = new PerfMeterCaptureBackendV2Snapshot(
+						FailPendingCompletion ? PerfMeterAvailability.Unavailable : PerfMeterAvailability.Available,
+						FailPendingCompletion ? "cleanup failed" : string.Empty,
+						PerfMeterCaptureBackendKind.RenderDocNative,
+						FailPendingCompletion ? PerfMeterRenderDocCapturePhase.Failed : PerfMeterRenderDocCapturePhase.Completed,
+						FailPendingCompletion ? PerfMeterNativeCaptureResultCodes.InternalError : PerfMeterNativeCaptureResultCodes.Ok,
+						_snapshot.FallbackReason,
+						RequiresEndOfFrame,
+						false,
+						false);
+				}
+			}
+		}
+
 		private sealed class FakeCaptureBackend : IPerfMeterCaptureBackend
 		{
 			internal PerfMeterCaptureBackendCapability Capability { get; set; } = new PerfMeterCaptureBackendCapability(PerfMeterAvailability.Available, string.Empty);
@@ -292,6 +887,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			internal string ActiveCaptureId { get; private set; } = string.Empty;
 			internal int EndCount { get; private set; }
 			internal bool ThrowOnBegin { get; set; }
+			internal bool EndSucceeds { get; set; } = true;
 
 			public bool TryBegin(string captureId)
 			{
@@ -313,6 +909,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			{
 				EndCount++;
 				if (!string.Equals(ActiveCaptureId, captureId, System.StringComparison.Ordinal))
+				{
+					return false;
+				}
+				if (!EndSucceeds)
 				{
 					return false;
 				}

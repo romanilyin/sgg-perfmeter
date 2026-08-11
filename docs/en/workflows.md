@@ -37,19 +37,27 @@ The installed **Adaptive Performance** row provides **Open Runtime** so the opti
 
 ### RenderDoc
 
-RenderDoc is an external tool and is not bundled with PerfMeter. Follow Unity's official integration flow:
+RenderDoc is an external tool and is not bundled with PerfMeter. The UPM package also remains binary-free; its optional SGG bridge is a separately published artifact. Use this flow:
 
 1. Install RenderDoc from the official download page: <https://renderdoc.org/builds>.
 2. Save project changes, then use **Load RenderDoc** from the Game View or Scene View tab menu. Alternatively, launch the Unity Editor or a Development Build through RenderDoc; restart Unity if Unity does not expose the attachment after installation. The official Unity guide is <https://docs.unity3d.com/6000.0/Documentation/Manual/RenderDocIntegration.html>.
-3. Click **Check Attachment** in FTUE. This refreshes Unity's shared external-profiler signal only; FTUE cannot detect RenderDoc installation and Unity cannot identify RenderDoc versus PIX from that signal.
-4. Click **Copy Capture Snippet**, enter Play Mode, and invoke the copied code from project runtime code:
+3. On a Windows x64 Editor project, optionally click **Download Verified Bridge** or **Install Local Bridge**. The installer accepts only the release-pinned archive/DLL size, SHA-256, and native AMD64 PE contract, configures an Editor-only plugin, and never installs or loads RenderDoc. Restart the Editor after install/update; FTUE also exposes download cancel and managed removal.
+4. Click **Check Attachment** in FTUE. This refreshes Unity's shared external-profiler signal only; FTUE cannot detect RenderDoc installation and Unity cannot identify RenderDoc versus PIX from that signal.
+5. Click **Copy Capture Snippet**, enter Play Mode, and invoke the copied code from project runtime code:
 
    ```csharp
    PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
-       new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
+       new PerfMeterCaptureOptions(
+           "ftue-renderdoc-capture",
+           PerfMeterCaptureTool.RenderDoc,
+           captureFrames: 1,
+           preRollFrames: 0,
+           postRollFrames: 0,
+           backendMode: PerfMeterCaptureBackendMode.NativeRequired,
+           externalArtifactStorageMode: PerfMeterExternalArtifactStorageMode.Copy));
    ```
 
-5. Use **Open Runtime** for the capture status. The copied request is not persisted or automatically invoked. It is subject to the Editor/Development Build, attached-tool, desktop platform, and graphics API requirements. `Completed` confirms Unity's wrapper lifecycle only; it does not identify the attached tool, authenticate a `.rdc` artifact, or return an artifact path.
+6. Use **Open Runtime** for capture status. The native path is limited to Windows x64 Unity Editor with Direct3D 11, Direct3D 12, or Vulkan. `NativeRequired` fails closed; `NativePreferred` can fall back only before native begin; `GenericUnity` preserves the previous broader compatibility path. Native MetadataOnly defaults to `DoNotShare`; Copy/Embed data is sensitive and requires explicit review before sharing.
 
 ### GraphicsStateCollection
 
@@ -136,22 +144,29 @@ Alert history identifies its interval and reset reason and separates lifecycle, 
 
 ## External GPU Capture
 
-Use the capture coordinator for a bounded RenderDoc or PIX request when the tool is already attached:
+Use the capture coordinator for a bounded RenderDoc or PIX request when the tool is already attached. The five-argument constructor remains `GenericUnity`; select a native mode explicitly:
 
 ```csharp
 PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
-    new PerfMeterCaptureOptions("gpu-spike", PerfMeterCaptureTool.RenderDoc, 1, 30, 30),
+    new PerfMeterCaptureOptions(
+        "gpu-spike",
+        PerfMeterCaptureTool.RenderDoc,
+        1,
+        30,
+        30,
+        PerfMeterCaptureBackendMode.NativeRequired,
+        PerfMeterExternalArtifactStorageMode.Copy),
     new PerfMeterCaptureBundleOptions(includeScreenshot: true));
 
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 PerfMeterCaptureBundleStatusSnapshot bundle = PerformanceMeter.GetCaptureBundleStatus("gpu-spike");
 ```
 
-Only one request can own the coordinator. Pre-roll and post-roll count Unity frames; only `Capturing` opens the alert capture scope and invokes Unity's experimental `ExternalGPUProfiler`. RenderDoc is allowed on Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan. PIX is allowed on Windows desktop with Direct3D 12. The Editor/Development Build and attached-tool gates are mandatory.
+Only one request can own the coordinator. `GenericUnity` invokes Unity's experimental `ExternalGPUProfiler` and retains its existing Editor/Development Build matrix: requested RenderDoc on Windows/Linux desktop with Direct3D 11, Direct3D 12, or Vulkan, and PIX on Windows desktop with Direct3D 12. The native path is separate and supports only the Windows x64 Unity Editor on Direct3D 11, Direct3D 12, or Vulkan.
 
-`Completed` means the guarded begin/end lifecycle finished. Unity does not expose the attached tool identity or authoritative artifact path through this API, so `Status.Tool` is only the requested tool and the `.rdc`/`.wpix` artifact must be verified in the external tool.
+For `GenericUnity`, `Completed` means only that the guarded begin/end lifecycle finished; Unity does not expose attached-tool identity or an authoritative artifact path. A successful native result reports `RequestedBackendMode`, `EffectiveBackendKind == RenderDocNative`, and generation-bound `NativePhase`, then authenticates the selected finalized `.rdc` through bridge index/time and stable file identity.
 
-The bundle overload excludes capture frames from normal baseline session evidence and correlates both sample sets with capture alerts and context. When `bundle.IsExportReady`, `PerformanceMeter.ExportCaptureBundle("gpu-spike")` atomically creates a project-local versioned bundle under `Temp/PerfMeter/CaptureBundles`. Screenshots are opt-in and explicitly unavailable in batch mode or outside Play Mode. A caller-supplied external artifact is only an observed, hashed copy; it is not authoritative because Unity cannot authenticate its source or capture association. Equivalent MCP commands are `perfmeter.capture.request/status/cancel/export/capabilities`.
+The bundle overload excludes capture frames from normal baseline session evidence and correlates both sample sets with capture alerts and context. When `bundle.IsExportReady`, `PerformanceMeter.ExportCaptureBundle("gpu-spike")` atomically creates a project-local versioned bundle under `Temp/PerfMeter/CaptureBundles`. Native MetadataOnly records authenticated metadata and defaults to `DoNotShare`; Copy retains a separately quota-managed project-local payload; Embed stages the payload into the atomic bundle. Copy/Embed require `ReviewBeforeShare`. Caller-supplied and generic artifacts remain observed and non-authoritative. Equivalent MCP commands are `perfmeter.capture.request/status/cancel/export/capabilities`.
 
 ## Overdraw Diagnostics
 

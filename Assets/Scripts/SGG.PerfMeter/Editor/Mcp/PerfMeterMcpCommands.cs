@@ -172,9 +172,12 @@ namespace SGG.PerfMeter.Editor.Mcp
 			int captureFrames = RequireRange(ExtractInt(argsJson, "capture_frames", 1), 1, 120, "capture_frames");
 			int preRollFrames = RequireRange(ExtractInt(argsJson, "pre_roll_frames", 0), 0, 600, "pre_roll_frames");
 			int postRollFrames = RequireRange(ExtractInt(argsJson, "post_roll_frames", 0), 0, 600, "post_roll_frames");
+			PerfMeterCaptureBackendMode backendMode = TryExtractString(argsJson, "backend_mode", out string backendModeValue)
+				? ParseCaptureBackendMode(backendModeValue)
+				: PerfMeterCaptureBackendMode.GenericUnity;
 			bool includeScreenshot = TryExtractBool(argsJson, "include_screenshot", out bool screenshot) && screenshot;
 			PerfMeterCaptureRequestResult result = RuntimePerformanceMeter.RequestCapture(
-				new PerfMeterCaptureOptions(captureId, tool, captureFrames, preRollFrames, postRollFrames),
+				new PerfMeterCaptureOptions(captureId, tool, captureFrames, preRollFrames, postRollFrames, backendMode),
 				new PerfMeterCaptureBundleOptions(includeScreenshot));
 			return CaptureCommandJson(result.ToString(), RuntimePerformanceMeter.GetCaptureStatus(), RuntimePerformanceMeter.GetCaptureBundleStatus(captureId));
 		}
@@ -817,6 +820,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"completed_pre_roll_frames\":").Append(status.CompletedPreRollFrames);
 			builder.Append(",\"completed_capture_frames\":").Append(status.CompletedCaptureFrames);
 			builder.Append(",\"completed_post_roll_frames\":").Append(status.CompletedPostRollFrames);
+			builder.Append(",\"requested_backend_mode\":").Append(JsonString(status.RequestedBackendMode.ToString()));
+			builder.Append(",\"effective_backend_kind\":").Append(JsonString(status.EffectiveBackendKind.ToString()));
+			builder.Append(",\"native_phase\":").Append(JsonString(status.NativePhase.ToString()));
+			builder.Append(",\"native_result_code\":").Append(status.NativeResultCode);
+			builder.Append(",\"fallback_reason\":").Append(JsonString(status.FallbackReason));
 			builder.Append(",\"warning\":").Append(JsonString(status.Warning));
 			builder.Append('}');
 		}
@@ -1730,6 +1738,17 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 
 			throw new InvalidOperationException("schema_validation_failed\nArgument tool must be RenderDoc or Pix");
+		}
+
+		private static PerfMeterCaptureBackendMode ParseCaptureBackendMode(string value)
+		{
+			string normalized = NormalizeEnumToken(value);
+			if (Enum.TryParse(normalized, true, out PerfMeterCaptureBackendMode mode) && Enum.IsDefined(typeof(PerfMeterCaptureBackendMode), mode))
+			{
+				return mode;
+			}
+
+			throw new InvalidOperationException("schema_validation_failed\nArgument backend_mode must be GenericUnity, NativePreferred, or NativeRequired");
 		}
 
 		private static PerfMeterMemoryCaptureFlags ParseMemoryCaptureFlags(string argsJson)

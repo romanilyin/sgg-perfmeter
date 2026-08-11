@@ -28,6 +28,7 @@ The main user documentation lives in the repository-level GitHub docs:
 - URP `17.4+` with Render Graph path or HDRP `17.4+` with the package HDRP Custom Pass integration.
 - Frame Timing Stats enabled for reliable frame timing in builds.
 - Vulkan preferred on Android when GPU frame timing matters.
+- Optional native RenderDoc capture: Windows x64 Unity Editor with Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are unsupported.
 
 Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. HDRP overdraw and heatmap are unsupported; core runtime diagnostics remain available.
 
@@ -100,7 +101,7 @@ public static bool TryApplySettingsJson(string json, out string warning);
 
 It includes overlay, logging, alert, session-default, and overdraw settings, honors `enabled` and `collectionMode: "Stopped"`, and does not start sessions or captures. Use it instead of the Resources zero-code file at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`. If both are present, a valid explicit application suppresses Resources auto-start for the current domain and becomes authoritative; invalid explicit JSON leaves the runtime unchanged.
 
-The Setup FTUE tab continues available optional integrations: Memory Profiler exposes its window plus one-shot and runtime-trigger snippets, Profile Analyzer opens the session-ID integration, Adaptive Performance opens Runtime, RenderDoc provides official integration guidance plus attachment/capture actions, and GraphicsStateCollection provides trace/prewarm snippets and artifact reveal. These actions do not auto-load Profile Analyzer data, identify RenderDoc versus PIX, or automatically run capture/trace/prewarm parameters. See the [English workflows](https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/workflows.md) for the required session and artifact steps.
+The Setup FTUE tab continues available optional integrations: Memory Profiler exposes its window plus one-shot and runtime-trigger snippets, Profile Analyzer opens the session-ID integration, Adaptive Performance opens Runtime, and GraphicsStateCollection provides trace/prewarm snippets and artifact reveal. RenderDoc remains user-owned; FTUE can separately download or locally install only the exact SHA-256-pinned Windows x64 Editor bridge, cancel an active download, remove a managed bridge, and copy a `NativeRequired` + `Copy` capture snippet. The package remains binary-free and never installs or loads RenderDoc itself. See the [English workflows](https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/workflows.md) for the required session, privacy, and artifact steps.
 
 ## Samples
 

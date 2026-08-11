@@ -24,10 +24,10 @@ All files are first written under a unique sibling staging directory with an exa
 
 ## Authority And Security
 
-Unity's `ExternalGPUProfiler` does not expose attached-tool identity, version, output path, or a tool-authenticated artifact association. The built-in backend therefore always reports `tool_identity: unknown`, `tool_version: unknown`, and `association: observed` at most. A caller-provided `.rdc` or `.wpix` path is copied and hashed as an observation; neither its extension nor its hash makes it authoritative. `require_authoritative_external_artifact` deterministically fails until a future backend can provide tool-authenticated provenance.
+Unity's generic `ExternalGPUProfiler` does not expose attached-tool identity, version, output path, or an authenticated association, so generic and caller-supplied `.rdc`/`.wpix` data remains observed. The native RenderDoc descriptor is separate, generation- and bundle-bound, and may satisfy `require_authoritative_external_artifact` only after bridge-authenticated finalization, stable identity, source hash, and required post-copy hash gates pass.
 
 Exports are restricted to `Temp/PerfMeter/CaptureBundles` below the project root. Absolute paths, traversal, invalid path components, reparse points, and external artifact files outside the project are rejected. Components use bounded JSON serialization with redacted project/device identifiers. Per-bundle size, screenshot size, total bundle quota, and retained-bundle count are fixed capabilities. Retention deletes only recognizable finalized PerfMeter bundles and never unknown directories.
 
 ## Validation
 
-Automated tests cover bundle state and generation ownership, screenshot degradation, settings context, sample separation, bounded alert history, atomic commit/conflict behavior, manifest hashes, path/size rejection, authority refusal, retention ownership, MCP registration, and Play Mode lifecycle. Unity `6000.5.6f1` passed targeted EditMode `13/13`, targeted PlayMode `8/8`, full EditMode `149/149`, and full PlayMode `12/12`. Real RenderDoc/PIX attachment and tool-side artifact confirmation remain release-candidate gates.
+Automated tests cover bundle state/generation ownership, screenshot degradation, sample separation, atomic commit, hashes, path/size rejection, generic authority refusal, native descriptor authority, retained Copy/Embed, retention, MCP registration, and Play Mode lifecycle. Real RenderDoc D3D11/D3D12/Vulkan confirmation passed for the initial Windows Editor rows; PIX and broader native rows remain separate gates.

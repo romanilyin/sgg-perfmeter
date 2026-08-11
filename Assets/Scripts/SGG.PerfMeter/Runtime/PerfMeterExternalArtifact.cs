@@ -116,6 +116,32 @@ namespace SGG.PerfMeter
 			ObservedSourceSha256 = PerfMeterExternalArtifactContract.NormalizeSha256(observedSourceSha256);
 			PostCopySha256 = PerfMeterExternalArtifactContract.NormalizeSha256(postCopySha256);
 			Warning = PerfMeterExternalArtifactContract.NormalizeText(warning, MaxWarningLength);
+			SourceFileIdentitySha256 = string.Empty;
+		}
+
+		private PerfMeterExternalArtifactOptions(
+			PerfMeterExternalArtifactOptions source,
+			string sourceFileIdentitySha256)
+		{
+			ArtifactId = source.ArtifactId;
+			ArtifactKind = source.ArtifactKind;
+			ToolId = source.ToolId;
+			ToolVersion = source.ToolVersion;
+			RequestId = source.RequestId;
+			HostNamespace = source.HostNamespace;
+			AssociationState = source.AssociationState;
+			FinalizationState = source.FinalizationState;
+			AuthorityState = source.AuthorityState;
+			ContainsGpuCaptureData = source.ContainsGpuCaptureData;
+			PrivacyFlags = source.PrivacyFlags;
+			StorageMode = source.StorageMode;
+			QuotaBytes = source.QuotaBytes;
+			SharePolicy = source.SharePolicy;
+			SizeBytes = source.SizeBytes;
+			ObservedSourceSha256 = source.ObservedSourceSha256;
+			PostCopySha256 = source.PostCopySha256;
+			Warning = source.Warning;
+			SourceFileIdentitySha256 = PerfMeterExternalArtifactContract.NormalizeSha256(sourceFileIdentitySha256);
 		}
 
 		public static PerfMeterExternalArtifactOptions Default => new PerfMeterExternalArtifactOptions(
@@ -167,6 +193,12 @@ namespace SGG.PerfMeter
 		public string ObservedSourceSha256 { get; }
 		public string PostCopySha256 { get; }
 		public string Warning { get; }
+		public string SourceFileIdentitySha256 { get; }
+
+		internal PerfMeterExternalArtifactOptions WithSourceFileIdentitySha256(string value)
+		{
+			return new PerfMeterExternalArtifactOptions(this, value);
+		}
 
 		public PerfMeterExternalArtifactSnapshot ToSnapshot()
 		{
@@ -199,6 +231,7 @@ namespace SGG.PerfMeter
 			ObservedSourceSha256 = options.ObservedSourceSha256 ?? string.Empty;
 			PostCopySha256 = options.PostCopySha256 ?? string.Empty;
 			Warning = options.Warning ?? string.Empty;
+			SourceFileIdentitySha256 = options.SourceFileIdentitySha256 ?? string.Empty;
 		}
 
 		public static PerfMeterExternalArtifactSnapshot Empty => new PerfMeterExternalArtifactSnapshot(PerfMeterExternalArtifactOptions.Default);
@@ -240,6 +273,7 @@ namespace SGG.PerfMeter
 		public string ObservedSourceSha256 { get; }
 		public string PostCopySha256 { get; }
 		public string Warning { get; }
+		public string SourceFileIdentitySha256 { get; }
 
 		private static bool IsAuthenticatedAssociation(PerfMeterExternalArtifactAssociationState associationState)
 		{

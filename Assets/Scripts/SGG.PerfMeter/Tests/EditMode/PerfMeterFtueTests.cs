@@ -1,4 +1,7 @@
+using System;
+using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.UI;
 using SGG.PerfMeter.Editor.UI.Localization;
@@ -95,7 +98,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(metadataVersion, Is.Not.Empty);
 			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo(metadataVersion));
-			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo("2026.8.9-1"));
+			Assert.That(PerfMeterFtueState.PackageVersion, Is.EqualTo("2026.8.11-1"));
 			Assert.That(PerfMeterFtueState.ProjectKey, Is.Not.Empty);
 		}
 
@@ -141,7 +144,68 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			string renderDocSnippet = PerfMeterFtuePage.BuildRenderDocCaptureSnippet();
 			Assert.That(renderDocSnippet, Does.Contain("PerformanceMeter.RequestCapture("));
-			Assert.That(renderDocSnippet, Does.Contain("new PerfMeterCaptureOptions(\"ftue-renderdoc-capture\", PerfMeterCaptureTool.RenderDoc, 1)"));
+			Assert.That(renderDocSnippet, Does.Contain("backendMode: PerfMeterCaptureBackendMode.NativeRequired"));
+			Assert.That(renderDocSnippet, Does.Contain("externalArtifactStorageMode: PerfMeterExternalArtifactStorageMode.Copy"));
+		}
+
+		[Test]
+		public void RenderDocBridgeArtifactContractIsPinnedToRelease()
+		{
+			Assert.That(PerfMeterRenderDocBridgeInstaller.ArtifactVersion, Is.EqualTo("2026.8.11-1"));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.DllFileName, Is.EqualTo("sgg_renderdoc_bridge.dll"));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.DllByteLength, Is.EqualTo(125952L));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.DllSha256, Is.EqualTo("c86592e04e4e71a22e13cc8a462294082d14202e7112f6d3e90186d9ef88802b"));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.ArchiveByteLength, Is.EqualTo(234696L));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.ArchiveSha256, Is.EqualTo("51adc728abb17eb157b8cff19186edf7c4a79341e85328cab98f978fdf013b13"));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.DownloadUrl, Does.StartWith("https://github.com/romanilyin/sgg-perfmeter/releases/download/2026.8.11-1/"));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.InstalledAssetPath, Does.StartWith("Assets/Plugins/SGG.PerfMeter/RenderDoc/Editor/Windows/x86_64/"));
+		}
+
+		[Test]
+		public void RenderDocBridgeValidatorAcceptsOnlyMatchingNativeAmd64Dll()
+		{
+			string root = Path.Combine(Path.GetTempPath(), "sgg-perfmeter-bridge-validator-" + Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(root);
+			string path = Path.Combine(root, "bridge.dll");
+			try
+			{
+				byte[] image = CreateMinimalNativeAmd64Dll();
+				File.WriteAllBytes(path, image);
+				string sha256 = ComputeSha256(image);
+
+				Assert.That(
+					PerfMeterRenderDocBridgeInstaller.TryValidateBridgeFile(
+						path,
+						image.Length,
+						sha256,
+						out string actualSha256,
+						out string error),
+					Is.True,
+					error);
+				Assert.That(actualSha256, Is.EqualTo(sha256));
+
+				Assert.That(
+					PerfMeterRenderDocBridgeInstaller.TryValidateBridgeFile(
+						path,
+						image.Length,
+						new string('0', 64),
+						out _,
+						out error),
+					Is.False);
+				Assert.That(error, Is.EqualTo("SHA-256 mismatch."));
+
+				image[0x84] = 0x4c;
+				image[0x85] = 0x01;
+				using (MemoryStream stream = new MemoryStream(image, false))
+				{
+					Assert.That(PerfMeterRenderDocBridgeInstaller.TryValidateNativeAmd64Pe(stream, out error), Is.False);
+					Assert.That(error, Is.EqualTo("Bridge is not an AMD64 image."));
+				}
+			}
+			finally
+			{
+				Directory.Delete(root, true);
+			}
 		}
 
 		[Test]
@@ -182,13 +246,15 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void RenderDocStatusesAvoidInstallationAndArtifactClaims()
+		public void RenderDocStatusesSeparateBridgeInstallFromExternalToolClaims()
 		{
 			string unattached = PerfMeterFtuePage.FormatRenderDocUnattachedStatus("not attached");
 			Assert.That(unattached, Does.StartWith("Not attached"));
 			Assert.That(unattached, Does.Contain("not attached"));
 			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("Load RenderDoc from the Game or Scene View tab menu"));
-			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("Check attachment"));
+			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("Download Verified Bridge"));
+			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("Install Local Bridge"));
+			Assert.That(PerfMeterFtuePage.RenderDocGuidance, Does.Contain("never installs or loads RenderDoc"));
 
 			string attached = PerfMeterFtuePage.FormatRenderDocAttachedStatus();
 			Assert.That(attached, Does.StartWith("Attached"));
@@ -204,6 +270,40 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterFtuePage.ShouldShowExternalDownload(false, true), Is.False);
 			Assert.That(PerfMeterFtuePage.ShouldShowExternalSkip(false), Is.True);
 			Assert.That(PerfMeterFtuePage.ShouldShowExternalSkip(true), Is.False);
+		}
+
+		private static byte[] CreateMinimalNativeAmd64Dll()
+		{
+			byte[] image = new byte[512];
+			WriteUInt16(image, 0, 0x5A4D);
+			WriteUInt32(image, 0x3c, 0x80);
+			WriteUInt32(image, 0x80, 0x00004550);
+			WriteUInt16(image, 0x84, 0x8664);
+			WriteUInt16(image, 0x86, 1);
+			WriteUInt16(image, 0x94, 240);
+			WriteUInt16(image, 0x96, 0x2000);
+			WriteUInt16(image, 0x98, 0x020B);
+			return image;
+		}
+
+		private static void WriteUInt16(byte[] bytes, int offset, ushort value)
+		{
+			byte[] encoded = BitConverter.GetBytes(value);
+			Buffer.BlockCopy(encoded, 0, bytes, offset, encoded.Length);
+		}
+
+		private static void WriteUInt32(byte[] bytes, int offset, uint value)
+		{
+			byte[] encoded = BitConverter.GetBytes(value);
+			Buffer.BlockCopy(encoded, 0, bytes, offset, encoded.Length);
+		}
+
+		private static string ComputeSha256(byte[] bytes)
+		{
+			using (SHA256 sha256 = SHA256.Create())
+			{
+				return BitConverter.ToString(sha256.ComputeHash(bytes)).Replace("-", string.Empty).ToLowerInvariant();
+			}
 		}
 	}
 }

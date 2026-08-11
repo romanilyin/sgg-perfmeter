@@ -23,8 +23,10 @@ Profiler counters зависят от платформы, версии Unity, н
 ## External GPU Capture
 
 - Coordinator допускает один активный запрос и детерминированно проходит `PreRoll`, `Capturing`, `PostRoll` и `Completed`. Тот же active ID идемпотентен, другой active ID отклоняется как пересечение.
-- Backend использует экспериментальный `ExternalGPUProfiler` Unity только в Editor или Development Builds, когда external tool уже подключена. `RenderDoc` ограничен desktop Windows/Linux с Direct3D 11, Direct3D 12 или Vulkan; `PIX` ограничен desktop Windows с Direct3D 12.
-- `Completed` подтверждает только wrapper lifecycle Unity. Он не доказывает наличие внешнего `.rdc`/`.wpix` artifact и не предоставляет artifact path.
+- `GenericUnity` использует экспериментальный `ExternalGPUProfiler` Unity в Editor/Development Build. Его matrix остается RenderDoc на Windows/Linux desktop с D3D11/D3D12/Vulkan и PIX на Windows desktop с D3D12; completion не аутентифицирует tool или artifact.
+- Опциональный native-путь поддерживает только RenderDoc в Windows x64 Unity Editor с D3D11, D3D12 или Vulkan. Development Player, Linux native, IL2CPP, mobile и macOS native не поддерживаются.
+- UPM-пакет остается без бинарников. Отдельный pinned bridge работает только с уже загруженной `renderdoc.dll` и никогда не устанавливает, не загружает, не запускает и не inject RenderDoc.
+- Native MetadataOnly по умолчанию использует `DoNotShare`; Copy/Embed являются sensitive, имеют отдельные квоты и требуют `ReviewBeforeShare`. Generic/caller artifacts остаются observed, не authoritative.
 - Automated tests используют fake backend. Проверка настоящей external tool и artifact остается release gate.
 - Correlated bundles и MCP capture control доступны, но переданный `.rdc`/`.wpix` остается только observed и hashed artifact: Unity не может аутентифицировать attached tool или связь artifact с capture. Проверка real external tool остается release-candidate gate.
 

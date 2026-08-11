@@ -61,7 +61,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
 - Preserve explicit missing-sample and capture-boundary events in additive session/capture JSON timelines instead of turning unavailable timing into numeric zero.
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
-- Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and explicitly non-authoritative external artifact observations.
+- Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and external-artifact provenance. Generic Unity observations remain non-authoritative; the optional native RenderDoc path can authenticate a generation-bound `.rdc`.
 - Queue, poll, and cancel single-flight capture-bundle exports while serialization, streaming copy/hash, retention, and atomic commit run off the caller thread; the existing blocking API remains available for compatibility.
 - Optionally capture sensitive memory snapshots through the separate Memory Profiler integration and correlate them with the existing evidence-bundle surface.
 - Inspect dynamic shader GPU-program and graphics-pipeline creation markers with their discovered units and provenance, then correlate an optional GraphicsStateCollection trace with session samples.
@@ -72,7 +72,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 - **Runtime overlay**: visual presets, compact layouts, graphs, metric bars, and custom metric rows for live inspection.
 - **Public C# API**: immutable snapshots for status, metrics, device, camera, integration-neutral render context (with a legacy Render Graph facade), alerts, sessions, timelines, external artifacts, profiler leases, and custom metrics.
-- **External GPU capture**: guarded Editor/Development Build coordination for attached RenderDoc or PIX tools with atomic correlated bundles and truthful artifact provenance.
+- **External GPU capture**: guarded generic Editor/Development Build coordination for attached RenderDoc or PIX, plus an optional Windows x64 Editor native RenderDoc path with authenticated artifacts on Direct3D 11, Direct3D 12, and Vulkan.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
 - **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, search for hotspots, queue/status/cancel exports, and read external-artifact authority plus profiler lease conflicts through structured data.
@@ -155,7 +155,7 @@ Open `SGG/Perfmeter/Setup` and use the **FTUE** tab for required setup checks an
 - **Memory Profiler**: open the Unity window, copy a one-shot `RequestMemorySnapshot(...)` snippet or an explicitly enabled runtime-trigger snippet, and open Runtime.
 - **Profile Analyzer**: open the existing session integration or Runtime. It copies a PerfMeter session ID for manual search after the relevant Unity Profiler data is recorded or loaded; it does not load or filter that data automatically.
 - **Adaptive Performance**: open Runtime to inspect optional telemetry status.
-- **RenderDoc**: follow Unity's official integration flow, check the shared attachment signal, copy a `RequestCapture(...)` snippet, and open Runtime. FTUE does not detect RenderDoc installation, Unity cannot identify RenderDoc versus PIX from the attachment signal, and completion does not provide an external artifact path.
+- **RenderDoc**: keep RenderDoc user-installed, then optionally use **Download Verified Bridge** or **Install Local Bridge** for the separately published SHA-256-pinned Windows x64 Editor bridge. FTUE also checks Unity's shared attachment signal, exposes cancel/remove and restart guidance, and copies a `NativeRequired` + `Copy` capture snippet. The package never installs or loads RenderDoc itself.
 - **GraphicsStateCollection**: copy trace/prewarm snippets, use Runtime, and reveal the owned artifact under `Temp/PerfMeter/GraphicsStateCollections`. Keep a PerfMeter session recording through the trace, then prewarm the returned artifact path; FTUE does not request either operation automatically.
 
 The Setup **Initialization Code** section generates a complete normalized project-settings snapshot and applies it after scene load through the public API:
@@ -196,6 +196,7 @@ Use [Comparison](./docs/en/comparison.md) as product and architecture context ra
 - URP `17.4+` with Render Graph path or HDRP `17.4+` with the package HDRP Custom Pass integration.
 - Frame Timing Stats enabled before relying on FrameTimingManager in builds.
 - Vulkan is preferred on Android when GPU timing matters.
+- Optional native RenderDoc capture is supported only in the Windows x64 Unity Editor on Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are not supported.
 
 Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. Some features may not work in versions before `6000.4`.
 

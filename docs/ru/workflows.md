@@ -49,7 +49,7 @@ RenderDoc — внешняя tool, она не входит в PerfMeter. Сле
        new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
    ```
 
-5. Используйте **Open Runtime** для просмотра capture status. Скопированный request не сохраняется и автоматически не вызывается. На него распространяются требования Editor/Development Build, attached tool, desktop platform и graphics API. `Completed` подтверждает только завершение Unity wrapper lifecycle; это не идентифицирует attached tool, не подтверждает `.rdc` artifact и не возвращает artifact path.
+5. В Windows x64 Editor сначала можно использовать **Download Verified Bridge** или **Install Local Bridge**; как Editor-only plugin устанавливается только точно pinned отдельный bridge, но не RenderDoc. После этого перезапустите Editor. Скопированный native request использует `NativeRequired` + `Copy`; MetadataOnly имеет `DoNotShare`, а Copy/Embed требуют `ReviewBeforeShare`.
 
 ### GraphicsStateCollection
 
@@ -142,9 +142,9 @@ PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 ```
 
-Coordinator поддерживает только один активный запрос и детерминированно проходит `PreRoll`, `Capturing`, `PostRoll` и `Completed`. Повтор того же active ID идемпотентен, а другой ID отклоняется как пересечение. Pre-roll и post-roll считают кадры Unity; только `Capturing` открывает alert capture scope и вызывает экспериментальный `ExternalGPUProfiler` Unity. Обязательны Editor или Development Build и подключенная tool. `RenderDoc` разрешен на desktop Windows/Linux с Direct3D 11, Direct3D 12 или Vulkan; `PIX` разрешен на desktop Windows с Direct3D 12.
+`GenericUnity` сохраняет прежнюю matrix `ExternalGPUProfiler` и не может аутентифицировать tool/artifact. `NativePreferred` может fallback только до begin; `NativeRequired` никогда. Native RenderDoc поддерживается только в Windows x64 Unity Editor с D3D11, D3D12 или Vulkan.
 
-`Completed` означает только завершение защищенного wrapper lifecycle. Unity не раскрывает identity подключенной tool или authoritative artifact path; `Status.Tool` показывает только запрошенную tool, а не проверенную identity подключенной tool. Проверяйте `.rdc`/`.wpix` artifact во внешней tool. Overload с `PerfMeterCaptureBundleOptions` отдельно хранит baseline/capture samples и атомарно экспортирует project-local bundle; external artifact остается только observed, не authoritative. Для автоматизации используйте `perfmeter.capture.request/status/cancel/export/capabilities`.
+Generic `Completed` остается только wrapper lifecycle. Native status сообщает backend kind и generation-bound phase и может аутентифицировать finalized `.rdc`. Generic/caller artifacts остаются observed. MCP принимает `backend_mode`, но storage mode выбирается через C# API.
 
 ## Диагностика overdraw
 

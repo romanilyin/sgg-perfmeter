@@ -15,7 +15,7 @@ SGG PerfMeter identifica gargalos de frame, compara alteracoes de performance, g
 - Ver o contexto de gargalos diretamente durante o jogo.
 - Alternar entre presets, graficos, barras de metrica, layouts compactos e linhas de custom metrics.
 - Gravar sessoes de profiling reproduziveis com warm-up, contexto de cena, resumo dos piores frames e exportacao JSON/CSV.
-- Coordenar uma solicitacao RenderDoc/PIX explicita e limitada com estados deterministicos de pre-roll, capture e post-roll quando um profiler GPU externo ja esta conectado; a coordenacao e limitada a Editor/Development Build e nao afirma um path autoritativo do artefato.
+- Coordenar RenderDoc/PIX pelo caminho generico da Unity ou usar opcionalmente o bridge RenderDoc distribuido separadamente e verificado por SHA-256 para artefatos `.rdc` autenticados no Editor Windows x64 com D3D11, D3D12 ou Vulkan. O pacote UPM continua sem binarios e nao instala o RenderDoc.
 - Usar alerts, logs estruturados, callbacks e cooldowns de avisos do Editor sem observar o overlay continuamente.
 - Fornecer dados estruturados a ferramentas e agents para comparacoes, testes A/B e busca de hotspots.
 

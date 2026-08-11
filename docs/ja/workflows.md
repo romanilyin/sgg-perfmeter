@@ -49,7 +49,7 @@ RenderDoc は external tool であり、PerfMeter には同梱されません。
        new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
    ```
 
-5. capture status には **Open Runtime** を使用します。コピーした request は persist されず、自動的にも invoke されません。Editor/Development Build、attached-tool、desktop platform、graphics API の要件が適用されます。`Completed` は Unity wrapper lifecycle の完了だけを確認します。attached tool を識別せず、`.rdc` artifact を authenticate せず、artifact path も返しません。
+5. Windows x64 Editor では先に **Download Verified Bridge** または **Install Local Bridge** を使用できます。exact pinned の別配布 bridge だけが Editor-only plugin として install され、RenderDoc 自体は install されません。その後 Editor を restart します。コピーされる native request は `NativeRequired` + `Copy` を使用し、MetadataOnly は `DoNotShare`、Copy/Embed は `ReviewBeforeShare` です。
 
 ### GraphicsStateCollection
 
@@ -142,9 +142,9 @@ PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 ```
 
-coordinator は 1 つの active request だけを所有し、`PreRoll`、`Capturing`、`PostRoll`、`Completed` を deterministic に進みます。同じ active ID は idempotent で、異なる ID は overlap として reject されます。pre-roll と post-roll は Unity frames を数え、`Capturing` だけが alert capture scope を開いて Unity の experimental な `ExternalGPUProfiler` を invoke します。Editor または Development Build であることと attached tool があることは必須 gate です。`RenderDoc` は Windows/Linux desktop の Direct3D 11、Direct3D 12、Vulkan で、`PIX` は Windows desktop の Direct3D 12 で使用できます。
+`GenericUnity` は従来の `ExternalGPUProfiler` matrix を維持し、tool/artifact を authenticate できません。`NativePreferred` は begin 前だけ fallback でき、`NativeRequired` は fallback しません。Native RenderDoc は Windows x64 Unity Editor の D3D11、D3D12、Vulkan のみをサポートします。
 
-`Completed` は guarded Unity wrapper lifecycle が終了したことだけを示します。Unity API は attached tool の identity や authoritative artifact path を公開しないため、`Status.Tool` は requested tool だけを示します。`PerfMeterCaptureBundleOptions` overload は baseline/capture samples を分離して project-local bundle を atomic export します。external artifact は observed であり authoritative ではありません。automation には `perfmeter.capture.request/status/cancel/export/capabilities` を使用します。
+Generic `Completed` は wrapper lifecycle のみです。Native status は backend kind と generation-bound phase を報告し、finalized `.rdc` を authenticate できます。Generic/caller artifact は observed のままです。MCP は `backend_mode` を受け付けますが、storage mode は C# API で選択します。
 
 ## Overdraw Diagnostics
 

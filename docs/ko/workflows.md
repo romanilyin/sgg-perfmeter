@@ -49,7 +49,7 @@ RenderDoc은 external tool이며 PerfMeter에 포함되지 않습니다. Unity �
        new PerfMeterCaptureOptions("ftue-renderdoc-capture", PerfMeterCaptureTool.RenderDoc, 1));
    ```
 
-5. capture status에는 **Open Runtime**을 사용합니다. 복사한 request는 persist되지 않으며 자동으로 invoke되지 않습니다. Editor/Development Build, attached-tool, desktop platform, graphics API 요구 사항이 적용됩니다. `Completed`는 Unity wrapper lifecycle만 완료되었음을 확인하며, attached tool을 식별하거나 `.rdc` artifact를 authenticate하거나 artifact path를 반환하지 않습니다.
+5. Windows x64 Editor에서는 먼저 **Download Verified Bridge** 또는 **Install Local Bridge**를 사용할 수 있습니다. exact pinned 별도 bridge만 Editor-only plugin으로 설치되며 RenderDoc 자체는 설치하지 않습니다. 이후 Editor를 restart합니다. 복사된 native request는 `NativeRequired` + `Copy`를 사용하며 MetadataOnly는 `DoNotShare`, Copy/Embed는 `ReviewBeforeShare`입니다.
 
 ### GraphicsStateCollection
 
@@ -142,9 +142,9 @@ PerfMeterCaptureRequestResult result = PerformanceMeter.RequestCapture(
 PerfMeterCaptureStatusSnapshot status = PerformanceMeter.GetCaptureStatus();
 ```
 
-Coordinator는 active request 하나만 소유하며 `PreRoll`, `Capturing`, `PostRoll`, `Completed`를 deterministic하게 진행합니다. 같은 active ID는 idempotent이고 다른 ID는 overlap으로 reject됩니다. Pre-roll과 post-roll은 Unity frame을 세며, `Capturing`만 alert capture scope를 열고 Unity의 experimental `ExternalGPUProfiler`를 invoke합니다. Editor 또는 Development Build이고 attached tool이 있어야 하는 gate가 필수입니다. `RenderDoc`은 Windows/Linux desktop의 Direct3D 11, Direct3D 12, Vulkan에서 허용되고, `PIX`는 Windows desktop의 Direct3D 12에서 허용됩니다.
+`GenericUnity`는 기존 `ExternalGPUProfiler` matrix를 유지하며 tool/artifact를 authenticate할 수 없습니다. `NativePreferred`는 begin 전까지만 fallback할 수 있고 `NativeRequired`는 fallback하지 않습니다. Native RenderDoc은 Windows x64 Unity Editor의 D3D11, D3D12, Vulkan만 지원합니다.
 
-`Completed`는 guarded Unity wrapper lifecycle이 끝났다는 의미뿐입니다. Unity는 attached tool identity나 authoritative artifact path를 노출하지 않으므로 `Status.Tool`은 요청한 tool만 나타냅니다. `PerfMeterCaptureBundleOptions` overload는 baseline/capture samples를 분리하고 project-local bundle을 atomic export합니다. external artifact는 observed일 뿐 authoritative하지 않습니다. automation에는 `perfmeter.capture.request/status/cancel/export/capabilities`를 사용합니다.
+Generic `Completed`는 wrapper lifecycle만 의미합니다. Native status는 backend kind와 generation-bound phase를 보고하고 finalized `.rdc`를 authenticate할 수 있습니다. Generic/caller artifact는 observed로 유지됩니다. MCP는 `backend_mode`를 받지만 storage mode는 C# API에서 선택합니다.
 
 ## Overdraw Diagnostics
 

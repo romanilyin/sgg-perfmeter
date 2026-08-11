@@ -40,7 +40,7 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.session.stop` | Stop recording and return summary. |
 | `perfmeter.session.summary` | Read current session summary. |
 | `perfmeter.session.export` | Export current session to project-local JSON or CSV. |
-| `perfmeter.capture.request` | Request a bounded external GPU capture and correlated bundle. |
+| `perfmeter.capture.request` | Request a bounded external GPU capture and correlated bundle; optional `backend_mode` is `GenericUnity`, `NativePreferred`, or `NativeRequired`. |
 | `perfmeter.capture.status` | Read capture and bundle state. |
 | `perfmeter.capture.cancel` | Cancel the matching active capture. |
 | `perfmeter.capture.export` | Atomically export a ready bundle under the project-local bundle root. |
@@ -98,7 +98,7 @@ Poll status until the bundle is export-ready, then use the existing `perfmeter.c
 
 `perfmeter.alerts.latest` reports the alert-history interval and reset reason, classified lifecycle/steady-state/capture counters, and the latest fired alert. PerfMeter does not infer captures from slow frames; wrap an external capture with matching `perfmeter.alerts.capture.begin/end` calls when capture attribution is required.
 
-For a correlated capture, use `perfmeter.capture.request`, poll `perfmeter.capture.status` to a terminal bundle state, then call `perfmeter.capture.export`. Export paths and optional external artifact paths must be relative and project-local. An observed `.rdc`/`.wpix` copy is hashed but never reported as authoritative because Unity cannot authenticate the attached tool or artifact association; `require_authoritative_external_artifact` therefore fails explicitly.
+For a correlated capture, use `perfmeter.capture.request`, poll `perfmeter.capture.status` to a terminal bundle state, then call `perfmeter.capture.export`. The request accepts `backend_mode`; status reports `requested_backend_mode`, `effective_backend_kind`, `native_phase`, result code, and fallback reason. Generic/caller-supplied `.rdc`/`.wpix` data remains observed because Unity cannot authenticate association. The optional Windows x64 Editor native RenderDoc path can publish a generation-bound authenticated artifact and satisfy `require_authoritative_external_artifact`. MCP intentionally does not expose native storage-mode or authority selection; use the C# API for explicit MetadataOnly/Copy/Embed policy.
 
 ## Graphics Diagnostics And State-Collection Commands
 

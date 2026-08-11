@@ -15,7 +15,7 @@ SGG PerfMeter detecte les goulets d'etranglement des frames, compare les changem
 - Voir le contexte des goulets d'etranglement directement pendant le jeu.
 - Basculer entre presets, graphes, barres de metriques, dispositions compactes et lignes de metriques personnalisees.
 - Enregistrer des sessions de profilage reproductibles avec warm-up, contexte de scene, resume des pires frames et export JSON/CSV.
-- Coordonner une requete RenderDoc/PIX explicite et bornee avec des etats deterministes de pre-roll, capture et post-roll lorsque le profiler GPU externe est deja attache; cette coordination est limitee a l'Editor/Development Build et ne revendique aucun path d'artefact faisant autorite.
+- Coordonner RenderDoc/PIX via le chemin generique Unity ou utiliser en option le bridge RenderDoc distribue separement et verifie par SHA-256 pour des artefacts `.rdc` authentifies dans l'Editor Windows x64 avec D3D11, D3D12 ou Vulkan. Le package UPM reste sans binaire et n'installe pas RenderDoc.
 - Utiliser des alertes, logs structures, callbacks et cooldowns d'avertissements Editor sans surveiller l'overlay en continu.
 - Fournir aux outils et agents des donnees structurees pour les comparaisons, tests A/B et recherches de points chauds.
 

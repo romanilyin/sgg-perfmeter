@@ -130,6 +130,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalGraphicsStateCollectionCopyPrewarmButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalGraphicsStateCollectionRevealArtifactsButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocElementName + "-open").text, Is.EqualTo("Download RenderDoc"));
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocDownloadBridgeButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocInstallLocalBridgeButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocCancelBridgeDownloadButtonElementName), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocRemoveBridgeButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocCheckAttachmentButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocCopySnippetButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterFtuePage.OptionalRenderDocGuideButtonElementName), Is.Not.Null);

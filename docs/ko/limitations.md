@@ -23,8 +23,10 @@ Profiler counter는 platform, Unity version, render pipeline settings, graphics 
 ## External GPU Capture
 
 - Coordinator는 active request 하나를 허용하며 `PreRoll`, `Capturing`, `PostRoll`, `Completed`를 deterministic하게 진행합니다. 같은 active ID는 idempotent이고 다른 active ID는 overlap으로 reject됩니다.
-- Backend는 Unity의 experimental `ExternalGPUProfiler`를 Editor 또는 Development Builds에서 external tool이 이미 attach된 경우에만 사용합니다. `RenderDoc`은 Windows/Linux desktop의 Direct3D 11, Direct3D 12, Vulkan으로 제한되고 `PIX`는 Windows desktop의 Direct3D 12로 제한됩니다.
-- `Completed`는 Unity wrapper lifecycle만 확인합니다. external `.rdc`/`.wpix` artifact가 존재한다는 증거가 아니며 artifact path도 제공하지 않습니다.
+- `GenericUnity`는 Editor/Development Build에서 Unity experimental `ExternalGPUProfiler`를 사용합니다. matrix는 Windows/Linux desktop D3D11/D3D12/Vulkan의 RenderDoc 및 Windows desktop D3D12의 PIX이며 completion은 tool/artifact identity를 authenticate하지 않습니다.
+- Optional native path는 Windows x64 Unity Editor의 D3D11, D3D12, Vulkan에서 RenderDoc만 지원합니다. Development Player, Linux native, IL2CPP, mobile, macOS native는 지원하지 않습니다.
+- UPM package는 binary-free입니다. 별도 pinned bridge는 already-loaded `renderdoc.dll`만 사용하며 RenderDoc을 install/load/launch/inject하지 않습니다.
+- Native MetadataOnly는 기본 `DoNotShare`이고 Copy/Embed는 sensitive하며 separate quota와 `ReviewBeforeShare`가 필요합니다. Generic/caller artifact는 observed이며 authoritative하지 않습니다.
 - Automated tests는 fake backend를 사용합니다. Real external tool 및 artifact 확인은 release gate로 남습니다.
 - Correlated bundles와 MCP capture control은 사용할 수 있지만, 전달된 `.rdc`/`.wpix`는 observed/hashed artifact일 뿐입니다. Unity는 attached tool이나 capture association을 인증할 수 없으므로 real external tool 확인은 release-candidate gate로 남습니다.
 

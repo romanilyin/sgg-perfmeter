@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 using NUnit.Framework;
@@ -14,6 +15,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void SetUp()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
 
@@ -21,6 +23,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void TearDown()
 		{
 			PerformanceMeter.Stop();
+			PerfMeterNativeCaptureBackendRegistry.ResetForTests();
 			PerfMeterRuntime.ResetCaptureBundlesForTests();
 		}
 
@@ -42,6 +45,384 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(data.CaptureSamples[0].PlatformTelemetry.ProviderId, Is.EqualTo("capture.provider"));
 			Assert.That(data.CaptureSamples[0].PlatformTelemetry.TemperatureLevel, Is.EqualTo(0.7f));
 			Assert.That(data.AlertEvents[0].CaptureId, Is.EqualTo("bundle-data"));
+		}
+
+		[Test]
+		public void ExternalArtifactObservationPreservesLifecycleAndRejectsMismatchedCapture()
+		{
+			const string captureId = "external-provenance";
+			const string identity = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
+			coordinator.Start(
+				new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1),
+				new PerfMeterCaptureBundleOptions(includeScreenshot: false),
+				CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+
+			PerfMeterExternalArtifactSnapshot observed = new PerfMeterExternalArtifactOptions(
+				artifactId: "external-artifact",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Observed)
+				.WithSourceFileIdentitySha256(identity)
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact(captureId, bundleId, observed);
+
+			PerfMeterCaptureBundleStatusSnapshot recording = coordinator.GetStatus(captureId);
+			Assert.That(recording.State, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(recording.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(recording.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+
+			PerfMeterExternalArtifactSnapshot mismatched = new PerfMeterExternalArtifactOptions(
+				artifactId: "mismatched-artifact",
+				requestId: "other-capture",
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				sizeBytes: 99L)
+				.WithSourceFileIdentitySha256(new string('f', 64))
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact("other-capture", bundleId, mismatched);
+			Assert.That(coordinator.GetStatus(captureId).ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+
+			coordinator.ObserveCapture(
+				CaptureStatus(captureId, PerfMeterCaptureState.Completed),
+				PerfMeterSessionSummarySnapshot.Empty,
+				Array.Empty<PerfMeterSessionSampleSnapshot>(),
+				PerformanceMeter.GetStatus(),
+				PerformanceMeter.GetDeviceInfo(),
+				default,
+				PerfMeterRenderGraphSnapshot.NotObserved,
+				Array.Empty<PerfMeterAlertSnapshot>(),
+				false);
+
+			PerfMeterExternalArtifactSnapshot authoritative = new PerfMeterExternalArtifactOptions(
+				artifactId: "authoritative-artifact",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				associationState: PerfMeterExternalArtifactAssociationState.BridgeAuthenticated,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				authorityState: PerfMeterExternalArtifactAuthorityState.Authenticated,
+				sizeBytes: 99L)
+				.WithSourceFileIdentitySha256(identity)
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact(captureId, bundleId, authoritative);
+
+			PerfMeterCaptureBundleStatusSnapshot completed = coordinator.GetStatus(captureId);
+			Assert.That(completed.State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(completed.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(completed.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+			Assert.That(completed.ExternalArtifact.IsAuthoritative, Is.False);
+
+			PerfMeterExternalArtifactSnapshot late = new PerfMeterExternalArtifactOptions(
+				artifactId: "late-artifact",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				sizeBytes: 101L)
+				.WithSourceFileIdentitySha256(new string('f', 64))
+				.ToSnapshot();
+			Assert.That(coordinator.MarkExported(
+				captureId,
+				bundleId,
+				string.Empty,
+				"Temp/PerfMeter/CaptureBundles/exported",
+				completed.ExternalArtifactState,
+				completed.ExternalArtifact), Is.True);
+			coordinator.ObserveExternalArtifact(captureId, bundleId, late);
+			Assert.That(coordinator.GetStatus(captureId).ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+		}
+
+		[Test]
+		public void ExternalArtifactProvenanceSurvivesStatusExportAndEnvelope()
+		{
+			const string captureId = "external-envelope";
+			const string identity = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(captureId, includeScreenshot: false);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			PerfMeterExternalArtifactSnapshot descriptor = new PerfMeterExternalArtifactOptions(
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				requestId: captureId,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized)
+				.WithSourceFileIdentitySha256(identity)
+				.ToSnapshot();
+			coordinator.ObserveExternalArtifact(captureId, bundleId, descriptor);
+
+			PerfMeterCaptureBundleStatusSnapshot status = coordinator.GetStatus(captureId);
+			Assert.That(status.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+			Assert.That(status.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			Assert.That(data.Status.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/external-envelope-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), relativePath);
+			try
+			{
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(result.Bundle.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+				Assert.That(result.Bundle.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+				Assert.That(result.ExternalArtifact.SourceFileIdentitySha256, Is.EqualTo(identity));
+				string envelope = File.ReadAllText(Path.Combine(fullPath, "external-artifact.json"));
+				Assert.That(envelope, Does.Contain("\"source_file_identity_sha256\":\"" + identity + "\""));
+				Assert.That(envelope, Does.Not.Contain("source_path"));
+				Assert.That(envelope, Does.Not.Contain(Path.GetFullPath(Path.Combine(Application.dataPath, ".."))));
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void NativeCopyDescriptorRejectsMismatchedBindingEvidence()
+		{
+			const string captureId = "native-copy-binding";
+			TestNativePayloadSource payloadSource = new TestNativePayloadSource();
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(
+				captureId,
+				includeScreenshot: false,
+				storageMode: PerfMeterExternalArtifactStorageMode.Copy);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			PerfMeterExternalArtifactSnapshot artifact = CreateNativeCopyArtifact(captureId);
+
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				"wrong-bundle",
+				artifact,
+				CreateNativeSourceDescriptor(payloadSource)), Is.False);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				CreateNativeCopyArtifact(captureId, new string('c', 64)),
+				CreateNativeSourceDescriptor(payloadSource)), Is.False);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				artifact,
+				CreateNativeSourceDescriptor(null)), Is.False);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				artifact,
+				CreateNativeSourceDescriptor(payloadSource, renderDocTimestampSeconds: 41u)), Is.False);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				artifact,
+				CreateNativeSourceDescriptor(payloadSource)), Is.True);
+
+			PerfMeterCaptureBundleStatusSnapshot status = coordinator.GetStatus(captureId);
+			Assert.That(status.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.Authoritative));
+			Assert.That(status.ExternalArtifact.IsAuthoritative, Is.True);
+		}
+
+		[Test]
+		public void NativeCopyExportUsesDescriptorWithoutEmbeddingPayload()
+		{
+			const string captureId = "native-copy-export";
+			const string sourceIdentity = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+			TestNativePayloadSource payloadSource = new TestNativePayloadSource();
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(
+				captureId,
+				includeScreenshot: false,
+				storageMode: PerfMeterExternalArtifactStorageMode.Copy);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			PerfMeterExternalArtifactSnapshot artifact = CreateNativeCopyArtifact(captureId);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				artifact,
+				CreateNativeSourceDescriptor(payloadSource)), Is.True);
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/native-copy-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), relativePath);
+			try
+			{
+				PerfMeterCaptureBundleExportResult callerPathRejected = PerfMeterCaptureBundleExporter.Export(
+					data,
+					relativePath,
+					"Temp/PerfMeter/RenderDocCopies/forged/capture.rdc",
+					true);
+				Assert.That(callerPathRejected.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.PathRejected));
+				Assert.That(payloadSource.ValidationCalls, Is.Zero);
+
+				payloadSource.IsValid = false;
+				payloadSource.Error = "renderdoc_copy_descriptor_hash_changed";
+				PerfMeterCaptureBundleExportResult changed = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, true);
+				Assert.That(changed.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.IoError));
+				Assert.That(changed.Error, Does.Contain("hash_changed"));
+
+				payloadSource.IsValid = true;
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, true);
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(result.Bundle.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.Authoritative));
+				Assert.That(result.ExternalArtifact.IsAuthoritative, Is.True);
+				Assert.That(File.Exists(Path.Combine(fullPath, "external-capture.rdc")), Is.False);
+
+				string metadata = File.ReadAllText(Path.Combine(fullPath, "external-capture.json"));
+				Assert.That(metadata, Does.Contain("\"tool_identity\":\"renderdoc\""));
+				Assert.That(metadata, Does.Contain("\"artifact_sha256\":\"" + new string('a', 64) + "\""));
+				Assert.That(metadata, Does.Contain("\"artifact_file\":\"\""));
+				Assert.That(metadata, Does.Contain("\"association_verified\":true"));
+
+				string envelope = File.ReadAllText(Path.Combine(fullPath, "external-artifact.json"));
+				Assert.That(envelope, Does.Contain("\"renderdoc_provenance\""));
+				Assert.That(envelope, Does.Contain("\"request_nonce\":\"0000000000001234\""));
+				Assert.That(envelope, Does.Contain("\"app_api_minor\":7"));
+				Assert.That(envelope, Does.Contain("\"source_file_identity_sha256\":\"" + sourceIdentity + "\""));
+				Assert.That(envelope, Does.Not.Contain(Path.GetFullPath(Path.Combine(Application.dataPath, ".."))));
+				Assert.That(File.ReadAllText(Path.Combine(fullPath, "manifest.json")), Does.Not.Contain("external-capture.rdc"));
+				Assert.That(payloadSource.ValidationCalls, Is.EqualTo(2));
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void NativeEmbedStagesOutsideGenericQuotaAndAuthenticatesOnCommit()
+		{
+			const string captureId = "native-embed-export";
+			long payloadBytes = PerfMeterCaptureBundleExporter.MaxBundleBytes + 1L;
+			string payloadHash = Sha256Zeros(payloadBytes);
+			TestNativeEmbedPayloadSource payloadSource = new TestNativeEmbedPayloadSource(payloadBytes, payloadHash);
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(
+				captureId,
+				includeScreenshot: false,
+				storageMode: PerfMeterExternalArtifactStorageMode.Embed);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			PerfMeterExternalArtifactSnapshot artifact = CreateNativeEmbedArtifact(captureId, payloadBytes, payloadHash);
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				artifact,
+				CreateNativeSourceDescriptor(payloadSource)), Is.True);
+			Assert.That(coordinator.GetStatus(captureId).ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/native-embed-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), relativePath);
+			try
+			{
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, true);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(result.Bundle.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.Authoritative));
+				Assert.That(result.ExternalArtifact.IsAuthoritative, Is.True);
+				Assert.That(result.ExternalArtifact.PostCopySha256, Is.EqualTo(payloadHash));
+				string embeddedPath = Path.Combine(fullPath, "external", "renderdoc", "capture.rdc");
+				Assert.That(new FileInfo(embeddedPath).Length, Is.EqualTo(payloadBytes));
+				Assert.That(File.Exists(Path.Combine(fullPath, PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath)), Is.True);
+				Assert.That(File.ReadAllText(Path.Combine(fullPath, "external-capture.json")), Does.Contain(
+					"\"artifact_file\":\"external/renderdoc/capture.rdc\""));
+				string envelope = File.ReadAllText(Path.Combine(fullPath, "external-artifact.json"));
+				Assert.That(envelope, Does.Contain("\"authority_state\":\"Authenticated\""));
+				Assert.That(envelope, Does.Contain("\"storage_mode\":\"Embed\""));
+				Assert.That(envelope, Does.Contain("\"generation\":7"));
+				Assert.That(File.ReadAllText(Path.Combine(fullPath, "manifest.json")), Does.Contain(
+					"\"path\":\"external/renderdoc/capture.rdc\""));
+				Assert.That(payloadSource.StageCalls, Is.EqualTo(1));
+				Assert.That(payloadSource.LastAdditionalStagingBytes, Is.GreaterThan(0L));
+				Assert.That(payloadSource.CompletionCalls, Is.EqualTo(1));
+				Assert.That(payloadSource.LastCommitted, Is.True);
+			}
+			finally
+			{
+				if (Directory.Exists(fullPath))
+				{
+					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void NativeEmbedRejectsInvalidStagedEvidenceAndAbortsLifecycle()
+		{
+			const string captureId = "native-embed-invalid";
+			TestNativeEmbedPayloadSource payloadSource = new TestNativeEmbedPayloadSource(4L, new string('a', 64))
+			{
+				ReturnInvalidHash = true
+			};
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(
+				captureId,
+				includeScreenshot: false,
+				storageMode: PerfMeterExternalArtifactStorageMode.Embed);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				CreateNativeEmbedArtifact(captureId, 4L),
+				CreateNativeSourceDescriptor(payloadSource)), Is.True);
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/native-embed-invalid-" + Guid.NewGuid().ToString("N");
+			string fullPath = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), relativePath);
+
+			PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, true);
+
+			Assert.That(result.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.AuthorityRequired));
+			Assert.That(Directory.Exists(fullPath), Is.False);
+			Assert.That(payloadSource.CompletionCalls, Is.EqualTo(1));
+			Assert.That(payloadSource.LastCommitted, Is.False);
+		}
+
+		[Test]
+		public void NativeEmbedRejectsGenericQuotaBeforeStagingPayload()
+		{
+			const string captureId = "native-embed-generic-quota";
+			string payloadHash = Sha256Zeros(4L);
+			TestNativeEmbedPayloadSource payloadSource = new TestNativeEmbedPayloadSource(4L, payloadHash);
+			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator(
+				captureId,
+				includeScreenshot: false,
+				storageMode: PerfMeterExternalArtifactStorageMode.Embed);
+			string bundleId = coordinator.GetStatus(captureId).BundleId;
+			Assert.That(coordinator.ObserveNativeExternalArtifact(
+				captureId,
+				bundleId,
+				CreateNativeEmbedArtifact(captureId, 4L, payloadHash),
+				CreateNativeSourceDescriptor(payloadSource)), Is.True);
+			Assert.That(coordinator.TryGetExportData(captureId, out PerfMeterCaptureBundleExportData data), Is.True);
+			data = new PerfMeterCaptureBundleExportData(
+				data.Status,
+				data.CaptureOptions,
+				data.BundleOptions,
+				data.StartedUtc,
+				data.CompletedUtc,
+				data.SessionSummary,
+				data.SessionTimeline,
+				data.CaptureTimeline,
+				data.BaselineSamples,
+				data.CaptureSamples,
+				data.ConfiguredSettings,
+				data.EffectiveSettings,
+				data.RuntimeStatus,
+				data.Device,
+				data.Camera,
+				data.Render,
+				data.RenderIntegration,
+				data.AlertEvents,
+				data.AlertEventsTruncated,
+				new byte[PerfMeterCaptureBundleExporter.MaxScreenshotBytes + 1],
+				data.MemorySnapshotArtifact,
+				data.NativeArtifactSource);
+
+			PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(
+				data,
+				PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/native-embed-quota-" + Guid.NewGuid().ToString("N"),
+				null,
+				true);
+
+			Assert.That(result.Status, Is.EqualTo(PerfMeterCaptureBundleExportStatus.QuotaExceeded));
+			Assert.That(payloadSource.StageCalls, Is.Zero);
+			Assert.That(payloadSource.CompletionCalls, Is.Zero);
 		}
 
 		[Test]
@@ -524,6 +905,34 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void PublicCaptureApiRejectsNativeBackendModesForPixButKeepsGenericPixValid()
+		{
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions(
+				"pix-preferred",
+				PerfMeterCaptureTool.Pix,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativePreferred)), Is.EqualTo(PerfMeterCaptureRequestResult.InvalidRequest));
+			Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions(
+				"pix-required",
+				PerfMeterCaptureTool.Pix,
+				1,
+				0,
+				0,
+				PerfMeterCaptureBackendMode.NativeRequired)), Is.EqualTo(PerfMeterCaptureRequestResult.InvalidRequest));
+
+			try
+			{
+				Assert.That(PerformanceMeter.RequestCapture(new PerfMeterCaptureOptions("pix-generic", PerfMeterCaptureTool.Pix)), Is.Not.EqualTo(PerfMeterCaptureRequestResult.InvalidRequest));
+			}
+			finally
+			{
+				PerformanceMeter.Stop();
+			}
+		}
+
+		[Test]
 		public void BundleExportCommitsAtomicallyAndRefusesExistingDestination()
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("atomic", includeScreenshot: false);
@@ -565,6 +974,49 @@ namespace SGG.PerfMeter.Tests.EditMode
 				if (Directory.Exists(fullPath))
 				{
 					Directory.Delete(fullPath, true);
+				}
+			}
+		}
+
+		[Test]
+		public void GenericRetentionNeverDeletesNativeEmbedBundles()
+		{
+			string bundleRoot = Path.GetFullPath(Path.Combine(
+				Application.dataPath,
+				"..",
+				PerfMeterCaptureBundleExporter.RelativeBundleRoot));
+			string nativeBundle = Path.Combine(bundleRoot, "native-retention-" + Guid.NewGuid().ToString("N"));
+			string exportedBundle = Path.Combine(bundleRoot, "generic-retention-" + Guid.NewGuid().ToString("N"));
+			try
+			{
+				Directory.CreateDirectory(Path.Combine(nativeBundle, "external", "renderdoc"));
+				File.WriteAllText(Path.Combine(nativeBundle, ".sgg-perfmeter-bundle"), "sgg.perfmeter.capture-bundle\n1\n");
+				File.WriteAllText(
+					Path.Combine(nativeBundle, "manifest.json"),
+					"{\"schema\":\"sgg.perfmeter.capture-bundle\",\"schema_version\":1,\"bundle_id\":\"native-retention\",\"files\":[]}");
+				File.WriteAllBytes(Path.Combine(nativeBundle, "external", "renderdoc", "capture.rdc"), new byte[] { 1 });
+				File.WriteAllText(
+					Path.Combine(nativeBundle, PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath),
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerHeader + "test=1\n");
+				Directory.SetLastWriteTimeUtc(nativeBundle, DateTime.UtcNow.AddDays(-PerfMeterCaptureBundleExporter.RetentionDays - 1d));
+
+				PerfMeterCaptureBundleCoordinator coordinator = CreateReadyCoordinator("generic-retention", includeScreenshot: false);
+				Assert.That(coordinator.TryGetExportData("generic-retention", out PerfMeterCaptureBundleExportData data), Is.True);
+				string relativePath = PerfMeterCaptureBundleExporter.RelativeBundleRoot + "/" + Path.GetFileName(exportedBundle);
+				PerfMeterCaptureBundleExportResult result = PerfMeterCaptureBundleExporter.Export(data, relativePath, null, false);
+
+				Assert.That(result.Success, Is.True, result.Error);
+				Assert.That(Directory.Exists(nativeBundle), Is.True);
+			}
+			finally
+			{
+				if (Directory.Exists(nativeBundle))
+				{
+					Directory.Delete(nativeBundle, true);
+				}
+				if (Directory.Exists(exportedBundle))
+				{
+					Directory.Delete(exportedBundle, true);
 				}
 			}
 		}
@@ -950,6 +1402,165 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void RuntimeShutdownRetainsBundleWhenCaptureCleanupFails()
+		{
+			const string captureId = "shutdown-retains-bundle";
+			PerformanceMeter.EnsureRunning();
+			ShutdownCaptureBackend backend = new ShutdownCaptureBackend { EndSucceeds = false };
+			PerfMeterRuntime.Instance.SetCaptureBackendForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerformanceMeter.Stop();
+
+			PerfMeterCaptureBundleStatusSnapshot status = PerformanceMeter.GetCaptureBundleStatus(captureId);
+			Assert.That(status.State, Is.EqualTo(PerfMeterCaptureBundleState.Error));
+			Assert.That(status.CaptureState, Is.EqualTo(PerfMeterCaptureState.Error));
+			Assert.That(status.IsExportReady, Is.True);
+
+			backend.EndSucceeds = true;
+			PerformanceMeter.Stop();
+		}
+
+		[Test]
+		public void RuntimeRetainsBundleAndLeaseUntilV3ArtifactCompletionIsFrozen()
+		{
+			const string captureId = "v3-runtime-finalization";
+			PerformanceMeter.EnsureRunning();
+			CompletionNativeCaptureBackend backend = new CompletionNativeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(
+						captureId,
+						PerfMeterCaptureTool.RenderDoc,
+						1,
+						0,
+						0,
+						PerfMeterCaptureBackendMode.NativeRequired),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			PerfMeterProfilerLeaseStatusSnapshot lease = PerformanceMeter.GetProfilerLeaseStatus();
+
+			PerfMeterRuntime.Instance.TickCaptureForTests();
+
+			Assert.That(PerformanceMeter.GetCaptureStatus().State, Is.EqualTo(PerfMeterCaptureState.Completed));
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(lease.LeaseId).IsHeld, Is.True);
+
+			backend.FinalizationCanComplete = true;
+			PerfMeterRuntime.Instance.TickCaptureForTests();
+
+			PerfMeterCaptureBundleStatusSnapshot completed = PerformanceMeter.GetCaptureBundleStatus(captureId);
+			Assert.That(completed.State, Is.EqualTo(PerfMeterCaptureBundleState.Ready));
+			Assert.That(completed.ExternalArtifactState, Is.EqualTo(PerfMeterCaptureExternalArtifactState.FileObserved));
+			Assert.That(completed.ExternalArtifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Finalized));
+			Assert.That(completed.ExternalArtifact.RequestId, Is.EqualTo(captureId));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(lease.LeaseId).State, Is.EqualTo(PerfMeterProfilerLeaseState.Released));
+			Assert.That(backend.TryConsumeExternalArtifact(out _), Is.False, "The runtime must consume the completion before freezing the bundle.");
+		}
+
+		[Test]
+		public void RuntimeFreezesFailedV3ArtifactBeforeReleasingLease()
+		{
+			const string captureId = "v3-runtime-failed-finalization";
+			PerformanceMeter.EnsureRunning();
+			CompletionNativeCaptureBackend backend = new CompletionNativeCaptureBackend
+			{
+				FinalizationSucceeds = false
+			};
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(backend);
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(
+						captureId,
+						PerfMeterCaptureTool.RenderDoc,
+						1,
+						0,
+						0,
+						PerfMeterCaptureBackendMode.NativeRequired),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+			PerfMeterProfilerLeaseStatusSnapshot lease = PerformanceMeter.GetProfilerLeaseStatus();
+
+			PerfMeterRuntime.Instance.TickCaptureForTests();
+			backend.FinalizationCanComplete = true;
+			PerfMeterRuntime.Instance.TickCaptureForTests();
+
+			PerfMeterCaptureBundleStatusSnapshot failed = PerformanceMeter.GetCaptureBundleStatus(captureId);
+			Assert.That(failed.State, Is.EqualTo(PerfMeterCaptureBundleState.Error));
+			Assert.That(failed.ExternalArtifact.FinalizationState, Is.EqualTo(PerfMeterExternalArtifactFinalizationState.Failed));
+			Assert.That(failed.ExternalArtifact.Warning, Is.EqualTo("finalization failed"));
+			Assert.That(PerformanceMeter.GetProfilerLeaseStatus(lease.LeaseId).State, Is.EqualTo(PerfMeterProfilerLeaseState.Released));
+		}
+
+		[Test]
+		public void RuntimeShutdownDoesNotFinalizeNativeBundleWithPendingResources()
+		{
+			const string captureId = "shutdown-native-pending";
+			PerformanceMeter.EnsureRunning();
+			ShutdownNativeCaptureBackend backend = new ShutdownNativeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerformanceMeter.Stop();
+
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(backend.DiscardCount, Is.EqualTo(1));
+
+			backend.CleanupCanComplete = true;
+			Assert.That(PerfMeterRuntime.EnsureRunning(), Is.True);
+
+			Assert.That(PerformanceMeter.GetCaptureBundleStatus(captureId).State, Is.EqualTo(PerfMeterCaptureBundleState.Canceled));
+			Assert.That(backend.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
+		public void PostDestroyCleanupTerminalizesRetainedNativeBundleWithoutRediscard()
+		{
+			const string captureId = "destroy-native-pending";
+			PerformanceMeter.EnsureRunning();
+			ShutdownNativeCaptureBackend backend = new ShutdownNativeCaptureBackend();
+			PerfMeterRuntime.Instance.SetCaptureBackendV2ForTests(backend);
+
+			Assert.That(
+				PerformanceMeter.RequestCapture(
+					new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1, 0, 0, PerfMeterCaptureBackendMode.NativeRequired),
+					new PerfMeterCaptureBundleOptions(includeScreenshot: false)),
+				Is.EqualTo(PerfMeterCaptureRequestResult.Started));
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			typeof(PerfMeterRuntime).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(runtime, null);
+			typeof(PerfMeterRuntime).GetMethod("OnDestroy", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(runtime, null);
+			UnityEngine.Object.DestroyImmediate(runtime.gameObject);
+
+			bool runtimeDestroyed = PerfMeterRuntime.Instance == null;
+			PerfMeterCaptureBundleState retainedState = PerformanceMeter.GetCaptureBundleStatus(captureId).State;
+			int discardCountAfterDestroy = backend.DiscardCount;
+
+			backend.CleanupCanComplete = true;
+			bool restarted = PerfMeterRuntime.EnsureRunning();
+			PerfMeterCaptureBundleState finalState = PerformanceMeter.GetCaptureBundleStatus(captureId).State;
+
+			Assert.That(runtimeDestroyed, Is.True);
+			Assert.That(retainedState, Is.EqualTo(PerfMeterCaptureBundleState.Recording));
+			Assert.That(discardCountAfterDestroy, Is.EqualTo(1));
+			Assert.That(restarted, Is.True);
+			Assert.That(finalState, Is.EqualTo(PerfMeterCaptureBundleState.Canceled));
+			Assert.That(backend.DiscardCount, Is.EqualTo(1));
+		}
+
+		[Test]
 		public void CaptureMcpCommandsAreRegisteredAndCapabilitiesDoNotStartRuntime()
 		{
 			string metadata = PerfMeterTestAssets.ReadMcpCommandsJson();
@@ -978,6 +1589,34 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(missingExport, Does.Contain("\"export_id\":\"\""));
 			Assert.That(PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"missing\"}"), Does.Contain("\"result\":\"not_found\""));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void CaptureMcpRequestDefaultsAndReportsBackendModeStatusFields()
+		{
+			string omitted = PerfMeterMcpCommands.CaptureRequest("{\"capture_id\":\"mcp-default\",\"tool\":\"RenderDoc\"}");
+			Assert.That(omitted, Does.Contain("\"requested_backend_mode\":\"GenericUnity\""));
+			Assert.That(omitted, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+			Assert.That(omitted, Does.Contain("\"native_phase\":"));
+			Assert.That(omitted, Does.Contain("\"native_result_code\":"));
+			Assert.That(omitted, Does.Contain("\"fallback_reason\":"));
+
+			string omittedStatus = PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"mcp-default\"}");
+			Assert.That(omittedStatus, Does.Contain("\"requested_backend_mode\":\"GenericUnity\""));
+			Assert.That(omittedStatus, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+
+			PerformanceMeter.Stop();
+
+			string explicitMode = PerfMeterMcpCommands.CaptureRequest("{\"capture_id\":\"mcp-explicit\",\"tool\":\"RenderDoc\",\"backend_mode\":\"NativePreferred\"}");
+			Assert.That(explicitMode, Does.Contain("\"requested_backend_mode\":\"NativePreferred\""));
+			Assert.That(explicitMode, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
+			Assert.That(explicitMode, Does.Contain("\"native_phase\":"));
+			Assert.That(explicitMode, Does.Contain("\"native_result_code\":"));
+			Assert.That(explicitMode, Does.Contain("\"fallback_reason\":"));
+
+			string explicitStatus = PerfMeterMcpCommands.CaptureStatus("{\"capture_id\":\"mcp-explicit\"}");
+			Assert.That(explicitStatus, Does.Contain("\"requested_backend_mode\":\"NativePreferred\""));
+			Assert.That(explicitStatus, Does.Contain("\"effective_backend_kind\":\"GenericUnity\""));
 		}
 
 		[Test]
@@ -1033,10 +1672,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 		}
 
-		private static PerfMeterCaptureBundleCoordinator CreateReadyCoordinator(string captureId, bool includeScreenshot, bool completeScreenshot = true)
+		private static PerfMeterCaptureBundleCoordinator CreateReadyCoordinator(
+			string captureId,
+			bool includeScreenshot,
+			bool completeScreenshot = true,
+			PerfMeterExternalArtifactStorageMode storageMode = PerfMeterExternalArtifactStorageMode.MetadataOnly)
 		{
 			PerfMeterCaptureBundleCoordinator coordinator = new PerfMeterCaptureBundleCoordinator();
-			PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(captureId, PerfMeterCaptureTool.RenderDoc, 1);
+			PerfMeterCaptureOptions options = new PerfMeterCaptureOptions(
+				captureId,
+				PerfMeterCaptureTool.RenderDoc,
+				1,
+				0,
+				0,
+				storageMode == PerfMeterExternalArtifactStorageMode.MetadataOnly
+					? PerfMeterCaptureBackendMode.GenericUnity
+					: PerfMeterCaptureBackendMode.NativeRequired,
+				storageMode);
 			coordinator.Start(options, new PerfMeterCaptureBundleOptions(includeScreenshot), CaptureStatus(captureId, PerfMeterCaptureState.Capturing));
 			PerfMeterSessionSampleSnapshot captureSample = new PerfMeterSessionSampleSnapshot(10, 1d, "Scene", CreateMetrics(10), Array.Empty<PerfMeterCustomMetricSnapshot>(), CreatePlatformTelemetry());
 			coordinator.RecordCaptureFrame(captureSample, PerformanceMeter.GetDeviceInfo(), default, PerfMeterRenderGraphSnapshot.NotObserved, PerformanceMeter.GetStatus());
@@ -1059,6 +1711,195 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 
 			return coordinator;
+		}
+
+		private static PerfMeterExternalArtifactSnapshot CreateNativeCopyArtifact(
+			string captureId,
+			string postCopySha256 = null)
+		{
+			string hash = new string('a', 64);
+			return new PerfMeterExternalArtifactOptions(
+				artifactId: captureId + "-renderdoc",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				toolId: "renderdoc",
+				toolVersion: "1.46",
+				requestId: captureId,
+				hostNamespace: "test",
+				associationState: PerfMeterExternalArtifactAssociationState.BridgeAuthenticated,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				authorityState: PerfMeterExternalArtifactAuthorityState.Authenticated,
+				containsGpuCaptureData: PerfMeterExternalArtifactContentState.Present,
+				privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
+					PerfMeterExternalArtifactPrivacyFlags.Sensitive |
+					PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
+				storageMode: PerfMeterExternalArtifactStorageMode.Copy,
+				quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+				sharePolicy: PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare,
+				sizeBytes: 4L,
+				observedSourceSha256: hash,
+				postCopySha256: postCopySha256 ?? hash)
+				.WithSourceFileIdentitySha256(new string('b', 64))
+				.ToSnapshot();
+		}
+
+		private static PerfMeterExternalArtifactSnapshot CreateNativeEmbedArtifact(
+			string captureId,
+			long sizeBytes,
+			string sourceHash = null)
+		{
+			return new PerfMeterExternalArtifactOptions(
+				artifactId: captureId + "-renderdoc",
+				artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+				toolId: "renderdoc",
+				toolVersion: "1.46",
+				requestId: captureId,
+				hostNamespace: "test",
+				associationState: PerfMeterExternalArtifactAssociationState.BridgeAuthenticated,
+				finalizationState: PerfMeterExternalArtifactFinalizationState.Finalized,
+				authorityState: PerfMeterExternalArtifactAuthorityState.Observed,
+				containsGpuCaptureData: PerfMeterExternalArtifactContentState.Present,
+				privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
+					PerfMeterExternalArtifactPrivacyFlags.Sensitive |
+					PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
+				storageMode: PerfMeterExternalArtifactStorageMode.Embed,
+				quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+				sharePolicy: PerfMeterExternalArtifactSharePolicy.ReviewBeforeShare,
+				sizeBytes: sizeBytes,
+				observedSourceSha256: sourceHash ?? new string('a', 64))
+				.WithSourceFileIdentitySha256(new string('b', 64))
+				.ToSnapshot();
+		}
+
+		private static PerfMeterNativeExternalArtifactSourceDescriptor CreateNativeSourceDescriptor(
+			IPerfMeterNativeExternalArtifactPayloadSource payloadSource,
+			ulong renderDocTimestampSeconds = 10u)
+		{
+			return new PerfMeterNativeExternalArtifactSourceDescriptor(
+				PerfMeterNativeExternalArtifactSourceKind.RenderDoc,
+				1u,
+				0u,
+				1u,
+				7u,
+				0u,
+				"managed_end_of_frame",
+				"wildcard_device_window",
+				7u,
+				0x1234u,
+				2u,
+				10000000000u,
+				2u,
+				renderDocTimestampSeconds,
+				10500000000u,
+				payloadSource);
+		}
+
+		private sealed class TestNativePayloadSource : IPerfMeterNativeExternalArtifactPayloadSource
+		{
+			internal bool IsValid { get; set; } = true;
+			internal string Error { get; set; } = string.Empty;
+			internal int ValidationCalls { get; private set; }
+
+			public bool TryValidate(Func<bool> shouldStop, out string error)
+			{
+				ValidationCalls++;
+				if (shouldStop != null && shouldStop())
+				{
+					error = "validation_canceled";
+					return false;
+				}
+
+				error = Error;
+				return IsValid;
+			}
+
+			public bool TryStageEmbed(
+				string stagingPath,
+				long additionalStagingBytes,
+				Func<bool> shouldStop,
+				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
+				out string error)
+			{
+				stagedArtifact = default;
+				error = "embed_not_configured";
+				return false;
+			}
+
+			public bool TryCompleteEmbed(bool committed, out string warning)
+			{
+				warning = string.Empty;
+				return true;
+			}
+		}
+
+		private sealed class TestNativeEmbedPayloadSource : IPerfMeterNativeExternalArtifactPayloadSource
+		{
+			private readonly long _payloadBytes;
+			private readonly string _payloadHash;
+
+			internal TestNativeEmbedPayloadSource(long payloadBytes, string payloadHash)
+			{
+				_payloadBytes = payloadBytes;
+				_payloadHash = payloadHash;
+			}
+
+			internal bool ReturnInvalidHash { get; set; }
+			internal int StageCalls { get; private set; }
+			internal int CompletionCalls { get; private set; }
+			internal bool LastCommitted { get; private set; }
+			internal long LastAdditionalStagingBytes { get; private set; }
+
+			public bool TryValidate(Func<bool> shouldStop, out string error)
+			{
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryStageEmbed(
+				string stagingPath,
+				long additionalStagingBytes,
+				Func<bool> shouldStop,
+				out PerfMeterNativeEmbeddedArtifact stagedArtifact,
+				out string error)
+			{
+				StageCalls++;
+				LastAdditionalStagingBytes = additionalStagingBytes;
+				stagedArtifact = default;
+				if (shouldStop != null && shouldStop())
+				{
+					error = "embed_canceled";
+					return false;
+				}
+
+				string payloadPath = Path.Combine(stagingPath, "external", "renderdoc", "capture.rdc");
+				Directory.CreateDirectory(Path.GetDirectoryName(payloadPath));
+				using (FileStream stream = new FileStream(payloadPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+				{
+					stream.SetLength(_payloadBytes);
+				}
+
+				byte[] marker = System.Text.Encoding.UTF8.GetBytes(
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerHeader +
+					"payload_size_bytes=" + _payloadBytes + "\n");
+				string markerPath = Path.Combine(stagingPath, PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath);
+				File.WriteAllBytes(markerPath, marker);
+				stagedArtifact = new PerfMeterNativeEmbeddedArtifact(
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedPayloadRelativePath,
+					_payloadBytes,
+					ReturnInvalidHash ? new string('c', 64) : _payloadHash,
+					PerfMeterNativeExternalArtifactSourceDescriptor.EmbeddedMarkerRelativePath,
+					marker.LongLength,
+					Sha256(marker));
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryCompleteEmbed(bool committed, out string warning)
+			{
+				CompletionCalls++;
+				LastCommitted = committed;
+				warning = string.Empty;
+				return true;
+			}
 		}
 
 		private static PerfMeterPlatformTelemetrySnapshot CreatePlatformTelemetry()
@@ -1154,6 +1995,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 		}
 
+		private static string Sha256Zeros(long byteCount)
+		{
+			using (SHA256 sha = SHA256.Create())
+			{
+				byte[] buffer = new byte[81920];
+				long remaining = byteCount;
+				while (remaining > 0L)
+				{
+					int count = (int)Math.Min(buffer.Length, remaining);
+					sha.TransformBlock(buffer, 0, count, null, 0);
+					remaining -= count;
+				}
+
+				sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+				return BitConverter.ToString(sha.Hash).Replace("-", string.Empty).ToLowerInvariant();
+			}
+		}
+
 		private static PerfMeterCaptureBundleExportStatusSnapshot WaitForExport(
 			PerfMeterCaptureBundleExportCoordinator coordinator,
 			string exportId)
@@ -1170,6 +2029,224 @@ namespace SGG.PerfMeter.Tests.EditMode
 			}
 
 			return coordinator.GetStatus(exportId);
+		}
+
+		private sealed class ShutdownCaptureBackend : IPerfMeterCaptureBackend
+		{
+			internal bool EndSucceeds { get; set; }
+
+			public PerfMeterCaptureBackendCapability GetCapability(PerfMeterCaptureTool tool)
+			{
+				return new PerfMeterCaptureBackendCapability(PerfMeterAvailability.Available, string.Empty);
+			}
+
+			public bool TryBegin(PerfMeterCaptureTool tool, out string error)
+			{
+				error = string.Empty;
+				return true;
+			}
+
+			public bool TryEnd(out string error)
+			{
+				error = EndSucceeds ? string.Empty : "shutdown cleanup failed";
+				return EndSucceeds;
+			}
+		}
+
+		private sealed class ShutdownNativeCaptureBackend : IPerfMeterCaptureBackendV2
+		{
+			private PerfMeterCaptureBackendV2Snapshot _snapshot;
+
+			internal bool CleanupCanComplete { get; set; }
+			internal int DiscardCount { get; private set; }
+			internal int TickCount { get; private set; }
+
+			public PerfMeterCaptureBackendV2Snapshot Snapshot => _snapshot;
+
+			public PerfMeterCaptureBackendV2Snapshot GetCapability(PerfMeterCaptureOptions options)
+			{
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.None, false);
+				return _snapshot;
+			}
+
+			public bool TryBegin(PerfMeterCaptureOptions options, out string error)
+			{
+				error = string.Empty;
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.BeginExecuted, true);
+				return true;
+			}
+
+			public bool ScheduleEnd(out string error)
+			{
+				error = string.Empty;
+				return false;
+			}
+
+			public bool TryDiscard(out string error)
+			{
+				DiscardCount++;
+				error = CleanupCanComplete ? string.Empty : "native cleanup pending";
+				_snapshot = NativeSnapshot(
+					CleanupCanComplete ? PerfMeterRenderDocCapturePhase.Completed : PerfMeterRenderDocCapturePhase.FinalizingArtifact,
+					!CleanupCanComplete);
+				return true;
+			}
+
+			public void Tick()
+			{
+				TickCount++;
+				if (CleanupCanComplete && _snapshot.HasPendingCompletion)
+				{
+					_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.Completed, false);
+				}
+			}
+
+			private static PerfMeterCaptureBackendV2Snapshot NativeSnapshot(
+				PerfMeterRenderDocCapturePhase phase,
+				bool active)
+			{
+				return new PerfMeterCaptureBackendV2Snapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					phase,
+					PerfMeterNativeCaptureResultCodes.Ok,
+					string.Empty,
+					true,
+					active,
+					active);
+			}
+		}
+
+		private sealed class CompletionNativeCaptureBackend : IPerfMeterCaptureBackendV3
+		{
+			private PerfMeterCaptureBackendV2Snapshot _snapshot = NativeSnapshot(
+				PerfMeterRenderDocCapturePhase.None,
+				false,
+				false);
+			private string _captureId = string.Empty;
+			private int _generation;
+			private bool _completionAvailable;
+			private PerfMeterCaptureExternalArtifactCompletion _completion;
+
+			internal bool FinalizationCanComplete { get; set; }
+			internal bool FinalizationSucceeds { get; set; } = true;
+
+			public PerfMeterCaptureBackendV2Snapshot Snapshot => _snapshot;
+
+			public PerfMeterCaptureBackendV2Snapshot GetCapability(PerfMeterCaptureOptions options)
+			{
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.None, false, false);
+				return _snapshot;
+			}
+
+			public bool TryBegin(PerfMeterCaptureOptions options, out string error)
+			{
+				return TryBegin(options, 0, out error) == PerfMeterCaptureBackendBeginResult.Started;
+			}
+
+			public PerfMeterCaptureBackendBeginResult TryBegin(
+				PerfMeterCaptureOptions options,
+				int generation,
+				out string error)
+			{
+				error = string.Empty;
+				_captureId = options.CaptureId;
+				_generation = generation;
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.BeginExecuted, false, true);
+				return PerfMeterCaptureBackendBeginResult.Started;
+			}
+
+			public bool ScheduleEnd(out string error)
+			{
+				error = string.Empty;
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.AwaitingArtifact, true, true);
+				return true;
+			}
+
+			public bool TryDiscard(out string error)
+			{
+				error = string.Empty;
+				_completionAvailable = false;
+				_snapshot = NativeSnapshot(PerfMeterRenderDocCapturePhase.Completed, false, false);
+				return true;
+			}
+
+			public void Tick()
+			{
+				if (!FinalizationCanComplete || !_snapshot.HasPendingCompletion)
+				{
+					return;
+				}
+
+				PerfMeterExternalArtifactSnapshot artifact = new PerfMeterExternalArtifactOptions(
+					artifactId: _captureId + "-renderdoc",
+					artifactKind: PerfMeterExternalArtifactKind.GpuCapture,
+					toolId: "renderdoc",
+					requestId: _captureId,
+					associationState: FinalizationSucceeds
+						? PerfMeterExternalArtifactAssociationState.BridgeAuthenticated
+						: PerfMeterExternalArtifactAssociationState.Unverified,
+					finalizationState: FinalizationSucceeds
+						? PerfMeterExternalArtifactFinalizationState.Finalized
+						: PerfMeterExternalArtifactFinalizationState.Failed,
+					authorityState: FinalizationSucceeds
+						? PerfMeterExternalArtifactAuthorityState.Observed
+						: PerfMeterExternalArtifactAuthorityState.Unknown,
+					containsGpuCaptureData: PerfMeterExternalArtifactContentState.Unknown,
+					privacyFlags: PerfMeterExternalArtifactPrivacyFlags.ContainsGpuCaptureData |
+						PerfMeterExternalArtifactPrivacyFlags.Sensitive |
+						PerfMeterExternalArtifactPrivacyFlags.RequiresReview,
+					storageMode: PerfMeterExternalArtifactStorageMode.MetadataOnly,
+					quotaBytes: PerfMeterRenderDocStoragePolicy.MaxPayloadBytes,
+					sharePolicy: PerfMeterExternalArtifactSharePolicy.DoNotShare,
+					sizeBytes: 4L,
+					observedSourceSha256: FinalizationSucceeds ? new string('a', 64) : string.Empty,
+					warning: FinalizationSucceeds ? string.Empty : "finalization failed")
+					.WithSourceFileIdentitySha256(new string('b', 64))
+					.ToSnapshot();
+				_completion = new PerfMeterCaptureExternalArtifactCompletion(
+					_captureId,
+					_generation,
+					artifact,
+					string.Empty);
+				_completionAvailable = true;
+				_snapshot = NativeSnapshot(
+					FinalizationSucceeds ? PerfMeterRenderDocCapturePhase.Completed : PerfMeterRenderDocCapturePhase.Failed,
+					false,
+					false);
+			}
+
+			public bool TryConsumeExternalArtifact(out PerfMeterCaptureExternalArtifactCompletion completion)
+			{
+				completion = default;
+				if (!_completionAvailable)
+				{
+					return false;
+				}
+
+				completion = _completion;
+				_completion = default;
+				_completionAvailable = false;
+				return true;
+			}
+
+			private static PerfMeterCaptureBackendV2Snapshot NativeSnapshot(
+				PerfMeterRenderDocCapturePhase phase,
+				bool pending,
+				bool active)
+			{
+				return new PerfMeterCaptureBackendV2Snapshot(
+					PerfMeterAvailability.Available,
+					string.Empty,
+					PerfMeterCaptureBackendKind.RenderDocNative,
+					phase,
+					PerfMeterNativeCaptureResultCodes.Ok,
+					string.Empty,
+					false,
+					pending,
+					active);
+			}
 		}
 	}
 }

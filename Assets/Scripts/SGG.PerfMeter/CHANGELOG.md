@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.8.11-1
+
+- Added an optional separately distributed, SHA-256-pinned Windows x64 Editor RenderDoc bridge with verified FTUE download, local-file installation, update, and removal while keeping the UPM package binary-free and RenderDoc user-owned.
+- Added explicit `GenericUnity`, `NativePreferred`, and `NativeRequired` capture modes with generation-bound native lifecycle, authenticated `.rdc` provenance, safe MetadataOnly/Copy/Embed storage, privacy, quota, cleanup, and export integration.
+- Validated the native Windows x64 Unity Editor path with attached RenderDoc on Direct3D 11, Direct3D 12, and Vulkan; Development Player, Linux native, IL2CPP, mobile, and macOS native paths remain unsupported.
+
 ## 2026.8.9-1
 
 - Added non-blocking single-flight capture-bundle export request/status/cancel APIs and MCP commands while retaining the blocking compatibility surface.

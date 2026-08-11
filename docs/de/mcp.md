@@ -40,7 +40,7 @@ Ziel ist strukturierte JSON-Ausgabe fuer Agents statt Screenshot-, Overlay-Text-
 | `perfmeter.session.stop` | Aufzeichnung stoppen und summary zurueckgeben. |
 | `perfmeter.session.summary` | Aktuelle Session-summary lesen. |
 | `perfmeter.session.export` | Aktuelle Session als projektlokales JSON oder CSV exportieren. |
-| `perfmeter.capture.request` | Begrenzten externen GPU-Capture mit korreliertem Bundle anfordern. |
+| `perfmeter.capture.request` | Begrenzten externen GPU-Capture anfordern; optionales `backend_mode`: `GenericUnity`, `NativePreferred` oder `NativeRequired`. Native Storage-Mode wird nur im C# API gewaehlt. |
 | `perfmeter.capture.status` | Capture- und Bundle-Status lesen. |
 | `perfmeter.capture.cancel` | Passenden aktiven Capture abbrechen. |
 | `perfmeter.capture.export` | Bereites Bundle atomar unter dem projektlokalen Bundle-Root exportieren. |

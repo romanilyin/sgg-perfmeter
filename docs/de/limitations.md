@@ -23,8 +23,10 @@ Profiler counters variieren nach Plattform, Unity-Version, Render-Pipeline-Einst
 ## External GPU Capture
 
 - Der Coordinator erlaubt eine aktive Anfrage und durchlaeuft deterministisch `PreRoll`, `Capturing`, `PostRoll` und `Completed`. Dieselbe aktive ID ist idempotent; eine andere aktive ID wird wegen Ueberlappung abgewiesen.
-- Das Backend verwendet Unitys experimentellen `ExternalGPUProfiler` nur im Editor oder in Development Builds, wenn ein externes Tool bereits angehaengt ist. `RenderDoc` ist auf Windows/Linux desktop mit Direct3D 11, Direct3D 12 oder Vulkan unterstuetzt; `PIX` ist auf Windows desktop mit Direct3D 12 unterstuetzt.
-- `Completed` bestaetigt nur den Unity wrapper lifecycle. Es beweist nicht, dass ein externes `.rdc`/`.wpix`-Artefakt existiert, und liefert keinen Artefaktpfad.
+- `GenericUnity` verwendet Unitys experimentellen `ExternalGPUProfiler` im Editor/Development Build. Seine Matrix bleibt RenderDoc auf Windows/Linux desktop mit D3D11/D3D12/Vulkan und PIX auf Windows desktop mit D3D12; Completion authentifiziert weder Tool noch Artefakt.
+- Der optionale native Pfad unterstuetzt nur RenderDoc im Windows-x64-Unity-Editor mit D3D11, D3D12 oder Vulkan. Development Player, Linux native, IL2CPP, Mobile und macOS native sind nicht unterstuetzt.
+- Das UPM-Paket bleibt binaerfrei. Der separate gepinnte Bridge greift nur auf eine bereits geladene `renderdoc.dll` zu und installiert, laedt, startet oder injiziert RenderDoc nie.
+- Native MetadataOnly ist standardmaessig `DoNotShare`; Copy/Embed sind sensibel, separat quota-managed und `ReviewBeforeShare`. Generic/caller-supplied Artefakte bleiben observed und nicht autoritativ.
 - Automatisierte Tests verwenden ein fake backend. Die Bestaetigung durch echtes externes Tool und Artefakt bleibt ein release gate.
 - Correlated bundles und MCP capture control sind verfuegbar, aber eine uebergebene `.rdc`/`.wpix`-Datei bleibt nur ein beobachtetes und gehashtes Artefakt: Unity kann attached tool und artifact association nicht authentifizieren. Die Pruefung mit einem echten externen Tool bleibt release-candidate gate.
 

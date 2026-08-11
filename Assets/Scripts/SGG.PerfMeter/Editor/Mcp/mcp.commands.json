@@ -290,7 +290,7 @@
     {
       "id": "perfmeter.capture.request",
       "title": "Request PerfMeter external GPU capture",
-      "description": "Request one bounded RenderDoc or PIX capture with correlated baseline/capture samples and optional runtime screenshot. Requires Play Mode and an already attached supported external tool.",
+      "description": "Request one bounded RenderDoc or PIX capture with correlated baseline/capture samples and optional runtime screenshot. backend_mode explicitly selects the compatibility GenericUnity path or the optional RenderDoc-native path; omitted means GenericUnity. Requires Play Mode and an already attached supported external tool. This command does not expose native artifact storage or authority.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.CaptureRequest",
       "risk": "write",
       "idempotency": "unsafe",
@@ -303,6 +303,7 @@
         "properties": {
           "capture_id": { "type": "string", "minLength": 1, "maxLength": 128 },
           "tool": { "type": "string", "enum": ["RenderDoc", "Pix"] },
+          "backend_mode": { "type": "string", "enum": ["GenericUnity", "NativePreferred", "NativeRequired"] },
           "capture_frames": { "type": "integer", "minimum": 1, "maximum": 120 },
           "pre_roll_frames": { "type": "integer", "minimum": 0, "maximum": 600 },
           "post_roll_frames": { "type": "integer", "minimum": 0, "maximum": 600 },

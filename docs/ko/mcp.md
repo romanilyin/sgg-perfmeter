@@ -40,7 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.stop` | recording을 중지하고 summary를 반환합니다. |
 | `perfmeter.session.summary` | current session summary를 읽습니다. |
 | `perfmeter.session.export` | current session을 project-local JSON 또는 CSV로 export합니다. |
-| `perfmeter.capture.request` | bounded external GPU capture와 correlated bundle을 request합니다. |
+| `perfmeter.capture.request` | bounded GPU capture를 request합니다. optional `backend_mode`: `GenericUnity`, `NativePreferred`, `NativeRequired`. Native storage mode는 C# API에서만 선택합니다. |
 | `perfmeter.capture.status` | capture와 bundle state를 읽습니다. |
 | `perfmeter.capture.cancel` | 일치하는 active capture를 cancel합니다. |
 | `perfmeter.capture.export` | ready bundle을 project-local root 아래에 atomic export합니다. |

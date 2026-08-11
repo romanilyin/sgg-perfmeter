@@ -40,7 +40,7 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.session.stop` | Остановить запись и вернуть summary. |
 | `perfmeter.session.summary` | Прочитать summary текущей сессии. |
 | `perfmeter.session.export` | Экспортировать текущую сессию в project-local JSON или CSV. |
-| `perfmeter.capture.request` | Запросить ограниченный внешний GPU capture и correlated bundle. |
+| `perfmeter.capture.request` | Запросить bounded GPU capture; optional `backend_mode`: `GenericUnity`, `NativePreferred` или `NativeRequired`. Native storage mode выбирается только через C# API. |
 | `perfmeter.capture.status` | Прочитать состояние capture и bundle. |
 | `perfmeter.capture.cancel` | Отменить matching active capture. |
 | `perfmeter.capture.export` | Атомарно экспортировать ready bundle в project-local bundle root. |
