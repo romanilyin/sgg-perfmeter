@@ -51,6 +51,8 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 
 Prefer `perfmeter.capture.export.request`, then poll `perfmeter.capture.export.status` and optionally call `perfmeter.capture.export.cancel`. The legacy `perfmeter.capture.export` command blocks for compatibility. Export responses include the generic `external_artifact` envelope with association, authority, finalization, content, privacy/share policy, size, and source/post-copy hashes. The read-only lease commands expose process-local conflict state without acquiring a lease.
 
+Runtime ensure/stop/mode, overlay, overdraw, and session mutation responses include a `mutation` object with `operation`, boolean `success`, `result`, `reason`, `requested`, and `effective`. `Rejected`, `Unavailable`, and `Unsupported` are not reported as success. Normalized requests remain successful but expose both values.
+
 `perfmeter.compatibility.status` is read-only and does not start runtime. It reports `import_compatible`, `core_runtime_compatible`, and `render_integration_compatible` independently, with current/floor versions and a reason for each result. `perfmeter.setup.status` includes the same structured `compatibility` object while retaining its existing human-readable `status_report`; setup/configuration readiness remains separate.
 
 ## Runtime Self-Overhead Payload
@@ -60,6 +62,8 @@ Prefer `perfmeter.capture.export.request`, then poll `perfmeter.capture.export.s
 Component objects are `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration`, and `hdrp_render_integration`. Each contains `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state`, and `allocation_budget_state`.
 
 Values describe fixed 120-frame CPU callback windows with per-invocation averages. GPU attribution is `Unavailable`; inactive render integration is `Unsupported`, and supported components without calls are `NotMeasured`. Session JSON/CSV schemas are unchanged, and existing CPU/GPU metrics are not adjusted.
+
+`perfmeter.metrics.latest` includes additive `diagnostics` while retaining the top-level instantaneous `bottleneck` and raw metrics. The diagnostics object publishes the stable bottleneck, availability/freshness/provenance, confidence/coverage, typed flags, verification steps, evidence age/counts, and raw warning. `perfmeter.platform.telemetry` publishes bounded-cache metadata: `last_attempt_time_seconds`, `last_success_time_seconds`, `sample_age_seconds`, `freshness`, `last_attempt_result`, and `forced_at_capture_boundary`.
 
 ## Typical Profiling Run
 

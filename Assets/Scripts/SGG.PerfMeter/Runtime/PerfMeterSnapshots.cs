@@ -19,6 +19,82 @@ namespace SGG.PerfMeter
 		OverdrawDiagnostic = 3
 	}
 
+	public enum PerfMeterMutationStatus
+	{
+		Applied = 0,
+		NoChange = 1,
+		Normalized = 2,
+		Rejected = 3,
+		Unavailable = 4,
+		Unsupported = 5
+	}
+
+	public enum PerfMeterMutationReason
+	{
+		None = 0,
+		AlreadyInRequestedState = 1,
+		RuntimeUnavailable = 2,
+		RuntimeRejected = 3,
+		InvalidRequest = 4,
+		ValueNormalized = 5,
+		UnsupportedRenderPipeline = 6,
+		NoActiveOperation = 7,
+		PendingCleanup = 8
+	}
+
+	public readonly struct PerfMeterMutationResultSnapshot
+	{
+		public PerfMeterMutationResultSnapshot(
+			PerfMeterMutationStatus status,
+			PerfMeterMutationReason reason,
+			string requestedValue,
+			string effectiveValue)
+		{
+			Status = status;
+			Reason = reason;
+			RequestedValue = requestedValue ?? string.Empty;
+			EffectiveValue = effectiveValue ?? string.Empty;
+		}
+
+		public PerfMeterMutationStatus Status { get; }
+		public PerfMeterMutationReason Reason { get; }
+		public string RequestedValue { get; }
+		public string EffectiveValue { get; }
+		public bool Succeeded => Status == PerfMeterMutationStatus.Applied || Status == PerfMeterMutationStatus.NoChange || Status == PerfMeterMutationStatus.Normalized;
+	}
+
+	public readonly struct PerfMeterOverlayConfiguration
+	{
+		public PerfMeterOverlayConfiguration(
+			bool visible,
+			PerfMeterOverlayCorner corner,
+			PerfMeterOverlayPreset preset,
+			PerfMeterOverlayTheme theme,
+			PerfMeterOverlayLayout layout,
+			PerfMeterOverlayFontFamily fontFamily,
+			PerfMeterOverlayModule modules,
+			PerfMeterTargetFps targetFps)
+		{
+			Visible = visible;
+			Corner = corner;
+			Preset = preset;
+			Theme = theme;
+			Layout = layout;
+			FontFamily = fontFamily;
+			Modules = modules;
+			TargetFps = targetFps;
+		}
+
+		public bool Visible { get; }
+		public PerfMeterOverlayCorner Corner { get; }
+		public PerfMeterOverlayPreset Preset { get; }
+		public PerfMeterOverlayTheme Theme { get; }
+		public PerfMeterOverlayLayout Layout { get; }
+		public PerfMeterOverlayFontFamily FontFamily { get; }
+		public PerfMeterOverlayModule Modules { get; }
+		public PerfMeterTargetFps TargetFps { get; }
+	}
+
 	public enum PerfMeterAvailability
 	{
 		Unknown = 0,
@@ -77,6 +153,122 @@ namespace SGG.PerfMeter
 		CpuMainThreadBound = 3,
 		CpuRenderThreadBound = 4,
 		PresentLimited = 5
+	}
+
+	public enum PerfMeterDiagnosticEvidenceFreshness
+	{
+		Unknown = 0,
+		Fresh = 1,
+		Stale = 2
+	}
+
+	public enum PerfMeterDiagnosticProvenance
+	{
+		Unknown = 0,
+		FrameTimingManager = 1
+	}
+
+	[System.Flags]
+	public enum PerfMeterDiagnosticFlags
+	{
+		None = 0,
+		FrameTimingNotCollected = 1 << 0,
+		FrameTimingUnavailable = 1 << 1,
+		InvalidFrameTimingSample = 1 << 2,
+		GpuTimingUnavailable = 1 << 3,
+		OpenGlGpuTiming = 1 << 4,
+		ProfilerCountersUnavailable = 1 << 5,
+		InsufficientEvidence = 1 << 6,
+		ContradictingEvidence = 1 << 7,
+		StaleEvidence = 1 << 8
+	}
+
+	[System.Flags]
+	public enum PerfMeterDiagnosticVerificationSteps
+	{
+		None = 0,
+		CollectMoreFrameTimingSamples = 1 << 0,
+		EnableFrameTimingStats = 1 << 1,
+		UseSupportedGraphicsApi = 1 << 2,
+		CompareCpuAndGpuProfilerMarkers = 1 << 3,
+		InspectPresentPacing = 1 << 4,
+		ValidateOnTargetDevice = 1 << 5
+	}
+
+	public readonly struct PerfMeterDiagnosticsSnapshot
+	{
+		public PerfMeterDiagnosticsSnapshot(
+			PerfMeterAvailability availability,
+			PerfMeterDiagnosticEvidenceFreshness freshness,
+			PerfMeterDiagnosticProvenance provenance,
+			PerfMeterBottleneck instantaneousBottleneck,
+			PerfMeterBottleneck stableBottleneck,
+			PerfMeterDiagnosticFlags flags,
+			PerfMeterDiagnosticVerificationSteps verificationSteps,
+			float confidence,
+			float coverage,
+			int observedSampleCount,
+			int validEvidenceSampleCount,
+			int lastEvidenceFrame,
+			double lastEvidenceTimeSeconds,
+			double sampleAgeSeconds,
+			string rawWarning)
+		{
+			Availability = availability;
+			Freshness = freshness;
+			Provenance = provenance;
+			InstantaneousBottleneck = instantaneousBottleneck;
+			StableBottleneck = stableBottleneck;
+			Flags = flags;
+			VerificationSteps = verificationSteps;
+			Confidence = Mathf.Clamp01(confidence);
+			Coverage = Mathf.Clamp01(coverage);
+			ObservedSampleCount = Mathf.Max(0, observedSampleCount);
+			ValidEvidenceSampleCount = Mathf.Clamp(validEvidenceSampleCount, 0, ObservedSampleCount);
+			LastEvidenceFrame = lastEvidenceFrame;
+			LastEvidenceTimeSeconds = SanitizeNonNegative(lastEvidenceTimeSeconds);
+			SampleAgeSeconds = SanitizeNonNegative(sampleAgeSeconds);
+			RawWarning = rawWarning ?? string.Empty;
+		}
+
+		public static PerfMeterDiagnosticsSnapshot NotRunning => new PerfMeterDiagnosticsSnapshot(
+			PerfMeterAvailability.Unavailable,
+			PerfMeterDiagnosticEvidenceFreshness.Unknown,
+			PerfMeterDiagnosticProvenance.Unknown,
+			PerfMeterBottleneck.Unknown,
+			PerfMeterBottleneck.Unknown,
+			PerfMeterDiagnosticFlags.FrameTimingNotCollected | PerfMeterDiagnosticFlags.InsufficientEvidence,
+			PerfMeterDiagnosticVerificationSteps.CollectMoreFrameTimingSamples,
+			0f,
+			0f,
+			0,
+			0,
+			-1,
+			0d,
+			0d,
+			"PerfMeter runtime is not running.");
+
+		public PerfMeterAvailability Availability { get; }
+		public PerfMeterDiagnosticEvidenceFreshness Freshness { get; }
+		public PerfMeterDiagnosticProvenance Provenance { get; }
+		public PerfMeterBottleneck InstantaneousBottleneck { get; }
+		public PerfMeterBottleneck StableBottleneck { get; }
+		public PerfMeterDiagnosticFlags Flags { get; }
+		public PerfMeterDiagnosticVerificationSteps VerificationSteps { get; }
+		public float Confidence { get; }
+		public float Coverage { get; }
+		public int ObservedSampleCount { get; }
+		public int ValidEvidenceSampleCount { get; }
+		public int LastEvidenceFrame { get; }
+		public double LastEvidenceTimeSeconds { get; }
+		public double SampleAgeSeconds { get; }
+		public string RawWarning { get; }
+		public bool HasContradictingEvidence => (Flags & PerfMeterDiagnosticFlags.ContradictingEvidence) != 0;
+
+		private static double SanitizeNonNegative(double value)
+		{
+			return double.IsNaN(value) || double.IsInfinity(value) ? 0d : System.Math.Max(0d, value);
+		}
 	}
 
 	public enum PerfMeterOverdrawMeasurementState

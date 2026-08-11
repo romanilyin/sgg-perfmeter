@@ -51,6 +51,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 
 Предпочитайте `perfmeter.capture.export.request`, затем опрашивайте `perfmeter.capture.export.status` и при необходимости вызывайте `perfmeter.capture.export.cancel`. Legacy-команда `perfmeter.capture.export` блокируется для совместимости. Ответы включают универсальный envelope `external_artifact` с association, authority, finalization, content, политикой privacy/share, размером, а также source- и post-copy-хешами. Read-only команды lease предоставляют process-local состояние конфликтов без получения lease.
 
+Ответы runtime ensure/stop/mode, overlay, overdraw и session mutations содержат объект `mutation` с полями `operation`, boolean `success`, `result`, `reason`, `requested` и `effective`. Результаты `Rejected`, `Unavailable` и `Unsupported` не объявляются успешными. Нормализованный запрос остается успешным, но публикует оба значения.
+
 ## Self-overhead в runtime status
 
 `perfmeter.runtime.status` содержит additive-объект `self_overhead`; это не отдельная команда. Верхний уровень: `state`, `cpu_timing_available`, `gpu_timing_availability` и `has_budget_violation`.
@@ -58,6 +60,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 Объекты компонентов: `collector`, `custom_metric_providers`, `cpu_core_provider`, `overlay`, `urp_render_integration` и `hdrp_render_integration`. Каждый содержит `component`, `state`, `window_frame_count`, `invocation_count`, `average_cpu_time_ms`, `max_cpu_time_ms`, `allocated_bytes`, `average_allocated_bytes`, `cpu_budget_ms`, `allocation_budget_bytes`, `cpu_budget_state` и `allocation_budget_state`.
 
 Значения описывают фиксированные окна CPU callbacks по 120 кадров со средними на один вызов. GPU attribution имеет значение `Unavailable`; неактивная render integration — `Unsupported`, а поддерживаемый компонент без вызовов — `NotMeasured`. Схемы session JSON/CSV не меняются, существующие CPU/GPU-метрики не корректируются.
+
+`perfmeter.metrics.latest` содержит additive-объект `diagnostics`, сохраняя top-level instantaneous `bottleneck` и raw metrics. В diagnostics публикуются stable bottleneck, availability/freshness/provenance, confidence/coverage, typed flags, verification steps, возраст/количество evidence и raw warning. `perfmeter.platform.telemetry` публикует metadata bounded cache: `last_attempt_time_seconds`, `last_success_time_seconds`, `sample_age_seconds`, `freshness`, `last_attempt_result` и `forced_at_capture_boundary`.
 
 ## Типичный прогон профилирования
 

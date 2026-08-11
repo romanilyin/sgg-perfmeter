@@ -132,6 +132,44 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void DiagnosticsQueryBeforeStartIsExplicitlyUnavailable()
+		{
+			PerfMeterDiagnosticsSnapshot diagnostics = PerformanceMeter.GetDiagnostics();
+
+			Assert.That(diagnostics.Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
+			Assert.That(diagnostics.StableBottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+			Assert.That(diagnostics.Freshness, Is.EqualTo(PerfMeterDiagnosticEvidenceFreshness.Unknown));
+			Assert.That(diagnostics.RawWarning, Does.Contain("not running"));
+		}
+
+		[Test]
+		public void TypedCollectionModeMutationReportsNormalizationAndUnavailableRuntime()
+		{
+			PerfMeterMutationResultSnapshot normalized = PerformanceMeter.TrySetCollectionMode((PerfMeterCollectionMode)999);
+
+			Assert.That(normalized.Succeeded, Is.True);
+			Assert.That(normalized.Status, Is.EqualTo(PerfMeterMutationStatus.Normalized));
+			Assert.That(normalized.Reason, Is.EqualTo(PerfMeterMutationReason.ValueNormalized));
+			Assert.That(normalized.RequestedValue, Is.EqualTo("999"));
+			Assert.That(normalized.EffectiveValue, Is.EqualTo(nameof(PerfMeterCollectionMode.Overlay)));
+
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			runtime.enabled = false;
+			try
+			{
+				PerfMeterMutationResultSnapshot unavailable = PerformanceMeter.TrySetCollectionMode(PerfMeterCollectionMode.Background);
+				Assert.That(unavailable.Succeeded, Is.False);
+				Assert.That(unavailable.Status, Is.EqualTo(PerfMeterMutationStatus.Unavailable));
+				Assert.That(unavailable.Reason, Is.EqualTo(PerfMeterMutationReason.RuntimeUnavailable));
+				Assert.That(unavailable.EffectiveValue, Is.EqualTo(nameof(PerfMeterCollectionMode.Stopped)));
+			}
+			finally
+			{
+				runtime.enabled = true;
+			}
+		}
+
+		[Test]
 		public void OverlayApiIsSafeInEditMode()
 		{
 			Assert.That(PerformanceMeter.IsOverlayVisible, Is.False);
@@ -411,7 +449,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(stoppedStatus.OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Off));
 			Assert.That(stoppedStatus.OverdrawProgress, Is.EqualTo(0f));
 
-			Assert.DoesNotThrow(() => PerformanceMeter.RequestOverdrawMeasurement(2));
+			PerfMeterMutationResultSnapshot requestResult = PerformanceMeter.TryRequestOverdrawMeasurement(2);
 			PerfMeterStatusSnapshot measuringStatus = PerformanceMeter.GetStatus();
 			PerfMeterMetricsSnapshot measuringMetrics = PerformanceMeter.GetLatestMetrics();
 			bool measurementAccepted = measuringStatus.OverdrawState == PerfMeterOverdrawMeasurementState.Measuring ||
@@ -419,9 +457,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(measurementAccepted, Is.True);
 			Assert.That(measuringMetrics.OverdrawState, Is.EqualTo(measuringStatus.OverdrawState));
 			Assert.That(measuringMetrics.OverdrawRatio, Is.EqualTo(0d));
+			Assert.That(requestResult.Status, Is.EqualTo(
+				measuringStatus.OverdrawState == PerfMeterOverdrawMeasurementState.Unsupported
+					? PerfMeterMutationStatus.Unsupported
+					: PerfMeterMutationStatus.Applied));
+			Assert.That(requestResult.RequestedValue, Is.EqualTo("2"));
+			string normalizedMcpJson = PerfMeterMcpCommands.OverdrawStart("{\"frame_count\":0}");
+			Assert.That(normalizedMcpJson, Does.Contain("\"operation\":\"overdraw_start\""));
+			Assert.That(normalizedMcpJson, Does.Contain("\"result\":\"Normalized\""));
+			Assert.That(normalizedMcpJson, Does.Contain("\"requested\":\"0\""));
+			Assert.That(normalizedMcpJson, Does.Contain("\"effective\":\"" + PerformanceMeter.GetSettings().OverdrawDefaultFrameCount + "\""));
 
-			Assert.DoesNotThrow(PerformanceMeter.CancelOverdrawMeasurement);
+			PerfMeterMutationResultSnapshot cancelResult = PerformanceMeter.TryCancelOverdrawMeasurement();
 			Assert.That(PerformanceMeter.GetStatus().OverdrawState, Is.EqualTo(PerfMeterOverdrawMeasurementState.Canceled));
+			Assert.That(cancelResult.Status, Is.EqualTo(PerfMeterMutationStatus.Applied));
 		}
 
 		[Test]
@@ -906,6 +955,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Contain("\"custom_metrics\""));
 			Assert.That(json, Does.Contain("\"id\":\"economy.gold\""));
 			Assert.That(json, Does.Contain("\"value\":123"));
+			Assert.That(json, Does.Contain("\"diagnostics\""));
+			Assert.That(json, Does.Contain("\"stable_bottleneck\":\"Unknown\""));
+			Assert.That(json, Does.Contain("\"raw_warning\""));
 		}
 
 		[Test]
@@ -1867,6 +1919,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(resetJson, Does.Contain("\"application_focused\""));
 			string modeJson = PerfMeterMcpCommands.RuntimeModeSet("{\"mode\":\"Background\"}");
 			Assert.That(modeJson, Does.Contain("\"collection_mode\":\"Background\""));
+			Assert.That(modeJson, Does.Contain("\"mutation\":{\"operation\":\"runtime_mode_set\""));
+			Assert.That(modeJson, Does.Contain("\"success\":true"));
+			Assert.That(modeJson, Does.Contain("\"effective\":\"Background\""));
 
 			string startJson = PerfMeterMcpCommands.SessionStart("{\"warmup_frames\":0,\"warmup_seconds\":0,\"sample_interval_seconds\":0.01,\"max_samples\":2,\"reset_on_scene_load\":true,\"scene_load_ignore_frames\":1,\"scene_load_ignore_seconds\":0}");
 			Assert.That(startJson, Does.Contain("\"success\":true"));
@@ -1874,6 +1929,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(startJson, Does.Contain("\"max_samples\":2"));
 			Assert.That(startJson, Does.Contain("\"reset_on_scene_load\":true"));
 			Assert.That(startJson, Does.Contain("\"scene_load_ignore_frames\":1"));
+			Assert.That(startJson, Does.Contain("\"mutation\":{\"operation\":\"session_start\""));
+			Assert.That(startJson, Does.Contain("\"result\":\"Applied\""));
 
 			string summaryJson = PerfMeterMcpCommands.SessionSummary();
 			Assert.That(summaryJson, Does.Contain("\"summary\""));
@@ -1884,6 +1941,28 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			string stopJson = PerfMeterMcpCommands.SessionStop();
 			Assert.That(stopJson, Does.Contain("\"status\":\"stopped\""));
+			Assert.That(stopJson, Does.Contain("\"operation\":\"session_stop\""));
+		}
+
+		[Test]
+		public void McpSessionStartReportsUnavailableInsteadOfFalseSuccess()
+		{
+			PerformanceMeter.EnsureRunning();
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			runtime.enabled = false;
+			try
+			{
+				string json = PerfMeterMcpCommands.SessionStart("{}");
+
+				Assert.That(json, Does.Contain("\"success\":false"));
+				Assert.That(json, Does.Contain("\"result\":\"Unavailable\""));
+				Assert.That(json, Does.Contain("\"reason\":\"RuntimeUnavailable\""));
+				Assert.That(json, Does.Not.Contain("\"state\":\"Recording\""));
+			}
+			finally
+			{
+				runtime.enabled = true;
+			}
 		}
 
 		[Test]
@@ -1897,6 +1976,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(hiddenJson, Does.Contain("\"overlay_apply_state\":\"edit_mode_deferred\""));
 			Assert.That(hiddenJson, Does.Contain("\"repaint_requested\":true"));
 			Assert.That(hiddenJson, Does.Contain("\"rendered_visibility\":\"unknown\""));
+			Assert.That(hiddenJson, Does.Contain("\"mutation\":{\"operation\":\"overlay_set\""));
+			Assert.That(hiddenJson, Does.Contain("\"success\":true"));
 
 			string visibleJson = PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");
 			Assert.That(visibleJson, Does.Contain("\"collection_mode\":\"Overlay\""));

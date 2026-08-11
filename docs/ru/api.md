@@ -13,8 +13,18 @@ using SGG.PerfMeter;
 ```csharp
 PerformanceMeter.EnsureRunning();
 PerformanceMeter.Stop();
-PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
+	PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```
+
+Для операций, где нельзя молча скрывать rejection, normalization или unsupported state, доступны additive mutation methods с результатом:
+
+```csharp
+PerfMeterMutationResultSnapshot modeResult = PerformanceMeter.TrySetCollectionMode(PerfMeterCollectionMode.Background);
+PerfMeterMutationResultSnapshot sessionResult = PerformanceMeter.TryStartSession(PerfMeterSessionOptions.Default);
+PerfMeterMutationResultSnapshot overdrawResult = PerformanceMeter.TryRequestOverdrawMeasurement(60);
+```
+
+`Status` принимает значения `Applied`, `NoChange`, `Normalized`, `Rejected`, `Unavailable` или `Unsupported`; `Reason`, `RequestedValue` и `EffectiveValue` сохраняют machine-readable outcome. Существующие `void` lifecycle/session/overdraw methods остаются compatibility wrappers. Для полной конфигурации overlay доступен `TryApplyOverlayConfiguration(...)` с тем же контрактом.
 
 Режимы сбора:
 
@@ -28,6 +38,7 @@ PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
+PerfMeterDiagnosticsSnapshot diagnostics = PerformanceMeter.GetDiagnostics();
 
 if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 {
@@ -45,6 +56,8 @@ if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 - Overdraw: state, progress, ratio и heatmap visibility.
 
 Доступность счетчиков видна через `AvailableCounters`, `UnavailableCounters` и warnings.
+
+`metrics.Bottleneck` остается instantaneous-классификацией, а raw timings не меняются. `diagnostics.StableBottleneck` — отдельный hysteresis-based результат с `Availability`, `Freshness`, `Provenance`, `Confidence`, `Coverage`, typed `Flags`, verification steps, количеством/возрастом evidence и неизмененным последним warning коллектора. При недостаточном, осциллирующем или stale evidence публикуется `Unknown`.
 
 ## Self-observability и бюджеты overhead
 
@@ -84,9 +97,12 @@ PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
 PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapshot();
 PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
+PerfMeterPlatformTelemetrySnapshot platformTelemetry = PerformanceMeter.GetPlatformTelemetry();
 ```
 
 Снимки устройства содержат информацию о Unity, платформе, OS, CPU, GPU, API, дисплее, окне и поддержке возможностей. Снимки камеры содержат scene, transform, projection, clipping, pixel rect, target display и URP/HDRP camera settings, когда доступно.
+
+Platform telemetry использует core-owned ограниченный интервал 0.25 секунды вместо вызова optional provider на каждом кадре. Snapshot сообщает `LastAttemptTimeSeconds`, `LastSuccessTimeSeconds`, `SampleAgeSeconds`, `Freshness`, `LastAttemptResult` и факт принудительного вызова на capture boundary. Неуспешный forced attempt остается явно `Unavailable`, а не заменяется старым available sample.
 
 ## Загрузка CPU-ядер
 

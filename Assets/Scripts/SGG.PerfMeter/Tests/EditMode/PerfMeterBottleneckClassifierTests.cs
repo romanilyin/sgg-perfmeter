@@ -156,6 +156,99 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(bottleneck, Is.EqualTo(PerfMeterBottleneck.Balanced));
 		}
 
+		[Test]
+		public void StableDiagnosticsRequireMinimumEvidenceAndPreserveRawWarning()
+		{
+			PerfMeterBottleneckStabilizer stabilizer = new PerfMeterBottleneckStabilizer(windowSize: 8, minimumEvidenceSamples: 5);
+			for (int index = 0; index < 4; index++)
+			{
+				stabilizer.AddSample(index, index * 0.01d, PerfMeterBottleneck.GpuBound, true, PerfMeterDiagnosticFlags.None, "raw warning");
+			}
+
+			PerfMeterDiagnosticsSnapshot snapshot = stabilizer.GetSnapshot(0.04d);
+
+			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.StableBottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+			Assert.That(snapshot.InstantaneousBottleneck, Is.EqualTo(PerfMeterBottleneck.GpuBound));
+			Assert.That((snapshot.Flags & PerfMeterDiagnosticFlags.InsufficientEvidence) != 0, Is.True);
+			Assert.That(snapshot.RawWarning, Is.EqualTo("raw warning"));
+			Assert.That(snapshot.Coverage, Is.EqualTo(1f));
+		}
+
+		[Test]
+		public void OscillatingEvidenceStaysUnknownAndReportsContradiction()
+		{
+			PerfMeterBottleneckStabilizer stabilizer = new PerfMeterBottleneckStabilizer(windowSize: 6, minimumEvidenceSamples: 6);
+			for (int index = 0; index < 6; index++)
+			{
+				PerfMeterBottleneck bottleneck = index % 2 == 0 ? PerfMeterBottleneck.GpuBound : PerfMeterBottleneck.CpuMainThreadBound;
+				stabilizer.AddSample(index, index * 0.01d, bottleneck, true, PerfMeterDiagnosticFlags.None, string.Empty);
+			}
+
+			PerfMeterDiagnosticsSnapshot snapshot = stabilizer.GetSnapshot(0.06d);
+
+			Assert.That(snapshot.StableBottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+			Assert.That(snapshot.HasContradictingEvidence, Is.True);
+			Assert.That(snapshot.Confidence, Is.Zero);
+		}
+
+		[Test]
+		public void StableDiagnosticsIgnoreSingleOutlierAndSwitchAfterSustainedEvidence()
+		{
+			PerfMeterBottleneckStabilizer stabilizer = new PerfMeterBottleneckStabilizer(windowSize: 8, minimumEvidenceSamples: 5);
+			for (int index = 0; index < 5; index++)
+			{
+				stabilizer.AddSample(index, index * 0.01d, PerfMeterBottleneck.GpuBound, true, PerfMeterDiagnosticFlags.None, string.Empty);
+			}
+			stabilizer.AddSample(5, 0.05d, PerfMeterBottleneck.CpuRenderThreadBound, true, PerfMeterDiagnosticFlags.None, string.Empty);
+
+			Assert.That(stabilizer.GetSnapshot(0.05d).StableBottleneck, Is.EqualTo(PerfMeterBottleneck.GpuBound));
+
+			for (int index = 6; index < 13; index++)
+			{
+				stabilizer.AddSample(index, index * 0.01d, PerfMeterBottleneck.CpuRenderThreadBound, true, PerfMeterDiagnosticFlags.None, string.Empty);
+			}
+
+			PerfMeterDiagnosticsSnapshot snapshot = stabilizer.GetSnapshot(0.13d);
+			Assert.That(snapshot.StableBottleneck, Is.EqualTo(PerfMeterBottleneck.CpuRenderThreadBound));
+			Assert.That(snapshot.Confidence, Is.GreaterThanOrEqualTo(0.7f));
+		}
+
+		[Test]
+		public void StableDiagnosticsReturnUnknownWhenEvidenceBecomesStale()
+		{
+			PerfMeterBottleneckStabilizer stabilizer = new PerfMeterBottleneckStabilizer(windowSize: 5, minimumEvidenceSamples: 5, staleAfterSeconds: 0.5d);
+			for (int index = 0; index < 5; index++)
+			{
+				stabilizer.AddSample(index, index * 0.01d, PerfMeterBottleneck.GpuBound, true, PerfMeterDiagnosticFlags.None, string.Empty);
+			}
+
+			PerfMeterDiagnosticsSnapshot snapshot = stabilizer.GetSnapshot(1d);
+
+			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.Freshness, Is.EqualTo(PerfMeterDiagnosticEvidenceFreshness.Stale));
+			Assert.That(snapshot.StableBottleneck, Is.EqualTo(PerfMeterBottleneck.Unknown));
+			Assert.That((snapshot.Flags & PerfMeterDiagnosticFlags.StaleEvidence) != 0, Is.True);
+			Assert.That(snapshot.SampleAgeSeconds, Is.EqualTo(0.96d).Within(0.0001d));
+		}
+
+		[Test]
+		public void UnavailableEvidenceDoesNotIncreaseCoverage()
+		{
+			PerfMeterBottleneckStabilizer stabilizer = new PerfMeterBottleneckStabilizer(windowSize: 5, minimumEvidenceSamples: 3);
+			for (int index = 0; index < 5; index++)
+			{
+				stabilizer.AddSample(index, index * 0.01d, PerfMeterBottleneck.Balanced, false, PerfMeterDiagnosticFlags.GpuTimingUnavailable, string.Empty);
+			}
+
+			PerfMeterDiagnosticsSnapshot snapshot = stabilizer.GetSnapshot(0.05d);
+
+			Assert.That(snapshot.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(snapshot.ValidEvidenceSampleCount, Is.Zero);
+			Assert.That(snapshot.Coverage, Is.Zero);
+			Assert.That((snapshot.Flags & PerfMeterDiagnosticFlags.GpuTimingUnavailable) != 0, Is.True);
+		}
+
 		private static PerfMeterBottleneck Classify(
 			PerfMeterFrameTimingAvailability availability,
 			double cpuFrameTimeMs,

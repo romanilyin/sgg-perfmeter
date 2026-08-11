@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added stable hysteresis-based bottleneck diagnostics with typed evidence flags, confidence, coverage, freshness, and raw-warning preservation while retaining instantaneous raw metrics.
+- Added bounded platform telemetry cadence/cache metadata and forced capture-boundary sampling with explicit unavailable provenance.
+- Added typed runtime mutation results and truthful MCP mutation responses for lifecycle, mode, overlay, overdraw, and session operations.
+
 ## 2026.8.11-1
 
 - Added an optional separately distributed, SHA-256-pinned Windows x64 Editor RenderDoc bridge with verified FTUE download, local-file installation, update, and removal while keeping the UPM package binary-free and RenderDoc user-owned.

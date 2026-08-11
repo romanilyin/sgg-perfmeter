@@ -13,8 +13,18 @@ All read APIs are safe before the runtime starts. Reads return stopped/default s
 ```csharp
 PerformanceMeter.EnsureRunning();
 PerformanceMeter.Stop();
-PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
+	PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Overlay);
 ```
+
+Additive result-returning mutations are available when rejection, normalization, or unsupported behavior must not be silent:
+
+```csharp
+PerfMeterMutationResultSnapshot modeResult = PerformanceMeter.TrySetCollectionMode(PerfMeterCollectionMode.Background);
+PerfMeterMutationResultSnapshot sessionResult = PerformanceMeter.TryStartSession(PerfMeterSessionOptions.Default);
+PerfMeterMutationResultSnapshot overdrawResult = PerformanceMeter.TryRequestOverdrawMeasurement(60);
+```
+
+`Status` is `Applied`, `NoChange`, `Normalized`, `Rejected`, `Unavailable`, or `Unsupported`; `Reason`, `RequestedValue`, and `EffectiveValue` preserve the machine-readable outcome. Existing `void` lifecycle/session/overdraw methods remain compatibility wrappers. `TryApplyOverlayConfiguration(...)` provides the same contract for a complete overlay configuration.
 
 Collection modes:
 
@@ -28,6 +38,7 @@ Collection modes:
 ```csharp
 PerfMeterStatusSnapshot status = PerformanceMeter.GetStatus();
 PerfMeterMetricsSnapshot metrics = PerformanceMeter.GetLatestMetrics();
+PerfMeterDiagnosticsSnapshot diagnostics = PerformanceMeter.GetDiagnostics();
 
 if (PerformanceMeter.TryGetStatus(out PerfMeterStatusSnapshot safeStatus))
 {
@@ -45,6 +56,8 @@ Key metric groups:
 - Overdraw: state, progress, ratio, and heatmap visibility.
 
 Counter availability is exposed through `AvailableCounters`, `UnavailableCounters`, and warnings.
+
+`metrics.Bottleneck` remains the instantaneous classification and raw timings remain unchanged. `diagnostics.StableBottleneck` is a separate hysteresis-based result with `Availability`, `Freshness`, `Provenance`, `Confidence`, `Coverage`, typed `Flags`, verification steps, evidence counts/age, and the unmodified latest collector warning. Insufficient, oscillating, or stale evidence publishes `Unknown` instead of a confident stable bottleneck.
 
 ## Self-Observability And Overhead Budgets
 
@@ -84,9 +97,12 @@ PerfMeterDeviceSnapshot device = PerformanceMeter.GetDeviceInfo();
 PerfMeterCameraSnapshot camera = PerformanceMeter.GetCameraSnapshot();
 PerfMeterRenderGraphSnapshot renderGraph = PerformanceMeter.GetRenderGraphSnapshot();
 PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
+PerfMeterPlatformTelemetrySnapshot platformTelemetry = PerformanceMeter.GetPlatformTelemetry();
 ```
 
 Device snapshots include Unity/platform/OS/CPU/GPU/API/display/window/support information. Camera snapshots include scene, transform, projection, clipping, pixel rect, target display, and URP/HDRP camera settings when available.
+
+Platform telemetry uses a core-owned bounded 0.25-second cadence rather than invoking the optional provider every frame. The snapshot reports `LastAttemptTimeSeconds`, `LastSuccessTimeSeconds`, `SampleAgeSeconds`, `Freshness`, `LastAttemptResult`, and whether the latest attempt was forced at a capture boundary. A failed forced attempt remains explicitly `Unavailable`; it is not replaced by an older available sample.
 
 ## Settings JSON And Explicit Bootstrap
 

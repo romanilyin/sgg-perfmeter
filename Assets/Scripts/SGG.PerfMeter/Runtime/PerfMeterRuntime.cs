@@ -31,6 +31,7 @@ namespace SGG.PerfMeter
 		private static readonly PerfMeterCaptureBundleExportCoordinator CaptureBundleExports = new PerfMeterCaptureBundleExportCoordinator();
 
 		private readonly PerfMeterCollector _collector = new PerfMeterCollector();
+		private readonly PerfMeterBottleneckStabilizer _bottleneckStabilizer = new PerfMeterBottleneckStabilizer();
 		private readonly PerfMeterFrameStatsSampler _frameStatsSampler = new PerfMeterFrameStatsSampler();
 		private readonly PerfMeterCpuCoreSampler _cpuCoreSampler = new PerfMeterCpuCoreSampler();
 		private readonly PerfMeterOverdrawController _overdrawController = new PerfMeterOverdrawController();
@@ -166,8 +167,21 @@ namespace SGG.PerfMeter
 		}
 		internal PerfMeterStatusSnapshot Status => _status.WithSelfOverhead(PerfMeterSelfObservability.GetSnapshot());
 		internal PerfMeterMetricsSnapshot LatestMetrics => _latestMetrics;
+		internal PerfMeterDiagnosticsSnapshot Diagnostics => _bottleneckStabilizer.GetSnapshot(Time.realtimeSinceStartupAsDouble);
 		internal PerfMeterProfilerMetricCapabilitySnapshot GetLatestProfilerMetricCapability(PerfMeterProfilerMetricSemantic semantic) => _collector.GetProfilerMetricCapability(semantic);
-		internal PerfMeterPlatformTelemetrySnapshot LatestPlatformTelemetry => _latestPlatformTelemetry;
+		internal PerfMeterPlatformTelemetrySnapshot LatestPlatformTelemetry
+		{
+			get
+			{
+				if (!isActiveAndEnabled)
+				{
+					return _latestPlatformTelemetry;
+				}
+
+				_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Sample(Time.realtimeSinceStartupAsDouble);
+				return _latestPlatformTelemetry;
+			}
+		}
 		internal PerfMeterProfilerMetricCatalogSnapshot ProfilerMetricCatalog => _collector.GetProfilerMetricCatalog();
 		internal PerfMeterSelfOverheadSnapshot SelfOverhead => PerfMeterSelfObservability.GetSnapshot();
 		internal PerfMeterCaptureStatusSnapshot CaptureStatus => _captureCoordinator != null ? _captureCoordinator.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
@@ -193,6 +207,9 @@ namespace SGG.PerfMeter
 		internal string ActiveAlertCaptureId => _alertCaptureId;
 		internal PerfMeterAlertClassification LastAlertClassification => _lastAlertClassification;
 		internal PerfMeterCollectionMode CollectionMode => GetCollectionMode();
+		internal bool AcceptsMutations => CanMutateRuntime;
+		internal bool HasPendingCleanup => _captureCleanupPending;
+		internal bool OverlayRequestedVisible => _overlayRequestedVisible;
 		internal bool IsSessionRecording => _sessionRecorder.IsRecording;
 		internal static bool IsOverdrawMeasurementActive => _instance != null && _instance._overdrawController.IsMeasuring;
 		internal static bool IsOverdrawHeatmapVisible => _instance != null && _instance._overdrawHeatmapVisible;
@@ -458,6 +475,7 @@ namespace SGG.PerfMeter
 			runtime._latestCustomMetricCount = 0;
 			runtime._hasLatestCustomMetrics = false;
 			runtime._latestPlatformTelemetry = PerfMeterPlatformTelemetrySnapshot.Unavailable();
+			runtime._bottleneckStabilizer.Reset();
 			PerfMeterProfilerInstrumentation.Reset();
 			if (!captureReleased)
 			{
@@ -567,9 +585,11 @@ namespace SGG.PerfMeter
 			PerfMeterSessionTimelineReasonFlags focusMissingReason = GetFocusMissingReason();
 			if (TrySkipCollectionForFocusState(out string focusWarning))
 			{
-				RecordMissingTimeline(Time.frameCount, Time.realtimeSinceStartupAsDouble, focusMissingReason, captureStatus);
+				double skippedCollectionTimeSeconds = Time.realtimeSinceStartupAsDouble;
+				RecordMissingTimeline(Time.frameCount, skippedCollectionTimeSeconds, focusMissingReason, captureStatus);
 				PerfMeterProfilerInstrumentation.ResetFrameTimings();
 				_lastCollectorWarning = focusWarning;
+				UpdateDiagnostics(Time.frameCount, skippedCollectionTimeSeconds, PerfMeterBottleneck.Unknown, PerfMeterFrameTimingAvailability.NotCollected, false, false, focusWarning);
 				RefreshRunningStatus(Time.frameCount, PerfMeterFrameTimingAvailability.NotCollected, focusWarning);
 				ProcessMemorySnapshotCompletion();
 				TickCaptureAndUpdateBundle();
@@ -581,8 +601,10 @@ namespace SGG.PerfMeter
 			PerfMeterMetricsSnapshot collectedMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored);
 			if (frameTimingSampleIgnored)
 			{
-				RecordMissingTimeline(frame, Time.realtimeSinceStartupAsDouble, PerfMeterSessionTimelineReasonFlags.InvalidTiming | PerfMeterSessionTimelineReasonFlags.FrameTimingUnavailable, captureStatus);
+				double ignoredSampleTimeSeconds = Time.realtimeSinceStartupAsDouble;
+				RecordMissingTimeline(frame, ignoredSampleTimeSeconds, PerfMeterSessionTimelineReasonFlags.InvalidTiming | PerfMeterSessionTimelineReasonFlags.FrameTimingUnavailable, captureStatus);
 				_lastCollectorWarning = warning;
+				UpdateDiagnostics(frame, ignoredSampleTimeSeconds, collectedMetrics.Bottleneck, frameTimingAvailability, true, collectedMetrics.GpuFrameTimeAvailable, warning);
 				RefreshRunningStatus(frame, frameTimingAvailability, warning);
 				ProcessMemorySnapshotCompletion();
 				TickCaptureAndUpdateBundle();
@@ -597,9 +619,10 @@ namespace SGG.PerfMeter
 			_latestCustomMetricBuffer = customMetrics.Buffer;
 			_latestCustomMetricCount = customMetrics.Count;
 			_hasLatestCustomMetrics = true;
-			_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Collect();
-			PerfMeterProfilerInstrumentation.RecordThermalAvailability(_latestPlatformTelemetry.IsAvailable && _latestPlatformTelemetry.ThermalWarningLevelAvailable);
 			double collectionTimeSeconds = Time.realtimeSinceStartupAsDouble;
+			_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Sample(collectionTimeSeconds);
+			PerfMeterProfilerInstrumentation.RecordThermalAvailability(_latestPlatformTelemetry.IsAvailable && _latestPlatformTelemetry.ThermalWarningLevelAvailable);
+			UpdateDiagnostics(frame, collectionTimeSeconds, _latestMetrics.Bottleneck, frameTimingAvailability, false, _latestMetrics.GpuFrameTimeAvailable, warning);
 			string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 			if (CaptureBundles.IsRecordingCaptureFrame(captureStatus))
 			{
@@ -726,6 +749,7 @@ namespace SGG.PerfMeter
 			PerfMeterCaptureRequestResult result = _captureCoordinator.Request(options);
 			if (result == PerfMeterCaptureRequestResult.Started)
 			{
+				RefreshPlatformTelemetryAtCaptureBoundary();
 				StartCaptureEndOfFrameIfRequired();
 			}
 
@@ -789,6 +813,7 @@ namespace SGG.PerfMeter
 				result == PerfMeterMemorySnapshotRequestResult.InsufficientDiskSpace ||
 				result == PerfMeterMemorySnapshotRequestResult.Failed)
 			{
+				RefreshPlatformTelemetryAtCaptureBoundary();
 				PerfMeterMemorySnapshotStatusSnapshot status = _memorySnapshotCoordinator.GetStatus(now);
 				CaptureBundles.StartMemorySnapshot(options, status, _settings, GetEffectiveSettingsSnapshot(_settings));
 				_captureBundleId = CaptureBundles.GetStatus(options.CaptureId).BundleId;
@@ -924,6 +949,10 @@ namespace SGG.PerfMeter
 
 			if (result == PerfMeterCaptureRequestResult.Started || result == PerfMeterCaptureRequestResult.Unavailable || result == PerfMeterCaptureRequestResult.Failed)
 			{
+				if (result != PerfMeterCaptureRequestResult.Started)
+				{
+					RefreshPlatformTelemetryAtCaptureBoundary();
+				}
 				if (!TryDiscardCaptureBundleMemoryArtifact(false))
 				{
 					if (result == PerfMeterCaptureRequestResult.Started && !_captureCoordinator.Cancel(options.CaptureId))
@@ -947,6 +976,12 @@ namespace SGG.PerfMeter
 			}
 
 			return result;
+		}
+
+		private void RefreshPlatformTelemetryAtCaptureBoundary()
+		{
+			_latestPlatformTelemetry = PerfMeterPlatformTelemetryRegistry.Sample(Time.realtimeSinceStartupAsDouble, force: true, captureBoundary: true);
+			PerfMeterProfilerInstrumentation.RecordThermalAvailability(_latestPlatformTelemetry.IsAvailable && _latestPlatformTelemetry.ThermalWarningLevelAvailable);
 		}
 
 		private PerfMeterSettingsSnapshot GetEffectiveSettingsSnapshot(PerfMeterSettingsSnapshot configuredSettings)
@@ -1806,6 +1841,7 @@ namespace SGG.PerfMeter
 		{
 			int frame = Time.frameCount;
 			_frameStatsSampler.Reset();
+			_bottleneckStabilizer.Reset();
 			ResetLatestCustomMetrics();
 			ApplyAlertSettings();
 			_status = CreateStatus(
@@ -2159,6 +2195,49 @@ namespace SGG.PerfMeter
 				_settings.EditorWarningsEnabled,
 				_visualOverlayPresetId,
 				PerfMeterSelfObservability.GetSnapshot());
+		}
+
+		private void UpdateDiagnostics(
+			int frame,
+			double sampleTimeSeconds,
+			PerfMeterBottleneck instantaneousBottleneck,
+			PerfMeterFrameTimingAvailability frameTimingAvailability,
+			bool frameTimingSampleIgnored,
+			bool gpuFrameTimeAvailable,
+			string rawWarning)
+		{
+			PerfMeterDiagnosticFlags flags = PerfMeterDiagnosticFlags.None;
+			if (frameTimingAvailability == PerfMeterFrameTimingAvailability.NotCollected)
+			{
+				flags |= PerfMeterDiagnosticFlags.FrameTimingNotCollected;
+			}
+			else if (frameTimingAvailability != PerfMeterFrameTimingAvailability.Available)
+			{
+				flags |= PerfMeterDiagnosticFlags.FrameTimingUnavailable;
+			}
+			if (frameTimingSampleIgnored)
+			{
+				flags |= PerfMeterDiagnosticFlags.InvalidFrameTimingSample;
+			}
+			if (!gpuFrameTimeAvailable)
+			{
+				flags |= PerfMeterDiagnosticFlags.GpuTimingUnavailable;
+			}
+			GraphicsDeviceType graphicsDeviceType = SystemInfo.graphicsDeviceType;
+			if (graphicsDeviceType == GraphicsDeviceType.OpenGLES3 || graphicsDeviceType == GraphicsDeviceType.OpenGLCore)
+			{
+				flags |= PerfMeterDiagnosticFlags.OpenGlGpuTiming;
+			}
+			if (_collector.UnavailableCounters != PerfMeterCounterAvailability.None)
+			{
+				flags |= PerfMeterDiagnosticFlags.ProfilerCountersUnavailable;
+			}
+
+			bool evidenceAvailable = frameTimingAvailability == PerfMeterFrameTimingAvailability.Available &&
+				!frameTimingSampleIgnored &&
+				instantaneousBottleneck != PerfMeterBottleneck.Unknown &&
+				(gpuFrameTimeAvailable || instantaneousBottleneck == PerfMeterBottleneck.CpuMainThreadBound || instantaneousBottleneck == PerfMeterBottleneck.CpuRenderThreadBound);
+			_bottleneckStabilizer.AddSample(frame, sampleTimeSeconds, instantaneousBottleneck, evidenceAvailable, flags, rawWarning);
 		}
 
 		private static string CombineWarnings(string first, string second)

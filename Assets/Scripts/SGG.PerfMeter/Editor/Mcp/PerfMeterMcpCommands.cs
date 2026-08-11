@@ -46,15 +46,15 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		public static string RuntimeEnsure()
 		{
-			RuntimePerformanceMeter.EnsureRunning();
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryEnsureRunning();
 			bool repaintRequested = PerfMeterMcpOverlaySession.ApplyStoredVisibilityIfPlaying();
-			return StatusJson(RuntimePerformanceMeter.GetStatus(), repaintRequested);
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), repaintRequested, "runtime_ensure", mutation);
 		}
 
 		public static string RuntimeStop()
 		{
-			RuntimePerformanceMeter.Stop();
-			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint());
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryStop();
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint(), "runtime_stop", mutation);
 		}
 
 		public static string RuntimeResetStats()
@@ -66,23 +66,22 @@ namespace SGG.PerfMeter.Editor.Mcp
 		public static string RuntimeModeSet(string argsJson)
 		{
 			PerfMeterCollectionMode mode = ParseCollectionMode(RequireString(argsJson, "mode"));
-			if (mode == PerfMeterCollectionMode.Background)
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TrySetCollectionMode(mode);
+			if (mutation.Succeeded && mode == PerfMeterCollectionMode.Background)
 			{
 				PerfMeterMcpOverlaySession.StoreRequestedVisibility(false);
 			}
-			else if (mode == PerfMeterCollectionMode.Overlay || mode == PerfMeterCollectionMode.OverdrawDiagnostic)
+			else if (mutation.Succeeded && (mode == PerfMeterCollectionMode.Overlay || mode == PerfMeterCollectionMode.OverdrawDiagnostic))
 			{
 				PerfMeterMcpOverlaySession.StoreRequestedVisibility(true);
 			}
 
-			RuntimePerformanceMeter.SetCollectionMode(mode);
 			if (mode == PerfMeterCollectionMode.OverdrawDiagnostic && TryExtractInt(argsJson, "frame_count", out int frameCount))
 			{
-				PerfMeterSettingsSnapshot settings = RuntimePerformanceMeter.GetSettings();
-				RuntimePerformanceMeter.RequestOverdrawMeasurement(Mathf.Clamp(frameCount, 1, settings.OverdrawMaxFrameCount));
+				RuntimePerformanceMeter.TryRequestOverdrawMeasurement(frameCount);
 			}
 
-			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint());
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint(), "runtime_mode_set", mutation);
 		}
 
 		public static string MetricsLatest()
@@ -448,64 +447,85 @@ namespace SGG.PerfMeter.Editor.Mcp
 		public static string OverlaySet(string argsJson)
 		{
 			bool visible = RequireBool(argsJson, "visible");
+			PerfMeterStatusSnapshot current = RuntimePerformanceMeter.GetStatus();
+			PerfMeterOverlayPreset requestedPreset = current.OverlayPreset;
+			PerfMeterOverlayCorner requestedCorner = current.OverlayCorner;
+			PerfMeterOverlayTheme requestedTheme = current.OverlayTheme;
+			PerfMeterOverlayLayout requestedLayout = current.OverlayLayout;
+			PerfMeterOverlayFontFamily requestedFontFamily = current.OverlayFontFamily;
+			PerfMeterTargetFps requestedTargetFps = current.TargetFps;
+			PerfMeterOverlayModule requestedModules = current.OverlayModules;
 			if (TryExtractString(argsJson, "preset", out string preset))
 			{
-				RuntimePerformanceMeter.SetOverlayPreset(ParseOverlayPreset(preset));
+				requestedPreset = ParseOverlayPreset(preset);
+				requestedLayout = PerfMeterSettingsStore.GetPresetLayout(requestedPreset);
+				requestedModules = PerfMeterSettingsStore.GetPresetModules(requestedPreset);
 			}
 
 			if (TryExtractString(argsJson, "corner", out string corner))
 			{
-				RuntimePerformanceMeter.SetOverlayCorner(ParseOverlayCorner(corner));
+				requestedCorner = ParseOverlayCorner(corner);
 			}
 
 			if (TryExtractString(argsJson, "theme", out string theme))
 			{
-				RuntimePerformanceMeter.SetOverlayTheme(ParseOverlayTheme(theme));
+				requestedTheme = ParseOverlayTheme(theme);
 			}
 
 			if (TryExtractString(argsJson, "layout", out string layout))
 			{
-				RuntimePerformanceMeter.SetOverlayLayout(ParseOverlayLayout(layout));
+				requestedLayout = ParseOverlayLayout(layout);
 			}
 
 			if (TryExtractString(argsJson, "font_family", out string fontFamily))
 			{
-				RuntimePerformanceMeter.SetOverlayFontFamily(ParseOverlayFontFamily(fontFamily));
+				requestedFontFamily = ParseOverlayFontFamily(fontFamily);
 			}
 
 			if (TryExtractInt(argsJson, "target_fps", out int targetFps))
 			{
-				RuntimePerformanceMeter.SetTargetFps(ParseTargetFps(targetFps));
+				requestedTargetFps = ParseTargetFps(targetFps);
 			}
 
 			if (TryExtractStringArray(argsJson, "modules", out string[] modules))
 			{
-				RuntimePerformanceMeter.SetOverlayModules(ParseOverlayModules(modules));
+				requestedModules = ParseOverlayModules(modules);
 			}
 
-			PerfMeterMcpOverlaySession.StoreRequestedVisibility(visible);
-			RuntimePerformanceMeter.SetOverlayVisible(visible);
-			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint());
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryApplyOverlayConfiguration(new PerfMeterOverlayConfiguration(
+				visible,
+				requestedCorner,
+				requestedPreset,
+				requestedTheme,
+				requestedLayout,
+				requestedFontFamily,
+				requestedModules,
+				requestedTargetFps));
+			if (mutation.Succeeded)
+			{
+				PerfMeterMcpOverlaySession.StoreRequestedVisibility(visible);
+			}
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), PerfMeterMcpOverlaySession.RequestRepaint(), "overlay_set", mutation);
 		}
 
 		public static string OverdrawStart(string argsJson)
 		{
 			PerfMeterSettingsSnapshot settings = RuntimePerformanceMeter.GetSettings();
-			int frameCount = Mathf.Clamp(ExtractInt(argsJson, "frame_count", settings.OverdrawDefaultFrameCount), 1, settings.OverdrawMaxFrameCount);
-			RuntimePerformanceMeter.RequestOverdrawMeasurement(frameCount);
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			int frameCount = ExtractInt(argsJson, "frame_count", settings.OverdrawDefaultFrameCount);
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryRequestOverdrawMeasurement(frameCount);
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), false, "overdraw_start", mutation);
 		}
 
 		public static string OverdrawCancel()
 		{
-			RuntimePerformanceMeter.CancelOverdrawMeasurement();
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryCancelOverdrawMeasurement();
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), false, "overdraw_cancel", mutation);
 		}
 
 		public static string OverdrawHeatmapSet(string argsJson)
 		{
-			RuntimePerformanceMeter.SetOverdrawHeatmapVisible(RequireBool(argsJson, "visible"));
-			return StatusJson(RuntimePerformanceMeter.GetStatus());
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TrySetOverdrawHeatmapVisible(RequireBool(argsJson, "visible"));
+			return StatusJson(RuntimePerformanceMeter.GetStatus(), false, "overdraw_heatmap_set", mutation);
 		}
 
 		public static string SessionStart(string argsJson)
@@ -518,14 +538,14 @@ namespace SGG.PerfMeter.Editor.Mcp
 			bool resetOnSceneLoad = TryExtractBool(argsJson, "reset_on_scene_load", out bool resetOnSceneLoadValue) ? resetOnSceneLoadValue : settingsOptions.ResetOnSceneLoad;
 			int sceneLoadIgnoreFrames = ExtractInt(argsJson, "scene_load_ignore_frames", settingsOptions.SceneLoadIgnoreFrames);
 			float sceneLoadIgnoreSeconds = ExtractFloat(argsJson, "scene_load_ignore_seconds", settingsOptions.SceneLoadIgnoreSeconds);
-			RuntimePerformanceMeter.StartSession(new PerfMeterSessionOptions(warmupFrames, warmupSeconds, sampleIntervalSeconds, maxSamples, resetOnSceneLoad, sceneLoadIgnoreFrames, sceneLoadIgnoreSeconds));
-			return SessionCommandJson(true, string.Empty, string.Empty, "recording", RuntimePerformanceMeter.GetSessionSummary());
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryStartSession(new PerfMeterSessionOptions(warmupFrames, warmupSeconds, sampleIntervalSeconds, maxSamples, resetOnSceneLoad, sceneLoadIgnoreFrames, sceneLoadIgnoreSeconds));
+			return SessionCommandJson(mutation.Succeeded, string.Empty, string.Empty, mutation.Succeeded ? "recording" : mutation.Status.ToString(), RuntimePerformanceMeter.GetSessionSummary(), "session_start", mutation);
 		}
 
 		public static string SessionStop()
 		{
-			RuntimePerformanceMeter.StopSession();
-			return SessionCommandJson(true, string.Empty, string.Empty, "stopped", RuntimePerformanceMeter.GetSessionSummary());
+			PerfMeterMutationResultSnapshot mutation = RuntimePerformanceMeter.TryStopSession();
+			return SessionCommandJson(mutation.Succeeded, string.Empty, string.Empty, mutation.Succeeded ? "stopped" : mutation.Status.ToString(), RuntimePerformanceMeter.GetSessionSummary(), "session_stop", mutation);
 		}
 
 		public static string SessionSummary()
@@ -570,7 +590,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			return SessionCommandJson(result.Success, result.Path, result.Error, result.Status, summary);
 		}
 
-		private static string StatusJson(PerfMeterStatusSnapshot status, bool repaintRequested = false)
+		private static string StatusJson(
+			PerfMeterStatusSnapshot status,
+			bool repaintRequested = false,
+			string mutationOperation = "",
+			PerfMeterMutationResultSnapshot mutation = default)
 		{
 			bool requestedVisible = PerfMeterMcpOverlaySession.GetRequestedVisibility(status);
 			StringBuilder builder = new StringBuilder(2048);
@@ -617,6 +641,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"fired_alert_count\":").Append(status.FiredAlertCount);
 			builder.Append(",\"latest_alert_rule_id\":").Append(JsonString(status.LatestAlertRuleId));
 			builder.Append(",\"latest_alert_message\":").Append(JsonString(status.LatestAlertMessage));
+			if (!string.IsNullOrEmpty(mutationOperation))
+			{
+				builder.Append(",\"mutation\":");
+				AppendMutationResult(builder, mutationOperation, mutation);
+			}
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -742,6 +771,12 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"provider_version\":").Append(JsonString(telemetry.ProviderVersion));
 			builder.Append(",\"sample_time_seconds\":").Append(JsonNumber(telemetry.SampleTimeSeconds));
 			builder.Append(",\"last_change_time_seconds\":").Append(JsonNumber(telemetry.LastChangeTimeSeconds));
+			builder.Append(",\"last_attempt_time_seconds\":").Append(JsonNumber(telemetry.LastAttemptTimeSeconds));
+			builder.Append(",\"last_success_time_seconds\":").Append(JsonNumber(telemetry.LastSuccessTimeSeconds));
+			builder.Append(",\"sample_age_seconds\":").Append(JsonNumber(telemetry.SampleAgeSeconds));
+			builder.Append(",\"freshness\":").Append(JsonString(telemetry.Freshness.ToString()));
+			builder.Append(",\"last_attempt_result\":").Append(JsonString(telemetry.LastAttemptResult.ToString()));
+			builder.Append(",\"forced_at_capture_boundary\":").Append(JsonBool(telemetry.ForcedAtCaptureBoundary));
 			builder.Append(",\"thermal_warning_level_available\":").Append(JsonBool(telemetry.ThermalWarningLevelAvailable));
 			builder.Append(",\"thermal_warning_level\":").Append(telemetry.ThermalWarningLevelAvailable ? JsonString(telemetry.ThermalWarningLevel.ToString()) : "null");
 			builder.Append(",\"temperature_level_available\":").Append(JsonBool(telemetry.TemperatureLevelAvailable));
@@ -922,7 +957,14 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append('}');
 		}
 
-		private static string SessionCommandJson(bool success, string path, string error, string status, PerfMeterSessionSummarySnapshot summary)
+		private static string SessionCommandJson(
+			bool success,
+			string path,
+			string error,
+			string status,
+			PerfMeterSessionSummarySnapshot summary,
+			string mutationOperation = "",
+			PerfMeterMutationResultSnapshot mutation = default)
 		{
 			StringBuilder builder = new StringBuilder(1024);
 			builder.Append("{\"success\":").Append(JsonBool(success));
@@ -931,6 +973,11 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"status\":").Append(JsonString(status));
 			builder.Append(",\"summary\":");
 			AppendSessionSummary(builder, summary);
+			if (!string.IsNullOrEmpty(mutationOperation))
+			{
+				builder.Append(",\"mutation\":");
+				AppendMutationResult(builder, mutationOperation, mutation);
+			}
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
@@ -1022,6 +1069,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 		private static string MetricsJson(PerfMeterMetricsSnapshot metrics)
 		{
 			PerfMeterCustomMetricSnapshot[] customMetrics = RuntimePerformanceMeter.GetCustomMetrics();
+			PerfMeterDiagnosticsSnapshot diagnostics = RuntimePerformanceMeter.GetDiagnostics();
 			StringBuilder builder = new StringBuilder(768);
 			builder.Append("{\"state\":").Append(JsonString(metrics.State.ToString()));
 			builder.Append(",\"availability\":").Append(JsonString(metrics.Availability.ToString()));
@@ -1062,10 +1110,46 @@ namespace SGG.PerfMeter.Editor.Mcp
 			builder.Append(",\"overdraw_ratio\":").Append(JsonNumber(metrics.OverdrawRatio));
 			builder.Append(",\"overdraw_state\":").Append(JsonString(metrics.OverdrawState.ToString()));
 			builder.Append(",\"overdraw_progress\":").Append(JsonNumber(metrics.OverdrawProgress));
+			builder.Append(",\"diagnostics\":");
+			AppendDiagnostics(builder, diagnostics);
 			AppendCustomMetrics(builder, customMetrics);
 			AppendEditorState(builder);
 			builder.Append('}');
 			return builder.ToString();
+		}
+
+		private static void AppendDiagnostics(StringBuilder builder, PerfMeterDiagnosticsSnapshot diagnostics)
+		{
+			builder.Append("{\"availability\":").Append(JsonString(diagnostics.Availability.ToString()));
+			builder.Append(",\"freshness\":").Append(JsonString(diagnostics.Freshness.ToString()));
+			builder.Append(",\"provenance\":").Append(JsonString(diagnostics.Provenance.ToString()));
+			builder.Append(",\"instantaneous_bottleneck\":").Append(JsonString(diagnostics.InstantaneousBottleneck.ToString()));
+			builder.Append(",\"stable_bottleneck\":").Append(JsonString(diagnostics.StableBottleneck.ToString()));
+			builder.Append(",\"flags\":").Append(JsonString(diagnostics.Flags.ToString()));
+			builder.Append(",\"verification_steps\":").Append(JsonString(diagnostics.VerificationSteps.ToString()));
+			builder.Append(",\"confidence\":").Append(JsonNumber(diagnostics.Confidence));
+			builder.Append(",\"coverage\":").Append(JsonNumber(diagnostics.Coverage));
+			builder.Append(",\"observed_sample_count\":").Append(diagnostics.ObservedSampleCount);
+			builder.Append(",\"valid_evidence_sample_count\":").Append(diagnostics.ValidEvidenceSampleCount);
+			builder.Append(",\"last_evidence_frame\":").Append(diagnostics.LastEvidenceFrame);
+			builder.Append(",\"last_evidence_time_seconds\":").Append(JsonNumber(diagnostics.LastEvidenceTimeSeconds));
+			builder.Append(",\"sample_age_seconds\":").Append(JsonNumber(diagnostics.SampleAgeSeconds));
+			builder.Append(",\"raw_warning\":").Append(JsonString(diagnostics.RawWarning));
+			builder.Append('}');
+		}
+
+		private static void AppendMutationResult(
+			StringBuilder builder,
+			string operation,
+			PerfMeterMutationResultSnapshot mutation)
+		{
+			builder.Append("{\"operation\":").Append(JsonString(operation));
+			builder.Append(",\"success\":").Append(JsonBool(mutation.Succeeded));
+			builder.Append(",\"result\":").Append(JsonString(mutation.Status.ToString()));
+			builder.Append(",\"reason\":").Append(JsonString(mutation.Reason.ToString()));
+			builder.Append(",\"requested\":").Append(JsonString(mutation.RequestedValue));
+			builder.Append(",\"effective\":").Append(JsonString(mutation.EffectiveValue));
+			builder.Append('}');
 		}
 
 		private static string ProfilerCapabilitiesJson(PerfMeterProfilerMetricCatalogSnapshot catalog)
