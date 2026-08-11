@@ -8,9 +8,9 @@
 
 `StructuredLog` toggle, stable numeric geometry и versioned owned panel host выпущены в package version `2026.8.5-2`.
 
-### Implemented: Frame-accurate hitch strip
+### Released: Frame-accurate hitch strip
 
-Pending release after `2026.8.11-1`:
+Released in `2026.8.11-2`:
 
 - a dedicated full-width bottom strip advances once per collected frame independently of overlay text refresh;
 - invalid timing advances the bounded history as an explicit gap instead of fake zero;
@@ -18,9 +18,9 @@ Pending release after `2026.8.11-1`:
 - narrow plots use only a peak-preserving min/max envelope;
 - the warmed ring-buffer update allocates `0 B/frame` and does not rebuild the visual tree.
 
-### Implemented: Custom metric graph channels
+### Released: Custom metric graph channels
 
-Pending release after `2026.8.11-1`:
+Released in `2026.8.11-2`:
 
 - visual preset JSON binds up to four series by case-sensitive stable metric ID;
 - each series has explicit signed display-space `min/max`, non-zero `displayScale`, color and unit;
@@ -28,9 +28,9 @@ Pending release after `2026.8.11-1`:
 - the renderer uses each channel's own configured range and never performs implicit cross-unit normalization;
 - configuration is additive to preset schema v1, while bounded histories and warmed updates remain allocation-free.
 
-### Implemented: Bounded descriptors and theme manifests
+### Released: Bounded descriptors and theme manifests
 
-Pending release after `2026.8.11-1`:
+Released in `2026.8.11-2`:
 
 - visual presets now apply bounded width, gap, ordered admission and supported explicit height metadata at configuration boundaries while retaining a safe fixed block order;
 - narrow graph layouts hide fixed legend and scale columns before plot overflow;
