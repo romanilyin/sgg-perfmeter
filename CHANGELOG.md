@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2026.8.11-2
+
 - Added stable hysteresis-based bottleneck diagnostics with typed evidence flags, confidence, coverage, freshness, and raw-warning preservation while retaining instantaneous raw metrics.
 - Added bounded platform telemetry cadence/cache metadata and forced capture-boundary sampling with explicit unavailable provenance.
 - Added typed runtime mutation results and truthful MCP mutation responses for lifecycle, mode, overlay, overdraw, and session operations.
