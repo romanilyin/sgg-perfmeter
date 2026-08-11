@@ -154,9 +154,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(PerfMeterRenderDocBridgeInstaller.ArtifactVersion, Is.EqualTo("2026.8.11-1"));
 			Assert.That(PerfMeterRenderDocBridgeInstaller.DllFileName, Is.EqualTo("sgg_renderdoc_bridge.dll"));
 			Assert.That(PerfMeterRenderDocBridgeInstaller.DllByteLength, Is.EqualTo(125952L));
-			Assert.That(PerfMeterRenderDocBridgeInstaller.DllSha256, Has.Length.EqualTo(64));
-			Assert.That(PerfMeterRenderDocBridgeInstaller.ArchiveByteLength, Is.EqualTo(90837L));
-			Assert.That(PerfMeterRenderDocBridgeInstaller.ArchiveSha256, Has.Length.EqualTo(64));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.DllSha256, Is.EqualTo("c86592e04e4e71a22e13cc8a462294082d14202e7112f6d3e90186d9ef88802b"));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.ArchiveByteLength, Is.EqualTo(234696L));
+			Assert.That(PerfMeterRenderDocBridgeInstaller.ArchiveSha256, Is.EqualTo("51adc728abb17eb157b8cff19186edf7c4a79341e85328cab98f978fdf013b13"));
 			Assert.That(PerfMeterRenderDocBridgeInstaller.DownloadUrl, Does.StartWith("https://github.com/romanilyin/sgg-perfmeter/releases/download/2026.8.11-1/"));
 			Assert.That(PerfMeterRenderDocBridgeInstaller.InstalledAssetPath, Does.StartWith("Assets/Plugins/SGG.PerfMeter/RenderDoc/Editor/Windows/x86_64/"));
 		}

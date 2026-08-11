@@ -41,10 +41,10 @@ namespace SGG.PerfMeter.Editor.Setup
 		internal const string ArtifactVersion = "2026.8.11-1";
 		internal const string DllFileName = "sgg_renderdoc_bridge.dll";
 		internal const long DllByteLength = 125952L;
-		internal const string DllSha256 = "01d605d9f7b1454511948ef8ff4905fc87344141555a9435580b875866741734";
+		internal const string DllSha256 = "c86592e04e4e71a22e13cc8a462294082d14202e7112f6d3e90186d9ef88802b";
 		internal const string ArchiveFileName = "sgg-perfmeter-renderdoc-bridge-2026.8.11-1-windows-x64.zip";
-		internal const long ArchiveByteLength = 90837L;
-		internal const string ArchiveSha256 = "cc4e1551bbda64c7d59372b818cfcdbf250227a23a4acb77d3c66db2c7240fe5";
+		internal const long ArchiveByteLength = 234696L;
+		internal const string ArchiveSha256 = "51adc728abb17eb157b8cff19186edf7c4a79341e85328cab98f978fdf013b13";
 		internal const string DownloadUrl = "https://github.com/romanilyin/sgg-perfmeter/releases/download/2026.8.11-1/" + ArchiveFileName;
 		internal const string InstalledAssetPath = "Assets/Plugins/SGG.PerfMeter/RenderDoc/Editor/Windows/x86_64/" + DllFileName;
 
