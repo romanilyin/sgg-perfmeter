@@ -141,7 +141,7 @@ The nested GRD context reports public SRP/project/compute support, Unity's globa
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.9-1"
+    "com.sungeargames.perfmeter": "2026.8.11-1"
   }
 }
 ```
