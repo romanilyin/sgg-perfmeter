@@ -60,6 +60,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayFontFamily _overlayFontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
 		private string _visualOverlayPresetId = PerfMeterOverlayPresetDefaults.FullDiagnosticsId;
+		private PerfMeterOverlayPresetJson _visualLayoutDescriptor;
 		private PerfMeterCustomMetricGraphJson[] _customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 		private PerfMeterOverlayModule _overlayModules = PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
@@ -1565,6 +1566,7 @@ namespace SGG.PerfMeter
 
 			_overlayPreset = NormalizeOverlayPreset(preset);
 			_visualOverlayPresetId = _overlayPreset.ToString();
+			_visualLayoutDescriptor = null;
 			_customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 			_overlayModules = PerfMeterSettingsStore.GetPresetModules(_overlayPreset);
 			_overlayLayout = PerfMeterSettingsStore.GetPresetLayout(_overlayPreset);
@@ -1577,6 +1579,7 @@ namespace SGG.PerfMeter
 				_overlay.SetMode(_overlayMode);
 				_overlay.SetModules(_overlayModules);
 				_overlay.SetLayout(_overlayLayout);
+				_overlay.SetLayoutDescriptor(_visualLayoutDescriptor);
 				_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 			}
 
@@ -1646,6 +1649,7 @@ namespace SGG.PerfMeter
 			}
 
 			_visualOverlayPresetId = string.IsNullOrEmpty(presetId) ? preset.id : presetId;
+			_visualLayoutDescriptor = PerfMeterOverlayPresetUtility.Clone(preset);
 			_overlayPreset = PerfMeterOverlayPreset.Custom;
 			_overlayCorner = PerfMeterOverlayPresetUtility.GetCorner(preset);
 			_overlayTheme = PerfMeterOverlayPresetUtility.GetTheme(preset);
@@ -1667,6 +1671,7 @@ namespace SGG.PerfMeter
 				_overlay.SetLayout(_overlayLayout);
 				_overlay.SetFontFamily(_overlayFontFamily);
 				_overlay.SetModules(_overlayModules);
+				_overlay.SetLayoutDescriptor(_visualLayoutDescriptor);
 				_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
@@ -1731,6 +1736,7 @@ namespace SGG.PerfMeter
 			_overlayMode = PerfMeterSettingsStore.GetLayoutMode(_overlayLayout, settings.OverlayMode);
 			_overlayFontFamily = settings.OverlayFontFamily;
 			_visualOverlayPresetId = settings.ActiveOverlayPresetId;
+			_visualLayoutDescriptor = PerfMeterOverlayPresetUtility.Clone(settings.ActiveOverlayPreset);
 			_customMetricGraphs = PerfMeterOverlayPresetUtility.CloneCustomMetricGraphs(settings.ActiveOverlayPreset?.customMetricGraphs);
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
@@ -1744,6 +1750,7 @@ namespace SGG.PerfMeter
 				_overlay.SetTheme(_overlayTheme);
 				_overlay.SetLayout(_overlayLayout);
 				_overlay.SetFontFamily(_overlayFontFamily);
+				_overlay.SetLayoutDescriptor(_visualLayoutDescriptor);
 				_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 				_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);
 			}
@@ -2309,6 +2316,7 @@ namespace SGG.PerfMeter
 			_overlay.SetLayout(_overlayLayout);
 			_overlay.SetFontFamily(_overlayFontFamily);
 			_overlay.SetModules(_overlayModules);
+			_overlay.SetLayoutDescriptor(_visualLayoutDescriptor);
 			_overlay.SetCustomMetricGraphs(_customMetricGraphs);
 			_overlay.SetTargetFps(_targetFps);
 			_overlay.SetTuning(_overlayScale, _overlayOpacity, _overlayFontSize, _overlayRefreshIntervalSeconds, _overlayGraphHistoryLength);

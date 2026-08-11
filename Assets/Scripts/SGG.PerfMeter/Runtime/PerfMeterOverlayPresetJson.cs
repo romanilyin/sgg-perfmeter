@@ -63,7 +63,7 @@ namespace SGG.PerfMeter
 
 	public sealed class PerfMeterWidgetDescriptor
 	{
-		internal PerfMeterWidgetDescriptor(
+		public PerfMeterWidgetDescriptor(
 			string id,
 			string displayName,
 			string category,
@@ -75,7 +75,7 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayModule overlayModules,
 			params string[] requiredProviders)
 		{
-			Id = id ?? string.Empty;
+			Id = id?.Trim() ?? string.Empty;
 			DisplayName = displayName ?? string.Empty;
 			Category = category ?? string.Empty;
 			Kind = kind ?? string.Empty;
@@ -84,7 +84,7 @@ namespace SGG.PerfMeter
 			IsPresetBlock = isPresetBlock;
 			IsDebugOnly = isDebugOnly;
 			OverlayModules = overlayModules;
-			RequiredProviders = requiredProviders ?? Array.Empty<string>();
+			RequiredProviders = requiredProviders == null || requiredProviders.Length == 0 ? Array.Empty<string>() : (string[])requiredProviders.Clone();
 		}
 
 		public string Id { get; }
@@ -96,7 +96,7 @@ namespace SGG.PerfMeter
 		public bool IsPresetBlock { get; }
 		public bool IsDebugOnly { get; }
 		public string[] RequiredProviders { get; }
-		internal PerfMeterOverlayModule OverlayModules { get; }
+		public PerfMeterOverlayModule OverlayModules { get; }
 	}
 
 	public readonly struct PerfMeterOverlayPresetValidationResult
@@ -135,6 +135,9 @@ namespace SGG.PerfMeter
 
 	public static class PerfMeterWidgetRegistry
 	{
+		public const int MaxExtensionDescriptors = 16;
+		private static readonly object SyncRoot = new object();
+		private static readonly List<PerfMeterWidgetDescriptor> ExtensionDescriptors = new List<PerfMeterWidgetDescriptor>();
 		private static readonly PerfMeterWidgetDescriptor[] BuiltInDescriptors =
 		{
 			new PerfMeterWidgetDescriptor("fps.summary-card", "FPS summary card", "FPS", "Card", "Fps", "Average FPS, 1% low, 0.1% low, and current budget state.", true, false, PerfMeterOverlayModule.Fps, "Fps"),
@@ -146,6 +149,7 @@ namespace SGG.PerfMeter
 			new PerfMeterWidgetDescriptor("timing.gpu-budget-bar", "GPU budget bar", "Timing", "BudgetBar", "GpuTiming", "GPU frame time against target FPS budget.", true, false, PerfMeterOverlayModule.Timing, "GpuTiming"),
 			new PerfMeterWidgetDescriptor("graphs.cpu-timing", "CPU timing graph", "Graphs", "Graph", "Graphs / Timing", "Stacked CPU frame, main, render, and other timing history.", true, false, PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Timing, "Graphs", "Timing"),
 			new PerfMeterWidgetDescriptor("graphs.gpu-timing", "GPU timing graph", "Graphs", "Graph", "Graphs / GpuTiming", "GPU frame timing history with budget line.", true, false, PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Timing, "Graphs", "GpuTiming"),
+			new PerfMeterWidgetDescriptor("graphs.raw-frame-time", "Raw frame-time strip", "Graphs", "Graph", "Graphs / Timing / CustomMetrics", "Raw per-collected-frame hitch strip with optional stable-ID custom metric channels.", true, false, PerfMeterOverlayModule.Graphs, "Graphs", "Timing"),
 			new PerfMeterWidgetDescriptor("cpu.cores-bars", "CPU core bars", "CPU", "Panel", "CpuCoreBars", "Per-logical-core load bars; uses platform CPU load sampling when available.", true, false, PerfMeterOverlayModule.CpuCoreBars, "CpuCoreSampling"),
 			new PerfMeterWidgetDescriptor("cpu.cores-graphs", "CPU core graphs", "CPU", "Panel", "CpuCoreGraphs", "Per-logical-core load history graphs.", true, false, PerfMeterOverlayModule.CpuCoreGraphs, "CpuCoreSampling", "Graphs"),
 			new PerfMeterWidgetDescriptor("custom-metrics.panel", "Custom metrics panel", "Custom", "Panel", "CustomMetrics", "Renders metrics supplied by project IPerfMeterCustomMetricProvider implementations.", true, false, PerfMeterOverlayModule.CustomMetrics, "CustomMetrics"),
@@ -171,9 +175,13 @@ namespace SGG.PerfMeter
 
 		public static PerfMeterWidgetDescriptor[] GetAllDescriptors()
 		{
-			PerfMeterWidgetDescriptor[] copy = new PerfMeterWidgetDescriptor[BuiltInDescriptors.Length];
-			Array.Copy(BuiltInDescriptors, copy, BuiltInDescriptors.Length);
-			return copy;
+			lock (SyncRoot)
+			{
+				PerfMeterWidgetDescriptor[] copy = new PerfMeterWidgetDescriptor[BuiltInDescriptors.Length + ExtensionDescriptors.Count];
+				Array.Copy(BuiltInDescriptors, copy, BuiltInDescriptors.Length);
+				ExtensionDescriptors.CopyTo(copy, BuiltInDescriptors.Length);
+				return copy;
+			}
 		}
 
 		public static PerfMeterWidgetDescriptor[] GetPresetBlockDescriptors()
@@ -201,9 +209,109 @@ namespace SGG.PerfMeter
 				}
 			}
 
+			lock (SyncRoot)
+			{
+				for (int i = 0; i < ExtensionDescriptors.Count; i++)
+				{
+					if (string.Equals(ExtensionDescriptors[i].Id, id, StringComparison.OrdinalIgnoreCase))
+					{
+						descriptor = ExtensionDescriptors[i];
+						return true;
+					}
+				}
+			}
+
 			descriptor = null;
 			return false;
 		}
+
+		public static bool TryRegisterDescriptor(PerfMeterWidgetDescriptor descriptor, out string warning)
+		{
+			warning = string.Empty;
+			if (descriptor == null || string.IsNullOrWhiteSpace(descriptor.Id))
+			{
+				warning = "Overlay widget descriptor and id are required.";
+				return false;
+			}
+
+			if (descriptor.OverlayModules == PerfMeterOverlayModule.None || (descriptor.OverlayModules & ~PerfMeterOverlayModule.All) != 0)
+			{
+				warning = "Extension widget descriptor must map only to existing overlay modules.";
+				return false;
+			}
+
+			lock (SyncRoot)
+			{
+				for (int i = 0; i < BuiltInDescriptors.Length; i++)
+				{
+					if (string.Equals(BuiltInDescriptors[i].Id, descriptor.Id, StringComparison.OrdinalIgnoreCase))
+					{
+						warning = "Overlay widget descriptor id '" + descriptor.Id + "' is already registered.";
+						return false;
+					}
+				}
+
+				for (int i = 0; i < ExtensionDescriptors.Count; i++)
+				{
+					if (string.Equals(ExtensionDescriptors[i].Id, descriptor.Id, StringComparison.OrdinalIgnoreCase))
+					{
+						warning = "Overlay widget descriptor id '" + descriptor.Id + "' is already registered.";
+						return false;
+					}
+				}
+
+				if (ExtensionDescriptors.Count >= MaxExtensionDescriptors)
+				{
+					warning = "Overlay widget extension descriptor limit is " + MaxExtensionDescriptors + ".";
+					return false;
+				}
+
+				ExtensionDescriptors.Add(descriptor);
+				return true;
+			}
+		}
+
+		public static bool UnregisterDescriptor(string id)
+		{
+			if (string.IsNullOrWhiteSpace(id))
+			{
+				return false;
+			}
+
+			lock (SyncRoot)
+			{
+				for (int i = 0; i < ExtensionDescriptors.Count; i++)
+				{
+					if (string.Equals(ExtensionDescriptors[i].Id, id, StringComparison.OrdinalIgnoreCase))
+					{
+						ExtensionDescriptors.RemoveAt(i);
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		internal static void ClearExtensionDescriptorsForTests()
+		{
+			lock (SyncRoot)
+			{
+				ExtensionDescriptors.Clear();
+			}
+		}
+	}
+
+	public static class PerfMeterOverlayLayoutLimits
+	{
+		public const int MaxWidgetsPerLayout = 24;
+		public const int MaxGraphPointsPerWidget = 600;
+		public const int MaxActiveFullGraphs = 4;
+		public const int MinWidth = 360;
+		public const int MaxWidth = 780;
+		public const int MaxGap = 24;
+		public const int MinExplicitWidgetHeight = 24;
+		public const int MaxExplicitWidgetHeight = 240;
 	}
 
 	public static class PerfMeterOverlayPresetUtility
@@ -282,8 +390,19 @@ namespace SGG.PerfMeter
 				warning = CombineWarnings(warning, "Overlay preset opacity was clamped to 0..1.");
 			}
 
+			if (preset.style.maxWidth < PerfMeterOverlayLayoutLimits.MinWidth || preset.style.maxWidth > PerfMeterOverlayLayoutLimits.MaxWidth)
+			{
+				warning = CombineWarnings(warning, "Overlay preset maxWidth was clamped to " + PerfMeterOverlayLayoutLimits.MinWidth + ".." + PerfMeterOverlayLayoutLimits.MaxWidth + ".");
+			}
+
+			if (preset.style.gap < 0 || preset.style.gap > PerfMeterOverlayLayoutLimits.MaxGap)
+			{
+				warning = CombineWarnings(warning, "Overlay preset gap was clamped to 0.." + PerfMeterOverlayLayoutLimits.MaxGap + ".");
+			}
+
 			HashSet<string> widgetIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			PerfMeterOverlayPresetWidgetJson[] widgets = preset.widgets ?? Array.Empty<PerfMeterOverlayPresetWidgetJson>();
+			int enabledWidgetCount = 0;
 			for (int i = 0; i < widgets.Length; i++)
 			{
 				PerfMeterOverlayPresetWidgetJson widget = widgets[i];
@@ -307,6 +426,20 @@ namespace SGG.PerfMeter
 				if (widget.enabled && !descriptor.IsPresetBlock)
 				{
 					warning = CombineWarnings(warning, "Low-level widget '" + widget.id + "' cannot be used in visual presets and will be ignored.");
+				}
+
+				if (widget.enabled && descriptor.IsPresetBlock)
+				{
+					enabledWidgetCount++;
+					if (enabledWidgetCount > PerfMeterOverlayLayoutLimits.MaxWidgetsPerLayout)
+					{
+						warning = CombineWarnings(warning, "Overlay layout widget limit is " + PerfMeterOverlayLayoutLimits.MaxWidgetsPerLayout + "; excess widgets will be ignored.");
+					}
+				}
+
+				if (widget.height != 0 && (widget.height < PerfMeterOverlayLayoutLimits.MinExplicitWidgetHeight || widget.height > PerfMeterOverlayLayoutLimits.MaxExplicitWidgetHeight))
+				{
+					warning = CombineWarnings(warning, "Overlay widget '" + widget.id + "' height was clamped to " + PerfMeterOverlayLayoutLimits.MinExplicitWidgetHeight + ".." + PerfMeterOverlayLayoutLimits.MaxExplicitWidgetHeight + ".");
 				}
 			}
 
@@ -411,6 +544,7 @@ namespace SGG.PerfMeter
 			}
 
 			PerfMeterOverlayModule modules = PerfMeterOverlayModule.None;
+			int enabledWidgetCount = 0;
 			for (int i = 0; i < preset.widgets.Length; i++)
 			{
 				PerfMeterOverlayPresetWidgetJson widget = preset.widgets[i];
@@ -431,7 +565,14 @@ namespace SGG.PerfMeter
 					continue;
 				}
 
+				if (enabledWidgetCount >= PerfMeterOverlayLayoutLimits.MaxWidgetsPerLayout)
+				{
+					warning = CombineWarnings(warning, "Overlay layout widget limit is " + PerfMeterOverlayLayoutLimits.MaxWidgetsPerLayout + "; excess widgets were ignored.");
+					break;
+				}
+
 				modules |= descriptor.OverlayModules;
+				enabledWidgetCount++;
 			}
 
 			if (modules == PerfMeterOverlayModule.None)
@@ -530,8 +671,8 @@ namespace SGG.PerfMeter
 			preset.style.font = GetFontFamily(preset).ToString();
 			preset.style.scale = Mathf.Clamp(preset.style.scale <= 0f ? 1f : preset.style.scale, PerfMeterSettingsStore.MinOverlayScale, PerfMeterSettingsStore.MaxOverlayScale);
 			preset.style.opacity = Mathf.Clamp(preset.style.opacity, 0f, 1f);
-			preset.style.maxWidth = Mathf.Max(1, preset.style.maxWidth);
-			preset.style.gap = Mathf.Max(0, preset.style.gap);
+			preset.style.maxWidth = Mathf.Clamp(preset.style.maxWidth, PerfMeterOverlayLayoutLimits.MinWidth, PerfMeterOverlayLayoutLimits.MaxWidth);
+			preset.style.gap = Mathf.Clamp(preset.style.gap, 0, PerfMeterOverlayLayoutLimits.MaxGap);
 			preset.widgets = preset.widgets ?? Array.Empty<PerfMeterOverlayPresetWidgetJson>();
 			preset.customMetricGraphs = preset.customMetricGraphs ?? Array.Empty<PerfMeterCustomMetricGraphJson>();
 			for (int i = 0; i < preset.customMetricGraphs.Length; i++)
@@ -545,6 +686,14 @@ namespace SGG.PerfMeter
 				graph.metricId = graph.metricId?.Trim() ?? string.Empty;
 				graph.color = string.IsNullOrWhiteSpace(graph.color) ? "#56C8FF" : graph.color.Trim();
 				graph.unit = graph.unit?.Trim() ?? string.Empty;
+			}
+			for (int i = 0; i < preset.widgets.Length; i++)
+			{
+				PerfMeterOverlayPresetWidgetJson widget = preset.widgets[i];
+				if (widget != null && widget.height != 0)
+				{
+					widget.height = Mathf.Clamp(widget.height, PerfMeterOverlayLayoutLimits.MinExplicitWidgetHeight, PerfMeterOverlayLayoutLimits.MaxExplicitWidgetHeight);
+				}
 			}
 			Array.Sort(preset.widgets, CompareWidgetOrder);
 		}
@@ -720,7 +869,8 @@ namespace SGG.PerfMeter
 				Widget("timing.cpu-card", 20),
 				Widget("timing.gpu-card", 30),
 				Widget("graphs.cpu-timing", 40, 48),
-				Widget("graphs.gpu-timing", 50, 48));
+				Widget("graphs.gpu-timing", 50, 48),
+				Widget("graphs.raw-frame-time", 60, 72));
 		}
 
 		public static PerfMeterOverlayPresetJson CreateFullDiagnostics()
@@ -739,14 +889,15 @@ namespace SGG.PerfMeter
 				Widget("timing.gpu-budget-bar", 60),
 				Widget("graphs.cpu-timing", 70, 48),
 				Widget("graphs.gpu-timing", 80, 48),
-				Widget("cpu.cores-bars", 90),
-				Widget("cpu.cores-graphs", 100, 48, false),
-				Widget("overdraw.card", 110),
-				Widget("rendering.summary-card", 120),
-				Widget("memory.summary-card", 130),
-				Widget("batching.summary-card", 140),
-				Widget("uploads.summary-card", 150),
-				Widget("custom-metrics.panel", 160));
+				Widget("graphs.raw-frame-time", 90, 72),
+				Widget("cpu.cores-bars", 100),
+				Widget("cpu.cores-graphs", 110, 48, false),
+				Widget("overdraw.card", 120),
+				Widget("rendering.summary-card", 130),
+				Widget("memory.summary-card", 140),
+				Widget("batching.summary-card", 150),
+				Widget("uploads.summary-card", 160),
+				Widget("custom-metrics.panel", 170));
 		}
 
 		private static PerfMeterOverlayPresetJson CreatePreset(string id, string displayName, string description, string layout, int maxWidth, params PerfMeterOverlayPresetWidgetJson[] widgets)

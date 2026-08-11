@@ -45,6 +45,9 @@ The default `MetricBars` layout renders compact rows for frequently watched cate
 ## Notes
 
 - Presets can enable a subset of these widgets and choose a layout such as `MetricBars`, `CompactCards`, `Graphs`, or `DiagnosticsWide`.
+- Preset descriptors are bounded by `PerfMeterOverlayLayoutLimits`: at most 24 admitted widgets, 600 graph points per widget, four active full graphs, width `360..780`, gap `0..24`, and explicit widget height `24..240`.
+- `PerfMeterWidgetRegistry.TryRegisterDescriptor(...)` admits at most 16 project extension descriptors. Extensions map a stable widget ID to existing `PerfMeterOverlayModule` composition; they do not execute arbitrary renderer code or bypass package history/graph limits.
+- `PerfMeterOverlayThemeRegistry` publishes read-only manifests for built-in themes with semantic CPU/GPU/frame/warning/accent/unavailable/grid/budget colors and explicit empty optional asset paths.
 - Text-row and metric-bar rows are lower-level renderers behind the layout system and expose textual versions of the same metric groups that may appear as cards, budget bars, or graphs in other layouts.
 - Numeric values use stable reserved numeric slots and a numeric monospace role, so changing values do not shift their columns; labels keep the selected overlay font family.
 - At narrow logical widths, cards and metric bars wrap. `FpsOnly` uses a deterministic bounded two-row fallback when its single row does not fit; this is a bounded layout behavior, not a promise for every arbitrary resolution or scale.

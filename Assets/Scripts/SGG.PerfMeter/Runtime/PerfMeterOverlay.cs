@@ -151,6 +151,10 @@ namespace SGG.PerfMeter
 		private VisualElement _textRows;
 		private VisualElement _barRows;
 		private VisualElement _graphs;
+		private VisualElement _cpuGraphScaleColumn;
+		private VisualElement _gpuGraphScaleColumn;
+		private VisualElement _cpuGraphLegendColumn;
+		private VisualElement _gpuGraphLegendColumn;
 		private VisualElement _fpsOnlyRow;
 		private VisualElement _fpsOnlyPrimaryRow;
 		private VisualElement _fpsOnlySecondaryRow;
@@ -196,6 +200,11 @@ namespace SGG.PerfMeter
 		private float _overlayFontSize = 12f;
 		private float _refreshIntervalSeconds = DefaultRefreshIntervalSeconds;
 		private int _graphHistoryLength = 120;
+		private float _layoutMaxWidth = GraphBlockWidth;
+		private float _layoutGap = BlockGap;
+		private float _frameTimeStripHeight = FrameTimeStripGraphHeight;
+		private bool _hasLayoutDescriptor;
+		private bool _frameTimeStripWidgetEnabled = true;
 		private int _textFieldCount;
 		private int _lastVisibleTextFieldCount;
 		private int _barFieldCount;
@@ -206,6 +215,7 @@ namespace SGG.PerfMeter
 		private bool _fpsOnlyTwoRows;
 		private float _fpsOnlyWarningWidth;
 		private bool _geometryApplying;
+		private bool _cpuCoreBarsStacked;
 		private bool _geometryDirty = true;
 		private float _lastGeometryPanelWidth = -1f;
 		private float _lastGeometryScale = -1f;
@@ -226,6 +236,50 @@ namespace SGG.PerfMeter
 		internal static bool ShouldUseFpsOnlyTwoRows(float requiredWidth, float availableWidth)
 		{
 			return requiredWidth > availableWidth + GeometryThresholdTolerance;
+		}
+
+		internal static PerfMeterOverlayThemeManifest CreateThemeManifest(PerfMeterOverlayTheme theme)
+		{
+			PerfMeterOverlayTheme normalized = PerfMeterSettingsStore.NormalizeOverlayTheme(theme);
+			PerfMeterOverlayThemeTokens tokens = PerfMeterOverlayThemeTokens.Resolve(normalized);
+			string displayName;
+			switch (normalized)
+			{
+				case PerfMeterOverlayTheme.Glass:
+					displayName = "Glass";
+					break;
+				case PerfMeterOverlayTheme.Cyber:
+					displayName = "Cyber";
+					break;
+				case PerfMeterOverlayTheme.HighContrast:
+					displayName = "High Contrast";
+					break;
+				default:
+					displayName = "Classic Dark";
+					break;
+			}
+
+			return new PerfMeterOverlayThemeManifest(
+				normalized,
+				normalized.ToString(),
+				displayName,
+				PerfMeterOverlayLayout.CompactCards,
+				tokens.Background,
+				tokens.GraphBackground,
+				tokens.Text,
+				tokens.MutedText,
+				tokens.Frame,
+				tokens.CpuMain,
+				tokens.CpuRender,
+				tokens.CpuOther,
+				tokens.Gpu,
+				tokens.Warning,
+				tokens.Accent,
+				tokens.Unavailable,
+				tokens.Grid,
+				tokens.Budget,
+				string.Empty,
+				string.Empty);
 		}
 
 		private void Awake()
@@ -380,6 +434,53 @@ namespace SGG.PerfMeter
 				UpdateFrameTimeStripCustomLegends();
 				ApplyModeLayout();
 			}
+		}
+
+		internal void SetLayoutDescriptor(PerfMeterOverlayPresetJson preset)
+		{
+			_hasLayoutDescriptor = preset != null;
+			_layoutMaxWidth = preset?.style != null
+				? Mathf.Clamp(preset.style.maxWidth, PerfMeterOverlayLayoutLimits.MinWidth, PerfMeterOverlayLayoutLimits.MaxWidth)
+				: GraphBlockWidth;
+			_layoutGap = preset?.style != null ? Mathf.Clamp(preset.style.gap, 0, PerfMeterOverlayLayoutLimits.MaxGap) : BlockGap;
+			_frameTimeStripWidgetEnabled = !_hasLayoutDescriptor;
+			_frameTimeStripHeight = FrameTimeStripGraphHeight;
+
+			bool hasLegacyGraphWidget = false;
+			bool foundFrameTimeStripWidget = false;
+			PerfMeterOverlayPresetWidgetJson[] widgets = preset?.widgets ?? Array.Empty<PerfMeterOverlayPresetWidgetJson>();
+			int admittedWidgets = 0;
+			for (int i = 0; i < widgets.Length && admittedWidgets < PerfMeterOverlayLayoutLimits.MaxWidgetsPerLayout; i++)
+			{
+				PerfMeterOverlayPresetWidgetJson widget = widgets[i];
+				if (widget == null || !widget.enabled || string.IsNullOrWhiteSpace(widget.id) || !PerfMeterWidgetRegistry.TryGetDescriptor(widget.id, out PerfMeterWidgetDescriptor descriptor) || !descriptor.IsPresetBlock)
+				{
+					continue;
+				}
+
+				admittedWidgets++;
+				if (string.Equals(widget.id, "graphs.raw-frame-time", StringComparison.OrdinalIgnoreCase))
+				{
+					foundFrameTimeStripWidget = true;
+					_frameTimeStripWidgetEnabled = true;
+					if (widget.height > 0)
+					{
+						_frameTimeStripHeight = Mathf.Clamp(widget.height, PerfMeterOverlayLayoutLimits.MinExplicitWidgetHeight, PerfMeterOverlayLayoutLimits.MaxExplicitWidgetHeight);
+					}
+				}
+				else if (string.Equals(widget.id, "graphs.cpu-timing", StringComparison.OrdinalIgnoreCase) || string.Equals(widget.id, "graphs.gpu-timing", StringComparison.OrdinalIgnoreCase))
+				{
+					hasLegacyGraphWidget = true;
+				}
+			}
+
+			if (_hasLayoutDescriptor && !foundFrameTimeStripWidget)
+			{
+				_frameTimeStripWidgetEnabled = hasLegacyGraphWidget;
+			}
+
+			_frameTimeStrip?.SetGraphHeight(_frameTimeStripHeight);
+			ApplyModeLayout();
 		}
 
 		internal void SetTargetFps(PerfMeterTargetFps targetFps)
@@ -572,7 +673,7 @@ namespace SGG.PerfMeter
 
 		private float GetResponsiveGraphWidth(float availableWidth)
 		{
-			return Mathf.Min(GraphBlockWidth, Mathf.Max(1f, availableWidth));
+			return Mathf.Min(_layoutMaxWidth, Mathf.Min(GraphBlockWidth, Mathf.Max(1f, availableWidth)));
 		}
 
 		private void ApplyResponsiveWidgetWidth(float availableWidth)
@@ -586,6 +687,16 @@ namespace SGG.PerfMeter
 			if (_frameTimeStripBlock != null)
 			{
 				_frameTimeStripBlock.style.width = width;
+			}
+
+			if (_graphBlock != null)
+			{
+				_graphBlock.style.width = width;
+			}
+
+			if (_cpuCoreGraphsBlock != null)
+			{
+				_cpuCoreGraphsBlock.style.width = width;
 			}
 
 			_fpsCard?.SetAvailableWidth(width);
@@ -889,6 +1000,10 @@ namespace SGG.PerfMeter
 			_textRows = null;
 			_barRows = null;
 			_graphs = null;
+			_cpuGraphScaleColumn = null;
+			_gpuGraphScaleColumn = null;
+			_cpuGraphLegendColumn = null;
+			_gpuGraphLegendColumn = null;
 			_fpsOnlyRow = null;
 			_fpsOnlyPrimaryRow = null;
 			_fpsOnlySecondaryRow = null;
@@ -1012,8 +1127,10 @@ namespace SGG.PerfMeter
 			Label cpuMaxScaleLabel;
 			Label cpuBudgetLabel;
 			VisualElement cpuScale = CreateScaleLabelColumn(CpuGraphHeight, out cpuMaxScaleLabel, out cpuBudgetLabel);
+			_cpuGraphScaleColumn = cpuScale;
 			_cpuGraph = new PerfMeterGraphElement("sgg-perfmeter-cpu-graph", PerfMeterGraphMode.StackedCpu, CpuGraphHeight, cpuMaxScaleLabel, cpuBudgetLabel, _graphHistoryLength);
 			VisualElement cpuLegend = CreateLegendColumn(CpuGraphHeight);
+			_cpuGraphLegendColumn = cpuLegend;
 			_cpuFrameLegend = CreateLegendLine("frame", FrameColor);
 			_cpuOtherLegend = CreateLegendLine("other", OtherCpuColor);
 			_cpuMainLegend = CreateLegendLine("main", MainColor);
@@ -1034,8 +1151,10 @@ namespace SGG.PerfMeter
 			Label gpuMaxScaleLabel;
 			Label gpuBudgetLabel;
 			VisualElement gpuScale = CreateScaleLabelColumn(GpuGraphHeight, out gpuMaxScaleLabel, out gpuBudgetLabel);
+			_gpuGraphScaleColumn = gpuScale;
 			_gpuGraph = new PerfMeterGraphElement("sgg-perfmeter-gpu-graph", PerfMeterGraphMode.Line, GpuGraphHeight, gpuMaxScaleLabel, gpuBudgetLabel, _graphHistoryLength);
 			VisualElement gpuLegend = CreateLegendColumn(GpuGraphHeight);
+			_gpuGraphLegendColumn = gpuLegend;
 			_gpuLegend = CreateLegendLine("gpu", GpuColor);
 			gpuLegend.Add(_gpuLegend.Root);
 			gpuRow.Add(gpuScale);
@@ -1084,6 +1203,7 @@ namespace SGG.PerfMeter
 			_frameTimeStripBlock.Add(_frameTimeStripLegendRow);
 
 			_frameTimeStrip = new PerfMeterFrameTimeStripElement(_graphHistoryLength);
+			_frameTimeStrip.SetGraphHeight(_frameTimeStripHeight);
 			_frameTimeStrip.ConfigureCustomMetricSeries(_customMetricGraphs);
 			_frameTimeStripBlock.Add(_frameTimeStrip);
 			UpdateFrameTimeStripCustomLegends();
@@ -1204,6 +1324,7 @@ namespace SGG.PerfMeter
 				pickingMode = PickingMode.Ignore
 			};
 			row.style.flexDirection = FlexDirection.Row;
+			row.style.width = Length.Percent(100f);
 			row.style.height = height;
 			row.style.alignItems = Align.FlexEnd;
 			row.style.marginBottom = 4f;
@@ -1470,6 +1591,8 @@ namespace SGG.PerfMeter
 			}
 
 			_graphBlock.style.display = showGraphs ? DisplayStyle.Flex : DisplayStyle.None;
+			_graphBlock.style.width = responsiveGraphWidth;
+			SetResponsiveGraphColumns(responsiveGraphWidth);
 			if (_frameTimeStripBlock != null)
 			{
 				_frameTimeStripBlock.style.display = showFrameTimeStrip ? DisplayStyle.Flex : DisplayStyle.None;
@@ -1480,19 +1603,32 @@ namespace SGG.PerfMeter
 			{
 				_cpuCoreGraphsBlock.style.display = showCpuCoreGraphsBlock ? DisplayStyle.Flex : DisplayStyle.None;
 				_cpuCoreGraphsBlock.style.height = showCpuCoreGraphsBlock ? StyleKeyword.Auto : 0f;
-				_cpuCoreGraphsBlock.style.width = GraphBlockWidth;
+				_cpuCoreGraphsBlock.style.width = responsiveGraphWidth;
 			}
 
 			if (_cpuCoreBarsBlock != null)
 			{
 				_cpuCoreBarsBlock.style.display = showCpuCoreBarsBlock ? DisplayStyle.Flex : DisplayStyle.None;
 				_cpuCoreBarsBlock.style.height = showCpuCoreBarsBlock ? StyleKeyword.Auto : 0f;
-				_cpuCoreBarsBlock.style.width = CpuCoreBarsSidePanelWidth;
+				_cpuCoreBarsBlock.style.width = Mathf.Min(CpuCoreBarsSidePanelWidth, responsiveGraphWidth);
 			}
 
 			float textWidth = GetTextBlockWidth();
-			float contentRowWidth = textWidth + (showCpuCoreBarsBlock ? BlockGap + CpuCoreBarsSidePanelWidth : 0f);
-			float primaryBlockWidth = showGraphs || showCpuCoreGraphsBlock ? GraphBlockWidth : showWidgets || showFrameTimeStrip ? responsiveGraphWidth : 0f;
+			_cpuCoreBarsStacked = showCpuCoreBarsBlock && textWidth + _layoutGap + CpuCoreBarsSidePanelWidth > responsiveGraphWidth;
+			if (showCpuCoreBarsBlock && !_cpuCoreBarsStacked)
+			{
+				textWidth = Mathf.Min(textWidth, Mathf.Max(1f, responsiveGraphWidth - _layoutGap - CpuCoreBarsSidePanelWidth));
+			}
+			else
+			{
+				textWidth = Mathf.Min(textWidth, responsiveGraphWidth);
+			}
+			float contentRowWidth = !showCpuCoreBarsBlock
+				? textWidth
+				: _cpuCoreBarsStacked
+					? Mathf.Max(textWidth, Mathf.Min(CpuCoreBarsSidePanelWidth, responsiveGraphWidth))
+					: textWidth + _layoutGap + CpuCoreBarsSidePanelWidth;
+			float primaryBlockWidth = showGraphs || showCpuCoreGraphsBlock || showWidgets || showFrameTimeStrip ? responsiveGraphWidth : 0f;
 			float containerWidth = Mathf.Max(primaryBlockWidth, contentRowWidth);
 			_container.style.width = containerWidth;
 			_contentRow.style.width = contentRowWidth;
@@ -1515,6 +1651,7 @@ namespace SGG.PerfMeter
 			}
 
 			ApplyWidgetLayout();
+			ApplyDescriptorGaps();
 
 			ApplyBlockAlignment();
 			ApplyTuningToVisuals();
@@ -1526,11 +1663,53 @@ namespace SGG.PerfMeter
 			return _mode != PerfMeterOverlayMode.FpsOnly && _layout != PerfMeterOverlayLayout.Classic && (HasModule(PerfMeterOverlayModule.Fps) || HasModule(PerfMeterOverlayModule.Timing) || HasModule(PerfMeterOverlayModule.Overdraw) || HasModule(PerfMeterOverlayModule.Heatmap));
 		}
 
+		private void SetResponsiveGraphColumns(float graphBlockWidth)
+		{
+			bool showScale = graphBlockWidth >= 120f;
+			bool showLegend = graphBlockWidth >= PerfMeterOverlayLayoutLimits.MinWidth;
+			SetElementDisplay(_cpuGraphScaleColumn, showScale);
+			SetElementDisplay(_gpuGraphScaleColumn, showScale);
+			SetElementDisplay(_cpuGraphLegendColumn, showLegend);
+			SetElementDisplay(_gpuGraphLegendColumn, showLegend);
+		}
+
+		private static void SetElementDisplay(VisualElement element, bool visible)
+		{
+			if (element != null)
+			{
+				element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+			}
+		}
+
 		private bool ShouldShowFrameTimeStrip()
 		{
-			bool hasFrameGraphs = HasModule(PerfMeterOverlayModule.Graphs);
+			bool widgetEnabled = !_hasLayoutDescriptor || _frameTimeStripWidgetEnabled;
+			bool hasFrameGraphs = widgetEnabled && HasModule(PerfMeterOverlayModule.Graphs);
 			bool hasCustomGraphs = HasModule(PerfMeterOverlayModule.CustomMetrics) && (_frameTimeStrip?.CustomSeriesCount ?? 0) > 0;
-			return (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && (hasFrameGraphs || hasCustomGraphs);
+			return widgetEnabled && (_mode == PerfMeterOverlayMode.Graphs || _mode == PerfMeterOverlayMode.Full) && (hasFrameGraphs || hasCustomGraphs);
+		}
+
+		private void ApplyDescriptorGaps()
+		{
+			if (_widgetBlock != null)
+			{
+				_widgetBlock.style.marginBottom = _layoutGap;
+			}
+
+			if (_graphBlock != null)
+			{
+				_graphBlock.style.marginBottom = _layoutGap;
+			}
+
+			if (_cpuCoreGraphsBlock != null)
+			{
+				_cpuCoreGraphsBlock.style.marginBottom = _layoutGap;
+			}
+
+			if (_frameTimeStripBlock != null)
+			{
+				_frameTimeStripBlock.style.marginTop = _layoutGap;
+			}
 		}
 
 		private bool ShouldShowCpuCoreBarsBlock()
@@ -1555,7 +1734,8 @@ namespace SGG.PerfMeter
 				return Mathf.Min(GetFpsOnlyRequiredWidth(), GetAvailableLogicalPanelWidth(GetPanelWidth()));
 			}
 
-			return _layout == PerfMeterOverlayLayout.DiagnosticsWide || _layout == PerfMeterOverlayLayout.MetricBars ? DiagnosticsWideTextWidth : TextBlockWidth;
+			float requestedWidth = _layout == PerfMeterOverlayLayout.DiagnosticsWide || _layout == PerfMeterOverlayLayout.MetricBars ? DiagnosticsWideTextWidth : TextBlockWidth;
+			return Mathf.Min(requestedWidth, GetResponsiveGraphWidth(GetAvailableLogicalPanelWidth(GetPanelWidth())));
 		}
 
 		private void ApplyWidgetLayout()
@@ -1841,7 +2021,7 @@ namespace SGG.PerfMeter
 			bool rightAligned = _corner == PerfMeterOverlayCorner.TopRight || _corner == PerfMeterOverlayCorner.BottomRight;
 			Align align = rightAligned ? Align.FlexEnd : Align.FlexStart;
 			_contentRow.style.alignSelf = align;
-			_contentRow.style.flexDirection = rightAligned ? FlexDirection.RowReverse : FlexDirection.Row;
+			_contentRow.style.flexDirection = _cpuCoreBarsStacked ? FlexDirection.Column : rightAligned ? FlexDirection.RowReverse : FlexDirection.Row;
 			_textBlock.style.alignSelf = Align.FlexStart;
 			_widgetBlock.style.alignSelf = align;
 			_graphBlock.style.alignSelf = align;
@@ -1857,8 +2037,9 @@ namespace SGG.PerfMeter
 			if (_cpuCoreBarsBlock != null)
 			{
 				_cpuCoreBarsBlock.style.alignSelf = Align.FlexStart;
-				_cpuCoreBarsBlock.style.marginLeft = rightAligned ? 0f : BlockGap;
-				_cpuCoreBarsBlock.style.marginRight = rightAligned ? BlockGap : 0f;
+				_cpuCoreBarsBlock.style.marginLeft = _cpuCoreBarsStacked || rightAligned ? 0f : _layoutGap;
+				_cpuCoreBarsBlock.style.marginRight = _cpuCoreBarsStacked || !rightAligned ? 0f : _layoutGap;
+				_cpuCoreBarsBlock.style.marginTop = _cpuCoreBarsStacked ? _layoutGap : 0f;
 			}
 		}
 
@@ -5375,6 +5556,12 @@ namespace SGG.PerfMeter
 				MarkDirtyRepaint();
 			}
 
+			internal void SetGraphHeight(float height)
+			{
+				style.height = Mathf.Clamp(height, PerfMeterOverlayLayoutLimits.MinExplicitWidgetHeight, PerfMeterOverlayLayoutLimits.MaxExplicitWidgetHeight);
+				MarkDirtyRepaint();
+			}
+
 			internal void AddSample(int collectionFrame, double frameTimeMs, bool valid)
 			{
 				if (_history.AddSample(collectionFrame, frameTimeMs, valid))
@@ -5672,6 +5859,9 @@ namespace SGG.PerfMeter
 				SetHistoryCapacity(historyCapacity);
 				pickingMode = PickingMode.Ignore;
 				style.width = GraphPlotWidth;
+				style.minWidth = 1f;
+				style.flexGrow = 1f;
+				style.flexShrink = 1f;
 				style.height = height;
 				style.backgroundColor = GraphBackgroundColor;
 				UpdateScaleLabels();

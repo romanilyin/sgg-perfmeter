@@ -28,6 +28,17 @@ Pending release after `2026.8.11-1`:
 - the renderer uses each channel's own configured range and never performs implicit cross-unit normalization;
 - configuration is additive to preset schema v1, while bounded histories and warmed updates remain allocation-free.
 
+### Implemented: Bounded descriptors and theme manifests
+
+Pending release after `2026.8.11-1`:
+
+- visual presets now apply bounded width, gap, ordered admission and supported explicit height metadata at configuration boundaries while retaining a safe fixed block order;
+- narrow graph layouts hide fixed legend and scale columns before plot overflow;
+- `PerfMeterOverlayThemeRegistry` exposes read-only manifests for built-in semantic tokens and explicit optional asset paths;
+- projects can register at most 16 stable-ID descriptors that compose existing overlay modules, without arbitrary renderer execution;
+- limits are explicit for widgets, graph points, active full graphs, width, gap and height;
+- steady-state value/history updates keep the existing visual tree.
+
 ### Resolved: Text overflow and stable numeric geometry
 
 Implemented in `2026.8.5-2`:

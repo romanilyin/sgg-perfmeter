@@ -239,6 +239,51 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
 		}
 
+		[UnityTest]
+		public IEnumerator LayoutDescriptorAppliesBoundedWidthGapAndHeightWithoutSteadyStateRebuild()
+		{
+			_owner = new GameObject("PerfMeter Overlay Descriptor Test");
+			PerfMeterOverlay overlay = _owner.AddComponent<PerfMeterOverlay>();
+			yield return WaitForOverlay(overlay);
+
+			PerfMeterOverlayPresetJson preset = PerfMeterOverlayPresetDefaults.CreateGraphs();
+			preset.style.maxWidth = 480;
+			preset.style.gap = 12;
+			for (int i = 0; i < preset.widgets.Length; i++)
+			{
+				if (preset.widgets[i] != null && preset.widgets[i].id == "graphs.raw-frame-time")
+				{
+					preset.widgets[i].height = 96;
+				}
+			}
+
+			overlay.SetModules(PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.CpuCoreBars);
+			overlay.SetMode(PerfMeterOverlayMode.Full);
+			overlay.SetLayoutDescriptor(preset);
+			yield return null;
+			yield return null;
+
+			VisualElement container = overlay.OwnedContainer;
+			VisualElement graphBlock = container.Q<VisualElement>("sgg-perfmeter-graph-block");
+			VisualElement stripBlock = container.Q<VisualElement>("sgg-perfmeter-frame-time-strip-block");
+			VisualElement strip = container.Q<VisualElement>("sgg-perfmeter-frame-time-strip");
+			Assert.That(graphBlock.resolvedStyle.width, Is.LessThanOrEqualTo(480.01f));
+			Assert.That(stripBlock.resolvedStyle.width, Is.LessThanOrEqualTo(480.01f));
+			Assert.That(container.resolvedStyle.width, Is.LessThanOrEqualTo(480.01f));
+			Assert.That(stripBlock.resolvedStyle.marginTop, Is.EqualTo(12f).Within(0.01f));
+			Assert.That(strip.resolvedStyle.height, Is.EqualTo(96f).Within(0.01f));
+
+			int childCount = container.childCount;
+			for (int frame = 1; frame <= 200; frame++)
+			{
+				overlay.RecordFrameTimeSample(frame, frame == 100 ? 80d : 16d, true);
+			}
+
+			Assert.That(overlay.OwnedContainer, Is.SameAs(container));
+			Assert.That(container.childCount, Is.EqualTo(childCount));
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.SameAs(strip));
+		}
+
 		private static void AssertCardChildrenWithin(VisualElement root, string id)
 		{
 			string cardName = "sgg-perfmeter-widget-card-" + id;

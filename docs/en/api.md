@@ -138,6 +138,30 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 Legacy overlay modes and semantic module flags remain available for compatibility and filtering.
 
+Visual preset descriptors are bounded by `PerfMeterOverlayLayoutLimits`. Built-in semantic theme colors are available through `PerfMeterOverlayThemeRegistry.GetManifest(...)` / `GetAllManifests()`. Projects can register at most 16 additional module-backed descriptor IDs through `PerfMeterWidgetRegistry.TryRegisterDescriptor(...)`; an extension descriptor composes existing `PerfMeterOverlayModule` rendering only and cannot install arbitrary renderer callbacks.
+
+```csharp
+PerfMeterOverlayThemeManifest theme =
+    PerfMeterOverlayThemeRegistry.GetManifest(PerfMeterOverlayTheme.Cyber);
+
+var descriptor = new PerfMeterWidgetDescriptor(
+    "project.movement-panel",
+    "Movement panel",
+    "Project",
+    "Panel",
+    "CustomMetrics",
+    "Project movement metrics rendered by the existing custom-metric panel.",
+    isPresetBlock: true,
+    isDebugOnly: false,
+    overlayModules: PerfMeterOverlayModule.CustomMetrics,
+    requiredProviders: new[] { "CustomMetrics" });
+
+if (!PerfMeterWidgetRegistry.TryRegisterDescriptor(descriptor, out string warning))
+{
+    UnityEngine.Debug.LogWarning(warning);
+}
+```
+
 ## Sessions
 
 ```csharp

@@ -7,6 +7,7 @@
 - Added typed runtime mutation results and truthful MCP mutation responses for lifecycle, mode, overlay, overdraw, and session operations.
 - Added a raw per-collected-frame hitch strip with bounded history, explicit timing gaps, budget severity, and peak-preserving pixel compression independent of throttled overlay text refresh.
 - Added up to four visual-preset custom metric graph channels selected by stable metric ID with independent signed ranges, display scales, colors, units, and unavailable gaps.
+- Activated bounded visual layout descriptors, module-backed extension widget descriptors, raw-strip height/width/gap controls, responsive graph columns, and public semantic theme manifests without steady-state visual-tree rebuilds.
 
 ## 2026.8.11-1
 
