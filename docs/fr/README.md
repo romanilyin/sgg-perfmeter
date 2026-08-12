@@ -55,7 +55,7 @@ PerfMeter peut collecter des signaux thermiques et Adaptive Performance optionne
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.11-2"
+    "com.sungeargames.perfmeter": "2026.8.12-1"
   }
 }
 ```
