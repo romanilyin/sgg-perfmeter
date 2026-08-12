@@ -1,0 +1,32 @@
+{
+  "schema": "sgg.perfmeter.renderdoc-analysis-request",
+  "schema_version": 1,
+  "request_id": "rd-analysis-golden",
+  "capture": {
+    "artifact_id": "artifact-golden",
+    "capture_id": "capture-golden",
+    "bundle_id": "bundle-golden",
+    "path": "Temp/PerfMeter/RenderDocCopies/golden/capture.rdc",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "size_bytes": "536870912",
+    "association_state": "bridge_authenticated",
+    "finalization_state": "finalized",
+    "authority_state": "authenticated",
+    "content_state": "present",
+    "source_file_identity_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "capture_app_api": "1.7.0"
+  },
+  "counter_selection": {
+    "mode": "semantic_pack",
+    "packs": ["core"],
+    "explicit_counter_ids": []
+  },
+  "options": {
+    "include_action_tree": true,
+    "include_raw_counter_descriptions": true,
+    "timeout_seconds": 300,
+    "max_actions": 100000,
+    "max_counter_results": 500000,
+    "max_output_bytes": 67108864
+  }
+}

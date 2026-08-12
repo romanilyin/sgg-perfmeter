@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/romanilyin/sgg-perfmeter/schemas/renderdoc-analysis-result-v1.schema.json",
+  "title": "SGG PerfMeter RenderDoc Analysis Result v1",
+  "type": "object",
+  "required": ["schema", "schema_version", "request_id", "status", "capture", "analyzer", "actions_complete", "action_total_count", "actions", "counter_catalog_complete", "counter_total_count", "counter_catalog", "results_complete", "result_total_count", "results", "summary", "warnings", "diagnostics"],
+  "properties": {
+    "schema": { "const": "sgg.perfmeter.renderdoc-analysis" },
+    "schema_version": { "const": 1 },
+    "request_id": { "$ref": "#/$defs/token" },
+    "status": { "enum": ["completed", "completed_with_errors"] },
+    "capture": {
+      "type": "object",
+      "required": ["artifact_id", "capture_id", "bundle_id", "expected_sha256", "observed_sha256", "hash_verified", "size_bytes", "association_state", "finalization_state", "authority_state", "content_state", "source_file_identity_sha256", "capture_app_api"],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/token" },
+        "capture_id": { "$ref": "#/$defs/token" },
+        "bundle_id": { "$ref": "#/$defs/token" },
+        "expected_sha256": { "$ref": "#/$defs/sha256" },
+        "observed_sha256": { "$ref": "#/$defs/sha256" },
+        "hash_verified": { "const": true },
+        "size_bytes": { "$ref": "#/$defs/uint64" },
+        "association_state": { "const": "bridge_authenticated" },
+        "finalization_state": { "const": "finalized" },
+        "authority_state": { "const": "authenticated" },
+        "content_state": { "const": "present" },
+        "source_file_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "capture_app_api": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "additionalProperties": true
+    },
+    "analyzer": { "$ref": "#/$defs/analyzer" },
+    "actions_complete": { "const": true },
+    "action_total_count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+    "actions": {
+      "type": "array",
+      "maxItems": 1000000,
+      "items": {
+        "type": "object",
+        "required": ["event_id", "parent_event_id", "name", "flags"],
+        "properties": {
+          "event_id": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+          "parent_event_id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "name": { "type": "string", "maxLength": 1024 },
+          "flags": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/token" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "counter_catalog_complete": { "const": true },
+    "counter_total_count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "counter_catalog": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "required": ["id", "native_id", "name", "description", "unit", "result_type", "result_byte_width", "aggregation", "availability", "reason", "requested", "fetched", "pass_index", "provenance"],
+        "properties": {
+          "id": { "$ref": "#/$defs/token" },
+          "native_id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "description": { "type": "string", "maxLength": 4096 },
+          "unit": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "result_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "result_byte_width": { "type": "integer", "minimum": 1, "maximum": 32 },
+          "aggregation": { "enum": ["sum", "weighted_mean", "mean", "min", "max", "ratio_of_sums", "last", "non_aggregatable"] },
+          "availability": { "$ref": "#/$defs/availability" },
+          "reason": { "type": "string", "maxLength": 1024 },
+          "requested": { "type": "boolean" },
+          "fetched": { "type": "boolean" },
+          "pass_index": { "type": "integer", "minimum": -1 },
+          "provenance": { "$ref": "#/$defs/token" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "results_complete": { "const": true },
+    "result_total_count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+    "results": {
+      "type": "array",
+      "maxItems": 1000000,
+      "items": {
+        "type": "object",
+        "required": ["event_id", "counter_id", "availability", "reason"],
+        "properties": {
+          "event_id": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+          "counter_id": { "$ref": "#/$defs/token" },
+          "availability": { "$ref": "#/$defs/availability" },
+          "reason": { "type": "string", "maxLength": 1024 },
+          "raw_value": {
+            "type": "object",
+            "required": ["result_type", "byte_width", "encoding", "value"],
+            "properties": {
+              "result_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "byte_width": { "type": "integer", "minimum": 1, "maximum": 32 },
+              "encoding": { "$ref": "#/$defs/token" },
+              "value": { "type": "string", "minLength": 1, "maxLength": 512 }
+            },
+            "additionalProperties": true
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "availability": { "const": "available" } }, "required": ["availability"] },
+            "then": { "required": ["raw_value"], "properties": { "raw_value": { "type": "object" } } },
+            "else": { "not": { "required": ["raw_value"] } }
+          }
+        ],
+        "additionalProperties": true
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["requested_counter_count", "described_counter_count", "fetched_counter_count", "unsupported_counter_count", "failed_counter_count", "failed_result_count", "replay_pass_count", "duration_milliseconds"],
+      "properties": {
+        "requested_counter_count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "described_counter_count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "fetched_counter_count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "unsupported_counter_count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "failed_counter_count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "failed_result_count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "replay_pass_count": { "type": "integer", "minimum": 0 },
+        "duration_milliseconds": { "$ref": "#/$defs/uint64" }
+      },
+      "additionalProperties": true
+    },
+    "warnings": { "type": "array", "maxItems": 128, "items": { "type": "string", "minLength": 1, "maxLength": 2048 } },
+    "diagnostics": { "type": "array", "maxItems": 0 }
+  },
+  "$defs": {
+    "token": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9_.:/-]+$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "uint64": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]|1844674407370955161[0-5])$" },
+    "availability": { "enum": ["not_requested", "unsupported", "available", "fetch_failed", "not_applicable"] },
+    "analyzer": {
+      "type": "object",
+      "required": ["analyzer_version", "renderdoc_build", "replay_api", "graphics_api", "gpu", "driver", "replay_host", "started_utc", "completed_utc", "duration_milliseconds"],
+      "properties": {
+        "analyzer_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "renderdoc_build": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "replay_api": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "graphics_api": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gpu": { "type": "string", "maxLength": 512 },
+        "driver": { "type": "string", "maxLength": 512 },
+        "replay_host": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "started_utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+        "completed_utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+        "duration_milliseconds": { "$ref": "#/$defs/uint64" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

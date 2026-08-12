@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/romanilyin/sgg-perfmeter/schemas/renderdoc-analysis-request-v1.schema.json",
+  "title": "SGG PerfMeter RenderDoc Analysis Request v1",
+  "type": "object",
+  "required": ["schema", "schema_version", "request_id", "capture", "counter_selection", "options"],
+  "properties": {
+    "schema": { "const": "sgg.perfmeter.renderdoc-analysis-request" },
+    "schema_version": { "const": 1 },
+    "request_id": { "$ref": "#/$defs/token" },
+    "capture": {
+      "type": "object",
+      "required": ["artifact_id", "capture_id", "bundle_id", "path", "sha256", "size_bytes", "association_state", "finalization_state", "authority_state", "content_state", "source_file_identity_sha256", "capture_app_api"],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/token" },
+        "capture_id": { "$ref": "#/$defs/token" },
+        "bundle_id": { "$ref": "#/$defs/token" },
+        "path": { "type": "string", "minLength": 5, "maxLength": 1024, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[:\\\\]).+\\.[rR][dD][cC]$" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "$ref": "#/$defs/uint64" },
+        "association_state": { "const": "bridge_authenticated" },
+        "finalization_state": { "const": "finalized" },
+        "authority_state": { "const": "authenticated" },
+        "content_state": { "const": "present" },
+        "source_file_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "capture_app_api": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "additionalProperties": true
+    },
+    "counter_selection": {
+      "type": "object",
+      "required": ["mode", "packs", "explicit_counter_ids"],
+      "properties": {
+        "mode": { "enum": ["none", "semantic_pack", "explicit", "semantic_pack_and_explicit"] },
+        "packs": { "type": "array", "maxItems": 64, "uniqueItems": true, "items": { "$ref": "#/$defs/token" } },
+        "explicit_counter_ids": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/token" } }
+      },
+      "additionalProperties": true
+    },
+    "options": {
+      "type": "object",
+      "required": ["include_action_tree", "include_raw_counter_descriptions", "timeout_seconds", "max_actions", "max_counter_results", "max_output_bytes"],
+      "properties": {
+        "include_action_tree": { "type": "boolean" },
+        "include_raw_counter_descriptions": { "type": "boolean" },
+        "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 1800 },
+        "max_actions": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "max_counter_results": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "max_output_bytes": { "type": "integer", "minimum": 1024, "maximum": 67108864 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "token": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9_.:/-]+$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "uint64": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]|1844674407370955161[0-5])$" }
+  },
+  "additionalProperties": true
+}
