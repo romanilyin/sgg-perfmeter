@@ -5680,18 +5680,35 @@ namespace SGG.PerfMeter
 
 			private Color GetSeverityColor(double frameTimeMs)
 			{
-				if (frameTimeMs >= _frameBudgetMs * 2d)
+				if (frameTimeMs > _frameBudgetMs * 2d)
 				{
 					return FpsCriticalColor;
 				}
 
-				if (frameTimeMs > _frameBudgetMs)
+				if (frameTimeMs > _frameBudgetMs * 1.2d)
 				{
-					return WarningColor;
+					return FpsWarningColor;
 				}
 
-				return FrameColor;
+				if (frameTimeMs > _frameBudgetMs)
+				{
+					return FpsCautionColor;
+				}
+
+				if (frameTimeMs >= _frameBudgetMs * 0.8d)
+				{
+					return FpsExcellentColor;
+				}
+
+				return CpuCoreLowLoadColor;
 			}
+
+#if UNITY_INCLUDE_TESTS
+			internal Color GetSeverityColorForTests(double frameTimeMs)
+			{
+				return GetSeverityColor(frameTimeMs);
+			}
+#endif
 
 			private bool ContainsCustomMetricId(string metricId, int configuredCount)
 			{
