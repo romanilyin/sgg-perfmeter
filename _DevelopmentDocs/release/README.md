@@ -4,35 +4,35 @@
 
 ## Current Release
 
-- Release candidate: `2026.8.12-1`.
-- Current published release: `2026.8.11-2`
-- Current npm `latest`: `2026.8.11-2`
-- Previous published release: `2026.8.11-1`
+- Release candidate: none.
+- Current published release: `2026.8.12-1`
+- Current npm `latest`: `2026.8.12-1`
+- Previous published release: `2026.8.11-2`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- Release PR: [#26](https://github.com/romanilyin/sgg-perfmeter/pull/26) merged to `main` as commit `56dcff41ea5a359d7becdbf7b65e520f90947e1f`
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.11-2 (published 2026-08-11)
-- Git tag `2026.8.11-2` points to main merge commit `56dcff41ea5a359d7becdbf7b65e520f90947e1f`
-- Last published npm: `com.sungeargames.perfmeter@2026.8.11-2` through Trusted Publishing OIDC with verified SLSA provenance v1
-- npm dist-tag: `latest` -> `2026.8.11-2`
-- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31533825131 (completed successfully and published npm)
-- Last published npm SHA-1: `800f00794b2b983fa25ea49540713dea86f2f65b`
-- Last published npm integrity: `sha512-/b9PKTor417+MeXe/hupvoOrp9/dmjxfLgTo0tmhPVZcP/8AsTuknpU65XYFyyCxgNBelMDQS2HxNqBvn3hhTg==`
+- Release PR: [#29](https://github.com/romanilyin/sgg-perfmeter/pull/29) merged to `main` as commit `726ea1e192cc4f1b064865520993e0ecf3ad8cb0`
+- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.12-1 (published 2026-08-12)
+- Git tag `2026.8.12-1` points to main merge commit `726ea1e192cc4f1b064865520993e0ecf3ad8cb0`
+- Last published npm: `com.sungeargames.perfmeter@2026.8.12-1` through Trusted Publishing OIDC with verified SLSA provenance v1
+- npm dist-tag: `latest` -> `2026.8.12-1`
+- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31623627489 (completed successfully and published npm)
+- Last published npm SHA-1: `7fc3a779dc63a87f2e8d56ab091d96ff94b0fbb4`
+- Last published npm integrity: `sha512-tcY9skyONwaHb/TwkCDLyvVLgLv2kUPDjwry4+6Ux9ZqRKMYP85aIUODC76tiB3jWpvug9CXJWjsaBmlLsgeQA==`
 - Registry signature key ID: `SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U`
 - npm audit signatures: one registry signature and one attestation verified.
-- SLSA provenance v1 resolves `refs/tags/2026.8.11-2`, commit `56dcff41ea5a359d7becdbf7b65e520f90947e1f`, and workflow run `31533825131`.
-- Public npm and Git UPM install pins point to published `2026.8.11-2`; they were updated only after verified GitHub/npm publication and clean-consumer installs.
+- SLSA provenance v1 resolves `refs/tags/2026.8.12-1`, commit `726ea1e192cc4f1b064865520993e0ecf3ad8cb0`, and workflow run `31623627489`.
+- Repository-facing public npm and Git UPM install examples point to published `2026.8.12-1`; they were updated only after verified GitHub/npm publication and clean-consumer installs. The immutable npm tarball and release tag retain their prepublication package README pin to `2026.8.11-2`.
 - Package: `com.sungeargames.perfmeter`
-- Last published Unity validation matrix: `6000.4.12f1`, `6000.5.6f1`, `6000.6.0b7`, and `6000.7.0a4`
-- Published release Unity validation evidence covers all four rows; see the current release record for targeted and full-suite results.
+- Last published Unity validation: `6000.4.12f1`; full multi-version matrix explicitly waived for this color-classifier-only patch.
+- Published release Unity validation evidence covers compile, targeted boundary tests, full EditMode, and clean npm/Git consumers.
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-08-11
+- Release work date: 2026-08-12
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Current release record: `_DevelopmentDocs/release/2026.8.11-2-diagnostics-overlay-release.md`.
-Current release candidate record: `_DevelopmentDocs/release/2026.8.12-1-raw-cpu-colors-release.md`.
-Previous published release record: `_DevelopmentDocs/release/2026.8.11-1-renderdoc-bridge-release.md`.
-Earlier published release record: `_DevelopmentDocs/release/2026.8.9-1-core-hardening-release.md`.
+Current release record: `_DevelopmentDocs/release/2026.8.12-1-raw-cpu-colors-release.md`.
+Current release candidate record: none.
+Previous published release record: `_DevelopmentDocs/release/2026.8.11-2-diagnostics-overlay-release.md`.
+Earlier published release record: `_DevelopmentDocs/release/2026.8.11-1-renderdoc-bridge-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
