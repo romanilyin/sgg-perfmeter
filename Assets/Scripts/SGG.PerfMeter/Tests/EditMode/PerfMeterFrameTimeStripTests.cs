@@ -1,5 +1,6 @@
 using System;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
@@ -103,6 +104,27 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(strip.SampleCount, Is.EqualTo(120));
 			Assert.That(strip.LastFrame, Is.EqualTo(1000));
 			Assert.That(allocatedBytes, Is.Zero);
+		}
+
+		[TestCase(7.99d, 0.18f, 0.74f, 0.23f)]
+		[TestCase(8d, 0.20f, 0.62f, 1f)]
+		[TestCase(10d, 0.20f, 0.62f, 1f)]
+		[TestCase(10.01d, 1f, 0.82f, 0.24f)]
+		[TestCase(12d, 1f, 0.82f, 0.24f)]
+		[TestCase(12.01d, 1f, 0.48f, 0.18f)]
+		[TestCase(20d, 1f, 0.48f, 0.18f)]
+		[TestCase(20.01d, 1f, 0.24f, 0.20f)]
+		public void RawFrameTimeColorsUseFiveBudgetBands(double frameTimeMs, float red, float green, float blue)
+		{
+			PerfMeterOverlay.PerfMeterFrameTimeStripElement strip = new PerfMeterOverlay.PerfMeterFrameTimeStripElement(16);
+			strip.SetFrameBudgetMs(10d);
+
+			Color color = strip.GetSeverityColorForTests(frameTimeMs);
+
+			Assert.That(color.r, Is.EqualTo(red).Within(0.0001f));
+			Assert.That(color.g, Is.EqualTo(green).Within(0.0001f));
+			Assert.That(color.b, Is.EqualTo(blue).Within(0.0001f));
+			Assert.That(color.a, Is.EqualTo(1f));
 		}
 
 		[Test]
