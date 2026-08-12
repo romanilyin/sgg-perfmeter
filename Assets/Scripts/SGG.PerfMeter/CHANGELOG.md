@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2026.8.12-1
+
 - Changed the raw CPU frame-time strip to use dark-green, blue, yellow, orange, and red bands at 80%, 100%, 120%, and 200% of the frame budget.
 
 ## 2026.8.11-2
