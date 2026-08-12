@@ -28,6 +28,7 @@ Profiler counters vary by platform, Unity version, render pipeline settings, and
 - The UPM package remains binary-free. Its separately published pinned bridge resolves only an already-loaded `renderdoc.dll`; neither the package nor bridge installs, loads, launches, injects, or bundles RenderDoc/replay binaries.
 - One capture request can be active at a time. Heavy capture is always explicit and opt-in.
 - Generic `Completed` confirms only Unity's wrapper lifecycle. Native status additionally exposes backend kind and generation-bound phase; authority requires exactly selected, finalized, bridge-authenticated `.rdc` evidence with stable identity and hashes.
+- Native PIX circular timing capture is unavailable. Microsoft's documented Windows timing API supports forward capture but ignores circular-storage, memory-limit, and discard controls; PerfMeter does not replace the requested pre-alert ring with forward capture without a documented storage bound or with private PIX integration.
 - Native MetadataOnly defaults to `DoNotShare`; Copy/Embed data is sensitive, separately quota-managed, marker-owned, and `ReviewBeforeShare`. Caller-supplied artifacts always remain observed and non-authoritative.
 - Real attached RenderDoc validation covers the initial native D3D11/D3D12/Vulkan Editor rows; broader platforms and players remain release gates rather than inferred support.
 

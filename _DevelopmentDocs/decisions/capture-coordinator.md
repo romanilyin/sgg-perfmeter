@@ -31,4 +31,4 @@ Automated tests use the internal backend/scope seams. Real RenderDoc/PIX attachm
 ## Implemented By PM-CAP-002
 
 - Bundle manifests, atomic artifact export, correlated samples/context/screenshots, truthful provenance, path validation, and MCP capture control are defined in [`capture-bundles.md`](capture-bundles.md).
-- Native RenderDoc control/provenance is implemented for the `2026.8.11-1` candidate; native PIX remains separate future work.
+- Native RenderDoc control/provenance is implemented for `2026.8.11-1`. PIX remains available only through the generic path: the accepted [PIX timing boundary](pix-native-timing-boundary.md) keeps circular pre-alert capture waiting for a documented bounded Windows API instead of substituting forward timing or private integration.

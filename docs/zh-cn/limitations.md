@@ -27,6 +27,7 @@ Profiler counters 会因 platform、Unity version、render pipeline settings 和
 - Optional native path 仅支持 Windows x64 Unity Editor 的 D3D11、D3D12 或 Vulkan 上的 RenderDoc。不支持 Development Player、Linux native、IL2CPP、mobile 和 macOS native。
 - UPM package 保持 binary-free。单独发布的 pinned bridge 只使用 already-loaded `renderdoc.dll`，绝不会 install/load/launch/inject RenderDoc。
 - Native MetadataOnly 默认使用 `DoNotShare`；Copy/Embed 属于 sensitive data，使用 separate quota 并要求 `ReviewBeforeShare`。Generic/caller artifact 仍为 observed，不是 authoritative。
+- Native PIX circular timing capture 不可用。Microsoft 文档化的 Windows timing API 支持 forward capture，但会忽略 circular storage、memory limit 和 discard 控制；PerfMeter 不会用没有文档化 storage bound 的 forward capture 或 private PIX integration 替代所请求的 pre-alert ring。
 - Automated tests 使用 fake backend。Real external tool 和 artifact 的确认仍是 release gate。
 - Correlated bundles 和 MCP capture control 已可用，但传入的 `.rdc`/`.wpix` 仅是 observed/hashed artifact。Unity 无法验证 attached tool 或 capture association，因此 real external tool 验证仍是 release-candidate gate。
 

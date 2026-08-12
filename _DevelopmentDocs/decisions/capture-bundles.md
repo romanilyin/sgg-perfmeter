@@ -30,4 +30,4 @@ Exports are restricted to `Temp/PerfMeter/CaptureBundles` below the project root
 
 ## Validation
 
-Automated tests cover bundle state/generation ownership, screenshot degradation, sample separation, atomic commit, hashes, path/size rejection, generic authority refusal, native descriptor authority, retained Copy/Embed, retention, MCP registration, and Play Mode lifecycle. Real RenderDoc D3D11/D3D12/Vulkan confirmation passed for the initial Windows Editor rows; PIX and broader native rows remain separate gates.
+Automated tests cover bundle state/generation ownership, screenshot degradation, sample separation, atomic commit, hashes, path/size rejection, generic authority refusal, native descriptor authority, retained Copy/Embed, retention, MCP registration, and Play Mode lifecycle. Real RenderDoc D3D11/D3D12/Vulkan confirmation passed for the initial Windows Editor rows. The accepted [PIX timing boundary](pix-native-timing-boundary.md) leaves circular native PIX waiting for a documented bounded Windows API; generic `.wpix` evidence remains observed.

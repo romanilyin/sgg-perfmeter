@@ -27,6 +27,7 @@ Les compteurs Profiler varient selon la plateforme, la version Unity, les reglag
 - Le chemin natif optionnel prend uniquement en charge RenderDoc dans l'Editor Unity Windows x64 avec D3D11, D3D12 ou Vulkan. Development Player, Linux natif, IL2CPP, mobile et macOS natif ne sont pas pris en charge.
 - Le package UPM reste sans binaire. Le bridge separe et epingle utilise seulement une `renderdoc.dll` deja chargee et n'installe, ne charge, ne lance ni n'injecte jamais RenderDoc.
 - Native MetadataOnly utilise `DoNotShare` par defaut; Copy/Embed sont sensibles, soumis a des quotas separes et `ReviewBeforeShare`. Les artefacts generiques/caller restent observes, non autoritatifs.
+- La capture de timing circulaire native de PIX n'est pas disponible. L'API de timing Windows documentee par Microsoft prend en charge la capture vers l'avant, mais ignore les controles de stockage circulaire, de limite memoire et d'abandon; PerfMeter ne remplace pas l'anneau pre-alerte demande par une capture vers l'avant sans limite de stockage documentee ni par une integration PIX privee.
 - Les tests automatises utilisent un fake backend. La confirmation de l'outil externe reel et de l'artefact reste un release gate.
 - Les correlated bundles et MCP capture control sont disponibles, mais un `.rdc`/`.wpix` fourni reste seulement un artefact observe et hashe: Unity ne peut pas authentifier l'outil attache ni l'association avec la capture. La verification par un outil reel reste un release-candidate gate.
 

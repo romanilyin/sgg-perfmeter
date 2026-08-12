@@ -27,6 +27,7 @@ Profiler counters は platform、Unity version、render pipeline settings、grap
 - Optional native path は Windows x64 Unity Editor の D3D11、D3D12、Vulkan 上の RenderDoc のみをサポートします。Development Player、Linux native、IL2CPP、mobile、macOS native は unsupported です。
 - UPM package は binary-free です。別配布の pinned bridge は already-loaded `renderdoc.dll` だけを使用し、RenderDoc を install/load/launch/inject しません。
 - Native MetadataOnly は既定で `DoNotShare`、Copy/Embed は sensitive で separate quota と `ReviewBeforeShare` が必要です。Generic/caller artifact は observed のままで authoritative ではありません。
+- Native PIX circular timing capture は利用できません。Microsoft が文書化している Windows timing API は forward capture をサポートしますが、circular storage、memory limit、discard の制御を無視します。PerfMeter は要求された pre-alert ring を、文書化された storage bound のない forward capture や private PIX integration で置き換えません。
 - automated tests は fake backend を使用します。real external tool と artifact の確認は release gate です。
 - Correlated bundles と MCP capture control は利用できますが、指定された `.rdc`/`.wpix` は observed/hashed artifact にすぎません。Unity は attached tool や capture association を認証できないため、real external tool の確認は release-candidate gate のままです。
 
