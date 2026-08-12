@@ -1,0 +1,74 @@
+{
+  "schema": "sgg.perfmeter.renderdoc-analysis",
+  "schema_version": 1,
+  "request_id": "rd-analysis-golden",
+  "status": "completed_with_errors",
+  "capture": {
+    "artifact_id": "artifact-golden",
+    "capture_id": "capture-golden",
+    "bundle_id": "bundle-golden",
+    "expected_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "observed_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "hash_verified": true,
+    "size_bytes": "536870912",
+    "association_state": "bridge_authenticated",
+    "finalization_state": "finalized",
+    "authority_state": "authenticated",
+    "content_state": "present",
+    "source_file_identity_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "capture_app_api": "1.7.0"
+  },
+  "analyzer": {
+    "analyzer_version": "1.0.0",
+    "renderdoc_build": "v1.46",
+    "replay_api": "1.7.0",
+    "graphics_api": "D3D12",
+    "gpu": "Example GPU",
+    "driver": "1.2.3",
+    "replay_host": "windows-x64",
+    "started_utc": "2026-08-13T10:00:00.000Z",
+    "completed_utc": "2026-08-13T10:00:01.250Z",
+    "duration_milliseconds": "1250"
+  },
+  "actions_complete": true,
+  "action_total_count": 2,
+  "actions": [
+    { "event_id": 1, "parent_event_id": 0, "name": "Frame", "flags": [] },
+    { "event_id": 42, "parent_event_id": 1, "name": "Draw Opaque", "flags": ["Drawcall"] }
+  ],
+  "counter_catalog_complete": true,
+  "counter_total_count": 8,
+  "counter_catalog": [
+    { "id": "renderdoc:uint64", "native_id": 1, "name": "Exact UInt64", "description": "Exact unsigned value", "unit": "FutureUnit", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 0, "provenance": "renderdoc" },
+    { "id": "renderdoc:future", "native_id": 2, "name": "Future Typed Counter", "description": "Unknown type and unit remain raw", "unit": "VendorFutureUnit", "result_type": "VendorFutureType", "result_byte_width": 16, "aggregation": "non_aggregatable", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 1, "provenance": "renderdoc" },
+    { "id": "renderdoc:zero", "native_id": 3, "name": "Available Zero", "description": "Zero is still available", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "sum", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 1, "provenance": "renderdoc" },
+    { "id": "renderdoc:duration", "native_id": 8, "name": "GPU Duration", "description": "64-bit floating duration", "unit": "Seconds", "result_type": "Float", "result_byte_width": 8, "aggregation": "sum", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 0, "provenance": "renderdoc" },
+    { "id": "renderdoc:not-requested", "native_id": 4, "name": "Not Requested", "description": "Described but not requested", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "not_requested", "reason": "not selected", "requested": false, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:unsupported", "native_id": 5, "name": "Unsupported", "description": "Unavailable on this replay", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "unsupported on gpu", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:failed", "native_id": 6, "name": "Failed", "description": "Fetch failed", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "fetch_failed", "reason": "counter pass failed", "requested": true, "fetched": false, "pass_index": 1, "provenance": "renderdoc" },
+    { "id": "renderdoc:not-applicable", "native_id": 7, "name": "Not Applicable", "description": "Not applicable to this action", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "not_applicable", "reason": "not applicable", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" }
+  ],
+  "results_complete": true,
+  "result_total_count": 7,
+  "results": [
+    { "event_id": 42, "counter_id": "renderdoc:uint64", "availability": "available", "reason": "", "raw_value": { "result_type": "UInt", "byte_width": 8, "encoding": "decimal", "value": "18446744073709551615" } },
+    { "event_id": 42, "counter_id": "renderdoc:future", "availability": "available", "reason": "", "raw_value": { "result_type": "VendorFutureType", "byte_width": 16, "encoding": "opaque_hex", "value": "000102030405060708090a0b0c0d0e0f" } },
+    { "event_id": 42, "counter_id": "renderdoc:zero", "availability": "available", "reason": "", "raw_value": { "result_type": "UInt", "byte_width": 8, "encoding": "decimal", "value": "0" } },
+    { "event_id": 42, "counter_id": "renderdoc:duration", "availability": "available", "reason": "", "raw_value": { "result_type": "Float", "byte_width": 8, "encoding": "decimal", "value": "0.00042" } },
+    { "event_id": 42, "counter_id": "renderdoc:unsupported", "availability": "unsupported", "reason": "unsupported on gpu" },
+    { "event_id": 42, "counter_id": "renderdoc:failed", "availability": "fetch_failed", "reason": "counter pass failed" },
+    { "event_id": 42, "counter_id": "renderdoc:not-applicable", "availability": "not_applicable", "reason": "not applicable" }
+  ],
+  "summary": {
+    "requested_counter_count": 7,
+    "described_counter_count": 8,
+    "fetched_counter_count": 4,
+    "unsupported_counter_count": 1,
+    "failed_counter_count": 1,
+    "failed_result_count": 1,
+    "replay_pass_count": 2,
+    "duration_milliseconds": "1250"
+  },
+  "warnings": ["One counter pass failed."],
+  "diagnostics": []
+}

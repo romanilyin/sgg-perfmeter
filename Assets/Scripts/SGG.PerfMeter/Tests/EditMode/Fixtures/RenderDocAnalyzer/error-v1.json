@@ -1,0 +1,31 @@
+{
+  "schema": "sgg.perfmeter.renderdoc-analysis-error",
+  "schema_version": 1,
+  "request_id": "rd-analysis-golden",
+  "status": "failed",
+  "capture": {
+    "expected_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "observed_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "hash_verified": false
+  },
+  "analyzer": {
+    "analyzer_version": "1.0.0",
+    "renderdoc_build": "",
+    "replay_api": "",
+    "graphics_api": "",
+    "gpu": "",
+    "driver": "",
+    "replay_host": "windows-x64",
+    "started_utc": "2026-08-13T10:00:00.000Z",
+    "completed_utc": "2026-08-13T10:00:00.125Z",
+    "duration_milliseconds": "125"
+  },
+  "error": {
+    "code": "capture_hash_mismatch",
+    "stage": "verify_capture",
+    "message": "Observed capture hash does not match the request.",
+    "retryable": false
+  },
+  "warnings": [],
+  "diagnostics": []
+}

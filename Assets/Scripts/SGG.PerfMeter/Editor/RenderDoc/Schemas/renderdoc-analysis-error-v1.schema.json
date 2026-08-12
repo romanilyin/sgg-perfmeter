@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/romanilyin/sgg-perfmeter/schemas/renderdoc-analysis-error-v1.schema.json",
+  "title": "SGG PerfMeter RenderDoc Analysis Error v1",
+  "type": "object",
+  "required": ["schema", "schema_version", "request_id", "status", "capture", "analyzer", "error", "warnings", "diagnostics"],
+  "properties": {
+    "schema": { "const": "sgg.perfmeter.renderdoc-analysis-error" },
+    "schema_version": { "const": 1 },
+    "request_id": { "$ref": "#/$defs/token" },
+    "status": { "const": "failed" },
+    "capture": {
+      "type": "object",
+      "required": ["expected_sha256", "observed_sha256", "hash_verified"],
+      "properties": {
+        "expected_sha256": { "$ref": "#/$defs/sha256" },
+        "observed_sha256": { "type": "string", "pattern": "^(|[0-9a-f]{64})$" },
+        "hash_verified": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "analyzer": { "$ref": "#/$defs/analyzer" },
+    "error": {
+      "type": "object",
+      "required": ["code", "stage", "message", "retryable"],
+      "properties": {
+        "code": { "$ref": "#/$defs/token" },
+        "stage": { "$ref": "#/$defs/token" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "warnings": { "type": "array", "maxItems": 128, "items": { "type": "string", "minLength": 1, "maxLength": 2048 } },
+    "diagnostics": { "type": "array", "maxItems": 0 }
+  },
+  "$defs": {
+    "token": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9_.:/-]+$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "uint64": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]|1844674407370955161[0-5])$" },
+    "analyzer": {
+      "type": "object",
+      "required": ["analyzer_version", "renderdoc_build", "replay_api", "graphics_api", "gpu", "driver", "replay_host", "started_utc", "completed_utc", "duration_milliseconds"],
+      "properties": {
+        "analyzer_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "renderdoc_build": { "type": "string", "maxLength": 256 },
+        "replay_api": { "type": "string", "maxLength": 128 },
+        "graphics_api": { "type": "string", "maxLength": 128 },
+        "gpu": { "type": "string", "maxLength": 512 },
+        "driver": { "type": "string", "maxLength": 512 },
+        "replay_host": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "started_utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+        "completed_utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+        "duration_milliseconds": { "$ref": "#/$defs/uint64" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

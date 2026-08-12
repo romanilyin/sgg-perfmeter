@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added independent RenderDoc analyzer request/result/error JSON Schema v1 contracts with bounded semantic validation, golden fixtures, exact `uint64` strings, raw future unit/type preservation, explicit availability states, and authenticated capture/hash provenance. Replay execution remains separate future work.
+
 ## 2026.8.12-1
 
 - Changed the raw CPU frame-time strip to use dark-green, blue, yellow, orange, and red bands at 80%, 100%, 120%, and 200% of the frame budget.
