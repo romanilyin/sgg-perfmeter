@@ -11,11 +11,13 @@ internal sealed class PerfMeterAndroidSmokeBootstrap : MonoBehaviour
 	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
 	private static void StartPerfMeter()
 	{
-		PerformanceMeter.EnsureRunning();
-		PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
-		PerformanceMeter.SetOverlayCorner(PerfMeterOverlayCorner.TopRight);
-		PerformanceMeter.SetOverlayMode(PerfMeterOverlayMode.Full);
-		PerformanceMeter.SetOverlayVisible(true);
+		TextAsset settings = Resources.Load<TextAsset>("SGG.PerfMeter/perfmeter-settings");
+		string warning = "settings resource not found";
+		if (settings == null || !PerformanceMeter.TryApplySettingsJson(settings.text, out warning))
+		{
+			PerformanceMeter.EnsureRunning();
+			Debug.LogWarning(LogPrefix + " project_settings_unavailable warning=" + warning);
+		}
 
 		GameObject gameObject = new GameObject("SGG PerfMeter Android Smoke Bootstrap");
 		gameObject.hideFlags = HideFlags.DontSave;
@@ -29,6 +31,11 @@ internal sealed class PerfMeterAndroidSmokeBootstrap : MonoBehaviour
 	{
 		yield return WaitForFrames(30);
 		LogSnapshot("initial");
+		if (PerformanceMeter.GetStatus().State == PerfMeterRuntimeState.Stopped)
+		{
+			Debug.Log(LogPrefix + " overdraw_skipped reason=project_settings_stopped");
+			yield break;
+		}
 
 		PerformanceMeter.RequestOverdrawMeasurement(60);
 		Debug.Log(LogPrefix + " overdraw_requested");

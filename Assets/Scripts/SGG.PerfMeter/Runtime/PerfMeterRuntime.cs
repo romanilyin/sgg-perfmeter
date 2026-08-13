@@ -59,10 +59,10 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayLayout _overlayLayout = PerfMeterOverlayLayout.MetricBars;
 		private PerfMeterOverlayFontFamily _overlayFontFamily = PerfMeterOverlayFontFamily.Manrope;
 		private PerfMeterOverlayPreset _overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
-		private string _visualOverlayPresetId = PerfMeterOverlayPresetDefaults.FullDiagnosticsId;
+		private string _visualOverlayPresetId = PerfMeterOverlayPresetDefaults.DefaultId;
 		private PerfMeterOverlayPresetJson _visualLayoutDescriptor;
 		private PerfMeterCustomMetricGraphJson[] _customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
-		private PerfMeterOverlayModule _overlayModules = PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
+		private PerfMeterOverlayModule _overlayModules = PerfMeterSettingsStore.DefaultOverlayModules;
 		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
 		private float _overlayScale = 1f;
 		private float _overlayOpacity = 0.84f;
@@ -2001,7 +2001,7 @@ namespace SGG.PerfMeter
 				PerfMeterOverlayFontFamily.Manrope,
 				PerfMeterTargetFps.Fps60,
 				PerfMeterOverlayPreset.FullDiagnostics,
-				PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics),
+				PerfMeterSettingsStore.DefaultOverlayModules,
 				PerfMeterSessionState.Idle,
 				false,
 				0,
@@ -2037,7 +2037,7 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
 			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60,
 			PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics,
-			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics | PerfMeterOverlayModule.CpuCoreBars,
+			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics,
 			PerfMeterSessionState sessionState = PerfMeterSessionState.Idle,
 			bool sessionRecording = false,
 			int sessionSampleCount = 0,

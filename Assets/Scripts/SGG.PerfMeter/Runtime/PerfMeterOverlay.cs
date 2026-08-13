@@ -193,7 +193,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayTheme _theme = PerfMeterOverlayTheme.ClassicDark;
 		private PerfMeterOverlayLayout _layout = PerfMeterOverlayLayout.MetricBars;
 		private PerfMeterOverlayFontFamily _fontFamily = PerfMeterOverlayFontFamily.Manrope;
-		private PerfMeterOverlayModule _modules = PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
+		private PerfMeterOverlayModule _modules = PerfMeterSettingsStore.DefaultOverlayModules;
 		private PerfMeterCustomMetricGraphJson[] _customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 		private float _overlayScale = 1f;
 		private float _overlayOpacity = 0.84f;
@@ -203,6 +203,7 @@ namespace SGG.PerfMeter
 		private float _layoutMaxWidth = GraphBlockWidth;
 		private float _layoutGap = BlockGap;
 		private float _frameTimeStripHeight = FrameTimeStripGraphHeight;
+		private double _frameBudgetMs = PerfMeterCollector.DefaultFrameBudgetMs;
 		private bool _hasLayoutDescriptor;
 		private bool _frameTimeStripWidgetEnabled = true;
 		private int _textFieldCount;
@@ -232,6 +233,9 @@ namespace SGG.PerfMeter
 		internal int FrameTimeStripSampleCount => _frameTimeStrip?.SampleCount ?? 0;
 		internal int FrameTimeStripLastFrame => _frameTimeStrip?.LastFrame ?? -1;
 		internal int FrameTimeStripCustomSeriesCount => _frameTimeStrip?.CustomSeriesCount ?? 0;
+		internal double FrameTimeStripBudgetMs => _frameTimeStrip?.FrameBudgetMs ?? _frameBudgetMs;
+		internal static float FullCardRowWidth => (WidgetCardWidth + WidgetGap) * 5f;
+		internal static float FullBudgetRowWidth => (BudgetBarWidth + WidgetGap) * 2f;
 
 		internal static bool ShouldUseFpsOnlyTwoRows(float requiredWidth, float availableWidth)
 		{
@@ -485,18 +489,23 @@ namespace SGG.PerfMeter
 
 		internal void SetTargetFps(PerfMeterTargetFps targetFps)
 		{
-			double frameBudgetMs = PerfMeterRuntime.GetFrameBudgetMs(targetFps);
+			_frameBudgetMs = PerfMeterRuntime.GetFrameBudgetMs(targetFps);
+			ApplyFrameBudget();
+		}
+
+		private void ApplyFrameBudget()
+		{
 			if (_cpuGraph != null)
 			{
-				_cpuGraph.SetFrameBudgetMs(frameBudgetMs);
+				_cpuGraph.SetFrameBudgetMs(_frameBudgetMs);
 			}
 
 			if (_gpuGraph != null)
 			{
-				_gpuGraph.SetFrameBudgetMs(frameBudgetMs);
+				_gpuGraph.SetFrameBudgetMs(_frameBudgetMs);
 			}
 
-			_frameTimeStrip?.SetFrameBudgetMs(frameBudgetMs);
+			_frameTimeStrip?.SetFrameBudgetMs(_frameBudgetMs);
 		}
 
 		internal void SetTuning(float scale, float opacity, float fontSize, float refreshIntervalSeconds, int graphHistoryLength)
@@ -927,6 +936,7 @@ namespace SGG.PerfMeter
 			_frameTimeStripBlock = CreateBlock("sgg-perfmeter-frame-time-strip-block", GraphBlockWidth);
 			_frameTimeStripBlock.style.marginTop = BlockGap;
 			BuildFrameTimeStripRow();
+			ApplyFrameBudget();
 
 			_container.Add(_widgetBlock);
 			_container.Add(_graphBlock);
@@ -5683,11 +5693,6 @@ namespace SGG.PerfMeter
 				if (frameTimeMs > _frameBudgetMs * 2d)
 				{
 					return FpsCriticalColor;
-				}
-
-				if (frameTimeMs > _frameBudgetMs * 1.2d)
-				{
-					return FpsWarningColor;
 				}
 
 				if (frameTimeMs > _frameBudgetMs)

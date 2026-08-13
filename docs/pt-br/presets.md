@@ -2,6 +2,8 @@
 
 Visual presets sao arquivos JSON do projeto que definem layout do overlay, estilo, widgets ativados e ordem dos widgets. Eles sao criados na aba `Presets` de `SGG/Perfmeter/Setup` e gravados em JSON dentro de Resources para builds, entao o runtime nao depende de `AssetDatabase`.
 
+Selecionar um preset e pressionar `Save` salva o descriptor em `Assets/SGG PerfMeter/Presets/Overlay`, ativa-o para o projeto e grava a selecao em `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` para as proximas sessoes de Play Mode e builds. Aplicar pela aba `Runtime` altera apenas a sessao atual de Play Mode.
+
 Os screenshots abaixo sao capturas fullscreen da cena capture-lab depois de 1000 frames de warmup. O texto do overlay runtime nao e localizado, entao as documentacoes localizadas usam as mesmas imagens de preset.
 
 ## Default

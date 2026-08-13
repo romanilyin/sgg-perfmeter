@@ -938,7 +938,7 @@ namespace SGG.PerfMeter
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.OverlayModules : PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics);
+				return runtime != null ? runtime.OverlayModules : PerfMeterSettingsStore.DefaultOverlayModules;
 			}
 		}
 
@@ -1298,7 +1298,7 @@ namespace SGG.PerfMeter
 					PerfMeterOverlayTheme.ClassicDark,
 					PerfMeterOverlayLayout.MetricBars,
 					PerfMeterOverlayFontFamily.Manrope,
-					PerfMeterSettingsStore.GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics),
+					PerfMeterSettingsStore.DefaultOverlayModules,
 					PerfMeterTargetFps.Fps60);
 			}
 

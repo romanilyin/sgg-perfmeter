@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -203,6 +204,296 @@ public static class PerfMeterBootstrap
 			{
 				return InstallResult.Fail("Failed to save PerfMeter JSON settings: " + exception.Message);
 			}
+		}
+
+		internal static InstallResult SaveActiveOverlayPreset(string presetId)
+		{
+			try
+			{
+				string normalizedPresetId = presetId?.Trim() ?? string.Empty;
+				if (string.IsNullOrEmpty(normalizedPresetId))
+				{
+					return InstallResult.Fail("Active overlay preset id is empty.");
+				}
+
+				PerfMeterSettingsJson settings;
+				if (File.Exists(PerfMeterSettingsStore.ResourcesAssetPath))
+				{
+					string existingJson = File.ReadAllText(PerfMeterSettingsStore.ResourcesAssetPath);
+					if (!PerfMeterSettingsStore.TryReadJson(existingJson, out settings, out PerfMeterSettingsLoadState _, out string warning))
+					{
+						return InstallResult.Fail("Existing PerfMeter project settings were not changed. " + warning);
+					}
+				}
+				else
+				{
+					settings = PerfMeterSettingsStore.CreateDefault();
+				}
+
+				settings.activeOverlayPresetId = normalizedPresetId;
+				PerfMeterOverlayPresetEditorUtility.BakeOverlayPresetsIntoSettings(settings);
+				if (!string.Equals(settings.activeOverlayPresetId, normalizedPresetId, StringComparison.OrdinalIgnoreCase))
+				{
+					return InstallResult.Fail("Overlay preset '" + normalizedPresetId + "' was saved but could not be activated in project settings.");
+				}
+
+				EnsureSettingsFolder();
+				string json = File.Exists(PerfMeterSettingsStore.ResourcesAssetPath)
+					? File.ReadAllText(PerfMeterSettingsStore.ResourcesAssetPath)
+					: PerfMeterSettingsStore.ToJson(settings);
+				string activePresetJson = JsonUtility.ToJson(new JsonStringValue { value = settings.activeOverlayPresetId });
+				activePresetJson = activePresetJson.Substring(activePresetJson.IndexOf(':') + 1).TrimEnd('}');
+				string overlayPresetsJson = JsonUtility.ToJson(new OverlayPresetArrayValue { value = settings.overlayPresets }, true);
+				overlayPresetsJson = overlayPresetsJson.Substring(overlayPresetsJson.IndexOf(':') + 1).TrimEnd('}', '\r', '\n', ' ');
+				if (!TrySetTopLevelJsonProperty(json, "activeOverlayPresetId", activePresetJson, out json) ||
+					!TrySetTopLevelJsonProperty(json, "overlayPresets", overlayPresetsJson, out json))
+				{
+					return InstallResult.Fail("Existing PerfMeter project settings were not changed because the visual preset fields could not be updated safely.");
+				}
+
+				File.WriteAllText(PerfMeterSettingsStore.ResourcesAssetPath, json);
+				AssetDatabase.ImportAsset(PerfMeterSettingsStore.ResourcesAssetPath);
+				AssetDatabase.Refresh();
+				return InstallResult.Ok("Set '" + normalizedPresetId + "' active in " + PerfMeterSettingsStore.ResourcesAssetPath + ".");
+			}
+			catch (Exception exception)
+			{
+				return InstallResult.Fail("Failed to activate the overlay preset in project settings: " + exception.Message);
+			}
+		}
+
+		internal static bool TrySetTopLevelJsonProperty(string json, string propertyName, string replacementJson, out string result)
+		{
+			result = json;
+			if (string.IsNullOrWhiteSpace(json) || string.IsNullOrEmpty(propertyName) || string.IsNullOrWhiteSpace(replacementJson))
+			{
+				return false;
+			}
+
+			int rootStart = SkipJsonWhitespace(json, 0);
+			if (rootStart < 0 || json[rootStart] != '{')
+			{
+				return false;
+			}
+
+			int index = rootStart + 1;
+			int matchStart = -1;
+			int matchEnd = -1;
+			int rootEnd = -1;
+			while (true)
+			{
+				index = SkipJsonWhitespace(json, index);
+				if (index < 0 || index >= json.Length)
+				{
+					return false;
+				}
+
+				if (json[index] == '}')
+				{
+					rootEnd = index;
+					break;
+				}
+
+				if (!TryReadJsonString(json, index, out string name, out int afterName))
+				{
+					return false;
+				}
+
+				int colon = SkipJsonWhitespace(json, afterName);
+				if (colon < 0 || colon >= json.Length || json[colon] != ':')
+				{
+					return false;
+				}
+
+				int valueStart = SkipJsonWhitespace(json, colon + 1);
+				if (!TrySkipJsonValue(json, valueStart, out int valueEnd))
+				{
+					return false;
+				}
+
+				if (string.Equals(name, propertyName, StringComparison.Ordinal))
+				{
+					if (matchStart >= 0)
+					{
+						return false;
+					}
+
+					matchStart = valueStart;
+					matchEnd = valueEnd;
+				}
+
+				index = SkipJsonWhitespace(json, valueEnd);
+				if (index < 0 || index >= json.Length)
+				{
+					return false;
+				}
+
+				if (json[index] == '}')
+				{
+					rootEnd = index;
+					break;
+				}
+
+				if (json[index] != ',')
+				{
+					return false;
+				}
+
+				index++;
+			}
+
+			if (matchStart >= 0)
+			{
+				result = json.Substring(0, matchStart) + replacementJson + json.Substring(matchEnd);
+				return true;
+			}
+
+			if (rootEnd < 0)
+			{
+				return false;
+			}
+
+			int previous = rootEnd - 1;
+			while (previous > rootStart && char.IsWhiteSpace(json[previous]))
+			{
+				previous--;
+			}
+
+			string separator = json[previous] == '{' ? string.Empty : ",";
+			result = json.Substring(0, rootEnd) + separator + "\n  \"" + propertyName + "\": " + replacementJson + "\n" + json.Substring(rootEnd);
+			return true;
+		}
+
+		private static int SkipJsonWhitespace(string json, int index)
+		{
+			while (index >= 0 && index < json.Length && char.IsWhiteSpace(json[index]))
+			{
+				index++;
+			}
+
+			return index;
+		}
+
+		private static bool TryReadJsonString(string json, int quoteIndex, out string value, out int nextIndex)
+		{
+			value = string.Empty;
+			nextIndex = quoteIndex;
+			if (quoteIndex < 0 || quoteIndex >= json.Length || json[quoteIndex] != '"')
+			{
+				return false;
+			}
+
+			StringBuilder builder = new StringBuilder();
+			for (int index = quoteIndex + 1; index < json.Length; index++)
+			{
+				char character = json[index];
+				if (character == '"')
+				{
+					value = builder.ToString();
+					nextIndex = index + 1;
+					return true;
+				}
+
+				if (character == '\\' && index + 1 < json.Length)
+				{
+					character = json[++index];
+					switch (character)
+					{
+						case '"': builder.Append('"'); break;
+						case '\\': builder.Append('\\'); break;
+						case '/': builder.Append('/'); break;
+						case 'b': builder.Append('\b'); break;
+						case 'f': builder.Append('\f'); break;
+						case 'n': builder.Append('\n'); break;
+						case 'r': builder.Append('\r'); break;
+						case 't': builder.Append('\t'); break;
+						case 'u':
+							if (index + 4 >= json.Length || !ushort.TryParse(json.Substring(index + 1, 4), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out ushort codePoint))
+							{
+								return false;
+							}
+
+							builder.Append((char)codePoint);
+							index += 4;
+							break;
+						default:
+							return false;
+					}
+
+					continue;
+				}
+
+				builder.Append(character);
+			}
+
+			return false;
+		}
+
+		private static bool TrySkipJsonValue(string json, int index, out int nextIndex)
+		{
+			nextIndex = index;
+			if (index < 0 || index >= json.Length)
+			{
+				return false;
+			}
+
+			if (json[index] == '"')
+			{
+				return TryReadJsonString(json, index, out string _, out nextIndex);
+			}
+
+			if (json[index] == '{' || json[index] == '[')
+			{
+				char open = json[index];
+				char close = open == '{' ? '}' : ']';
+				int depth = 1;
+				for (int cursor = index + 1; cursor < json.Length; cursor++)
+				{
+					if (json[cursor] == '"')
+					{
+						if (!TryReadJsonString(json, cursor, out string _, out int afterString))
+						{
+							return false;
+						}
+
+						cursor = afterString - 1;
+						continue;
+					}
+
+					if (json[cursor] == open)
+					{
+						depth++;
+					}
+					else if (json[cursor] == close && --depth == 0)
+					{
+						nextIndex = cursor + 1;
+						return true;
+					}
+				}
+
+				return false;
+			}
+
+			int end = index;
+			while (end < json.Length && json[end] != ',' && json[end] != '}')
+			{
+				end++;
+			}
+
+			nextIndex = end;
+			return end > index;
+		}
+
+		[Serializable]
+		private sealed class JsonStringValue
+		{
+			public string value;
+		}
+
+		[Serializable]
+		private sealed class OverlayPresetArrayValue
+		{
+			public PerfMeterOverlayPresetJson[] value;
 		}
 
 		internal static InstallResult ApplySettingsToRuntime()

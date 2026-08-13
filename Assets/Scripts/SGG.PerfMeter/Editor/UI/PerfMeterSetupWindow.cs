@@ -193,6 +193,7 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string SettingsOverdrawDefaultFrameCountElementName = "settings-overdraw-default-frame-count";
 		internal const string SettingsOverdrawMaxFrameCountElementName = "settings-overdraw-max-frame-count";
 		internal const string SettingsActiveOverlayPresetElementName = "settings-active-overlay-preset";
+		internal const string VisualPresetSaveButtonElementName = "settings-save-overlay-preset";
 		internal const string SettingsLegacyActivePresetElementName = "settings-legacy-active-preset";
 		internal const string SettingsLegacyOverlayModulesElementName = "settings-legacy-overlay-modules";
 		internal const string RuntimeCollectionModeElementName = "runtime-collection-mode";
@@ -541,7 +542,7 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsVisualPresetField.RegisterValueChangedCallback(evt => SelectOverlayPresetByLabel(evt.newValue));
 			AddControlRow(presetSection, "Preset", _settingsVisualPresetField);
 			VisualElement presetActions = AddActions(presetSection);
-			_visualPresetSaveButton = AddButton(presetActions, "Save", SaveCurrentOverlayPreset);
+			_visualPresetSaveButton = NameElement(AddButton(presetActions, "Save", SaveCurrentOverlayPreset), VisualPresetSaveButtonElementName);
 			AddButton(presetActions, "Save as custom", SaveCurrentOverlayPresetAsCustom);
 			AddButton(presetActions, "Duplicate", DuplicateCurrentOverlayPreset);
 			_visualPresetReloadButton = AddButton(presetActions, "Reload", ReloadCurrentOverlayPreset);
@@ -1368,15 +1369,20 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private PerfMeterSetupActionResult SaveSettingsFromControls()
 		{
-			PerfMeterSettingsSnapshot currentSettings = PerfMeterSetupActions.LoadSettings();
 			ApplyStyleControlsToEditingPreset(false);
 			PerfMeterOverlayPresetJson activeVisualPreset = PerfMeterOverlayPresetUtility.Clone(_editingOverlayPreset);
+			return PerfMeterSetupActions.SaveSettings(CreateSettingsSnapshotFromControls(activeVisualPreset));
+		}
+
+		private PerfMeterSettingsSnapshot CreateSettingsSnapshotFromControls(PerfMeterOverlayPresetJson activeVisualPreset)
+		{
+			PerfMeterSettingsSnapshot currentSettings = PerfMeterSetupActions.LoadSettings();
 			string activeVisualPresetId = activeVisualPreset != null ? activeVisualPreset.id : currentSettings.ActiveOverlayPresetId;
 			PerfMeterOverlayModule overlayModules = activeVisualPreset != null
 				? PerfMeterOverlayPresetUtility.GetEnabledModules(activeVisualPreset, out string _)
 				: currentSettings.OverlayModules;
 			PerfMeterOverlayLayout overlayLayout = _settingsOverlayLayout != null && _settingsOverlayLayout.value is PerfMeterOverlayLayout layout ? layout : currentSettings.OverlayLayout;
-			PerfMeterSettingsSnapshot settings = new PerfMeterSettingsSnapshot(
+			return new PerfMeterSettingsSnapshot(
 				_settingsEnabled == null || _settingsEnabled.value,
 				_settingsAutoStart == null || _settingsAutoStart.value,
 				GetSettingsCollectionModeFromControls(currentSettings.CollectionMode),
@@ -1417,7 +1423,6 @@ namespace SGG.PerfMeter.Editor.UI
 				activeOverlayPresetId: activeVisualPresetId,
 				activeOverlayPreset: activeVisualPreset,
 				structuredLogsEnabled: _settingsStructuredLogsEnabled == null ? currentSettings.StructuredLogsEnabled : _settingsStructuredLogsEnabled.value);
-			return PerfMeterSetupActions.SaveSettings(settings);
 		}
 
 		private PerfMeterCollectionMode GetSettingsCollectionModeFromControls(PerfMeterCollectionMode fallback)
@@ -1530,7 +1535,7 @@ namespace SGG.PerfMeter.Editor.UI
 			return PerfMeterWindowLocalization.Format("{0} [{1}]", asset.Preset.displayName, asset.Preset.id);
 		}
 
-		private void SelectOverlayPresetByLabel(string label)
+		internal void SelectOverlayPresetByLabel(string label)
 		{
 			for (int i = 0; i < _overlayPresetChoiceLabels.Count; i++)
 			{
@@ -1582,7 +1587,7 @@ namespace SGG.PerfMeter.Editor.UI
 				_settingsOverlayFontFamily?.SetValueWithoutNotify(PerfMeterOverlayPresetUtility.GetFontFamily(preset));
 				_settingsOverlayScale?.SetValueWithoutNotify(PerfMeterOverlayPresetUtility.GetScale(preset, 1f));
 				_settingsOverlayOpacity?.SetValueWithoutNotify(PerfMeterOverlayPresetUtility.GetOpacity(preset, 0.84f));
-				_settingsPresetMaxWidth?.SetValueWithoutNotify(preset.style != null ? preset.style.maxWidth : 420);
+				_settingsPresetMaxWidth?.SetValueWithoutNotify(preset.style != null ? preset.style.maxWidth : PerfMeterOverlayLayoutLimits.MaxWidth);
 				_settingsPresetGap?.SetValueWithoutNotify(preset.style != null ? preset.style.gap : 4);
 			}
 			finally
@@ -1750,23 +1755,41 @@ namespace SGG.PerfMeter.Editor.UI
 
 		private void SaveCurrentOverlayPreset()
 		{
-			if (_editingOverlayPreset == null || string.IsNullOrEmpty(_editingOverlayPresetPath))
-			{
-				return;
-			}
-
-			ApplyStyleControlsToEditingPreset(false);
-			PerfMeterSetupUtility.InstallResult result = PerfMeterOverlayPresetEditorUtility.SavePreset(_editingOverlayPresetPath, _editingOverlayPreset);
+			PerfMeterSetupActionResult result = SaveCurrentOverlayPresetForProject();
 			_lastActionLabel.text = "Save overlay preset: " + result.Message;
 			if (!result.Success)
 			{
 				EditorUtility.DisplayDialog(PerfMeterWindowLocalization.Text("Save overlay preset failed"), PerfMeterWindowLocalization.Text(result.Message), "OK");
-				return;
+			}
+
+			ApplyLocalization();
+		}
+
+		internal PerfMeterSetupActionResult SaveCurrentOverlayPresetForProject()
+		{
+			if (_editingOverlayPreset == null || string.IsNullOrEmpty(_editingOverlayPresetPath))
+			{
+				return PerfMeterSetupActionResult.Fail("Select a valid visual overlay preset.");
+			}
+
+			ApplyStyleControlsToEditingPreset(false);
+			PerfMeterOverlayPresetJson activeVisualPreset = PerfMeterOverlayPresetUtility.Clone(_editingOverlayPreset);
+			string presetId = activeVisualPreset.id?.Trim() ?? string.Empty;
+			PerfMeterSetupUtility.InstallResult presetResult = PerfMeterOverlayPresetEditorUtility.SavePreset(_editingOverlayPresetPath, _editingOverlayPreset);
+			if (!presetResult.Success)
+			{
+				return PerfMeterSetupActionResult.Fail(presetResult.Message);
 			}
 
 			_editingOverlayPresetModified = false;
-			ReloadOverlayPresetList(_editingOverlayPreset.id);
-			ApplyLocalization();
+			PerfMeterSetupActionResult settingsResult = PerfMeterSetupActions.SaveActiveOverlayPreset(presetId);
+			ReloadOverlayPresetList(presetId);
+			if (!settingsResult.Success)
+			{
+				return PerfMeterSetupActionResult.Fail(presetResult.Message + " Project settings were not saved: " + settingsResult.Message);
+			}
+
+			return PerfMeterSetupActionResult.Ok(presetResult.Message + " Set '" + presetId + "' active in project Resources settings for subsequent Play Mode sessions and builds.");
 		}
 
 		private void SaveCurrentOverlayPresetAsCustom()
@@ -1783,7 +1806,7 @@ namespace SGG.PerfMeter.Editor.UI
 				return;
 			}
 
-			string id = PerfMeterOverlayPresetEditorUtility.Slug(Path.GetFileName(path).Replace(PerfMeterOverlayPresetEditorUtility.PresetFileSuffix, string.Empty));
+			string id = PerfMeterOverlayPresetEditorUtility.CustomPresetIdForPath(path);
 			_lastActionLabel.text = "Save as custom overlay preset: " + path;
 			ReloadOverlayPresetList(id);
 			ApplyLocalization();
@@ -1806,7 +1829,7 @@ namespace SGG.PerfMeter.Editor.UI
 				return;
 			}
 
-			string id = PerfMeterOverlayPresetEditorUtility.Slug(Path.GetFileName(path).Replace(PerfMeterOverlayPresetEditorUtility.PresetFileSuffix, string.Empty));
+			string id = PerfMeterOverlayPresetEditorUtility.CustomPresetIdForPath(path);
 			_lastActionLabel.text = "Duplicate overlay preset: " + path;
 			ReloadOverlayPresetList(id);
 			ApplyLocalization();

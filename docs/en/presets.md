@@ -2,6 +2,8 @@
 
 Visual presets are project JSON files that define overlay layout, style, enabled widgets, and widget order. They are authored in the `Presets` tab of `SGG/Perfmeter/Setup` and baked into Resources JSON for builds, so runtime does not depend on `AssetDatabase`.
 
+Selecting a preset and pressing `Save` writes its source descriptor under `Assets/SGG PerfMeter/Presets/Overlay`, sets it as the active project preset, and bakes the selection into `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` for subsequent Play Mode sessions and builds. Applying a preset from the `Runtime` tab changes only the current Play Mode session. `Save as custom` and `Duplicate` create preset source files; press `Save` on the resulting preset to make it active for the project.
+
 Runtime applies `style.maxWidth`, `style.gap`, ordered bounded widget admission, and supported explicit widget `height` metadata only at configuration boundaries. The renderer keeps a safe fixed block order, including the bottom raw strip. Values are clamped through `PerfMeterOverlayLayoutLimits`; narrow graph blocks hide fixed legend/scale columns and stack the CPU-core side panel before allowing plot overflow. Per-frame metric updates mutate bounded histories and cached elements without rebuilding the visual tree.
 
 The screenshots below are fullscreen captures from the capture-lab scene after 1000 warmup frames. Runtime overlay text is not localized, so localized docs use the same preset images.

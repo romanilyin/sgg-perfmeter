@@ -86,6 +86,26 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator TargetFrameBudgetSurvivesThemeAndFontRebuilds()
+		{
+			_owner = new GameObject("PerfMeter Overlay Target Budget Rebuild Test");
+			PerfMeterOverlay overlay = _owner.AddComponent<PerfMeterOverlay>();
+			yield return WaitForOverlay(overlay);
+
+			double expectedBudgetMs = 1000d / 240d;
+			overlay.SetTargetFps(PerfMeterTargetFps.Fps240);
+			Assert.That(overlay.FrameTimeStripBudgetMs, Is.EqualTo(expectedBudgetMs).Within(0.000001d));
+
+			overlay.SetTheme(PerfMeterOverlayTheme.Glass);
+			yield return null;
+			Assert.That(overlay.FrameTimeStripBudgetMs, Is.EqualTo(expectedBudgetMs).Within(0.000001d));
+
+			overlay.SetFontFamily(PerfMeterOverlayFontFamily.JetBrainsMono);
+			yield return null;
+			Assert.That(overlay.FrameTimeStripBudgetMs, Is.EqualTo(expectedBudgetMs).Within(0.000001d));
+		}
+
+		[UnityTest]
 		public IEnumerator FpsOnlyUsesStableNumericSlotsAndNumericFont()
 		{
 			_owner = new GameObject("PerfMeter Overlay Numeric Layout Test");

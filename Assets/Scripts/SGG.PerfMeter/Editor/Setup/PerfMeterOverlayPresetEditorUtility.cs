@@ -28,6 +28,7 @@ namespace SGG.PerfMeter.Editor.Setup
 			{
 				EnsurePresetFolders();
 				int created = 0;
+				int updated = 0;
 				PerfMeterOverlayPresetJson[] defaults = PerfMeterOverlayPresetDefaults.CreateDefaultPresets();
 				for (int i = 0; i < defaults.Length; i++)
 				{
@@ -35,6 +36,16 @@ namespace SGG.PerfMeter.Editor.Setup
 					string path = PresetPathForId(preset.id, ProjectPresetFolder);
 					if (File.Exists(path))
 					{
+						string json = File.ReadAllText(path);
+						if (PerfMeterOverlayPresetUtility.TryReadJson(json, out PerfMeterOverlayPresetJson existing, out string _) &&
+							IsCanonicalBuiltInPresetPath(path, preset.id) &&
+							PerfMeterOverlayPresetDefaults.UpgradeBuiltInPreset(existing))
+						{
+							File.WriteAllText(path, PerfMeterOverlayPresetUtility.ToJson(existing));
+							AssetDatabase.ImportAsset(path);
+							updated++;
+						}
+
 						continue;
 					}
 
@@ -44,9 +55,9 @@ namespace SGG.PerfMeter.Editor.Setup
 				}
 
 				AssetDatabase.Refresh();
-				return PerfMeterSetupUtility.InstallResult.Ok(created == 0
+				return PerfMeterSetupUtility.InstallResult.Ok(created == 0 && updated == 0
 					? "Default overlay presets already exist."
-					: "Created " + created + " default overlay preset JSON file(s) in " + ProjectPresetFolder + ".");
+					: "Created " + created + " and updated " + updated + " default overlay preset JSON file(s) in " + ProjectPresetFolder + ".");
 			}
 			catch (Exception exception)
 			{
@@ -74,10 +85,46 @@ namespace SGG.PerfMeter.Editor.Setup
 				string path = NormalizeAssetPath(files[i]);
 				string json = File.ReadAllText(path);
 				bool valid = PerfMeterOverlayPresetUtility.TryReadJson(json, out PerfMeterOverlayPresetJson preset, out string warning);
+				if (valid && PerfMeterOverlayPresetDefaults.IsBuiltInPresetId(preset.id) && !IsCanonicalBuiltInPresetPath(path, preset.id))
+				{
+					valid = false;
+					warning = "Overlay preset id '" + preset.id + "' is reserved for the built-in descriptor at " + PresetPathForId(preset.id, ProjectPresetFolder) + ".";
+				}
+
 				presets.Add(new OverlayPresetAsset(path, json, preset, valid, warning, IsReadOnlyPath(path)));
 			}
 
+			InvalidateDuplicatePresetIds(presets);
 			return presets;
+		}
+
+		internal static void InvalidateDuplicatePresetIds(List<OverlayPresetAsset> presets)
+		{
+			Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+			for (int i = 0; i < presets.Count; i++)
+			{
+				OverlayPresetAsset asset = presets[i];
+				if (asset.IsValid && asset.Preset != null && !string.IsNullOrWhiteSpace(asset.Preset.id))
+				{
+					counts.TryGetValue(asset.Preset.id, out int count);
+					counts[asset.Preset.id] = count + 1;
+				}
+			}
+
+			for (int i = 0; i < presets.Count; i++)
+			{
+				OverlayPresetAsset asset = presets[i];
+				if (asset.IsValid && asset.Preset != null && counts.TryGetValue(asset.Preset.id, out int count) && count > 1)
+				{
+					presets[i] = new OverlayPresetAsset(
+						asset.AssetPath,
+						asset.Json,
+						asset.Preset,
+						false,
+						"Overlay preset id '" + asset.Preset.id + "' is duplicated; every project preset id must be unique.",
+						asset.ReadOnly);
+				}
+			}
 		}
 
 		internal static PerfMeterOverlayPresetJson[] LoadValidProjectPresetDtos(bool ensureDefaults)
@@ -173,7 +220,7 @@ namespace SGG.PerfMeter.Editor.Setup
 			}
 
 			PerfMeterOverlayPresetJson copy = PerfMeterOverlayPresetUtility.Clone(preset);
-			copy.id = Slug(Path.GetFileName(path).Replace(PresetFileSuffix, string.Empty));
+			copy.id = CustomPresetIdForPath(path);
 			copy.displayName = string.IsNullOrEmpty(copy.displayName) ? defaultName : copy.displayName;
 			SavePreset(path, copy);
 			return path;
@@ -201,6 +248,23 @@ namespace SGG.PerfMeter.Editor.Setup
 		internal static string PresetPathForId(string id, string folder)
 		{
 			return folder.TrimEnd('/') + "/" + Slug(id) + PresetFileSuffix;
+		}
+
+		internal static string CustomPresetIdForPath(string path)
+		{
+			string id = Slug(Path.GetFileName(path).Replace(PresetFileSuffix, string.Empty));
+			if (string.IsNullOrEmpty(id))
+			{
+				id = "custom-overlay";
+			}
+
+			return PerfMeterOverlayPresetDefaults.IsBuiltInPresetId(id) ? id + "-custom" : id;
+		}
+
+		internal static bool IsCanonicalBuiltInPresetPath(string path, string presetId)
+		{
+			return PerfMeterOverlayPresetDefaults.IsBuiltInPresetId(presetId) &&
+				string.Equals(NormalizeAssetPath(path), NormalizeAssetPath(PresetPathForId(presetId, ProjectPresetFolder)), StringComparison.OrdinalIgnoreCase);
 		}
 
 		internal static string Slug(string value)

@@ -111,10 +111,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[TestCase(10d, 0.20f, 0.62f, 1f)]
 		[TestCase(10.01d, 1f, 0.82f, 0.24f)]
 		[TestCase(12d, 1f, 0.82f, 0.24f)]
-		[TestCase(12.01d, 1f, 0.48f, 0.18f)]
-		[TestCase(20d, 1f, 0.48f, 0.18f)]
+		[TestCase(12.01d, 1f, 0.82f, 0.24f)]
+		[TestCase(20d, 1f, 0.82f, 0.24f)]
 		[TestCase(20.01d, 1f, 0.24f, 0.20f)]
-		public void RawFrameTimeColorsUseFiveBudgetBands(double frameTimeMs, float red, float green, float blue)
+		public void RawFrameTimeColorsUseFourBudgetBands(double frameTimeMs, float red, float green, float blue)
 		{
 			PerfMeterOverlay.PerfMeterFrameTimeStripElement strip = new PerfMeterOverlay.PerfMeterFrameTimeStripElement(16);
 			strip.SetFrameBudgetMs(10d);
