@@ -59,7 +59,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.Overdraw);
 			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CustomMetrics);
 			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCores);
-			AssertHasModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
 			AssertDoesNotHaveModule(settings.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 		}
 
@@ -207,6 +207,32 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SettingsJsonUpgradesBakedBuiltInsWithoutChangingCustomPresetWidth()
+		{
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			PerfMeterOverlayPresetJson builtIn = PerfMeterOverlayPresetDefaults.CreateDefault();
+			builtIn.style.maxWidth = 720;
+			for (int i = 0; i < builtIn.widgets.Length; i++)
+			{
+				if (builtIn.widgets[i] != null && builtIn.widgets[i].id == "cpu.cores-bars")
+				{
+					builtIn.widgets[i].enabled = true;
+				}
+			}
+
+			PerfMeterOverlayPresetJson custom = PerfMeterOverlayPresetDefaults.CreateCompactTiming();
+			custom.id = "project-custom";
+			custom.style.maxWidth = 444;
+			settings.activeOverlayPresetId = builtIn.id;
+			settings.overlayPresets = new[] { builtIn, custom };
+
+			Assert.That(PerfMeterSettingsStore.TryReadJson(JsonUtility.ToJson(settings), out PerfMeterSettingsJson loaded, out PerfMeterSettingsLoadState _, out string warning), Is.True, warning);
+			Assert.That(loaded.overlayPresets[0].style.maxWidth, Is.EqualTo(PerfMeterOverlayLayoutLimits.MaxWidth));
+			AssertDoesNotHaveEnabledWidget(loaded.overlayPresets[0], "cpu.cores-bars");
+			Assert.That(loaded.overlayPresets[1].style.maxWidth, Is.EqualTo(444));
+		}
+
+		[Test]
 		public void SettingsJsonClampsTunables()
 		{
 			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
@@ -293,12 +319,31 @@ namespace SGG.PerfMeter.Tests.EditMode
 		public void DefaultOverlayPresetIsFirstSelectableVisualPreset()
 		{
 			PerfMeterOverlayPresetJson[] presets = PerfMeterOverlayPresetDefaults.CreateDefaultPresets();
+			PerfMeterOverlayModule defaultModules = PerfMeterOverlayPresetUtility.GetEnabledModules(presets[0], out string warning);
 
 			Assert.That(presets.Length, Is.GreaterThan(0));
 			Assert.That(presets[0].id, Is.EqualTo(PerfMeterOverlayPresetDefaults.DefaultId));
 			Assert.That(presets[0].displayName, Is.EqualTo("Default"));
 			Assert.That(presets[0].style.layout, Is.EqualTo(nameof(PerfMeterOverlayLayout.MetricBars)));
 			Assert.That(PerfMeterOverlayPresetUtility.Validate(presets[0]).IsValid, Is.True);
+			Assert.That(warning, Is.Empty);
+			AssertDoesNotHaveModule(defaultModules, PerfMeterOverlayModule.CpuCoreBars);
+			AssertHasModule(PerfMeterOverlayPresetUtility.GetEnabledModules(PerfMeterOverlayPresetDefaults.CreateFullDiagnostics(), out warning), PerfMeterOverlayModule.CpuCoreBars);
+			Assert.That(warning, Is.Empty);
+		}
+
+		[Test]
+		public void BuiltInVisualPresetsUseFullLayoutWidthCap()
+		{
+			PerfMeterOverlayPresetJson[] presets = PerfMeterOverlayPresetDefaults.CreateDefaultPresets();
+
+			for (int i = 0; i < presets.Length; i++)
+			{
+				Assert.That(presets[i].style.maxWidth, Is.EqualTo(PerfMeterOverlayLayoutLimits.MaxWidth), presets[i].id);
+			}
+
+			Assert.That(PerfMeterOverlay.FullCardRowWidth, Is.LessThanOrEqualTo(PerfMeterOverlayLayoutLimits.MaxWidth));
+			Assert.That(PerfMeterOverlay.FullBudgetRowWidth, Is.LessThanOrEqualTo(PerfMeterOverlayLayoutLimits.MaxWidth));
 		}
 
 		[Test]
@@ -309,7 +354,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(warning, Is.Empty);
 			Assert.That(preset.style.layout, Is.EqualTo(nameof(PerfMeterOverlayLayout.FpsOnly)));
-			Assert.That(preset.style.maxWidth, Is.LessThanOrEqualTo(360));
+			Assert.That(preset.style.maxWidth, Is.EqualTo(PerfMeterOverlayLayoutLimits.MaxWidth));
 			Assert.That(preset.widgets.Length, Is.EqualTo(2));
 			AssertHasWidget(preset, "fps.summary-card");
 			AssertHasWidget(preset, "timing.cpu-card");
@@ -723,6 +768,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 			return packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath)
 				? packageInfo.resolvedPath
 				: Path.Combine(Application.dataPath, "Scripts/SGG.PerfMeter");
+		}
+
+		private static void AssertDoesNotHaveEnabledWidget(PerfMeterOverlayPresetJson preset, string widgetId)
+		{
+			for (int i = 0; i < preset.widgets.Length; i++)
+			{
+				if (preset.widgets[i] != null && string.Equals(preset.widgets[i].id, widgetId, StringComparison.Ordinal))
+				{
+					Assert.That(preset.widgets[i].enabled, Is.False);
+					return;
+				}
+			}
+
+			Assert.Fail("Missing overlay preset widget " + widgetId);
 		}
 
 		private static void AssertDoesNotHaveModule(PerfMeterOverlayModule actual, PerfMeterOverlayModule expected)

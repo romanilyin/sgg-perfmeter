@@ -255,6 +255,7 @@ namespace SGG.PerfMeter
 		internal const int MinOverlayGraphHistoryLength = 16;
 		internal const int MaxOverlayGraphHistoryLength = 600;
 		internal const int MaxOverdrawFrameCountLimit = 600;
+		internal static PerfMeterOverlayModule DefaultOverlayModules => GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics) & ~PerfMeterOverlayModule.CpuCoreBars;
 
 		internal static PerfMeterSettingsSnapshot Defaults => ToSnapshot(CreateDefault(), PerfMeterSettingsLoadState.Missing, string.Empty);
 
@@ -870,7 +871,7 @@ namespace SGG.PerfMeter
 				CreatePreset("Rendering", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Rendering))),
 				CreatePreset("Memory", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Memory))),
 				CreatePreset("Overdraw", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Overdraw))),
-				CreatePreset(DefaultPresetId, true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.FullDiagnostics))),
+				CreatePreset(DefaultPresetId, true, PerfMeterTargetFps.Fps60, ModulesToNames(DefaultOverlayModules)),
 				CreatePreset("AgentDebug", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.AgentDebug)))
 			};
 		}
@@ -1063,6 +1064,14 @@ namespace SGG.PerfMeter
 			if (settings.presets == null || settings.presets.Length == 0)
 			{
 				settings.presets = CreateDefaultPresets();
+			}
+
+			if (settings.overlayPresets != null)
+			{
+				for (int i = 0; i < settings.overlayPresets.Length; i++)
+				{
+					PerfMeterOverlayPresetDefaults.UpgradeBuiltInPreset(settings.overlayPresets[i]);
+				}
 			}
 
 			if (settings.ruleDefaults == null)

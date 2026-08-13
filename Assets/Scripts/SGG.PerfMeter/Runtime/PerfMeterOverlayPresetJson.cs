@@ -27,7 +27,7 @@ namespace SGG.PerfMeter
 		public string font = nameof(PerfMeterOverlayFontFamily.Manrope);
 		public float scale = 1f;
 		public float opacity = 0.84f;
-		public int maxWidth = 420;
+		public int maxWidth = PerfMeterOverlayLayoutLimits.MaxWidth;
 		public int gap = 4;
 	}
 
@@ -811,6 +811,15 @@ namespace SGG.PerfMeter
 			preset.displayName = "Default";
 			preset.description = "Default PerfMeter diagnostics overlay for zero-code setup with compact metric bars.";
 			preset.style.layout = nameof(PerfMeterOverlayLayout.MetricBars);
+			for (int i = 0; i < preset.widgets.Length; i++)
+			{
+				if (preset.widgets[i] != null && string.Equals(preset.widgets[i].id, "cpu.cores-bars", StringComparison.Ordinal))
+				{
+					preset.widgets[i].enabled = false;
+					break;
+				}
+			}
+
 			return preset;
 		}
 
@@ -821,7 +830,7 @@ namespace SGG.PerfMeter
 				"FPS Only",
 				"Super-minimal one-line overlay with current FPS, average FPS, 1% low, 0.1% low, and render-thread time.",
 				"FpsOnly",
-				360,
+				PerfMeterOverlayLayoutLimits.MaxWidth,
 				Widget("fps.summary-card", 10),
 				Widget("timing.cpu-card", 20));
 		}
@@ -833,7 +842,7 @@ namespace SGG.PerfMeter
 				"Compact Timing",
 				"Compact overlay with FPS, CPU/GPU timing cards and budget bars.",
 				"CompactCards",
-				420,
+				PerfMeterOverlayLayoutLimits.MaxWidth,
 				Widget("fps.summary-card", 10),
 				Widget("timing.cpu-card", 20),
 				Widget("timing.gpu-card", 30),
@@ -848,7 +857,7 @@ namespace SGG.PerfMeter
 				"Classic Cards",
 				"Main timing and diagnostic cards without graphs.",
 				"Classic",
-				520,
+				PerfMeterOverlayLayoutLimits.MaxWidth,
 				Widget("fps.summary-card", 10),
 				Widget("timing.cpu-card", 20),
 				Widget("timing.gpu-card", 30),
@@ -864,7 +873,7 @@ namespace SGG.PerfMeter
 				"Graphs",
 				"Timing-focused overlay with CPU and GPU history graphs.",
 				"Graphs",
-				620,
+				PerfMeterOverlayLayoutLimits.MaxWidth,
 				Widget("fps.summary-card", 10),
 				Widget("timing.cpu-card", 20),
 				Widget("timing.gpu-card", 30),
@@ -880,7 +889,7 @@ namespace SGG.PerfMeter
 				"Full Diagnostics",
 				"Wide diagnostic overlay with major high-level PerfMeter widgets enabled.",
 				"DiagnosticsWide",
-				720,
+				PerfMeterOverlayLayoutLimits.MaxWidth,
 				Widget("fps.summary-card", 10),
 				Widget("timing.cpu-card", 20),
 				Widget("timing.gpu-card", 30),
@@ -898,6 +907,49 @@ namespace SGG.PerfMeter
 				Widget("batching.summary-card", 150),
 				Widget("uploads.summary-card", 160),
 				Widget("custom-metrics.panel", 170));
+		}
+
+		internal static bool UpgradeBuiltInPreset(PerfMeterOverlayPresetJson preset)
+		{
+			if (preset == null || !IsBuiltInPresetId(preset.id))
+			{
+				return false;
+			}
+
+			bool changed = false;
+			preset.style = preset.style ?? new PerfMeterOverlayPresetStyleJson();
+			if (preset.style.maxWidth != PerfMeterOverlayLayoutLimits.MaxWidth)
+			{
+				preset.style.maxWidth = PerfMeterOverlayLayoutLimits.MaxWidth;
+				changed = true;
+			}
+
+			if (!string.Equals(preset.id, DefaultId, StringComparison.OrdinalIgnoreCase))
+			{
+				return changed;
+			}
+
+			PerfMeterOverlayPresetWidgetJson[] widgets = preset.widgets ?? Array.Empty<PerfMeterOverlayPresetWidgetJson>();
+			for (int i = 0; i < widgets.Length; i++)
+			{
+				if (widgets[i] != null && string.Equals(widgets[i].id, "cpu.cores-bars", StringComparison.OrdinalIgnoreCase) && widgets[i].enabled)
+				{
+					widgets[i].enabled = false;
+					changed = true;
+				}
+			}
+
+			return changed;
+		}
+
+		internal static bool IsBuiltInPresetId(string id)
+		{
+			return string.Equals(id, DefaultId, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(id, FpsOnlyId, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(id, CompactTimingId, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(id, ClassicCardsId, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(id, GraphsId, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(id, FullDiagnosticsId, StringComparison.OrdinalIgnoreCase);
 		}
 
 		private static PerfMeterOverlayPresetJson CreatePreset(string id, string displayName, string description, string layout, int maxWidth, params PerfMeterOverlayPresetWidgetJson[] widgets)

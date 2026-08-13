@@ -57,6 +57,11 @@ namespace SGG.PerfMeter.Editor.Setup
 			return ToPublicResult(PerfMeterSetupUtility.SaveSettingsSnapshot(settings));
 		}
 
+		public static PerfMeterSetupActionResult SaveActiveOverlayPreset(string presetId)
+		{
+			return ToPublicResult(PerfMeterSetupUtility.SaveActiveOverlayPreset(presetId));
+		}
+
 		public static PerfMeterSetupActionResult ApplySettingsToRuntime()
 		{
 			return ToPublicResult(PerfMeterSetupUtility.ApplySettingsToRuntime());
@@ -66,10 +71,26 @@ namespace SGG.PerfMeter.Editor.Setup
 		{
 			PerfMeterSetupActionResult frameTimingResult = EnableFrameTimingStats();
 			PerfMeterSetupActionResult rendererResult = InstallRendererFeatures();
-			PerfMeterSetupActionResult settingsResult = CreateDefaultSettings();
+			PerfMeterSetupActionResult settingsResult = EnsureRecommendedSettings();
 			bool success = frameTimingResult.Success && rendererResult.Success && settingsResult.Success;
 			string message = frameTimingResult.Message + "\n" + rendererResult.Message + "\n" + settingsResult.Message;
 			return success ? PerfMeterSetupActionResult.Ok(message) : PerfMeterSetupActionResult.Fail(message);
+		}
+
+		internal static PerfMeterSetupActionResult EnsureRecommendedSettings()
+		{
+			PerfMeterSettingsSnapshot existingSettings = LoadSettings();
+			if (existingSettings.LoadState == PerfMeterSettingsLoadState.Loaded)
+			{
+				return PerfMeterSetupActionResult.Ok("Existing PerfMeter project settings were preserved.");
+			}
+
+			if (existingSettings.LoadState == PerfMeterSettingsLoadState.Missing)
+			{
+				return CreateDefaultSettings();
+			}
+
+			return PerfMeterSetupActionResult.Fail("Existing PerfMeter project settings were not overwritten. " + existingSettings.Warning);
 		}
 
 		public static string GetStatusReport()

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.8.13-2
+
+- Fixed the raw frame-time strip to preserve the selected target-FPS budget across theme and font rebuilds, and simplified its severity palette to four colors by merging orange into yellow.
+- Raised every built-in visual preset width cap to `780 px` so five metric cards and two budget bars fit on one row, and disabled CPU-core bars only in the zero-code Default preset.
+- Fixed `Presets > Save` to persist the selected visual preset as the active project/build preset instead of saving only its source descriptor, and made recommended setup preserve existing project settings.
+
 ## 2026.8.13-1
 
 - Added independent RenderDoc analyzer request/result/error JSON Schema v1 contracts with bounded semantic validation, golden fixtures, exact `uint64` strings, raw future unit/type preservation, explicit availability states, and authenticated capture/hash provenance.

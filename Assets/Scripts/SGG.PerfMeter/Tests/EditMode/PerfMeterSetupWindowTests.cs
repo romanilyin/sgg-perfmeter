@@ -1,7 +1,10 @@
+using System;
+using System.IO;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor.Setup;
 using SGG.PerfMeter.Editor.UI;
 using SGG.PerfMeter.Editor.UI.Localization;
+using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -65,6 +68,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 		private PerfMeterSetupWindow _window;
 		private string _previousLanguage;
+		private bool _presetRootExisted;
+		private bool _resourcesRootExisted;
+		private bool _settingsRootExisted;
 
 		[SetUp]
 		public void SetUp()
@@ -73,6 +79,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterFtueState.ResetChoices();
 			_previousLanguage = PerfMeterWindowLocalization.CurrentLanguage;
 			PerfMeterWindowLocalization.CurrentLanguage = PerfMeterWindowLocalization.DefaultLanguage;
+			_presetRootExisted = AssetDatabase.IsValidFolder("Assets/SGG PerfMeter");
+			_resourcesRootExisted = AssetDatabase.IsValidFolder("Assets/Resources");
+			_settingsRootExisted = AssetDatabase.IsValidFolder("Assets/Resources/SGG.PerfMeter");
 		}
 
 		[TearDown]
@@ -82,11 +91,25 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterFtueState.ResetChoices();
 			if (_window != null)
 			{
-				Object.DestroyImmediate(_window);
+				UnityEngine.Object.DestroyImmediate(_window);
 				_window = null;
 			}
 
 			PerfMeterWindowLocalization.CurrentLanguage = _previousLanguage;
+			if (!_presetRootExisted && AssetDatabase.IsValidFolder("Assets/SGG PerfMeter"))
+			{
+				AssetDatabase.DeleteAsset("Assets/SGG PerfMeter");
+			}
+
+			if (!_settingsRootExisted && AssetDatabase.IsValidFolder("Assets/Resources/SGG.PerfMeter"))
+			{
+				AssetDatabase.DeleteAsset("Assets/Resources/SGG.PerfMeter");
+			}
+
+			if (!_resourcesRootExisted && AssetDatabase.IsValidFolder("Assets/Resources"))
+			{
+				AssetDatabase.DeleteAsset("Assets/Resources");
+			}
 		}
 
 		[Test]
@@ -104,6 +127,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(_window.rootVisualElement.Q<Toggle>("settings-enabled"), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Toggle>(PerfMeterSetupWindow.SettingsStructuredLogsEnabledElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<PopupField<string>>("settings-active-overlay-preset"), Is.Not.Null);
+			Assert.That(_window.rootVisualElement.Q<Button>(PerfMeterSetupWindow.VisualPresetSaveButtonElementName), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Label>("settings-preset-schema-version"), Is.Not.Null);
 			Assert.That(_window.rootVisualElement.Q<Label>("settings-preset-reserved-widget-metadata"), Is.Not.Null);
 
@@ -154,6 +178,169 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(stopSession.ClassListContains("pm-button--active"), Is.True);
 			Assert.That(PerfMeterSetupWindow.ProjectDefaultOverdrawRequestFrameCount, Is.EqualTo(0));
 			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[Test]
+		public void SavingFpsOnlyPresetMakesItActiveForProjectReload()
+		{
+			string settingsPath = PerfMeterSettingsStore.ResourcesAssetPath;
+			string presetPath = PerfMeterOverlayPresetEditorUtility.PresetPathForId(PerfMeterOverlayPresetDefaults.FpsOnlyId, PerfMeterOverlayPresetEditorUtility.ProjectPresetFolder);
+			FileBackup settingsBackup = FileBackup.Capture(settingsPath);
+			FileBackup presetBackup = FileBackup.Capture(presetPath);
+			try
+			{
+				Assert.That(PerfMeterSetupActions.CreateDefaultSettings().Success, Is.True);
+				Assert.That(PerfMeterSettingsStore.TryReadJson(File.ReadAllText(settingsPath), out PerfMeterSettingsJson initialSettings, out PerfMeterSettingsLoadState _, out string warning), Is.True, warning);
+				initialSettings.enabled = false;
+				initialSettings.session.maxSamples = 1234;
+				initialSettings.presets = new[]
+				{
+					new PerfMeterPresetSettingsJson
+					{
+						id = "project-legacy",
+						overlayVisible = false,
+						targetFps = 30,
+						modules = new[] { nameof(PerfMeterOverlayModule.Fps) }
+					}
+				};
+				string initialJson = PerfMeterSettingsStore.ToJson(initialSettings);
+				initialJson = initialJson.Substring(0, initialJson.LastIndexOf('}')) + ",\n  \"futureSameSchema\": {\"threshold\": 7}\n}";
+				File.WriteAllText(settingsPath, initialJson);
+				AssetDatabase.ImportAsset(settingsPath);
+
+				CreateWindow();
+				PopupField<string> presetField = _window.rootVisualElement.Q<PopupField<string>>(PerfMeterSetupWindow.SettingsActiveOverlayPresetElementName);
+				string fpsOnlyLabel = string.Empty;
+				for (int i = 0; i < presetField.choices.Count; i++)
+				{
+					if (presetField.choices[i].Contains("[" + PerfMeterOverlayPresetDefaults.FpsOnlyId + "]"))
+					{
+						fpsOnlyLabel = presetField.choices[i];
+						break;
+					}
+				}
+
+				Assert.That(fpsOnlyLabel, Is.Not.Empty);
+				_window.SelectOverlayPresetByLabel(fpsOnlyLabel);
+				Assert.That(_window.rootVisualElement.Q<EnumField>(PerfMeterSetupWindow.SettingsOverlayLayoutElementName).value, Is.EqualTo(PerfMeterOverlayLayout.FpsOnly));
+				_window.rootVisualElement.Q<Toggle>(PerfMeterSetupWindow.SettingsEnabledElementName).value = true;
+				_window.rootVisualElement.Q<IntegerField>(PerfMeterSetupWindow.SettingsSessionMaxSamplesElementName).value = 9876;
+
+				PerfMeterSetupActionResult result = _window.SaveCurrentOverlayPresetForProject();
+				PerfMeterSettingsSnapshot reloaded = PerfMeterSetupActions.LoadSettings();
+				Assert.That(PerfMeterSettingsStore.TryReadJson(File.ReadAllText(settingsPath), out PerfMeterSettingsJson savedSettings, out PerfMeterSettingsLoadState _, out warning), Is.True, warning);
+
+				Assert.That(result.Success, Is.True, result.Message);
+				Assert.That(reloaded.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Loaded));
+				Assert.That(reloaded.ActiveOverlayPresetId, Is.EqualTo(PerfMeterOverlayPresetDefaults.FpsOnlyId));
+				Assert.That(reloaded.ActiveOverlayPreset, Is.Not.Null);
+				Assert.That(reloaded.ActiveOverlayPreset.id, Is.EqualTo(PerfMeterOverlayPresetDefaults.FpsOnlyId));
+				Assert.That(reloaded.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.FpsOnly));
+				Assert.That(reloaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.FpsOnly));
+				Assert.That(savedSettings.enabled, Is.False);
+				Assert.That(savedSettings.session.maxSamples, Is.EqualTo(1234));
+				Assert.That(savedSettings.presets, Has.Length.EqualTo(1));
+				Assert.That(savedSettings.presets[0].id, Is.EqualTo("project-legacy"));
+				Assert.That(File.ReadAllText(settingsPath), Does.Contain("\"futureSameSchema\": {\"threshold\": 7}"));
+			}
+			finally
+			{
+				settingsBackup.Restore();
+				presetBackup.Restore();
+				AssetDatabase.Refresh();
+			}
+		}
+
+		[Test]
+		public void BuiltInPresetUpgradeDoesNotRewriteCustomPresetWidth()
+		{
+			PerfMeterOverlayPresetJson builtIn = PerfMeterOverlayPresetDefaults.CreateDefault();
+			builtIn.style.maxWidth = 720;
+			for (int i = 0; i < builtIn.widgets.Length; i++)
+			{
+				if (builtIn.widgets[i] != null && builtIn.widgets[i].id == "cpu.cores-bars")
+				{
+					builtIn.widgets[i].enabled = true;
+				}
+			}
+
+			PerfMeterOverlayPresetJson custom = PerfMeterOverlayPresetDefaults.CreateCompactTiming();
+			custom.id = "project-custom";
+			custom.style.maxWidth = 444;
+
+			Assert.That(PerfMeterOverlayPresetDefaults.UpgradeBuiltInPreset(builtIn), Is.True);
+			Assert.That(builtIn.style.maxWidth, Is.EqualTo(PerfMeterOverlayLayoutLimits.MaxWidth));
+			AssertDoesNotHaveEnabledWidget(builtIn, "cpu.cores-bars");
+			Assert.That(PerfMeterOverlayPresetDefaults.UpgradeBuiltInPreset(custom), Is.False);
+			Assert.That(custom.style.maxWidth, Is.EqualTo(444));
+		}
+
+		[Test]
+		public void CustomPresetIdsCannotCollideWithBuiltIns()
+		{
+			Assert.That(PerfMeterOverlayPresetEditorUtility.CustomPresetIdForPath("Assets/default.perfmeter.overlay.json"), Is.EqualTo("default-custom"));
+			Assert.That(PerfMeterOverlayPresetEditorUtility.CustomPresetIdForPath("Assets/project-wide.perfmeter.overlay.json"), Is.EqualTo("project-wide"));
+			Assert.That(PerfMeterOverlayPresetEditorUtility.CustomPresetIdForPath("Assets/---.perfmeter.overlay.json"), Is.EqualTo("custom-overlay"));
+			Assert.That(PerfMeterOverlayPresetEditorUtility.IsCanonicalBuiltInPresetPath("Assets/SGG PerfMeter/Presets/Overlay/default.perfmeter.overlay.json", "default"), Is.True);
+			Assert.That(PerfMeterOverlayPresetEditorUtility.IsCanonicalBuiltInPresetPath("Assets/SGG PerfMeter/Presets/Overlay/custom/default.perfmeter.overlay.json", "default"), Is.False);
+		}
+
+		[Test]
+		public void SettingsJsonPatcherRejectsEscapedOrLiteralDuplicateProperties()
+		{
+			const string escapedDuplicate = "{\"activeOverlayPresetId\":\"default\",\"activeOverlayPreset\\u0049d\":\"graphs\"}";
+			const string literalDuplicate = "{\"overlayPresets\":[],\"overlayPresets\":[]}";
+
+			Assert.That(PerfMeterSetupUtility.TrySetTopLevelJsonProperty(escapedDuplicate, "activeOverlayPresetId", "\"fps-only\"", out string escapedResult), Is.False);
+			Assert.That(escapedResult, Is.EqualTo(escapedDuplicate));
+			Assert.That(PerfMeterSetupUtility.TrySetTopLevelJsonProperty(literalDuplicate, "overlayPresets", "[]", out string literalResult), Is.False);
+			Assert.That(literalResult, Is.EqualTo(literalDuplicate));
+		}
+
+		[Test]
+		public void DuplicateProjectPresetIdsAreAllInvalid()
+		{
+			PerfMeterOverlayPresetJson first = PerfMeterOverlayPresetDefaults.CreateCompactTiming();
+			PerfMeterOverlayPresetJson second = PerfMeterOverlayPresetDefaults.CreateGraphs();
+			first.id = "duplicate-id";
+			second.id = "DUPLICATE-ID";
+			var assets = new System.Collections.Generic.List<PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset>
+			{
+				new PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset("Assets/one.json", string.Empty, first, true, string.Empty, false),
+				new PerfMeterOverlayPresetEditorUtility.OverlayPresetAsset("Assets/two.json", string.Empty, second, true, string.Empty, false)
+			};
+
+			PerfMeterOverlayPresetEditorUtility.InvalidateDuplicatePresetIds(assets);
+
+			Assert.That(assets[0].IsValid, Is.False);
+			Assert.That(assets[1].IsValid, Is.False);
+			Assert.That(assets[0].Warning, Does.Contain("duplicated"));
+			Assert.That(assets[1].Warning, Does.Contain("duplicated"));
+		}
+
+		[Test]
+		public void RecommendedSettingsDoNotOverwriteUnsupportedJson()
+		{
+			string settingsPath = PerfMeterSettingsStore.ResourcesAssetPath;
+			FileBackup settingsBackup = FileBackup.Capture(settingsPath);
+			try
+			{
+				Assert.That(PerfMeterSetupActions.CreateDefaultSettings().Success, Is.True);
+				const string unsupportedJson = "{\"schemaVersion\":999,\"sentinel\":\"keep\"}";
+				File.WriteAllText(settingsPath, unsupportedJson);
+				AssetDatabase.ImportAsset(settingsPath);
+
+				PerfMeterSetupActionResult result = PerfMeterSetupActions.EnsureRecommendedSettings();
+
+				Assert.That(result.Success, Is.False);
+				Assert.That(result.Message, Does.Contain("not overwritten"));
+				Assert.That(File.ReadAllText(settingsPath), Is.EqualTo(unsupportedJson));
+			}
+			finally
+			{
+				settingsBackup.Restore();
+				AssetDatabase.Refresh();
+			}
 		}
 
 		[Test]
@@ -402,6 +589,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 				sampleState == PerfMeterProfilerMetricSampleState.AvailableSampled ? 1 : 0);
 		}
 
+		private static void AssertDoesNotHaveEnabledWidget(PerfMeterOverlayPresetJson preset, string widgetId)
+		{
+			for (int i = 0; i < preset.widgets.Length; i++)
+			{
+				if (preset.widgets[i] != null && string.Equals(preset.widgets[i].id, widgetId, StringComparison.Ordinal))
+				{
+					Assert.That(preset.widgets[i].enabled, Is.False);
+					return;
+				}
+			}
+
+			Assert.Fail("Missing overlay preset widget " + widgetId);
+		}
+
 		private static PerfMeterSetupUtility.PerfMeterSetupStatus CreateReadyFtueStatus()
 		{
 			return new PerfMeterSetupUtility.PerfMeterSetupStatus
@@ -437,6 +638,38 @@ namespace SGG.PerfMeter.Tests.EditMode
 		{
 			_window = ScriptableObject.CreateInstance<PerfMeterSetupWindow>();
 			Assert.DoesNotThrow(_window.CreateGUI);
+		}
+
+		private readonly struct FileBackup
+		{
+			private FileBackup(string path, bool existed, string content)
+			{
+				_path = path;
+				_existed = existed;
+				_content = content;
+			}
+
+			private readonly string _path;
+			private readonly bool _existed;
+			private readonly string _content;
+
+			internal static FileBackup Capture(string path)
+			{
+				return new FileBackup(path, File.Exists(path), File.Exists(path) ? File.ReadAllText(path) : string.Empty);
+			}
+
+			internal void Restore()
+			{
+				if (_existed)
+				{
+					File.WriteAllText(_path, _content);
+					AssetDatabase.ImportAsset(_path);
+				}
+				else if (File.Exists(_path))
+				{
+					AssetDatabase.DeleteAsset(_path);
+				}
+			}
 		}
 	}
 }

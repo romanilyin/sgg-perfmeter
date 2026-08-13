@@ -2,6 +2,8 @@
 
 I preset visivi sono file JSON di progetto che definiscono layout dell'overlay, stile, widget abilitati e ordine dei widget. Sono creati nella tab `Presets` di `SGG/Perfmeter/Setup` e incorporati in JSON Resources per le build, quindi il runtime non dipende da `AssetDatabase`.
 
+Selezionare un preset e premere `Save` salva il descriptor in `Assets/SGG PerfMeter/Presets/Overlay`, lo attiva per il progetto e incorpora la selezione in `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` per le successive sessioni Play Mode e build. L'applicazione dalla tab `Runtime` modifica solo la sessione Play Mode corrente.
+
 Gli screenshot sotto sono catture fullscreen dalla scena capture-lab dopo 1000 frame di warmup. Il testo dell'overlay runtime non e localizzato, quindi la documentazione italiana usa le stesse immagini dei preset.
 
 ## Default
