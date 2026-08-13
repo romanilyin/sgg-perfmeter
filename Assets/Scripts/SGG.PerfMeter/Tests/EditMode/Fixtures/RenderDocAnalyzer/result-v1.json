@@ -37,16 +37,24 @@
     { "event_id": 42, "parent_event_id": 1, "name": "Draw Opaque", "flags": ["Drawcall"] }
   ],
   "counter_catalog_complete": true,
-  "counter_total_count": 8,
+  "counter_total_count": 16,
   "counter_catalog": [
     { "id": "renderdoc:uint64", "native_id": 1, "name": "Exact UInt64", "description": "Exact unsigned value", "unit": "FutureUnit", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 0, "provenance": "renderdoc" },
     { "id": "renderdoc:future", "native_id": 2, "name": "Future Typed Counter", "description": "Unknown type and unit remain raw", "unit": "VendorFutureUnit", "result_type": "VendorFutureType", "result_byte_width": 16, "aggregation": "non_aggregatable", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 1, "provenance": "renderdoc" },
     { "id": "renderdoc:zero", "native_id": 3, "name": "Available Zero", "description": "Zero is still available", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "sum", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 1, "provenance": "renderdoc" },
     { "id": "renderdoc:duration", "native_id": 8, "name": "GPU Duration", "description": "64-bit floating duration", "unit": "Seconds", "result_type": "Float", "result_byte_width": 8, "aggregation": "sum", "availability": "available", "reason": "", "requested": true, "fetched": true, "pass_index": 0, "provenance": "renderdoc" },
-    { "id": "renderdoc:not-requested", "native_id": 4, "name": "Not Requested", "description": "Described but not requested", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "not_requested", "reason": "not selected", "requested": false, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:not-requested", "native_id": 20, "name": "Not Requested", "description": "Described but not requested", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "not_requested", "reason": "not selected", "requested": false, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
     { "id": "renderdoc:unsupported", "native_id": 5, "name": "Unsupported", "description": "Unavailable on this replay", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "unsupported on gpu", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
     { "id": "renderdoc:failed", "native_id": 6, "name": "Failed", "description": "Fetch failed", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "fetch_failed", "reason": "counter pass failed", "requested": true, "fetched": false, "pass_index": 1, "provenance": "renderdoc" },
-    { "id": "renderdoc:not-applicable", "native_id": 7, "name": "Not Applicable", "description": "Not applicable to this action", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "not_applicable", "reason": "not applicable", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" }
+    { "id": "renderdoc:not-applicable", "native_id": 7, "name": "Not Applicable", "description": "Not applicable to this action", "unit": "Count", "result_type": "UInt", "result_byte_width": 8, "aggregation": "non_aggregatable", "availability": "not_applicable", "reason": "not applicable", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:4", "native_id": 4, "name": "Core Counter 4", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:9", "native_id": 9, "name": "Core Counter 9", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:10", "native_id": 10, "name": "Core Counter 10", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:11", "native_id": 11, "name": "Core Counter 11", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:12", "native_id": 12, "name": "Core Counter 12", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:13", "native_id": 13, "name": "Core Counter 13", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:14", "native_id": 14, "name": "Core Counter 14", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" },
+    { "id": "renderdoc:15", "native_id": 15, "name": "Core Counter 15", "description": "Unavailable core counter", "unit": "Unknown", "result_type": "Unknown", "result_byte_width": 1, "aggregation": "non_aggregatable", "availability": "unsupported", "reason": "counter unavailable on this replay", "requested": true, "fetched": false, "pass_index": -1, "provenance": "renderdoc" }
   ],
   "results_complete": true,
   "result_total_count": 7,
@@ -60,10 +68,10 @@
     { "event_id": 42, "counter_id": "renderdoc:not-applicable", "availability": "not_applicable", "reason": "not applicable" }
   ],
   "summary": {
-    "requested_counter_count": 7,
-    "described_counter_count": 8,
+    "requested_counter_count": 15,
+    "described_counter_count": 16,
     "fetched_counter_count": 4,
-    "unsupported_counter_count": 1,
+    "unsupported_counter_count": 9,
     "failed_counter_count": 1,
     "failed_result_count": 1,
     "replay_pass_count": 2,

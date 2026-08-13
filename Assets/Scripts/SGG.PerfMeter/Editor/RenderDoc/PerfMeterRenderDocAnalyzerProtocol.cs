@@ -360,6 +360,7 @@ namespace SGG.PerfMeter.Editor
 				result.results.Length > request.options.max_counter_results ||
 				(!request.options.include_action_tree && result.actions.Length != 0) ||
 				(!request.options.include_raw_counter_descriptions && HasCounterDescriptions(result.counter_catalog)) ||
+				!ValidateCounterSelectionBinding(request.counter_selection, result.counter_catalog) ||
 				!ValidateRequestedActionReferences(request, result))
 			{
 				error = "response_binding_mismatch";
@@ -411,6 +412,81 @@ namespace SGG.PerfMeter.Editor
 			}
 
 			return true;
+		}
+
+		private static bool ValidateCounterSelectionBinding(
+			PerfMeterRenderDocCounterSelection selection,
+			PerfMeterRenderDocCounterMetadata[] catalog)
+		{
+			HashSet<long> explicitIds = new HashSet<long>();
+			for (int i = 0; i < selection.explicit_counter_ids.Length; i++)
+			{
+				if (!TryParseRenderDocCounterId(selection.explicit_counter_ids[i], out long nativeId))
+				{
+					return false;
+				}
+
+				explicitIds.Add(nativeId);
+			}
+
+			HashSet<string> packs = new HashSet<string>(selection.packs, StringComparer.Ordinal);
+			HashSet<long> observedIds = new HashSet<long>();
+			for (int i = 0; i < catalog.Length; i++)
+			{
+				PerfMeterRenderDocCounterMetadata metadata = catalog[i];
+				observedIds.Add(metadata.native_id);
+				bool expected = explicitIds.Contains(metadata.native_id) || CounterBelongsToSelectedPack(metadata.native_id, packs);
+				if (metadata.requested != expected)
+				{
+					return false;
+				}
+			}
+
+			foreach (long explicitId in explicitIds)
+			{
+				if (!observedIds.Contains(explicitId))
+				{
+					return false;
+				}
+			}
+
+			if (packs.Contains("core"))
+			{
+				for (long nativeId = 1L; nativeId <= 15L; nativeId++)
+				{
+					if (!observedIds.Contains(nativeId))
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
+
+		private static bool CounterBelongsToSelectedPack(long nativeId, HashSet<string> packs)
+		{
+			return (packs.Contains("core") && nativeId >= 1L && nativeId <= 15L) ||
+				(packs.Contains("amd_basic") && nativeId >= 1000000L && nativeId < 2000000L) ||
+				(packs.Contains("intel_basic") && nativeId >= 2000000L && nativeId < 3000000L) ||
+				(packs.Contains("nvidia_basic") && nativeId >= 3000000L && nativeId < 4000000L) ||
+				(packs.Contains("vulkan_extended") && nativeId >= 4000000L && nativeId < 5000000L) ||
+				(packs.Contains("arm_basic") && nativeId >= 5000000L && nativeId <= 6000000L);
+		}
+
+		private static bool TryParseRenderDocCounterId(string value, out long nativeId)
+		{
+			const string prefix = "renderdoc:";
+			nativeId = 0L;
+			if (string.IsNullOrEmpty(value) || !value.StartsWith(prefix, StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			string suffix = value.Substring(prefix.Length);
+			return long.TryParse(suffix, NumberStyles.None, CultureInfo.InvariantCulture, out nativeId) &&
+				nativeId >= 1L && nativeId <= uint.MaxValue &&
+				string.Equals(prefix + nativeId.ToString(CultureInfo.InvariantCulture), value, StringComparison.Ordinal);
 		}
 
 		private static bool ValidateAnalyzerProvenance(PerfMeterRenderDocAnalyzerProvenance analyzer, bool allowEmptyRenderDoc, out string error)
@@ -474,6 +550,7 @@ namespace SGG.PerfMeter.Editor
 			out string error)
 		{
 			HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
+			HashSet<long> nativeIds = new HashSet<long>();
 			int requestedCount = 0;
 			int fetchedCount = 0;
 			int unsupportedCount = 0;
@@ -495,6 +572,7 @@ namespace SGG.PerfMeter.Editor
 					ContainsAbsolutePath(metadata.reason) ||
 					!IsToken(metadata.provenance, 128) ||
 					!ids.Add(metadata.id) ||
+					!nativeIds.Add(metadata.native_id) ||
 					!ValidateMetadataState(metadata))
 				{
 					error = "invalid_counter_catalog";
@@ -554,6 +632,7 @@ namespace SGG.PerfMeter.Editor
 			}
 
 			HashSet<string> resultKeys = new HashSet<string>(StringComparer.Ordinal);
+			HashSet<string> countersWithResults = new HashSet<string>(StringComparer.Ordinal);
 			for (int i = 0; i < results.Length; i++)
 			{
 				PerfMeterRenderDocCounterResult result = results[i];
@@ -572,6 +651,16 @@ namespace SGG.PerfMeter.Editor
 				}
 
 				failedResultCount += result.availability == "fetch_failed" ? 1 : 0;
+				countersWithResults.Add(result.counter_id);
+			}
+
+			for (int i = 0; i < catalog.Length; i++)
+			{
+				if (catalog[i].fetched && !countersWithResults.Contains(catalog[i].id))
+				{
+					error = "invalid_counter_result";
+					return false;
+				}
 			}
 
 			error = string.Empty;
@@ -713,6 +802,24 @@ namespace SGG.PerfMeter.Editor
 
 		private static bool ValidateSelectionContents(PerfMeterRenderDocCounterSelection selection)
 		{
+			for (int i = 0; i < selection.packs.Length; i++)
+			{
+				string pack = selection.packs[i];
+				if (pack != "core" && pack != "amd_basic" && pack != "intel_basic" &&
+					pack != "nvidia_basic" && pack != "vulkan_extended" && pack != "arm_basic")
+				{
+					return false;
+				}
+			}
+
+			for (int i = 0; i < selection.explicit_counter_ids.Length; i++)
+			{
+				if (!TryParseRenderDocCounterId(selection.explicit_counter_ids[i], out _))
+				{
+					return false;
+				}
+			}
+
 			switch (selection.mode)
 			{
 				case "none":
