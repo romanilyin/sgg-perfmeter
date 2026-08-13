@@ -8,7 +8,7 @@ import sys
 import time
 
 
-ANALYZER_VERSION = "1.0.0"
+ANALYZER_VERSION = "1.1.0"
 REQUEST_SCHEMA = "sgg.perfmeter.renderdoc-analysis-request"
 RESULT_SCHEMA = "sgg.perfmeter.renderdoc-analysis"
 ERROR_SCHEMA = "sgg.perfmeter.renderdoc-analysis-error"
@@ -18,6 +18,27 @@ MAX_DOCUMENT_BYTES = 64 * 1024 * 1024
 MAX_CAPTURE_BYTES = 512 * 1024 * 1024
 MAX_COUNTERS = 4096
 CORE_COUNTER_IDS = tuple(range(1, 16))
+COUNTER_BATCH_SIZE = 16
+SEMANTIC_PACK_CATEGORIES = {
+    "amd_basic": "amd",
+    "intel_basic": "intel",
+    "nvidia_basic": "nvidia",
+    "vulkan_extended": "vulkan_extended",
+    "arm_basic": "arm",
+}
+COUNTER_CATEGORY_VENDORS = {
+    "amd": "amd",
+    "intel": "intel",
+    "nvidia": "nvidia",
+    "arm": "arm",
+}
+COUNTER_CATEGORY_APIS = {
+    "generic": ("d3d11", "d3d12", "opengl", "vulkan"),
+    "vulkan_extended": ("vulkan",),
+    "arm": ("opengl", "vulkan"),
+}
+SAFE_RETRY_CATEGORIES = ("generic",)
+COUNTER_CATEGORY_ORDER = ("generic", "amd", "intel", "nvidia", "vulkan_extended", "arm", "explicit")
 MARKER_FILE = ".sgg-perfmeter-renderdoc-analyzer"
 REQUEST_FILE = "request.json"
 RESPONSE_FILE = "response.json"
@@ -276,18 +297,91 @@ def parse_explicit_counter(value):
     return parsed
 
 
-def requested_counter_ids(selection):
+def counter_category(native_id):
+    if native_id in CORE_COUNTER_IDS:
+        return "generic"
+    if 1000000 <= native_id < 2000000:
+        return "amd"
+    if 2000000 <= native_id < 3000000:
+        return "intel"
+    if 3000000 <= native_id < 4000000:
+        return "nvidia"
+    if 4000000 <= native_id < 5000000:
+        return "vulkan_extended"
+    if 5000000 <= native_id <= 6000000:
+        return "arm"
+    return "explicit"
+
+
+def normalized_vendor(value):
+    normalized = "".join(character.lower() for character in str(value) if character.isalnum())
+    return "nvidia" if normalized in ("nvidia", "nv") else normalized
+
+
+def normalized_api(value):
+    return "".join(character.lower() for character in str(value) if character.isalnum())
+
+
+def counter_applicability(native_id, gpu_vendor, graphics_api):
+    category = counter_category(native_id)
+    required_vendor = COUNTER_CATEGORY_VENDORS.get(category)
+    if required_vendor is not None and normalized_vendor(gpu_vendor) != required_vendor:
+        return False, "counter category is not applicable to this GPU vendor"
+    allowed_apis = COUNTER_CATEGORY_APIS.get(category)
+    if allowed_apis is not None and normalized_api(graphics_api) not in allowed_apis:
+        return False, "counter category is not applicable to this graphics API"
+    return True, ""
+
+
+def counter_batches(native_ids, batch_size=COUNTER_BATCH_SIZE):
+    if batch_size < 1:
+        raise ValueError("Counter batch size must be positive.")
+    grouped = dict((category, []) for category in COUNTER_CATEGORY_ORDER)
+    for native_id in sorted(set(native_ids)):
+        grouped[counter_category(native_id)].append(native_id)
+    batches = []
+    for category in COUNTER_CATEGORY_ORDER:
+        values = grouped[category]
+        for start in range(0, len(values), batch_size):
+            batches.append((category, tuple(values[start:start + batch_size])))
+    return tuple(batches)
+
+
+def plan_counter_selection(selection, available, gpu_vendor, graphics_api, batch_size=COUNTER_BATCH_SIZE):
     mode = selection["mode"]
     packs = selection["packs"]
     explicit = selection["explicit_counter_ids"]
     if mode not in ("none", "semantic_pack", "explicit", "semantic_pack_and_explicit"):
         raise AnalyzerFailure("unsupported_counter_selection", "counters", "The requested counter selection mode is unsupported.")
-    if any(pack != "core" for pack in packs):
-        raise AnalyzerFailure("unsupported_counter_selection", "counters", "This analyzer revision only supports the core semantic pack.")
-    selected = set(CORE_COUNTER_IDS if "core" in packs else ())
+    available = tuple(sorted(set(int(native_id) for native_id in available)))
+    requested_set = set()
+    for pack in packs:
+        if pack == "core":
+            pack_ids = CORE_COUNTER_IDS
+        elif pack in SEMANTIC_PACK_CATEGORIES:
+            category = SEMANTIC_PACK_CATEGORIES[pack]
+            pack_ids = tuple(native_id for native_id in available if counter_category(native_id) == category)
+        else:
+            raise AnalyzerFailure("unsupported_counter_selection", "counters", "The requested semantic counter pack is unsupported.")
+        for native_id in pack_ids:
+            requested_set.add(native_id)
     for value in explicit:
-        selected.add(parse_explicit_counter(value))
-    return selected
+        requested_set.add(parse_explicit_counter(value))
+    requested = tuple(sorted(requested_set))
+    selected = []
+    not_applicable = {}
+    for native_id in requested:
+        applicable, reason = counter_applicability(native_id, gpu_vendor, graphics_api)
+        if applicable:
+            selected.append(native_id)
+        else:
+            not_applicable[native_id] = reason
+    return {
+        "requested": requested,
+        "selected": tuple(selected),
+        "not_applicable": not_applicable,
+        "batches": counter_batches(selected, batch_size),
+    }
 
 
 def describe_counter(controller, native_id, requested, include_description):
@@ -362,11 +456,12 @@ def raw_counter_value(result, metadata):
     return {"result_type": result_type, "byte_width": width, "encoding": "decimal", "value": text}
 
 
-def read_counters(controller, selection, include_description, max_results, output_budget, valid_event_ids):
+def read_counters(controller, selection, include_description, max_results, output_budget, valid_event_ids, gpu_vendor, graphics_api, batch_size=COUNTER_BATCH_SIZE, succeeded_status=None):
     available = sorted(set(int(counter) for counter in controller.EnumerateCounters()))
     if len(available) > MAX_COUNTERS:
         raise AnalyzerFailure("counter_limit_exceeded", "counters", "The available counter catalog exceeds the analyzer limit.")
-    requested = requested_counter_ids(selection)
+    plan = plan_counter_selection(selection, available, gpu_vendor, graphics_api, batch_size)
+    requested = set(plan["requested"])
     catalog_ids = sorted(set(available) | requested)
     if len(catalog_ids) > MAX_COUNTERS:
         raise AnalyzerFailure("counter_limit_exceeded", "counters", "The requested counter catalog exceeds the analyzer limit.")
@@ -375,50 +470,125 @@ def read_counters(controller, selection, include_description, max_results, outpu
     by_native = {}
     for native_id in catalog_ids:
         metadata = describe_counter(controller, native_id, native_id in requested, include_description) if native_id in available_set else synthetic_counter(native_id, True, "counter unavailable on this replay")
+        if native_id in plan["not_applicable"]:
+            metadata["availability"] = "not_applicable"
+            metadata["reason"] = plan["not_applicable"][native_id]
+            metadata["fetched"] = False
+            metadata["pass_index"] = -1
         catalog.append(metadata)
         by_native[native_id] = metadata
-    selected = [native_id for native_id in available if native_id in requested and by_native[native_id]["availability"] == "available"]
-    pass_count = 1 if selected else 0
-    raw_results = []
-    fetch_failed = False
-    if selected:
-        try:
-            raw_results = list(controller.FetchCounters(selected))
-            for native_id in selected:
-                metadata = by_native[native_id]
-                metadata["fetched"] = True
-                metadata["pass_index"] = 0
-        except Exception:
-            fetch_failed = True
-            for native_id in selected:
-                metadata = by_native[native_id]
-                metadata["availability"] = "fetch_failed"
-                metadata["reason"] = "counter batch failed"
-                metadata["pass_index"] = 0
+    catalog_bytes = sum(len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) for item in catalog)
+    if catalog_bytes > output_budget:
+        raise AnalyzerFailure("output_too_large", "counters", "Counter data exceeds the response byte limit.")
+    selected = [native_id for native_id in plan["selected"] if native_id in available_set and by_native[native_id]["availability"] == "available"]
+    batches = counter_batches(selected, batch_size)
+    pass_count = 0
+    pass_failed = False
     results = []
     failed_results = 0
-    used_bytes = sum(len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) for item in catalog)
-    for raw in raw_results:
-        native_id = int(raw.counter)
-        metadata = by_native.get(native_id)
-        event_id = int(raw.eventId)
-        if metadata is None or event_id <= 0 or event_id > 0xffffffff or (valid_event_ids is not None and event_id not in valid_event_ids):
-            raise AnalyzerFailure("invalid_counter_result", "counters", "RenderDoc returned a counter result outside the analyzed action tree.")
-        item = {"event_id": event_id, "counter_id": metadata["id"], "availability": "available", "reason": ""}
-        try:
-            item["raw_value"] = raw_counter_value(raw, metadata)
-        except Exception:
-            item["availability"] = "fetch_failed"
-            item["reason"] = "counter value could not be represented"
-            failed_results += 1
-        used_bytes += len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    result_keys = set()
+    result_bytes = 0
+
+    def fetch_counter_pass(batch):
+        raw_values = list(controller.FetchCounters(list(batch)))
+        if succeeded_status is not None and hasattr(controller, "GetFatalErrorStatus"):
+            if controller.GetFatalErrorStatus() != succeeded_status:
+                raise AnalyzerFailure("replay_failed", "counters", "RenderDoc reported a fatal replay error while fetching counters.")
+        return raw_values
+
+    def consume_counter_results(raw_values, batch, pass_index, missing_reason):
+        nonlocal failed_results, result_bytes
+        expected = set(batch)
+        returned = set()
+        for raw in raw_values:
+            native_id = int(raw.counter)
+            metadata = by_native.get(native_id)
+            event_id = int(raw.eventId)
+            key = (event_id, native_id)
+            if native_id not in expected or metadata is None or event_id <= 0 or event_id > 0xffffffff or key in result_keys or (valid_event_ids is not None and event_id not in valid_event_ids):
+                raise AnalyzerFailure("invalid_counter_result", "counters", "RenderDoc returned a counter result outside the analyzed action tree.")
+            returned.add(native_id)
+            result_keys.add(key)
+            item = {"event_id": event_id, "counter_id": metadata["id"], "availability": "available", "reason": ""}
+            try:
+                item["raw_value"] = raw_counter_value(raw, metadata)
+            except Exception:
+                item["availability"] = "fetch_failed"
+                item["reason"] = "counter value could not be represented"
+                failed_results += 1
+            item_bytes = len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+            if len(results) >= max_results:
+                raise AnalyzerFailure("counter_result_limit_exceeded", "counters", "The counter result count exceeds the request limit.")
+            if catalog_bytes + result_bytes + item_bytes > output_budget:
+                raise AnalyzerFailure("output_too_large", "counters", "Counter data exceeds the response byte limit.")
+            result_bytes += item_bytes
+            results.append((event_id, native_id, item))
+        missing = []
+        for native_id in batch:
+            metadata = by_native[native_id]
+            metadata["pass_index"] = pass_index
+            if native_id in returned:
+                metadata["availability"] = "available"
+                metadata["reason"] = ""
+                metadata["fetched"] = True
+            else:
+                metadata["availability"] = "fetch_failed"
+                metadata["reason"] = missing_reason
+                metadata["fetched"] = False
+                missing.append(native_id)
+        current_catalog_bytes = sum(len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) for item in catalog)
+        if current_catalog_bytes + result_bytes > output_budget:
+            raise AnalyzerFailure("output_too_large", "counters", "Counter data exceeds the response byte limit.")
+        return tuple(missing)
+
+    for category, batch in batches:
         if len(results) >= max_results:
             raise AnalyzerFailure("counter_result_limit_exceeded", "counters", "The counter result count exceeds the request limit.")
-        if used_bytes > output_budget:
-            raise AnalyzerFailure("output_too_large", "counters", "Counter data exceeds the response byte limit.")
-        results.append(item)
+        pass_index = pass_count
+        pass_count += 1
+        try:
+            batch_results = fetch_counter_pass(batch)
+        except AnalyzerFailure:
+            raise
+        except Exception:
+            pass_failed = True
+            if category in SAFE_RETRY_CATEGORIES and len(batch) > 1:
+                retry_ids = batch
+            else:
+                retry_ids = ()
+            for native_id in batch:
+                metadata = by_native[native_id]
+                metadata["availability"] = "fetch_failed"
+                metadata["reason"] = "counter pass failed" if len(batch) == 1 else "counter batch failed; retry is not safe"
+                metadata["fetched"] = False
+                metadata["pass_index"] = pass_index
+        else:
+            retry_ids = consume_counter_results(batch_results, batch, pass_index, "counter returned no results")
+            if retry_ids:
+                pass_failed = True
+                if category not in SAFE_RETRY_CATEGORIES or len(batch) == 1:
+                    retry_ids = ()
+        for native_id in retry_ids:
+            if len(results) >= max_results:
+                raise AnalyzerFailure("counter_result_limit_exceeded", "counters", "The counter result count exceeds the request limit.")
+            retry_index = pass_count
+            pass_count += 1
+            metadata = by_native[native_id]
+            try:
+                retry_results = fetch_counter_pass((native_id,))
+                consume_counter_results(retry_results, (native_id,), retry_index, "counter retry returned no results")
+            except AnalyzerFailure:
+                raise
+            except Exception:
+                metadata["availability"] = "fetch_failed"
+                metadata["reason"] = "counter retry failed"
+                metadata["fetched"] = False
+                metadata["pass_index"] = retry_index
+    results.sort(key=lambda value: (value[0], value[1]))
+    results = [value[2] for value in results]
+    used_bytes = sum(len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) for item in catalog) + result_bytes
     failed_counters = sum(1 for item in catalog if item["availability"] == "fetch_failed")
-    warnings = ["One or more counter batches failed."] if fetch_failed else []
+    warnings = ["One or more counter passes failed; only safe generic counters were retried."] if pass_failed else []
     summary = {
         "requested_counter_count": sum(1 for item in catalog if item["requested"]),
         "described_counter_count": len(catalog),
@@ -558,6 +728,7 @@ def analyze(rd, request, capture_path, expected_size, started_ms, identity, obse
             raise AnalyzerFailure("replay_open_failed", "open", "RenderDoc could not initialize local replay.")
         api_properties = controller.GetAPIProperties()
         graphics_api = enum_name(api_properties.pipelineType)
+        gpu_vendor = enum_name(api_properties.vendor)
         gpu, driver = gpu_and_driver(rd, capture_file, api_properties)
         output_budget = request["options"]["max_output_bytes"] - 4096
         set_stage("actions")
@@ -573,6 +744,9 @@ def analyze(rd, request, capture_path, expected_size, started_ms, identity, obse
             request["options"]["max_counter_results"],
             output_budget - action_bytes,
             event_ids,
+            gpu_vendor,
+            graphics_api,
+            succeeded_status=rd.ResultCode.Succeeded,
         )
         set_stage("verify_capture")
         post_hash = hash_capture(capture_path, expected_size)
@@ -642,4 +816,5 @@ def main():
             return 2
 
 
-raise SystemExit(main())
+if __name__ == "__main__":
+    raise SystemExit(main())

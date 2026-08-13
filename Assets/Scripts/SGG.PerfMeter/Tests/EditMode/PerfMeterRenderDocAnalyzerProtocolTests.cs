@@ -235,6 +235,76 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void ResponsesAreBoundToExactRequestedCounterSelection()
+		{
+			PerfMeterRenderDocAnalysisRequest request = ReadRequest();
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadResult(request, ReadFixture("result-v1.json"), out PerfMeterRenderDocAnalysisResult result, out string error), Is.True, error);
+			result.counter_catalog[8].availability = "not_requested";
+			result.counter_catalog[8].reason = "not selected";
+			result.counter_catalog[8].requested = false;
+			result.summary.requested_counter_count--;
+			result.summary.unsupported_counter_count--;
+
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, result, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("response_binding_mismatch"));
+
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadResult(request, ReadFixture("result-v1.json"), out result, out error), Is.True, error);
+			result.counter_catalog[4].availability = "unsupported";
+			result.counter_catalog[4].reason = "substituted counter";
+			result.counter_catalog[4].requested = true;
+			result.summary.requested_counter_count++;
+			result.summary.unsupported_counter_count++;
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, result, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("response_binding_mismatch"));
+
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadResult(request, ReadFixture("result-v1.json"), out result, out error), Is.True, error);
+			PerfMeterRenderDocCounterMetadata[] incompleteCore = new PerfMeterRenderDocCounterMetadata[result.counter_catalog.Length - 1];
+			System.Array.Copy(result.counter_catalog, incompleteCore, incompleteCore.Length);
+			result.counter_catalog = incompleteCore;
+			result.counter_total_count--;
+			result.summary.requested_counter_count--;
+			result.summary.described_counter_count--;
+			result.summary.unsupported_counter_count--;
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, result, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("response_binding_mismatch"));
+
+			request.counter_selection.mode = "semantic_pack_and_explicit";
+			request.counter_selection.explicit_counter_ids = new[] { "renderdoc:20" };
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadResult(request, ReadFixture("result-v1.json"), out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("response_binding_mismatch"));
+		}
+
+		[Test]
+		public void CounterCatalogAndResultsRequireUniqueNativeIdsAndFetchedEvidence()
+		{
+			PerfMeterRenderDocAnalysisRequest request = ReadRequest();
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadResult(request, ReadFixture("result-v1.json"), out PerfMeterRenderDocAnalysisResult result, out string error), Is.True, error);
+			result.counter_catalog[1].native_id = result.counter_catalog[0].native_id;
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, result, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("invalid_counter_catalog"));
+
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadResult(request, ReadFixture("result-v1.json"), out result, out error), Is.True, error);
+			PerfMeterRenderDocCounterResult[] withoutDuration = new PerfMeterRenderDocCounterResult[result.results.Length - 1];
+			System.Array.Copy(result.results, 0, withoutDuration, 0, 3);
+			System.Array.Copy(result.results, 4, withoutDuration, 3, result.results.Length - 4);
+			result.results = withoutDuration;
+			result.result_total_count--;
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, result, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("invalid_counter_result"));
+
+			request = ReadRequest();
+			request.counter_selection.packs = new[] { "future_pack" };
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("invalid_counter_selection"));
+
+			request = ReadRequest();
+			request.counter_selection.mode = "semantic_pack_and_explicit";
+			request.counter_selection.explicit_counter_ids = new[] { "renderdoc:01" };
+			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryWrite(request, out _, out error), Is.False);
+			Assert.That(error, Is.EqualTo("invalid_counter_selection"));
+		}
+
+		[Test]
 		public void ActionTreeAndDescriptionOptionsBindResultContents()
 		{
 			PerfMeterRenderDocAnalysisRequest request = ReadRequest();

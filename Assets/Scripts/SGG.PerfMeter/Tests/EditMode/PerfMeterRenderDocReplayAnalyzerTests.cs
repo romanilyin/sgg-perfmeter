@@ -250,6 +250,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			string renderDocRoot = Environment.GetEnvironmentVariable("SGG_PERFMETER_RDA_SMOKE_RENDERDOC_ROOT");
 			string smokeProjectRoot = Environment.GetEnvironmentVariable("SGG_PERFMETER_RDA_SMOKE_PROJECT_ROOT");
 			string captureRelativePath = Environment.GetEnvironmentVariable("SGG_PERFMETER_RDA_SMOKE_CAPTURE_PATH");
+			string expectedGraphicsApi = Environment.GetEnvironmentVariable("SGG_PERFMETER_RDA_SMOKE_EXPECTED_GRAPHICS_API");
 			if (string.IsNullOrEmpty(renderDocRoot) || string.IsNullOrEmpty(smokeProjectRoot) || string.IsNullOrEmpty(captureRelativePath))
 			{
 				Assert.Ignore("Real RenderDoc analyzer smoke inputs are not configured.");
@@ -282,7 +283,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(execution.Result.summary.fetched_counter_count, Is.GreaterThan(0));
 			Assert.That(execution.Result.results, Is.Not.Empty);
 			Assert.That(execution.Result.analyzer.renderdoc_build, Is.Not.Empty);
-			Assert.That(execution.Result.analyzer.graphics_api, Is.EqualTo("D3D11"));
+			Assert.That(execution.Result.analyzer.graphics_api, Is.EqualTo(string.IsNullOrEmpty(expectedGraphicsApi) ? "D3D11" : expectedGraphicsApi));
 		}
 
 		private PerfMeterRenderDocReplayAnalyzer CreateAnalyzer(IPerfMeterRenderDocAnalyzerProcessRunner runner)
