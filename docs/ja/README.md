@@ -65,7 +65,7 @@ PerfMeter は、1 つの provider を通じて thermal と Adaptive Performance 
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.12-1"
+    "com.sungeargames.perfmeter": "2026.8.13-1"
   }
 }
 ```
