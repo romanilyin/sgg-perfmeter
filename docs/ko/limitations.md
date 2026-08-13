@@ -27,6 +27,7 @@ Profiler counter는 platform, Unity version, render pipeline settings, graphics 
 - Optional native path는 Windows x64 Unity Editor의 D3D11, D3D12, Vulkan에서 RenderDoc만 지원합니다. Development Player, Linux native, IL2CPP, mobile, macOS native는 지원하지 않습니다.
 - UPM package는 binary-free입니다. 별도 pinned bridge는 already-loaded `renderdoc.dll`만 사용하며 RenderDoc을 install/load/launch/inject하지 않습니다.
 - Native MetadataOnly는 기본 `DoNotShare`이고 Copy/Embed는 sensitive하며 separate quota와 `ReviewBeforeShare`가 필요합니다. Generic/caller artifact는 observed이며 authoritative하지 않습니다.
+- Native PIX circular timing capture는 사용할 수 없습니다. Microsoft가 문서화한 Windows timing API는 forward capture를 지원하지만 circular storage, memory limit 및 discard 제어를 무시합니다. PerfMeter는 요청된 pre-alert ring을 문서화된 storage bound가 없는 forward capture나 private PIX integration으로 대체하지 않습니다.
 - Automated tests는 fake backend를 사용합니다. Real external tool 및 artifact 확인은 release gate로 남습니다.
 - Correlated bundles와 MCP capture control은 사용할 수 있지만, 전달된 `.rdc`/`.wpix`는 observed/hashed artifact일 뿐입니다. Unity는 attached tool이나 capture association을 인증할 수 없으므로 real external tool 확인은 release-candidate gate로 남습니다.
 

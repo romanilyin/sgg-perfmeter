@@ -32,5 +32,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(asset, Is.Not.Null, "Adaptive Performance asmdef must be available from package or embedded Assets path.");
 			return asset.text;
 		}
+
+		internal static string ReadRenderDocAnalyzerAsset(string relativePath)
+		{
+			TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(PackageRoot + "/" + relativePath)
+				?? AssetDatabase.LoadAssetAtPath<TextAsset>(EmbeddedRoot + "/" + relativePath);
+			Assert.That(asset, Is.Not.Null, relativePath + " must be available from package or embedded Assets path.");
+			return asset.text;
+		}
 	}
 }

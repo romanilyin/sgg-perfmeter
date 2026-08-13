@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2026.8.13-1
+
+- Added independent RenderDoc analyzer request/result/error JSON Schema v1 contracts with bounded semantic validation, golden fixtures, exact `uint64` strings, raw future unit/type preservation, explicit availability states, and authenticated capture/hash provenance.
+- Added Editor-side experimental infrastructure for a package-owned out-of-process `qrenderdoc --python` replay analyzer with isolated marker-owned workspaces, capture hash verification, bounded action/counter output, timeout/cancel/process-tree termination, and clean replay shutdown without loading replay code into Unity; no public UI, API, or MCP entry point is exposed yet.
+- Added deterministic explicit and semantic counter selection with vendor/API applicability, stable 16-counter batching and pass provenance, safe generic-counter retries, per-counter failures, fatal replay checks, and strict request/result binding without silent substitution.
+- Documented the fail-closed native PIX timing boundary: circular pre-alert capture remains unavailable until Microsoft provides a documented bounded Windows API; generic PIX remains GPU-frame-only and non-authoritative.
+
 ## 2026.8.12-1
 
 - Changed the raw CPU frame-time strip to use dark-green, blue, yellow, orange, and red bands at 80%, 100%, 120%, and 200% of the frame budget.

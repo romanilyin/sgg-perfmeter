@@ -89,3 +89,7 @@ desktop.ini
 
 GeneratedYaml
 GeneratedYaml.meta
+
+# Python analyzer test caches
+__pycache__/
+*.py[cod]
