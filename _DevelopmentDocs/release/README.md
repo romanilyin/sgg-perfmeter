@@ -4,35 +4,35 @@
 
 ## Current Release
 
-- Release candidate: `2026.8.15-1`.
-- Current published release: `2026.8.13-2`
-- Current npm `latest`: `2026.8.13-2`
-- Previous published release: `2026.8.13-1`
+- Release candidate: none.
+- Current published release: `2026.8.15-1`
+- Current npm `latest`: `2026.8.15-1`
+- Previous published release: `2026.8.13-2`
 - First public release: `2026.6.5-1`
 - GitHub Release type: normal release
-- Release PR: [#33](https://github.com/romanilyin/sgg-perfmeter/pull/33) merged to `main` with an explicitly authorized admin bypass as commit `af135151fa31215620ea3b3f089211e51b41db00`
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.13-2 (published 2026-08-13)
-- Annotated Git tag `2026.8.13-2` dereferences to main merge commit `af135151fa31215620ea3b3f089211e51b41db00`
-- Last published npm: `com.sungeargames.perfmeter@2026.8.13-2` through Trusted Publishing OIDC with verified SLSA provenance v1
-- npm dist-tag: `latest` -> `2026.8.13-2`
-- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31716569241 (completed successfully and published npm)
-- Last published npm SHA-1: `0e5c210ec9b21a9381bdf3abe67ebf7a822bbcd6`
-- Last published npm integrity: `sha512-GHq9/OB9dS52Amp5VmzbG/NpfWTvHpqFzPB8s4GiEJI2JFVHHR4OZAmqqEARHnBpdqll6BV9+pSp9MfMg1rm5w==`
+- Release PR: [#35](https://github.com/romanilyin/sgg-perfmeter/pull/35) merged to `main` with an explicitly authorized admin bypass as commit `301230dfe43ed5183918079b4cafd02497ee9427`
+- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.8.15-1 (published 2026-08-15)
+- Annotated Git tag `2026.8.15-1` dereferences to main merge commit `301230dfe43ed5183918079b4cafd02497ee9427`
+- Last published npm: `com.sungeargames.perfmeter@2026.8.15-1` through Trusted Publishing OIDC with verified SLSA provenance v1
+- npm dist-tag: `latest` -> `2026.8.15-1`
+- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/31882514644 (completed successfully and published npm)
+- Last published npm SHA-1: `5f82a971ec53b14a0253a03e3b6582d287e30ebb`
+- Last published npm integrity: `sha512-1ms+2C/fNYHFIGQ+ZMWmJXE8tSh1jRP/iF1D3mwPgpJw/5n9g/ed5He3SBJtH16Qmf5/mG1d3TM4elMr6xdsSA==`
 - Registry signature key ID: `SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U`
 - npm audit signatures: one registry signature and one attestation verified.
-- SLSA provenance v1 resolves `refs/tags/2026.8.13-2`, commit `af135151fa31215620ea3b3f089211e51b41db00`, and workflow run `31716569241`.
-- Repository-facing public npm and Git UPM install examples point to published `2026.8.13-2`; they were updated only after verified GitHub/npm publication and clean-consumer installs. The immutable npm tarball and release tag retain their prepublication package README pin to `2026.8.13-1`.
+- SLSA provenance v1 resolves `refs/tags/2026.8.15-1`, commit `301230dfe43ed5183918079b4cafd02497ee9427`, and workflow run `31882514644`.
+- Repository-facing public npm and Git UPM install examples point to published `2026.8.15-1`; they were updated only after verified GitHub/npm publication and clean-consumer installs. The immutable npm tarball and release tag retain their prepublication package README pin to `2026.8.13-2`.
 - Package: `com.sungeargames.perfmeter`
-- Last published Unity validation: `6000.4.12f1` compile, targeted overlay/settings suites, full EditMode/PlayMode, and clean npm/Git consumers.
-- Published release Unity validation evidence records the Android Vulkan build as waived because AndroidPlayer switching was disabled in the installed environment.
+- Last published Unity validation: `6000.4.12f1`, `6000.5.6f1`, `6000.6.0b7`, and `6000.7.0a4` compile plus full EditMode/PlayMode, with clean npm/Git consumers on `6000.4.12f1`.
+- The four-version matrix was explicitly one-time; subsequent releases return to one primary Unity validation version unless broader coverage is requested.
 - Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-08-13
+- Release work date: 2026-08-15
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
-Current release record: `_DevelopmentDocs/release/2026.8.13-2-overlay-corrections-release.md`.
-Current release candidate record: `_DevelopmentDocs/release/2026.8.15-1-smoothed-peak-backdrop-release.md`.
-Previous published release record: `_DevelopmentDocs/release/2026.8.13-1-renderdoc-analyzer-release.md`.
-Earlier published release record: `_DevelopmentDocs/release/2026.8.12-1-raw-cpu-colors-release.md`.
+Current release record: `_DevelopmentDocs/release/2026.8.15-1-smoothed-peak-backdrop-release.md`.
+Current release candidate record: none.
+Previous published release record: `_DevelopmentDocs/release/2026.8.13-2-overlay-corrections-release.md`.
+Earlier published release record: `_DevelopmentDocs/release/2026.8.13-1-renderdoc-analyzer-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates
