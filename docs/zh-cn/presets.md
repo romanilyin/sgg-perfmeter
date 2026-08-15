@@ -34,6 +34,8 @@ Compact timing preset，包含 FPS、CPU/GPU timing cards 和 CPU/GPU budget bar
 
 面向 timing 的 preset，包含 CPU 和 GPU history graphs，以及核心 FPS/timing cards。
 
+平滑后的 CPU/GPU history graphs 会把遗漏的 per-frame peak 以红色 backdrop 绘制在前景曲线后方。Peak 使用现有 scale，因此即使高峰在顶部被 clip，也不会改变范围或压缩平滑图形。
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

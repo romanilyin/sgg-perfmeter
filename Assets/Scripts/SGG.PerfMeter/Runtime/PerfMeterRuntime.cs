@@ -581,6 +581,7 @@ namespace SGG.PerfMeter
 			PerfMeterCaptureStatusSnapshot captureStatus = _captureCoordinator != null ? _captureCoordinator.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
 			if (_captureCleanupPending)
 			{
+				_overlay?.RecordFrameTimingSample(Time.frameCount, 0d, false, 0d, false);
 				return;
 			}
 
@@ -588,6 +589,7 @@ namespace SGG.PerfMeter
 			if (TrySkipCollectionForFocusState(out string focusWarning))
 			{
 				double skippedCollectionTimeSeconds = Time.realtimeSinceStartupAsDouble;
+				_overlay?.RecordFrameTimingSample(Time.frameCount, 0d, false, 0d, false);
 				RecordMissingTimeline(Time.frameCount, skippedCollectionTimeSeconds, focusMissingReason, captureStatus);
 				PerfMeterProfilerInstrumentation.ResetFrameTimings();
 				_lastCollectorWarning = focusWarning;
@@ -604,7 +606,7 @@ namespace SGG.PerfMeter
 			if (frameTimingSampleIgnored)
 			{
 				double ignoredSampleTimeSeconds = Time.realtimeSinceStartupAsDouble;
-				_overlay?.RecordFrameTimeSample(frame, collectedMetrics.CpuFrameTimeMs, false);
+				_overlay?.RecordFrameTimingSample(frame, collectedMetrics.CpuFrameTimeMs, false, collectedMetrics.GpuFrameTimeMs, false);
 				_overlay?.RecordCustomMetricSamples(frame, null, 0);
 				RecordMissingTimeline(frame, ignoredSampleTimeSeconds, PerfMeterSessionTimelineReasonFlags.InvalidTiming | PerfMeterSessionTimelineReasonFlags.FrameTimingUnavailable, captureStatus);
 				_lastCollectorWarning = warning;
@@ -618,10 +620,12 @@ namespace SGG.PerfMeter
 			_latestMetrics = collectedMetrics;
 			_frameStatsSampler.AddSample(_latestMetrics.CpuFrameTimeMs, _latestMetrics.GpuFrameTimeAvailable);
 			_latestMetrics = WithRuntimeStats(_latestMetrics, _frameStatsSampler.GetSnapshot());
-			_overlay?.RecordFrameTimeSample(
+			_overlay?.RecordFrameTimingSample(
 				frame,
 				_latestMetrics.CpuFrameTimeMs,
-				frameTimingAvailability == PerfMeterFrameTimingAvailability.Available && PerfMeterCollector.IsValidFrameTimingSampleMs(_latestMetrics.CpuFrameTimeMs));
+				frameTimingAvailability == PerfMeterFrameTimingAvailability.Available && PerfMeterCollector.IsValidFrameTimingSampleMs(_latestMetrics.CpuFrameTimeMs),
+				_latestMetrics.GpuFrameTimeMs,
+				_latestMetrics.GpuFrameTimeAvailable && PerfMeterCollector.IsValidFrameTimingSampleMs(_latestMetrics.GpuFrameTimeMs));
 			UpdateCpuCoreSampler(Time.unscaledTime);
 			PerfMeterCustomMetricCollection customMetrics = PerfMeterCustomMetricRegistry.Collect();
 			_latestCustomMetricBuffer = customMetrics.Buffer;

@@ -34,6 +34,8 @@ Preset centrado en tarjetas para FPS, CPU, GPU, frame spikes, rendering y memory
 
 Preset centrado en timing con gráficos de historial CPU y GPU más tarjetas principales de FPS/timing.
 
+Los gráficos suavizados de historial de CPU/GPU muestran los picos por frame omitidos como un fondo rojo detrás de la curva principal. Los picos usan la escala existente; incluso un pico alto recortado no cambia el rango ni comprime el gráfico suavizado.
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

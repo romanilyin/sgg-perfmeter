@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.8.15-1
+
+- Added semantic-red raw peak backdrops behind the smoothed CPU and GPU timing graphs. Per-frame peaks retain the maximum value in each rendered pixel bucket, are clipped into the existing graph range, and never change the smoothed graph scale, labels, budget line, or foreground geometry.
+
 ## 2026.8.13-2
 
 - Fixed the raw frame-time strip to preserve the selected target-FPS budget across theme and font rebuilds, and simplified its severity palette to four colors by merging orange into yellow.

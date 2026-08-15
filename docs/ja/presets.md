@@ -34,6 +34,8 @@ graphs を使わず、FPS、CPU、GPU、frame spikes、rendering、memory に焦
 
 CPU と GPU history graphs に加え、core FPS/timing cards を持つ timing-focused preset です。
 
+平滑化された CPU/GPU history graphs は、取りこぼした per-frame peak を前景曲線の背後に赤い backdrop として表示します。Peak は既存の scale を使用するため、高い peak が上端で clip されても range は変わらず、平滑化グラフは圧縮されません。
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

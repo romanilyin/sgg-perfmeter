@@ -34,6 +34,8 @@ Preset axe sur les cartes pour FPS, CPU, GPU, frame spikes, rendering et memory 
 
 Preset axe sur le timing avec graphes d'historique CPU et GPU, plus cartes FPS/timing principales.
 
+Les graphes d'historique CPU/GPU lisses affichent les pics par frame manques en rouge derriere la courbe principale. Les pics utilisent l'echelle existante; meme un pic eleve tronque ne modifie pas la plage et ne comprime pas le graphe lisse.
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

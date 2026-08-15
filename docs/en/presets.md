@@ -36,6 +36,8 @@ Card-focused preset for FPS, CPU, GPU, frame spikes, rendering, and memory witho
 
 Timing-focused preset with CPU and GPU history graphs, a full-width raw per-frame hitch strip, and core FPS/timing cards. The hitch strip is independent of the throttled text refresh and does not average one-frame spikes away.
 
+The smoothed CPU/GPU history graphs render missed per-frame peaks as semantic-red backdrops behind the foreground curve. Peaks use the existing graph scale, so even a clipped high spike never rescales or compresses the smoothed graph.
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

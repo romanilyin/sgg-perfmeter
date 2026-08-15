@@ -34,6 +34,8 @@ Preset centrato sulle card per FPS, CPU, GPU, frame spikes, rendering e memoria 
 
 Preset centrato sul timing con grafici storici CPU e GPU piu card core FPS/timing.
 
+I grafici storici CPU/GPU smussati mostrano i picchi per-frame mancati come sfondo rosso dietro la curva principale. I picchi usano la scala esistente; anche un picco alto tagliato non cambia l'intervallo e non comprime il grafico smussato.
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

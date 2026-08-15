@@ -18,6 +18,33 @@ Released in `2026.8.11-2`:
 - narrow plots use only a peak-preserving min/max envelope;
 - the warmed ring-buffer update allocates `0 B/frame` and does not rebuild the visual tree.
 
+### Release candidate: Smoothed graph raw-peak backdrop (`PM-UI-009`)
+
+Implemented for release candidate `2026.8.15-1`: сохранить читаемую сглаженную форму CPU/GPU timing graphs, но не скрывать короткие raw spikes, которые throttled graph sampling уменьшает или полностью пропускает.
+
+Реализованное поведение:
+
+- существующая сглаженная линия и её заливка остаются основным foreground-слоем с прежней геометрией, цветами и smoothing semantics;
+- для того же history window хранится raw peak evidence; при horizontal compression каждый pixel bucket сохраняет максимальный valid raw sample, поэтому одиночный spike не усредняется;
+- red peak backdrop рисуется раньше сглаженной линии/заливки и clip-ится так, чтобы видимой оставалась только часть raw peak выше сглаженной формы;
+- backdrop использует semantic red/error token темы, но не меняет цвет foreground-графика;
+- raw peaks не участвуют в расчёте vertical `min/max`, scale labels или budget lines: graph использует тот же scale, который получил бы без backdrop;
+- raw peak проецируется в уже выбранный scale и clip-ится по верхней границе plot; даже очень высокий spike не расширяет диапазон и не сжимает сглаженный график;
+- invalid, unavailable, non-finite samples и history gaps не создают красный peak;
+- backdrop не меняет alert/spike counters, smoothing formula, RAW strip и public metric values.
+
+Критерии приёмки:
+
+1. При short raw spike выше сглаженного значения красный peak виден над foreground-графиком в той же X-позиции, а foreground остаётся полностью читаемым.
+2. Scale, scale labels, budget line и координаты сглаженной серии совпадают с результатом для того же smoothing history без включённого peak backdrop.
+3. Spike выше текущего scale clip-ится по верхней границе без auto-scale; spike внутри диапазона сохраняет относительную высоту.
+4. Несколько raw samples, попавших в один pixel bucket, дают один peak по максимальному valid sample, а не average.
+5. Raw sample, не превышающий сглаженную форму, а также gap/invalid sample не создают видимый красный участок.
+6. Scale invariance, clipping, gaps и peak-preserving compression имеют deterministic EditMode coverage; focused review подтверждает вызов backdrop painter до foreground painter, а PlayMode проверяет отсутствие visual-tree rebuild.
+7. Warmed sample/update path сохраняет действующие bounded-history и allocation constraints; новый слой не создаёт per-frame elements или managed allocations.
+
+Граница текущего scope: это default visual refinement существующих CPU/GPU timing graphs без нового public API, preset/schema field или user toggle. Отдельная configurability задача потребуется только при подтверждённой необходимости отключать или настраивать backdrop.
+
 ### Released: Custom metric graph channels
 
 Released in `2026.8.11-2`:
