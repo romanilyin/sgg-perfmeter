@@ -526,13 +526,34 @@ namespace SGG.PerfMeter
 
 		internal void RecordFrameTimeSample(int collectionFrame, double frameTimeMs, bool valid)
 		{
-			if (!_isVisible || !isActiveAndEnabled || _frameTimeStrip == null || !ShouldShowFrameTimeStrip())
+			RecordFrameTimingSample(collectionFrame, frameTimeMs, valid, 0d, false);
+		}
+
+		internal void RecordFrameTimingSample(int collectionFrame, double cpuFrameTimeMs, bool cpuValid, double gpuFrameTimeMs, bool gpuValid)
+		{
+			if (!_isVisible || !isActiveAndEnabled)
+			{
+				return;
+			}
+
+			bool recordGraphPeaks = HasModule(PerfMeterOverlayModule.Graphs) && (_cpuGraph != null || _gpuGraph != null);
+			bool recordFrameTimeStrip = _frameTimeStrip != null && ShouldShowFrameTimeStrip();
+			if (!recordGraphPeaks && !recordFrameTimeStrip)
 			{
 				return;
 			}
 
 			using PerfMeterSelfObservability.MeasurementScope selfOverheadScope = PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.Overlay);
-			_frameTimeStrip.AddSample(collectionFrame, frameTimeMs, valid);
+			if (recordGraphPeaks)
+			{
+				_cpuGraph?.RecordRawSample(collectionFrame, cpuFrameTimeMs, cpuValid);
+				_gpuGraph?.RecordRawSample(collectionFrame, gpuFrameTimeMs, gpuValid);
+			}
+
+			if (recordFrameTimeStrip)
+			{
+				_frameTimeStrip.AddSample(collectionFrame, cpuFrameTimeMs, cpuValid);
+			}
 		}
 
 		internal void RecordCustomMetricSamples(int collectionFrame, PerfMeterCustomMetricSnapshot[] metrics, int count)
@@ -2205,13 +2226,14 @@ namespace SGG.PerfMeter
 			if (recordSample)
 			{
 				_cpuGraph.AddSample(
+					metrics.CollectionFrame,
 					metrics.CpuFrameTimeMs,
 					metrics.CpuMainThreadFrameTimeMs,
 					metrics.CpuRenderThreadFrameTimeMs,
 					true);
 				if (metrics.GpuFrameTimeAvailable && PerfMeterCollector.IsValidFrameTimingSampleMs(metrics.GpuFrameTimeMs))
 				{
-					_gpuGraph.AddSample(metrics.GpuFrameTimeMs, 0d, 0d, true);
+					_gpuGraph.AddSample(metrics.CollectionFrame, metrics.GpuFrameTimeMs, 0d, 0d, true);
 				}
 			}
 
@@ -5286,7 +5308,7 @@ namespace SGG.PerfMeter
 			internal Color Color { get; }
 		}
 
-		private enum PerfMeterGraphMode
+		internal enum PerfMeterGraphMode
 		{
 			Line,
 			StackedCpu
@@ -5420,7 +5442,7 @@ namespace SGG.PerfMeter
 			internal Color Budget { get; }
 		}
 
-		private readonly struct PerfMeterSeriesStats
+		internal readonly struct PerfMeterSeriesStats
 		{
 			internal PerfMeterSeriesStats(int count, double current, double average, double onePercentHigh, double pointOnePercentHigh, double min, double max)
 			{
@@ -5850,7 +5872,7 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		private sealed class PerfMeterGraphElement : VisualElement
+		internal sealed class PerfMeterGraphElement : VisualElement
 		{
 			private static Color FrameFillColor => WithAlpha(FrameColor, 0.34f);
 			private static Color MainFillColor => WithAlpha(MainColor, 0.55f);
@@ -5860,7 +5882,9 @@ namespace SGG.PerfMeter
 			private double[] _primary;
 			private double[] _secondary;
 			private double[] _tertiary;
+			private double[] _rawPeaks;
 			private bool[] _valid;
+			private bool[] _rawPeakValid;
 			private double[] _scratch;
 			private readonly PerfMeterGraphMode _mode;
 			private readonly float _height;
@@ -5869,6 +5893,11 @@ namespace SGG.PerfMeter
 			private int _capacity;
 			private int _index;
 			private int _count;
+			private int _lastRawCollectionFrame = -1;
+			private int _lastSmoothedCollectionFrame = -1;
+			private int _pendingRawPeakLastFrame = -1;
+			private double _pendingRawPeak;
+			private bool _pendingRawPeakValid;
 			private double _frameBudgetMs = PerfMeterCollector.DefaultFrameBudgetMs;
 
 			internal PerfMeterGraphElement(string name, PerfMeterGraphMode mode, float height, Label maxScaleLabel, Label budgetLabel, int historyCapacity)
@@ -5904,10 +5933,17 @@ namespace SGG.PerfMeter
 				_primary = new double[_capacity];
 				_secondary = new double[_capacity];
 				_tertiary = new double[_capacity];
+				_rawPeaks = new double[_capacity];
 				_valid = new bool[_capacity];
+				_rawPeakValid = new bool[_capacity];
 				_scratch = new double[_capacity];
 				_index = 0;
 				_count = 0;
+				_lastRawCollectionFrame = -1;
+				_lastSmoothedCollectionFrame = -1;
+				_pendingRawPeakLastFrame = -1;
+				_pendingRawPeak = 0d;
+				_pendingRawPeakValid = false;
 				ScaleMs = CalculateScaleMs();
 				UpdateScaleLabels();
 				MarkDirtyRepaint();
@@ -5923,17 +5959,66 @@ namespace SGG.PerfMeter
 				MarkDirtyRepaint();
 			}
 
-			internal void AddSample(double primary, double secondary, double tertiary, bool valid)
+			internal void RecordRawSample(int collectionFrame, double value, bool valid)
 			{
-				_primary[_index] = Sanitize(primary);
+				if (collectionFrame < 0 || collectionFrame <= _lastRawCollectionFrame || collectionFrame <= _lastSmoothedCollectionFrame)
+				{
+					return;
+				}
+
+				_lastRawCollectionFrame = collectionFrame;
+				double safeValue = Sanitize(value);
+				if (!valid || safeValue <= 0d)
+				{
+					_pendingRawPeakLastFrame = collectionFrame;
+					_pendingRawPeak = 0d;
+					_pendingRawPeakValid = false;
+					return;
+				}
+
+				if (!_pendingRawPeakValid || safeValue > _pendingRawPeak)
+				{
+					_pendingRawPeak = safeValue;
+					_pendingRawPeakValid = true;
+				}
+
+				_pendingRawPeakLastFrame = collectionFrame;
+			}
+
+			internal void AddSample(int collectionFrame, double primary, double secondary, double tertiary, bool valid)
+			{
+				double safePrimary = Sanitize(primary);
+				_primary[_index] = safePrimary;
 				_secondary[_index] = Sanitize(secondary);
 				_tertiary[_index] = Sanitize(tertiary);
 				_valid[_index] = valid;
+
+				double rawPeak = valid ? safePrimary : 0d;
+				bool consumePendingPeak = _pendingRawPeakValid && (_pendingRawPeakLastFrame <= collectionFrame || collectionFrame < 0);
+				if (consumePendingPeak)
+				{
+					rawPeak = Math.Max(rawPeak, _pendingRawPeak);
+				}
+
+				_rawPeaks[_index] = rawPeak;
+				_rawPeakValid[_index] = valid && rawPeak > 0d;
 				_index = (_index + 1) % _capacity;
 
 				if (_count < _capacity)
 				{
 					_count++;
+				}
+
+				if (collectionFrame >= 0)
+				{
+					_lastSmoothedCollectionFrame = Math.Max(_lastSmoothedCollectionFrame, collectionFrame);
+				}
+
+				if (consumePendingPeak)
+				{
+					_pendingRawPeakLastFrame = -1;
+					_pendingRawPeak = 0d;
+					_pendingRawPeakValid = false;
 				}
 
 				ScaleMs = CalculateScaleMs();
@@ -6010,6 +6095,7 @@ namespace SGG.PerfMeter
 
 				Painter2D painter = context.painter2D;
 				DrawGrid(painter, rect, ScaleMs);
+				DrawRawPeakBackdrop(painter, rect, ScaleMs);
 
 				if (_mode == PerfMeterGraphMode.StackedCpu)
 				{
@@ -6019,6 +6105,73 @@ namespace SGG.PerfMeter
 				{
 					DrawSeries(painter, rect, _primary, GpuColor, ScaleMs, 1.6f);
 				}
+			}
+
+			private void DrawRawPeakBackdrop(Painter2D painter, Rect rect, double scaleMs)
+			{
+				if (_count <= 0)
+				{
+					return;
+				}
+
+				int bucketCount = Math.Min(_count, Math.Max(1, Mathf.FloorToInt(rect.width)));
+				painter.lineWidth = Mathf.Clamp(rect.width / bucketCount, 1f, 2f);
+				painter.strokeColor = WithAlpha(WarningColor, 0.72f);
+				for (int bucket = 0; bucket < bucketCount; bucket++)
+				{
+					if (!TryGetRawPeakBucket(bucket, bucketCount, out int sample, out double smoothedValue, out double rawPeak))
+					{
+						continue;
+					}
+
+					float x = rect.xMin;
+					if (_count > 1)
+					{
+						x += rect.width * sample / (_count - 1);
+					}
+
+					float peakY = ValueToY(rect, rawPeak, scaleMs);
+					float smoothedY = ValueToY(rect, smoothedValue, scaleMs);
+					if (peakY >= smoothedY)
+					{
+						continue;
+					}
+
+					painter.BeginPath();
+					painter.MoveTo(new Vector2(x, smoothedY));
+					painter.LineTo(new Vector2(x, peakY));
+					painter.Stroke();
+				}
+			}
+
+			internal bool TryGetRawPeakBucket(int bucket, int bucketCount, out int sampleIndex, out double smoothedValue, out double rawPeak)
+			{
+				sampleIndex = -1;
+				smoothedValue = 0d;
+				rawPeak = 0d;
+				if (bucketCount <= 0 || bucket < 0 || bucket >= bucketCount || _count <= 0)
+				{
+					return false;
+				}
+
+				int start = bucket * _count / bucketCount;
+				int end = Math.Max(start + 1, (bucket + 1) * _count / bucketCount);
+				for (int sample = start; sample < end && sample < _count; sample++)
+				{
+					int index = BufferIndex(sample);
+					double sampleValue = _primary[index];
+					double sampleRawPeak = _rawPeaks[index];
+					if (!_valid[index] || !_rawPeakValid[index] || sampleValue <= 0d || sampleRawPeak <= sampleValue || sampleRawPeak <= rawPeak)
+					{
+						continue;
+					}
+
+					sampleIndex = sample;
+					smoothedValue = sampleValue;
+					rawPeak = sampleRawPeak;
+				}
+
+				return sampleIndex >= 0;
 			}
 
 			private double CalculateScaleMs()
@@ -6229,7 +6382,7 @@ namespace SGG.PerfMeter
 				return Math.Max(0d, stack.Frame - stack.Main - stack.Render);
 			}
 
-			private static float ValueToY(Rect rect, double value, double scaleMs)
+			internal static float ValueToY(Rect rect, double value, double scaleMs)
 			{
 				float normalized = Mathf.Clamp01((float)(value / scaleMs));
 				return rect.yMax - normalized * rect.height;

@@ -34,6 +34,8 @@ FPS, CPU/GPU timing cards, CPU/GPU budget bars를 포함하는 compact timing pr
 
 CPU 및 GPU history graph와 핵심 FPS/timing card를 포함하는 timing-focused preset입니다.
 
+스무딩된 CPU/GPU history graph는 놓친 per-frame peak를 전경 곡선 뒤의 빨간 backdrop으로 표시합니다. Peak는 기존 scale을 사용하므로 높은 peak가 위쪽에서 clip되어도 범위를 바꾸거나 스무딩 그래프를 압축하지 않습니다.
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

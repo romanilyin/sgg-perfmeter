@@ -34,6 +34,8 @@ Kartenfokussierter Preset fuer FPS, CPU, GPU, frame spikes, rendering und memory
 
 Timing-fokussierter Preset mit CPU/GPU-History-Graphen plus Kern-FPS/timing cards.
 
+Die geglaetteten CPU/GPU-History-Graphen zeigen verpasste per-frame Peaks als roten Hintergrund hinter der Vordergrundkurve. Peaks verwenden die bestehende Skala; auch ein oben abgeschnittener Peak aendert den Bereich nicht und komprimiert den geglaetteten Graphen nicht.
+
 ![Graphs preset](../assets/screenshots/presets/preset-graphs.png)
 
 ## Full Diagnostics

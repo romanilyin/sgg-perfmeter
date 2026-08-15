@@ -296,7 +296,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			int childCount = container.childCount;
 			for (int frame = 1; frame <= 200; frame++)
 			{
-				overlay.RecordFrameTimeSample(frame, frame == 100 ? 80d : 16d, true);
+				overlay.RecordFrameTimingSample(frame, frame == 100 ? 80d : 16d, true, frame == 120 ? 65d : 12d, true);
 			}
 
 			Assert.That(overlay.OwnedContainer, Is.SameAs(container));

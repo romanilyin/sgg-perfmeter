@@ -4,7 +4,7 @@
 
 ## Current Release
 
-- Release candidate: none.
+- Release candidate: `2026.8.15-1`.
 - Current published release: `2026.8.13-2`
 - Current npm `latest`: `2026.8.13-2`
 - Previous published release: `2026.8.13-1`
@@ -30,7 +30,7 @@
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
 Current release record: `_DevelopmentDocs/release/2026.8.13-2-overlay-corrections-release.md`.
-Current release candidate record: none.
+Current release candidate record: `_DevelopmentDocs/release/2026.8.15-1-smoothed-peak-backdrop-release.md`.
 Previous published release record: `_DevelopmentDocs/release/2026.8.13-1-renderdoc-analyzer-release.md`.
 Earlier published release record: `_DevelopmentDocs/release/2026.8.12-1-raw-cpu-colors-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.

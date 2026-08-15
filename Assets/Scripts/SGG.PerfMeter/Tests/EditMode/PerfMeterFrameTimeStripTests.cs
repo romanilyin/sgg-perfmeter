@@ -1,6 +1,7 @@
 using System;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace SGG.PerfMeter.Tests.EditMode
 {
@@ -128,6 +129,91 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void SmoothedGraphRawPeakBackdropDoesNotChangeScaleAndClipsToPlot()
+		{
+			PerfMeterOverlay.PerfMeterGraphElement graph = CreateGraph(8);
+			graph.SetFrameBudgetMs(10d);
+			graph.RecordRawSample(0, 10d, true);
+			graph.AddSample(0, 10d, 0d, 0d, true);
+			graph.RecordRawSample(1, 11d, true);
+			graph.RecordRawSample(2, 75d, true);
+			graph.RecordRawSample(3, 12d, true);
+			graph.AddSample(3, 12d, 0d, 0d, true);
+
+			PerfMeterOverlay.PerfMeterGraphElement baseline = CreateGraph(8);
+			baseline.SetFrameBudgetMs(10d);
+			baseline.AddSample(0, 10d, 0d, 0d, true);
+			baseline.AddSample(3, 12d, 0d, 0d, true);
+
+			Assert.That(graph.ScaleMs, Is.EqualTo(baseline.ScaleMs));
+			Assert.That(graph.ScaleMs, Is.EqualTo(13d));
+			Assert.That(graph.TryGetRawPeakBucket(1, 2, out int sample, out double smoothed, out double rawPeak), Is.True);
+			Assert.That(sample, Is.EqualTo(1));
+			Assert.That(smoothed, Is.EqualTo(12d));
+			Assert.That(rawPeak, Is.EqualTo(75d));
+
+			Rect plot = new Rect(0f, 0f, 100f, 50f);
+			Assert.That(PerfMeterOverlay.PerfMeterGraphElement.ValueToY(plot, rawPeak, graph.ScaleMs), Is.EqualTo(plot.yMin));
+			Assert.That(PerfMeterOverlay.PerfMeterGraphElement.ValueToY(plot, smoothed, graph.ScaleMs), Is.GreaterThan(plot.yMin));
+		}
+
+		[Test]
+		public void SmoothedGraphPixelBucketsKeepMaximumValidRawPeak()
+		{
+			PerfMeterOverlay.PerfMeterGraphElement graph = CreateGraph(8);
+			double[] rawSamples = { 11d, 12d, 13d, 100d, 14d, 15d, 16d, 40d };
+			for (int frame = 0; frame < rawSamples.Length; frame++)
+			{
+				graph.RecordRawSample(frame, rawSamples[frame], true);
+				graph.AddSample(frame, 10d, 0d, 0d, true);
+			}
+
+			Assert.That(graph.TryGetRawPeakBucket(0, 2, out int firstSample, out _, out double firstPeak), Is.True);
+			Assert.That(firstSample, Is.EqualTo(3));
+			Assert.That(firstPeak, Is.EqualTo(100d));
+			Assert.That(graph.TryGetRawPeakBucket(1, 2, out int secondSample, out _, out double secondPeak), Is.True);
+			Assert.That(secondSample, Is.EqualTo(7));
+			Assert.That(secondPeak, Is.EqualTo(40d));
+		}
+
+		[Test]
+		public void SmoothedGraphInvalidOrNonPeakRawSamplesDoNotCreateBackdrop()
+		{
+			PerfMeterOverlay.PerfMeterGraphElement graph = CreateGraph(8);
+			graph.RecordRawSample(0, 80d, true);
+			graph.RecordRawSample(1, 0d, false);
+			graph.AddSample(1, 10d, 0d, 0d, true);
+			graph.RecordRawSample(2, 80d, false);
+			graph.AddSample(2, 10d, 0d, 0d, true);
+			graph.RecordRawSample(3, 10d, true);
+			graph.AddSample(3, 10d, 0d, 0d, true);
+			graph.RecordRawSample(4, double.NaN, true);
+			graph.AddSample(4, 10d, 0d, 0d, true);
+
+			Assert.That(graph.TryGetRawPeakBucket(0, 1, out _, out _, out _), Is.False);
+		}
+
+		[Test]
+		public void WarmedSmoothedGraphRawPeakAccumulationDoesNotAllocate()
+		{
+			PerfMeterOverlay.PerfMeterGraphElement graph = CreateGraph(120);
+			graph.RecordRawSample(0, 16d, true);
+			graph.AddSample(0, 16d, 0d, 0d, true);
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
+			GC.Collect();
+
+			long before = GC.GetAllocatedBytesForCurrentThread();
+			for (int frame = 1; frame <= 1000; frame++)
+			{
+				graph.RecordRawSample(frame, frame == 500 ? 75d : 16d, true);
+			}
+			long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - before;
+
+			Assert.That(allocatedBytes, Is.Zero);
+		}
+
+		[Test]
 		public void CustomSeriesUseStableIdsIndependentSignedScalesAndExplicitGaps()
 		{
 			PerfMeterOverlay.PerfMeterFrameTimeStripElement strip = new PerfMeterOverlay.PerfMeterFrameTimeStripElement(16);
@@ -223,6 +309,17 @@ namespace SGG.PerfMeter.Tests.EditMode
 			long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - before;
 
 			Assert.That(allocatedBytes, Is.Zero);
+		}
+
+		private static PerfMeterOverlay.PerfMeterGraphElement CreateGraph(int capacity)
+		{
+			return new PerfMeterOverlay.PerfMeterGraphElement(
+				"test-smoothed-graph",
+				PerfMeterOverlay.PerfMeterGraphMode.Line,
+				50f,
+				new Label(),
+				new Label(),
+				capacity);
 		}
 	}
 }
