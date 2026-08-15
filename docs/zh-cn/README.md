@@ -55,7 +55,7 @@ PerfMeter 可以通过一个 provider 可选地收集 thermal 和 Adaptive Perfo
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.13-2"
+    "com.sungeargames.perfmeter": "2026.8.15-1"
   }
 }
 ```
