@@ -281,7 +281,7 @@ PerfMeterGpuAnnotations.TryClearContext("weather.main", generation);
 
 Schema v1 always records `SGG.Annotation.SchemaVersion = 1`. Keys are case-sensitive ASCII paths up to 127 bytes; string values are strict UTF-8 up to 255 bytes; a batch contains at most 32 entries. Supported values are empty, bool, signed/unsigned 32/64-bit integers, float, double, string, and numeric/bool vectors of widths 1–4. Use stable machine IDs. Do not present `Object.GetInstanceID()` as cross-run identity or access `AssetDatabase` from runtime code.
 
-Scopes are non-nested in v1 and must be disposed after recording the described work. The end event clears every key owned by the scope so state does not leak into a neighboring pass. The initial transport is a separately installed Windows x64 Editor bridge and implements D3D12; the UPM package remains binary-free and RenderDoc itself is never shipped or loaded by PerfMeter. The currently published `2026.8.11-1` capture bridge predates these exports and reports `BridgeTooOld`. Vulkan, D3D11, Player, and resource/object annotations require separate validation gates.
+Scopes are non-nested in v1 and must be disposed after recording the described work. The end event clears every key owned by the scope so state does not leak into a neighboring pass. The initial transport is the separately installed, package-pinned `2026.8.19-1` Windows x64 Editor bridge and implements D3D12; the UPM package remains binary-free and RenderDoc itself is never shipped or loaded by PerfMeter. Older capture-only bridges report `BridgeTooOld` for annotations. Vulkan, D3D11, Player, and resource/object annotations require separate validation gates.
 
 ## Custom Metrics
 

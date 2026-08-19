@@ -492,7 +492,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 					out string error),
 				Is.EqualTo(SggRdResult.Ok),
 				error);
-			string path = Path.Combine(reservation.RootPath, "capture.rdc");
+			string path = Path.Combine(reservation.RootPath, "capture_frame123.rdc");
 			File.WriteAllBytes(path, bytes ?? Array.Empty<byte>());
 			_files.Register(path, bytes ?? Array.Empty<byte>());
 			PerfMeterExternalArtifactOptions options = new PerfMeterExternalArtifactOptions(

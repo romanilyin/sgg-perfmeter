@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2026.8.19-1
+
+- Added a RenderDoc-neutral public API for bounded typed GPU command annotations, ambient owner/generation context, and direct URP Render Graph command-buffer scopes.
+- Extended the separately distributed Windows x64 Editor bridge with an additive annotation ABI, generation-safe fixed packet pool, Unity native-plugin lifecycle, and an initial D3D12 transport.
+- Kept the UPM package binary-free. Annotation transport uses the separately published, package-pinned `2026.8.19-1` bridge artifact; older capture-only bridges remain compatible and report `BridgeTooOld` for annotations.
+- Fixed authoritative RenderDoc Embed export to accept RenderDoc's numbered `.rdc` payload name inside the verified marker-owned source root while retaining direct-child, traversal, and reparse-point validation.
+
 ## 2026.8.15-1
 
 - Added semantic-red raw peak backdrops behind the smoothed CPU and GPU timing graphs. Per-frame peaks retain the maximum value in each rendered pixel bucket, are clipped into the existing graph range, and never change the smoothed graph scale, labels, budget line, or foreground geometry.

@@ -35,7 +35,7 @@ Profiler counters vary by platform, Unity version, render pipeline settings, and
 ## RenderDoc Command Annotations
 
 - Command annotations are a separate optional integration from the broader `ExternalGPUProfiler` capture matrix. The initial transport is Windows x64 Editor/D3D12 only and requires an already-loaded RenderDoc App API `1.7` module plus an active capture.
-- The UPM package remains binary-free. Annotations require a separately installed Editor bridge artifact with the additive annotation exports; the currently published `2026.8.11-1` capture bridge reports `BridgeTooOld` for annotations. Neither package nor bridge ships, loads, injects, or installs RenderDoc.
+- The UPM package remains binary-free. Annotations require the separately installed, package-pinned `2026.8.19-1` Editor bridge artifact with the additive annotation exports; older capture-only bridges report `BridgeTooOld` for annotations. Neither package nor bridge ships, loads, injects, or installs RenderDoc.
 - Batches are bounded to 32 entries, keys to 127 bytes, strings to 255 UTF-8 bytes, and the native pool to 64 pending packets. Exhaustion and unavailable states are explicit no-ops.
 - V1 scopes are non-nested and must be disposed. They clear their own keys, but cannot restore annotation state written independently by another library.
 - API-object/resource annotations, D3D11, Vulkan, Development Player, IL2CPP, Linux, mobile, and Metal are not supported by this initial transport. Each requires a separate real-capture gate.

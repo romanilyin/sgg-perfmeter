@@ -4,10 +4,10 @@ This directory contains the `PM-RDOC-002` Windows x64 source bridge used by the
 optional managed RenderDoc backend. The UPM package remains binary-free. A
 release may publish the bridge as a separate verified artifact for project-local
 Editor-only installation. The bridge never loads or injects RenderDoc;
-production resolution accepts only an already-loaded `renderdoc.dll`. The next
-bridge artifact also carries the additive GPU command-annotation ABI and Unity
-native-plugin lifecycle; the currently published `2026.8.11-1` artifact exposes
-only the capture ABI.
+production resolution accepts only an already-loaded `renderdoc.dll`. The
+package-pinned `2026.8.19-1` bridge carries the additive GPU command-annotation
+ABI and Unity native-plugin lifecycle; older capture-only artifacts remain
+compatible and report `BridgeTooOld` for annotations.
 
 ## Build And Test
 
@@ -72,5 +72,5 @@ API matrix row.
 The reusable Unity annotation smoke requires a locally installed bridge built
 from this source revision. It records a set packet, annotated D3D12 work, and a
 matching delete packet, then validates the resulting `.rdc` in RenderDoc. Do not
-use the currently pinned `2026.8.11-1` artifact for that smoke because it predates
-the annotation exports.
+use an older capture-only artifact for that smoke because it predates the
+annotation exports.

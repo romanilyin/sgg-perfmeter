@@ -1053,11 +1053,19 @@ namespace SGG.PerfMeter
 				{
 					stagedArtifact = default;
 					error = string.Empty;
-					if (_embedReservation != null ||
-						!IsSafeStagingPath(stagingPath) ||
-						!TryValidateSource(shouldStop, out error))
+					if (_embedReservation != null)
 					{
-						error = string.IsNullOrEmpty(error) ? "renderdoc_embed_staging_invalid" : error;
+						error = "renderdoc_embed_staging_already_started";
+						return false;
+					}
+					if (!IsSafeStagingPath(stagingPath))
+					{
+						error = "renderdoc_embed_staging_path_invalid";
+						return false;
+					}
+					if (!TryValidateSource(shouldStop, out error))
+					{
+						error = string.IsNullOrEmpty(error) ? "renderdoc_embed_source_invalid" : error;
 						return false;
 					}
 
@@ -1206,12 +1214,42 @@ namespace SGG.PerfMeter
 					out PerfMeterRenderDocStorageMarker marker,
 					out _,
 					out error);
-				return inspectResult == SggRdResult.Ok &&
-					marker.State == PerfMeterRenderDocStorageState.Terminal &&
-					marker.RequestNonce == _requestNonce &&
-					marker.Generation == _request.Generation &&
-					string.Equals(marker.SessionId, _request.SessionId, StringComparison.Ordinal) &&
-					string.Equals(_payloadPath, Path.Combine(_rootPath, "capture.rdc"), StringComparison.OrdinalIgnoreCase);
+				if (inspectResult != SggRdResult.Ok)
+				{
+					error = string.IsNullOrEmpty(error) ? "renderdoc_embed_source_inspection_failed" : error;
+					return false;
+				}
+				if (marker.State != PerfMeterRenderDocStorageState.Terminal)
+				{
+					error = "renderdoc_embed_source_not_terminal";
+					return false;
+				}
+				if (marker.RequestNonce != _requestNonce)
+				{
+					error = "renderdoc_embed_source_nonce_mismatch";
+					return false;
+				}
+				if (marker.Generation != _request.Generation)
+				{
+					error = "renderdoc_embed_source_generation_mismatch";
+					return false;
+				}
+				if (!string.Equals(marker.SessionId, _request.SessionId, StringComparison.Ordinal))
+				{
+					error = "renderdoc_embed_source_session_mismatch";
+					return false;
+				}
+				SggRdResult payloadPathResult = _storage.TryValidateRetainedSourcePayloadPath(
+					_rootPath,
+					_payloadPath,
+					out error);
+				if (payloadPathResult != SggRdResult.Ok)
+				{
+					error = string.IsNullOrEmpty(error) ? "renderdoc_embed_source_payload_path_invalid" : error;
+					return false;
+				}
+
+				return true;
 			}
 
 			private bool IsSafeStagingPath(string stagingPath)

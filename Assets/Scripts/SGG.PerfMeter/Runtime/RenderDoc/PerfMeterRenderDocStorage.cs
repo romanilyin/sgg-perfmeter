@@ -658,6 +658,29 @@ namespace SGG.PerfMeter
 			return TryValidatePayloadInternal(reservation, payloadPath, false, out _, out error);
 		}
 
+		internal SggRdResult TryValidateRetainedSourcePayloadPath(
+			string rootPath,
+			string payloadPath,
+			out string error)
+		{
+			error = string.Empty;
+			lock (_gate)
+			{
+				if (!TryValidateOwnedRootPath(rootPath, _sourceRoot, rejectTraversalInput: true, out error) ||
+					!TryValidatePayloadPath(payloadPath, rootPath, out error))
+				{
+					return SggRdResult.InvalidArgument;
+				}
+				if (!File.Exists(payloadPath))
+				{
+					error = "renderdoc_storage_payload_not_observed";
+					return SggRdResult.CaptureNotObserved;
+				}
+
+				return SggRdResult.Ok;
+			}
+		}
+
 		private SggRdResult TryValidatePayloadInternal(
 			PerfMeterRenderDocStorageReservation reservation,
 			string payloadPath,
