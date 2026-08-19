@@ -35,3 +35,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
+
+## Unity native PluginAPI headers
+
+The bridge build consumes `IUnityInterface.h`, `IUnityGraphics.h`, and
+`IUnityGraphicsD3D12.h` from the `Editor/Data/PluginAPI` directory of an
+installed Unity editor. These headers are build inputs and are not copied into
+this package source tree. The original annotation bridge validation build used
+Unity `6000.5.6f1`; supported runtime behavior remains gated independently by
+the package Unity compatibility policy and real-capture matrix.

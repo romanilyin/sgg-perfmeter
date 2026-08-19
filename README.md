@@ -61,6 +61,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Record reproducible profiling sessions with warm-up, scene scope, worst-frame summaries, JSON/CSV export, device metadata, and camera metadata.
 - Preserve explicit missing-sample and capture-boundary events in additive session/capture JSON timelines instead of turning unavailable timing into numeric zero.
 - Coordinate one explicit bounded RenderDoc/PIX request with deterministic pre-roll, capture, and post-roll states when an external GPU profiler is already attached.
+- Attach bounded typed module/pass/simulation state to D3D12 GPU commands in an active RenderDoc capture through a RenderDoc-neutral public API.
 - Export a versioned project-local capture bundle that correlates baseline and capture samples, alerts, context, an optional runtime screenshot, and external-artifact provenance. Generic Unity observations remain non-authoritative; the optional native RenderDoc path can authenticate a generation-bound `.rdc`.
 - Queue, poll, and cancel single-flight capture-bundle exports while serialization, streaming copy/hash, retention, and atomic commit run off the caller thread; the existing blocking API remains available for compatibility.
 - Optionally capture sensitive memory snapshots through the separate Memory Profiler integration and correlate them with the existing evidence-bundle surface.
@@ -75,6 +76,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - **Frame-accurate graph channels**: smoothed CPU/GPU timing graphs retain per-frame peaks as semantic-red backdrops without changing their scale, while a full-width raw frame-time strip preserves one-frame peaks at narrow widths and accepts up to four stable-ID custom metric channels with independent signed ranges, display scales, colors, units, and unavailable gaps.
 - **Bounded overlay descriptors**: visual presets apply clamped width, gap, supported widget-height, ordered admission, and graph-history limits; public semantic theme manifests and module-backed extension descriptors remain bounded and fall back safely.
 - **External GPU capture**: guarded generic Editor/Development Build coordination for attached RenderDoc or PIX, plus an optional Windows x64 Editor native RenderDoc path with authenticated artifacts on Direct3D 11, Direct3D 12, and Vulkan.
+- **RenderDoc command annotations**: optional Windows x64 Editor/D3D12 transport with typed batches, ambient context, and direct safe Render Graph command-buffer adapters.
 - **Session recording**: bounded captures with warm-up, scene scope, worst frames, device/camera metadata, and JSON/CSV export.
 - **Alerts**: structured logs, callbacks, Editor warning cooldowns, and latest-alert snapshots.
 - **Agent layer**: MCP command metadata lets agents inspect the project, compare runs, perform A/B tests, search for hotspots, queue/status/cancel exports, and read external-artifact authority plus profiler lease conflicts through structured data.
@@ -89,6 +91,12 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Dynamic `ProfilerRecorder` shader GPU-program and graphics-pipeline creation markers when Unity exposes them; values keep their discovered units and are not assumed to be shader or PSO counts.
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 - Integration-neutral render context: current pipeline/source, observed camera and frame freshness, integration/pass/injection details, actual PerfMeter pass count, effective mode where Unity exposes it, typed GRD support/activity/effectiveness, and explicit VRS availability.
+
+## Optional RenderDoc Command Annotations
+
+`PerfMeterGpuAnnotations` lets packages and projects attach bounded typed semantic state to GPU work without exposing RenderDoc enums, function pointers, or native handles. `PerfMeterRenderGraphGpuAnnotations` accepts raster, compute, and unsafe Render Graph command buffers directly. Ambient owner/generation context is merged with pass-local keys when a scope is recorded.
+
+The initial transport is Windows x64 Editor/D3D12 only. It requires RenderDoc App API `1.7`, an active capture, and a separately installed bridge artifact that includes the annotation ABI. The UPM package remains binary-free and PerfMeter never ships or loads RenderDoc itself. The currently published `2026.8.11-1` bridge predates annotation support and is reported as `BridgeTooOld` until a new artifact is released. V1 scopes are non-nested and must be disposed. See the localized [API](./docs/en/api.md#renderdoc-gpu-command-annotations) and [limitations](./docs/en/limitations.md#renderdoc-command-annotations).
 
 ## Optional Platform Telemetry
 

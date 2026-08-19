@@ -32,6 +32,15 @@ Profiler counters vary by platform, Unity version, render pipeline settings, and
 - Native MetadataOnly defaults to `DoNotShare`; Copy/Embed data is sensitive, separately quota-managed, marker-owned, and `ReviewBeforeShare`. Caller-supplied artifacts always remain observed and non-authoritative.
 - Real attached RenderDoc validation covers the initial native D3D11/D3D12/Vulkan Editor rows; broader platforms and players remain release gates rather than inferred support.
 
+## RenderDoc Command Annotations
+
+- Command annotations are a separate optional integration from the broader `ExternalGPUProfiler` capture matrix. The initial transport is Windows x64 Editor/D3D12 only and requires an already-loaded RenderDoc App API `1.7` module plus an active capture.
+- The UPM package remains binary-free. Annotations require a separately installed Editor bridge artifact with the additive annotation exports; the currently published `2026.8.11-1` capture bridge reports `BridgeTooOld` for annotations. Neither package nor bridge ships, loads, injects, or installs RenderDoc.
+- Batches are bounded to 32 entries, keys to 127 bytes, strings to 255 UTF-8 bytes, and the native pool to 64 pending packets. Exhaustion and unavailable states are explicit no-ops.
+- V1 scopes are non-nested and must be disposed. They clear their own keys, but cannot restore annotation state written independently by another library.
+- API-object/resource annotations, D3D11, Vulkan, Development Player, IL2CPP, Linux, mobile, and Metal are not supported by this initial transport. Each requires a separate real-capture gate.
+- Real D3D12 `.rdc` smokes passed on Unity `6000.4.12f1` and `6000.5.6f1` with the pinned RenderDoc v1.46 build: the annotated red clear was bracketed by set/delete calls and the neighboring blue clear followed deletion. A clean external package consumer remains a release gate.
+
 ## Overdraw Cost And Support
 
 Numerical overdraw and visual heatmap are diagnostic modes. They add rendering work and should be used in bounded windows, not left on as steady-state gameplay UI.

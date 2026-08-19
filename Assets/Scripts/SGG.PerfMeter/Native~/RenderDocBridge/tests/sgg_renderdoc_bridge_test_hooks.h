@@ -12,6 +12,8 @@ extern "C" {
 #ifdef SGG_RD_TESTING
 void SGG_RD_CALL SggRd_TestReset();
 void SGG_RD_CALL SggRd_TestSetResolver(uint32_t module_present, pRENDERDOC_GetAPI get_api);
+void SGG_RD_CALL SggRd_TestSetAnnotationTarget(void *device, void *command, int32_t event_id);
+void SGG_RD_CALL SggRd_TestExecuteAnnotationEvent(int32_t event_id, void *packet);
 #endif
 
 #ifdef __cplusplus
