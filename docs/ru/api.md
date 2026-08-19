@@ -230,7 +230,7 @@ PerfMeterGpuAnnotations.TryClearContext("weather.main", generation);
 
 Schema v1 всегда записывает `SGG.Annotation.SchemaVersion = 1`. Ключи — case-sensitive ASCII paths длиной до 127 bytes; строки — strict UTF-8 до 255 bytes; batch содержит не более 32 записей. Поддерживаются empty, bool, знаковые/беззнаковые 32/64-bit integers, float, double, string и числовые/bool vectors ширины 1–4. Используйте стабильные machine IDs. Нельзя выдавать `Object.GetInstanceID()` за cross-run identity или обращаться к `AssetDatabase` из runtime-кода.
 
-Scopes в v1 не должны быть вложенными и обязаны освобождаться после записи описываемой работы. End event очищает все принадлежащие scope ключи, чтобы состояние не протекало в соседний pass. Начальный transport — отдельно устанавливаемый Windows x64 Editor bridge с реализацией D3D12; UPM-пакет остаётся без бинарников, а сам RenderDoc PerfMeter не поставляет и не загружает. Опубликованный сейчас capture bridge `2026.8.11-1` ещё не содержит эти exports и возвращает `BridgeTooOld`. Vulkan, D3D11, Player и resource/object annotations требуют отдельных validation gates.
+Scopes в v1 не должны быть вложенными и обязаны освобождаться после записи описываемой работы. End event очищает все принадлежащие scope ключи, чтобы состояние не протекало в соседний pass. Начальный transport — отдельно устанавливаемый, закреплённый пакетом Windows x64 Editor bridge `2026.8.19-1` с реализацией D3D12; UPM-пакет остаётся без бинарников, а сам RenderDoc PerfMeter не поставляет и не загружает. Более старые capture-only bridges возвращают для аннотаций `BridgeTooOld`. Vulkan, D3D11, Player и resource/object annotations требуют отдельных validation gates.
 
 ## Пользовательские метрики
 

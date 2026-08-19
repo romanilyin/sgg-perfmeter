@@ -96,7 +96,7 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 
 `PerfMeterGpuAnnotations` lets packages and projects attach bounded typed semantic state to GPU work without exposing RenderDoc enums, function pointers, or native handles. `PerfMeterRenderGraphGpuAnnotations` accepts raster, compute, and unsafe Render Graph command buffers directly. Ambient owner/generation context is merged with pass-local keys when a scope is recorded.
 
-The initial transport is Windows x64 Editor/D3D12 only. It requires RenderDoc App API `1.7`, an active capture, and a separately installed bridge artifact that includes the annotation ABI. The UPM package remains binary-free and PerfMeter never ships or loads RenderDoc itself. The currently published `2026.8.11-1` bridge predates annotation support and is reported as `BridgeTooOld` until a new artifact is released. V1 scopes are non-nested and must be disposed. See the localized [API](./docs/en/api.md#renderdoc-gpu-command-annotations) and [limitations](./docs/en/limitations.md#renderdoc-command-annotations).
+The initial transport is Windows x64 Editor/D3D12 only. It requires RenderDoc App API `1.7`, an active capture, and the separately installed, package-pinned `2026.8.19-1` bridge artifact. The UPM package remains binary-free and PerfMeter never ships or loads RenderDoc itself. Older capture-only bridges remain compatible and are reported as `BridgeTooOld` for annotations. V1 scopes are non-nested and must be disposed. See the localized [API](./docs/en/api.md#renderdoc-gpu-command-annotations) and [limitations](./docs/en/limitations.md#renderdoc-command-annotations).
 
 ## Optional Platform Telemetry
 

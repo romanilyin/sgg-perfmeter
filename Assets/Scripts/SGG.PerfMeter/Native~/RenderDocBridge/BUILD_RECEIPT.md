@@ -25,6 +25,6 @@ Feature: `PM-RDANN-002` Windows x64 Editor/D3D12 command annotations
 - Original pre-rebase D3D12 Editor smokes passed on Unity `6000.4.12f1` and `6000.5.6f1`: two packets, eight RenderDoc calls, zero errors, and XML-confirmed set → red clear → delete → blue clear ordering. A real-tool smoke of the rebased separately installed artifact remains a publication gate.
 - The package does not contain `renderdoc.dll` or RenderDoc replay binaries.
 - Distribution is a future separately verified Windows x64 bridge artifact installed project-locally by FTUE.
-- The current published `2026.8.11-1` bridge exposes the capture ABI only; annotation calls map to `BridgeTooOld`.
+- At the time of this feature-branch validation, the published `2026.8.11-1` bridge exposed the capture ABI only and annotation calls mapped to `BridgeTooOld`.
 
 This receipt proves the rebased source build, fixed export/dependency surface, fake/native contract suite, and managed Unity suite. It retains the two original real-capture rows only as historical evidence; a clean release artifact, rebased real-tool smoke, and clean external consumer are still required before publication. It does not prove Vulkan, D3D11, Player, or object annotations.
