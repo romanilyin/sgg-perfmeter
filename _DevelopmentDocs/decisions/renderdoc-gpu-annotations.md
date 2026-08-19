@@ -57,6 +57,22 @@ The UPM package remains binary-free. `sgg_renderdoc_bridge.dll` is built from th
 
 The managed RenderDoc provider registers additively in the Editor. Without an installed binary, capabilities report `BridgeUnavailable`; with the currently published `2026.8.11-1` capture-only bridge, annotation capabilities report `BridgeTooOld`. Core runtime APIs and the older capture bridge contract continue to work in both cases. A new artifact must be published and pinned before annotations become an installable supported feature.
 
+## Roadmap Changes To Make Later
+
+Do not edit [`_DevelopmentDocs/backlog/roadmap.md`](../backlog/roadmap.md) as part of this feature branch. After the API and first consumer plan are accepted, add the following entries there:
+
+| ID | Planned roadmap state | Scope |
+| --- | --- | --- |
+| `PM-RDANN-001` | implemented and managed-tested; external-consumer release gate pending | Public RenderDoc-neutral schema v1, typed bounded batches, ambient owner/generation context, capabilities, and CommandBuffer/RenderGraph scopes. |
+| `PM-RDANN-002` | implemented; native and Unity 6000.4/6000.5 D3D12 real-capture gates passed | Additive native ABI, 64-packet generation-safe pool, Unity PluginAPI lifecycle, and Windows x64 Editor/D3D12 transport. |
+| `PM-RDANN-003` | package wiring and synthetic no-leak capture complete; first consumer pending | Explicit diagnostics/degraded states, clean UPM consumer, then weather/sky consumer acceptance without a reverse dependency. |
+| `PM-RDANN-004` | later candidate | Windows x64 Editor/Vulkan command resolver and its own real-capture row. |
+| `PM-RDANN-005` | later candidate | Resource/object annotation contract; raw native handles remain outside public v1. |
+| `PM-RDANN-006` | later candidate | Opt-in Windows x64 Development Player packaging and lifecycle validation. |
+| `PM-RDANN-007` | experimental later candidate | D3D11 behavior experiment and an evidence-backed support or unsupported decision. |
+
+Also add one release-sequence row, `GPU semantic annotations`, ordered as `PM-RDANN-001` → `002` → `003`; only after `003` may `004..007` proceed independently. The release gate must retain fixed ABI/layout validation, strict data validation, packet consume/cancel/exhaustion and stale-handle tests, inactive no-op/allocation evidence, direct raster/compute adapters, D3D12 set → work → clear proof, and one clean external consumer. The implementation order outside PerfMeter is therefore: publish a PerfMeter version containing `001/002`, integrate the optional dependency and canonical schema in one weather package/test project for `003`, then roll the accepted pattern through the remaining weather packages.
+
 ## Validation And Remaining Gates
 
 Automated acceptance includes strict key/UTF-8/value validation, all scalar/vector mappings, ambient generation and owner collision, set/end ordering, failed recording cleanup, fixed C/C++/managed ABI layouts, fake App API 1.7 calls, wrong-event drop, native rejection, packet exhaustion, and no-provider/no-RenderDoc degraded behavior.
