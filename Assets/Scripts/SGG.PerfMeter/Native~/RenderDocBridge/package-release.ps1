@@ -8,7 +8,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PackageVersion,
     [Parameter(Mandatory = $true)]
-    [string]$SourceCommit
+    [string]$SourceCommit,
+    [Parameter(Mandatory = $true)]
+    [string]$UnityPluginApiDirectory
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,9 +54,16 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments, [string]$Desc
 
 $packageRootPath = (Resolve-Path -LiteralPath $PackageRoot).Path
 $buildDirectoryPath = [System.IO.Path]::GetFullPath($BuildDirectory)
+$unityPluginApiDirectoryPath = (Resolve-Path -LiteralPath $UnityPluginApiDirectory).Path
 $packageJsonPath = Join-Path $packageRootPath "package.json"
 if (-not (Test-Path -LiteralPath $packageJsonPath -PathType Leaf)) {
     throw "Package manifest not found: $packageJsonPath"
+}
+foreach ($headerName in @("IUnityInterface.h", "IUnityGraphics.h", "IUnityGraphicsD3D12.h")) {
+    $headerPath = Join-Path $unityPluginApiDirectoryPath $headerName
+    if (-not (Test-Path -LiteralPath $headerPath -PathType Leaf)) {
+        throw "Unity PluginAPI header not found: $headerPath"
+    }
 }
 
 $packageManifest = Get-Content -LiteralPath $packageJsonPath -Raw | ConvertFrom-Json
@@ -102,7 +111,8 @@ Invoke-Checked "cmake" @(
     "-DCMAKE_BUILD_TYPE=Release",
     "-DBUILD_TESTING=ON",
     "-DSGG_RD_ARTIFACT_VERSION=$PackageVersion",
-    "-DSGG_RD_FILE_VERSION=$expectedFileVersion") "Release bridge configure"
+    "-DSGG_RD_FILE_VERSION=$expectedFileVersion",
+    "-DSGG_UNITY_PLUGIN_API_DIR=$unityPluginApiDirectoryPath") "Release bridge configure"
 
 $cachePath = Join-Path $buildDirectoryPath "CMakeCache.txt"
 if (-not (Test-Path -LiteralPath $cachePath -PathType Leaf)) {
@@ -123,6 +133,10 @@ if ((Get-CMakeCacheValue $cachePath "SGG_RD_ARTIFACT_VERSION") -ne $PackageVersi
 }
 if ((Get-CMakeCacheValue $cachePath "SGG_RD_FILE_VERSION") -ne $expectedFileVersion) {
     throw "CMake file version does not match $expectedFileVersion."
+}
+$cachedUnityPluginApiDirectory = (Resolve-Path -LiteralPath (Get-CMakeCacheValue $cachePath "SGG_UNITY_PLUGIN_API_DIR")).Path
+if ($cachedUnityPluginApiDirectory -ne $unityPluginApiDirectoryPath) {
+    throw "CMake Unity PluginAPI directory does not match $unityPluginApiDirectoryPath."
 }
 $compilerPath = Get-CMakeCacheValue $cachePath "CMAKE_CXX_COMPILER"
 if ($compilerPath -notmatch '[\\/]Hostx64[\\/]x64[\\/]cl\.exe$') {
@@ -161,11 +175,17 @@ $expectedExports = @(
     "SggRd_EndCaptureV1",
     "SggRd_DiscardCaptureV1",
     "SggRd_TryGetNewArtifactV1",
-    "SggRd_SetCaptureCommentsV1"
+    "SggRd_SetCaptureCommentsV1",
+    "SggRd_GetAnnotationCapabilitiesV1",
+    "SggRd_GetAnnotationEventV1",
+    "SggRd_CreateAnnotationPacketV1",
+    "SggRd_ReleaseAnnotationPacketV1",
+    "UnityPluginLoad",
+    "UnityPluginUnload"
 )
 $exports = (& $dumpbinPath /exports $dllPath 2>&1) -join "`n"
-if ($LASTEXITCODE -ne 0 -or $exports -notmatch '(?m)^\s*6 number of functions\s*$' -or $exports -notmatch '(?m)^\s*6 number of names\s*$') {
-    throw "Bridge output does not expose exactly six named exports."
+if ($LASTEXITCODE -ne 0 -or $exports -notmatch '(?m)^\s*12 number of functions\s*$' -or $exports -notmatch '(?m)^\s*12 number of names\s*$') {
+    throw "Bridge output does not expose exactly twelve named exports."
 }
 foreach ($export in $expectedExports) {
     if ($exports -notmatch ("(?m)^\s*\d+\s+[0-9A-F]+\s+[0-9A-F]+\s+" + [Regex]::Escape($export) + "\s*$")) {
@@ -213,6 +233,8 @@ $manifest = [ordered]@{
     sha256 = $dllSha256
     bridge_abi_major = 1
     bridge_abi_minor = 0
+    annotation_abi_major = 1
+    annotation_abi_minor = 0
     platform = "windows"
     architecture = "x86_64"
     pe_machine = "AMD64"

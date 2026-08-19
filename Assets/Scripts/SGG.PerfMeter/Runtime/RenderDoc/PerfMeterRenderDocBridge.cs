@@ -16,7 +16,12 @@ namespace SGG.PerfMeter
 		BufferTooSmall = 8,
 		UnsupportedPlatform = 9,
 		InvalidArgument = 10,
-		InternalError = 11
+		InternalError = 11,
+		AnnotationsUnavailable = 12,
+		CaptureInactive = 13,
+		BackendUnsupported = 14,
+		PacketPoolExhausted = 15,
+		AnnotationRejected = 16
 	}
 
 	[Flags]

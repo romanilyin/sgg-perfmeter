@@ -1,6 +1,6 @@
 # Native RenderDoc Boundary Decision
 
-Status: `PM-RDOC-001..003` implemented for the `2026.8.11-1` release candidate. The initial Windows x64 Unity Editor D3D11/D3D12/Vulkan rows passed production-wired real `.rdc` validation. Broader platforms/players and replay analysis remain deferred.
+Status: `PM-RDOC-001..003` implemented for the `2026.8.11-1` release candidate. The initial Windows x64 Unity Editor D3D11/D3D12/Vulkan rows passed production-wired real `.rdc` validation. `PM-RDANN-001/002` is an additive feature-branch extension to the same separately distributed bridge; it is not part of the published `2026.8.11-1` artifact. Broader platforms/players and replay analysis remain deferred.
 
 ## Context And Scope
 
@@ -35,6 +35,8 @@ If the module or export is absent, the bridge reports that condition. It must ne
 
 `PM-RDOC-002` pins the public RenderDoc app header to upstream commit [`7db2264afa00a5313154022f8c4ae0628a641300`](https://github.com/baldurk/renderdoc/commit/7db2264afa00a5313154022f8c4ae0628a641300), verifies SHA-256 at configure time, and retains its MIT license notice. The binary-free UPM package pins the separately published bridge bytes; FTUE installs them only as a Windows x64 Editor-only plugin with every player target disabled.
 
+The annotation extension keeps that distribution boundary. A new bridge artifact adds Unity native-plugin load/unload exports and the annotation ABI; no DLL is embedded in the UPM package. Until that artifact is published and pinned by FTUE, an installed `2026.8.11-1` bridge remains valid for capture and is reported as `BridgeTooOld` only for annotation calls.
+
 ## Coordinator And Frame Boundary
 
 Native capture reuses the existing capture coordinator and lease resources; it does not introduce an independent overlap policy. `PM-RDOC-003` adds the internal asynchronous control/artifact-observer seam with generation-bound preflight, begin, end, artifact wait/finalization, and terminal phases. The generic backend remains the compatibility default; existing results, MCP IDs, bundle schemas, and timeline schemas remain compatible.
@@ -47,7 +49,7 @@ The initial bridge uses RenderDoc's `(NULL, NULL)` active-context target and rec
 
 ## Fixed Bridge ABI V1
 
-The bridge owns a separate fixed C ABI, rather than exporting RenderDoc structs directly. Its public functions are suffixed `V1`, including `SggRd_GetCapabilitiesV1`, `SggRd_BeginCaptureV1`, `SggRd_EndCaptureV1`, `SggRd_DiscardCaptureV1`, `SggRd_TryGetNewArtifactV1`, and `SggRd_SetCaptureCommentsV1`.
+The bridge owns a separate fixed C ABI, rather than exporting RenderDoc structs directly. Its capture functions are suffixed `V1`, including `SggRd_GetCapabilitiesV1`, `SggRd_BeginCaptureV1`, `SggRd_EndCaptureV1`, `SggRd_DiscardCaptureV1`, `SggRd_TryGetNewArtifactV1`, and `SggRd_SetCaptureCommentsV1`. The annotation extension adds `SggRd_GetAnnotationCapabilitiesV1`, `SggRd_GetAnnotationEventV1`, `SggRd_CreateAnnotationPacketV1`, and `SggRd_ReleaseAnnotationPacketV1` without changing the capture ABI. The separately built plugin also exports `UnityPluginLoad` and `UnityPluginUnload` for Unity graphics-device lifecycle registration.
 
 - Every public struct starts with `struct_size`; all scalar fields use fixed-width C types such as `uint32_t` and `uint64_t`.
 - Exports use `extern "C"`, explicit symbol visibility, and `__cdecl`. Windows x64 layout uses 8-byte packing and a matching managed `StructLayout`; ABI tests baseline size, alignment, and every field offset.
@@ -70,6 +72,13 @@ The bridge owns a separate fixed C ABI, rather than exporting RenderDoc structs 
   | `SGG_RD_UNSUPPORTED_PLATFORM` | 9 |
   | `SGG_RD_INVALID_ARGUMENT` | 10 |
   | `SGG_RD_INTERNAL_ERROR` | 11 |
+  | `SGG_RD_ANNOTATIONS_UNAVAILABLE` | 12 |
+  | `SGG_RD_CAPTURE_INACTIVE` | 13 |
+  | `SGG_RD_BACKEND_UNSUPPORTED` | 14 |
+  | `SGG_RD_PACKET_POOL_EXHAUSTED` | 15 |
+  | `SGG_RD_ANNOTATION_REJECTED` | 16 |
+
+Annotation packets use a fixed pool of 64 slots and opaque slot/generation handles. Managed data is copied synchronously before `IssuePluginEventAndData`; the render-thread callback claims and scrubs the exact generation once. The initial callback transport is Windows x64 Editor/D3D12 only and resolves `IUnityGraphicsD3D12v7` command-recording state. Missing annotation exports degrade to `BridgeTooOld` without weakening capture behavior.
 
 App API negotiation tries `eRENDERDOC_API_Version_1_7_0`, then `eRENDERDOC_API_Version_1_6_0`, then `eRENDERDOC_API_Version_1_4_0`. API `1.4` is the minimum because safe native cancellation requires `DiscardFrameCapture`; an API below `1.4` is unsupported. The bridge reports the actual negotiated major/minor/patch and feature flags, including discard/title/comments support; managed code must not infer function availability from a version string. Capture title is capability-conditional and used only with API `1.6+`; API `1.4` reports it unsupported and the bridge never calls the missing function pointer. The negotiated API is not `ToolVersion`, and an unknown RenderDoc build remains unknown.
 
@@ -111,8 +120,10 @@ Capability snapshots expose static eligibility, module/API readiness, backend-se
 
 Automated coverage includes fake-table, missing module/export, API negotiation, discard, capture count, candidate ambiguity, path/UTF-8/template/concurrency cases, fixed ABI baselines, traversal/reparse and replacement races, nonce ownership, lease retention, cancel/reload/scene/runtime teardown, MetadataOnly/Copy/Embed, quota/free-space/retention, privacy, and cleanup.
 
+Annotation coverage additionally fixes native/managed struct layouts and result values, validates the generation-safe packet pool and wrong-event/reset/exhaustion paths, and exercises public batch/context/scope behavior. Real annotation acceptance is a separate D3D12 `.rdc` gate and does not expand the capture matrix to D3D11 or Vulkan.
+
 Each initial Windows matrix row passed a manual attached `.rdc` smoke in the matching RenderDoc build with intended GPU-frame content, live title, persisted comments, bound path/index/timestamp/file identity and hashes, overlap/foreign-hotkey rejection, and the fixed `PM-RDOC-003A` main/render-thread stall budget.
 
 The initial isolated `PM-RDOC-002` probe was later superseded by production-wired D3D11/D3D12/Vulkan validation under portable RenderDoc v1.46 at the pinned commit and negotiated app API `1.7.0`. Replay, counters, analyzer protocol, and expensive analysis stay out-of-process under `PM-RDA`; no replay DLL/controller belongs in Unity.
 
-Related decisions: [`renderdoc-storage-policy.md`](renderdoc-storage-policy.md), [`capture-coordinator.md`](capture-coordinator.md), [`capture-bundles.md`](capture-bundles.md), and [`roadmap.md`](../backlog/roadmap.md). Research intake: `C:\Work\Unity\perfmeter-temp\00-index.md` and `C:\Work\Unity\perfmeter-temp\02-renderdoc-native-recommendations.md`.
+Related decisions: [`renderdoc-gpu-annotations.md`](renderdoc-gpu-annotations.md), [`renderdoc-storage-policy.md`](renderdoc-storage-policy.md), [`capture-coordinator.md`](capture-coordinator.md), [`capture-bundles.md`](capture-bundles.md), and [`roadmap.md`](../backlog/roadmap.md). Research intake: `C:\Work\Unity\perfmeter-temp\00-index.md` and `C:\Work\Unity\perfmeter-temp\02-renderdoc-native-recommendations.md`.

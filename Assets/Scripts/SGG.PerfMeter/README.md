@@ -4,7 +4,7 @@
 
 Package name: `com.sungeargames.perfmeter`
 
-SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, guarded external GPU capture coordination, URP overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, URP Render Graph diagnostics, HDRP Custom Pass diagnostics, and MCP command metadata.
+SGG PerfMeter detects frame bottlenecks, compares performance changes, captures reproducible sessions, and exposes structured profiling data to tools and AI agents. It combines FrameTimingManager timings, ProfilerRecorder counters, bottleneck classification, UI Toolkit overlay, guarded external GPU capture coordination, bounded RenderDoc command annotations, URP overdraw diagnostics, session export, alerts, custom metrics, device/camera snapshots, URP Render Graph diagnostics, HDRP Custom Pass diagnostics, and MCP command metadata.
 
 Smoothed CPU and GPU timing graphs retain missed per-frame peaks as semantic-red backdrops behind the foreground graph. Peak evidence is clipped into the existing vertical range and never changes graph scale or labels.
 
@@ -104,6 +104,12 @@ public static bool TryApplySettingsJson(string json, out string warning);
 It includes overlay, logging, alert, session-default, and overdraw settings, honors `enabled` and `collectionMode: "Stopped"`, and does not start sessions or captures. Use it instead of the Resources zero-code file at `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`. If both are present, a valid explicit application suppresses Resources auto-start for the current domain and becomes authoritative; invalid explicit JSON leaves the runtime unchanged.
 
 The Setup FTUE tab continues available optional integrations: Memory Profiler exposes its window plus one-shot and runtime-trigger snippets, Profile Analyzer opens the session-ID integration, Adaptive Performance opens Runtime, and GraphicsStateCollection provides trace/prewarm snippets and artifact reveal. RenderDoc remains user-owned; FTUE can separately download or locally install only the exact SHA-256-pinned Windows x64 Editor bridge, cancel an active download, remove a managed bridge, and copy a `NativeRequired` + `Copy` capture snippet. The package remains binary-free and never installs or loads RenderDoc itself. See the [English workflows](https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/workflows.md) for the required session, privacy, and artifact steps.
+
+## RenderDoc Command Annotations
+
+`PerfMeterGpuAnnotations` is a public RenderDoc-neutral API for attaching bounded typed state to a `CommandBuffer`. `PerfMeterRenderGraphGpuAnnotations` provides direct `RasterCommandBuffer`, `ComputeCommandBuffer`, and `UnsafeCommandBuffer` adapters. Schema v1 includes module, stable pass, camera, material, and object keys plus owner/generation ambient context.
+
+The initial native transport is an optional, separately installed Windows x64 Editor/D3D12 bridge. It records only while an already-loaded RenderDoc App API `1.7` instance is actively capturing. The UPM package remains binary-free and PerfMeter does not ship or load RenderDoc. The currently published `2026.8.11-1` capture bridge predates annotation support and reports `BridgeTooOld` until a new artifact is released. Scopes are non-nested in v1 and must be disposed; unsupported or inactive configurations are silent explicit no-ops. See the [API](https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/api.md#renderdoc-gpu-command-annotations) and [limitations](https://github.com/romanilyin/sgg-perfmeter/blob/main/docs/en/limitations.md#renderdoc-command-annotations).
 
 ## Samples
 

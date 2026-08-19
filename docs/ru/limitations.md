@@ -31,6 +31,15 @@ Profiler counters зависят от платформы, версии Unity, н
 - Automated tests используют fake backend. Проверка настоящей external tool и artifact остается release gate.
 - Correlated bundles и MCP capture control доступны, но переданный `.rdc`/`.wpix` остается только observed и hashed artifact: Unity не может аутентифицировать attached tool или связь artifact с capture. Проверка real external tool остается release-candidate gate.
 
+## Command annotations RenderDoc
+
+- Command annotations — отдельная optional integration, не равная более широкой матрице capture через `ExternalGPUProfiler`. Начальный transport поддерживает только Windows x64 Editor/D3D12 и требует уже загруженный RenderDoc App API `1.7` и активный capture.
+- UPM-пакет остаётся без бинарников. Для аннотаций нужен отдельно установленный Editor bridge с новыми annotation exports; опубликованный сейчас capture bridge `2026.8.11-1` возвращает для аннотаций `BridgeTooOld`. Ни пакет, ни bridge не поставляют, не загружают, не inject и не устанавливают RenderDoc.
+- Batch ограничен 32 entries, key — 127 bytes, string — 255 UTF-8 bytes, native pool — 64 pending packets. Исчерпание budget и unavailable-состояния являются явными no-op.
+- V1 scopes не должны быть вложенными и обязаны освобождаться. Они очищают свои ключи, но не могут восстановить annotation state, независимо записанный другой библиотекой.
+- API-object/resource annotations, D3D11, Vulkan, Development Player, IL2CPP, Linux, mobile и Metal не поддерживаются начальным transport. Для каждого нужен отдельный real-capture gate.
+- Real D3D12 `.rdc` smokes прошли на Unity `6000.4.12f1` и `6000.5.6f1` с pinned RenderDoc v1.46: аннотированный красный clear оказался между set/delete calls, а соседний синий clear выполнялся после удаления ключей. Clean external package consumer остается release gate.
+
 ## Стоимость и поддержка overdraw
 
 Числовой overdraw и визуальная heatmap - диагностические режимы. Они добавляют работу рендера и должны использоваться в ограниченных окнах, а не как постоянный игровой UI.

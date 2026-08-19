@@ -25,6 +25,15 @@ set(RENDERDOC_HEADER_SHA256
     "b7005e7dc34c3635046868bbd76d81b9b055aede0f56daa0bd39fedee0639ffb")
 set(RENDERDOC_HEADER_DIR "${CMAKE_BINARY_DIR}/_deps/renderdoc")
 set(RENDERDOC_HEADER "${RENDERDOC_HEADER_DIR}/renderdoc_app.h")
+set(SGG_UNITY_PLUGIN_API_DIR "" CACHE PATH
+    "Absolute path to a supported Unity Editor/Data/PluginAPI directory")
+
+if(NOT EXISTS "${SGG_UNITY_PLUGIN_API_DIR}/IUnityInterface.h" OR
+   NOT EXISTS "${SGG_UNITY_PLUGIN_API_DIR}/IUnityGraphics.h" OR
+   NOT EXISTS "${SGG_UNITY_PLUGIN_API_DIR}/IUnityGraphicsD3D12.h")
+    message(FATAL_ERROR
+        "SGG_UNITY_PLUGIN_API_DIR must point to a Unity 6000.4+ Editor/Data/PluginAPI directory.")
+endif()
 
 file(MAKE_DIRECTORY "${RENDERDOC_HEADER_DIR}")
 file(DOWNLOAD
@@ -60,8 +69,11 @@ add_library(sgg_renderdoc_bridge SHARED
     "${CMAKE_CURRENT_BINARY_DIR}/sgg_renderdoc_bridge.rc")
 target_include_directories(sgg_renderdoc_bridge
     PRIVATE
-        "${BRIDGE_INCLUDE_DIR}"
-        "${BRIDGE_RENDERDOC_INCLUDE_DIR}")
+        "${BRIDGE_INCLUDE_DIR}")
+target_include_directories(sgg_renderdoc_bridge SYSTEM
+    PRIVATE
+        "${BRIDGE_RENDERDOC_INCLUDE_DIR}"
+        "${SGG_UNITY_PLUGIN_API_DIR}")
 target_compile_definitions(sgg_renderdoc_bridge PRIVATE SGG_RD_BUILD_DLL=1)
 target_compile_options(sgg_renderdoc_bridge PRIVATE /W4 /WX /permissive- /EHsc)
 target_link_options(sgg_renderdoc_bridge PRIVATE /Brepro)
@@ -81,8 +93,11 @@ if(BUILD_TESTING)
     target_include_directories(sgg_renderdoc_bridge_tests
         PRIVATE
             "${BRIDGE_INCLUDE_DIR}"
-            "${BRIDGE_RENDERDOC_INCLUDE_DIR}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    target_include_directories(sgg_renderdoc_bridge_tests SYSTEM
+        PRIVATE
+            "${BRIDGE_RENDERDOC_INCLUDE_DIR}"
+            "${SGG_UNITY_PLUGIN_API_DIR}")
     target_compile_definitions(sgg_renderdoc_bridge_tests
         PRIVATE
             SGG_RD_BUILD_DLL=1

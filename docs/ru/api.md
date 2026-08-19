@@ -195,6 +195,43 @@ Generic и caller-supplied `.rdc`/`.wpix` остаются observed. Тольк�
 
 Session и capture JSON дополняются типизированными timeline events для отсутствующих samples и границ capture. Существующие версии схем, массивы samples и столбцы CSV остаются совместимыми; legacy или неизвестные timeline payloads считываются без создания несуществующих gaps. Custom metric providers используют кэшированный snapshot providers и переиспользуемый buffer, принадлежащий core, на прогретом collection path; копии создаются только для сохраняемых samples, экспортов и публичных snapshots. Координация Profiler является process-local через `GetProfilerLeaseCapabilities()`, `GetProfilerLeaseStatus()`, `TryAcquireProfilerLease(...)` и `ReleaseProfilerLease(...)`; удерживаемые leases не переживают domain reload.
 
+## GPU-аннотации команд RenderDoc
+
+API аннотаций не зависит от capture coordinator. Он записывает типизированное семантическое состояние в тот же поток GPU-команд, что draw или dispatch, когда RenderDoc уже загружен, доступен App API `1.7`, идет capture и native transport поддерживает текущий backend.
+
+```csharp
+PerfMeterGpuAnnotationBatch annotations = new PerfMeterGpuAnnotationBatch();
+annotations.TryAdd(PerfMeterGpuAnnotationKeys.Module, "com.sungeargames.sky");
+annotations.TryAdd(PerfMeterGpuAnnotationKeys.RenderGraphPass, "sky.volumetric_clouds.raymarch");
+annotations.TryAdd("SGG.Sky.CloudLayer", 2u);
+
+using (PerfMeterGpuAnnotationScope scope =
+       PerfMeterGpuAnnotations.BeginScope(commandBuffer, annotations))
+{
+    commandBuffer.DispatchCompute(shader, kernel, groupsX, groupsY, groupsZ);
+}
+```
+
+Внутри Render Graph pass используйте `PerfMeterRenderGraphGpuAnnotations.BeginScope(...)`. Есть прямые overloads для `RasterCommandBuffer`, `ComputeCommandBuffer` и `UnsafeCommandBuffer`; переводить raster/compute pass в unsafe pass не нужно.
+
+Контекст кадра или симуляции публикуется отдельно. Публикация не записывает GPU-команду; при начале pass scope берется последний immutable snapshot поколения владельца, а локальные значения pass имеют приоритет:
+
+```csharp
+PerfMeterGpuAnnotationBatch context = new PerfMeterGpuAnnotationBatch();
+context.TryAdd("SGG.Weather.Command.Sequence", sequence);
+context.TryAdd("SGG.Weather.SimulationTick", simulationTick);
+
+PerfMeterGpuAnnotations.TryPublishContext("weather.main", generation, context);
+// Очистить владельца позднее может только его точное активное поколение.
+PerfMeterGpuAnnotations.TryClearContext("weather.main", generation);
+```
+
+`Capabilities.Availability` различает отсутствие provider/bridge, старый bridge, незагруженный RenderDoc, неподдерживаемый API/backend, неактивный capture, исчерпанный packet budget, некорректные данные и внутреннюю ошибку. `ShouldRecord` — быстрая проверка для hot path. Нормальные unavailable-состояния являются тихим no-op.
+
+Schema v1 всегда записывает `SGG.Annotation.SchemaVersion = 1`. Ключи — case-sensitive ASCII paths длиной до 127 bytes; строки — strict UTF-8 до 255 bytes; batch содержит не более 32 записей. Поддерживаются empty, bool, знаковые/беззнаковые 32/64-bit integers, float, double, string и числовые/bool vectors ширины 1–4. Используйте стабильные machine IDs. Нельзя выдавать `Object.GetInstanceID()` за cross-run identity или обращаться к `AssetDatabase` из runtime-кода.
+
+Scopes в v1 не должны быть вложенными и обязаны освобождаться после записи описываемой работы. End event очищает все принадлежащие scope ключи, чтобы состояние не протекало в соседний pass. Начальный transport — отдельно устанавливаемый Windows x64 Editor bridge с реализацией D3D12; UPM-пакет остаётся без бинарников, а сам RenderDoc PerfMeter не поставляет и не загружает. Опубликованный сейчас capture bridge `2026.8.11-1` ещё не содержит эти exports и возвращает `BridgeTooOld`. Vulkan, D3D11, Player и resource/object annotations требуют отдельных validation gates.
+
 ## Пользовательские метрики
 
 ```csharp
