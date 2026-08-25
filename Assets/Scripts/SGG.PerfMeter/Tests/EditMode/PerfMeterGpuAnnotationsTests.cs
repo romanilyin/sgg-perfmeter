@@ -178,6 +178,66 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void ActiveReusableWorkspaceAllocatesNoManagedMemoryAfterWarmup()
+		{
+			AllocationProvider provider = new AllocationProvider();
+			AllocationSink sink = new AllocationSink();
+			PerfMeterGpuAnnotationBatch batch = new PerfMeterGpuAnnotationBatch();
+			PerfMeterGpuAnnotationWorkspace workspace = new PerfMeterGpuAnnotationWorkspace();
+			Assert.That(batch.TryAdd(PerfMeterGpuAnnotationKeys.Module, "test"), Is.True);
+			Assert.That(workspace.TryBegin(sink, batch, provider), Is.True);
+			workspace.Dispose();
+
+			long before = GC.GetAllocatedBytesForCurrentThread();
+			bool allRecorded = true;
+			for (int index = 0; index < 128; index++)
+			{
+				allRecorded &= workspace.TryBegin(sink, batch, provider);
+				workspace.Dispose();
+			}
+			long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+			Assert.That(allRecorded, Is.True);
+			Assert.That(allocated, Is.Zero);
+			Assert.That(sink.IssueCount, Is.EqualTo(258));
+		}
+
+		[Test]
+		public void ReusableWorkspaceRejectsNestingAndCanBeginAgainAfterDispose()
+		{
+			AllocationProvider provider = new AllocationProvider();
+			AllocationSink sink = new AllocationSink();
+			PerfMeterGpuAnnotationBatch batch = new PerfMeterGpuAnnotationBatch();
+			PerfMeterGpuAnnotationWorkspace workspace = new PerfMeterGpuAnnotationWorkspace();
+			Assert.That(batch.TryAdd(PerfMeterGpuAnnotationKeys.Module, "test"), Is.True);
+
+			Assert.That(workspace.TryBegin(sink, batch, provider), Is.True);
+			Assert.That(workspace.IsActive, Is.True);
+			Assert.That(workspace.TryBegin(sink, batch, provider), Is.False);
+			workspace.Dispose();
+			Assert.That(workspace.IsActive, Is.False);
+
+			Assert.That(workspace.TryBegin(sink, batch, provider), Is.True);
+			workspace.Dispose();
+			Assert.That(sink.IssueCount, Is.EqualTo(4));
+		}
+
+		[Test]
+		public void ReusableWorkspaceReleasesPreparedEndPacketWhenDisposeFails()
+		{
+			FakeProvider provider = new FakeProvider();
+			FakeSink sink = new FakeSink { ThrowOnIssueNumber = 2 };
+			PerfMeterGpuAnnotationBatch batch = new PerfMeterGpuAnnotationBatch();
+			PerfMeterGpuAnnotationWorkspace workspace = new PerfMeterGpuAnnotationWorkspace();
+			Assert.That(batch.TryAdd(PerfMeterGpuAnnotationKeys.Module, "test"), Is.True);
+
+			Assert.That(workspace.TryBegin(sink, batch, provider), Is.True);
+			Assert.Throws<InvalidOperationException>(() => workspace.Dispose());
+			Assert.That(workspace.IsActive, Is.False);
+			Assert.That(provider.Released, Is.EquivalentTo(new[] { new IntPtr(2) }));
+		}
+
+		[Test]
 		public void AnnotationInteropLayoutsAndAvailabilityMappingAreStable()
 		{
 			Assert.That(Marshal.SizeOf<SggRdAnnotationCapabilitiesV1>(), Is.EqualTo(PerfMeterRenderDocAnnotationAbiV1.CapabilitiesSize));
@@ -289,6 +349,35 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(eventId, Is.EqualTo(7));
 				Events.Add(eventData);
 			}
+		}
+
+		private sealed class AllocationProvider : IPerfMeterGpuAnnotationProvider
+		{
+			private int _created;
+
+			public PerfMeterGpuAnnotationCapabilities GetCapabilities() =>
+				new PerfMeterGpuAnnotationCapabilities(PerfMeterGpuAnnotationAvailability.Ready);
+
+			public bool TryCreateEvent(PerfMeterGpuAnnotationEntry[] entries, int count, out PerfMeterGpuAnnotationPreparedEvent preparedEvent)
+			{
+				_created++;
+				preparedEvent = new PerfMeterGpuAnnotationPreparedEvent
+				{
+					Provider = this,
+					Callback = new IntPtr(123),
+					EventId = 7,
+					EventData = new IntPtr(_created)
+				};
+				return true;
+			}
+
+			public void ReleaseEvent(IntPtr eventData) { }
+		}
+
+		private sealed class AllocationSink : IPerfMeterGpuAnnotationCommandSink
+		{
+			internal int IssueCount;
+			public void Issue(IntPtr callback, int eventId, IntPtr eventData) => IssueCount++;
 		}
 	}
 }

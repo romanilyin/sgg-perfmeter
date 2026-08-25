@@ -2003,7 +2003,17 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
-			Assert.That(GameObject.Find("SGG PerfMeter Overlay"), Is.Null);
+			GameObject visibleOverlay = GameObject.Find("SGG PerfMeter Overlay");
+			PerfMeterRuntime visibleOverlayRuntime = visibleOverlay == null ? null : visibleOverlay.GetComponentInParent<PerfMeterRuntime>();
+			string visibleOverlayOwner = visibleOverlay == null
+				? string.Empty
+				: $"parent={visibleOverlay.transform.parent?.name ?? "<none>"}; root={visibleOverlay.transform.root.name}; " +
+				  $"overlay_component={visibleOverlay.GetComponent<PerfMeterOverlay>() != null}; " +
+				  $"runtime_owner={visibleOverlayRuntime != null}; runtime_current={visibleOverlayRuntime == PerfMeterRuntime.Instance}; " +
+				  $"runtime_enabled={visibleOverlayRuntime != null && visibleOverlayRuntime.isActiveAndEnabled}; " +
+				  $"runtime_count={Resources.FindObjectsOfTypeAll<PerfMeterRuntime>().Length}; " +
+				  $"overlay_count={Resources.FindObjectsOfTypeAll<PerfMeterOverlay>().Length}; hide_flags={visibleOverlay.hideFlags}";
+			Assert.That(visibleOverlay, Is.Null, visibleOverlayOwner);
 
 			yield return new ExitPlayMode();
 			PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");

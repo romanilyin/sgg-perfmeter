@@ -23,6 +23,7 @@ namespace SGG.PerfMeter
 		private const string AlertScopeLeasePrefix = "perfmeter-alert-";
 		internal const string MemorySnapshotCleanupWarning = "memory_snapshot_cleanup_failed";
 		private static PerfMeterRuntime _instance;
+		private static bool _duplicateRuntimeScanRequired = true;
 		private static PerfMeterCaptureCoordinator _pendingCaptureCleanup;
 		private static PendingCaptureBundleFinalization _pendingCaptureBundleFinalization;
 		private static PerfMeterGraphicsStateCollectionCoordinator _pendingGraphicsStateCleanup;
@@ -403,6 +404,7 @@ namespace SGG.PerfMeter
 				{
 					return false;
 				}
+				PruneDuplicateRuntimes();
 
 				if (_instance._captureCleanupPending)
 				{
@@ -422,6 +424,7 @@ namespace SGG.PerfMeter
 				return true;
 			}
 
+			_duplicateRuntimeScanRequired = true;
 			GameObject gameObject = new GameObject(GameObjectName);
 			gameObject.hideFlags = HideFlags.DontSave;
 			_instance = gameObject.AddComponent<PerfMeterRuntime>();
@@ -432,7 +435,38 @@ namespace SGG.PerfMeter
 			PerfMeterSelfObservability.EnsureStarted(PerfMeterRenderPipelineDetector.GetActiveKind());
 			_instance.SetRunningPlaceholders();
 			_instance.EnsureOverlayState();
+			PruneDuplicateRuntimes();
 			return _instance != null;
+		}
+
+		private static void PruneDuplicateRuntimes()
+		{
+			if (!_duplicateRuntimeScanRequired)
+			{
+				return;
+			}
+
+			PerfMeterRuntime owner = _instance;
+			if (owner == null)
+			{
+				return;
+			}
+			_duplicateRuntimeScanRequired = false;
+
+			PerfMeterRuntime[] runtimes = Resources.FindObjectsOfTypeAll<PerfMeterRuntime>();
+			for (int runtimeIndex = 0; runtimeIndex < runtimes.Length; runtimeIndex++)
+			{
+				PerfMeterRuntime candidate = runtimes[runtimeIndex];
+				bool runtimeOwnedTransient = candidate != null &&
+					(candidate.gameObject.hideFlags & HideFlags.DontSave) != 0;
+				if (candidate == null || candidate == owner ||
+					(!candidate.gameObject.scene.IsValid() && !runtimeOwnedTransient))
+				{
+					continue;
+				}
+
+				candidate.DestroyDuplicate();
+			}
 		}
 
 		internal static void StopRunning()
@@ -488,6 +522,7 @@ namespace SGG.PerfMeter
 
 			PerfMeterSelfObservability.Stop();
 			_instance = null;
+			_duplicateRuntimeScanRequired = true;
 
 			if (Application.isPlaying)
 			{
@@ -542,6 +577,18 @@ namespace SGG.PerfMeter
 
 		private void OnEnable()
 		{
+			if (_instance != null && _instance != this)
+			{
+				DestroyDuplicate();
+				return;
+			}
+
+			if (_instance == null)
+			{
+				_instance = this;
+				_duplicateRuntimeScanRequired = true;
+			}
+
 			if (_instance == this)
 			{
 				if (!TryReleasePendingGraphicsStateCleanup())
@@ -1894,6 +1941,7 @@ namespace SGG.PerfMeter
 			if (object.ReferenceEquals(_instance, this))
 			{
 				_instance = null;
+				_duplicateRuntimeScanRequired = true;
 			}
 		}
 
@@ -2337,12 +2385,14 @@ namespace SGG.PerfMeter
 			if (!_overlayRequestedVisible)
 			{
 				DestroyOverlay();
+				DestroyOrphanedOverlayChildren();
 				RefreshStatusOverlayState();
 				return;
 			}
 
 			if (_overlay == null)
 			{
+				DestroyOrphanedOverlayChildren();
 				GameObject overlayObject = new GameObject("SGG PerfMeter Overlay");
 				overlayObject.hideFlags = HideFlags.DontSave;
 				overlayObject.transform.SetParent(transform, worldPositionStays: false);
@@ -2381,6 +2431,28 @@ namespace SGG.PerfMeter
 			else
 			{
 				DestroyImmediate(overlayObject);
+			}
+		}
+
+		private void DestroyOrphanedOverlayChildren()
+		{
+			for (int childIndex = transform.childCount - 1; childIndex >= 0; childIndex--)
+			{
+				GameObject child = transform.GetChild(childIndex).gameObject;
+				if ((_overlay != null && child == _overlay.gameObject) || !child.TryGetComponent(out PerfMeterOverlay _))
+				{
+					continue;
+				}
+
+				child.SetActive(false);
+				if (Application.isPlaying)
+				{
+					Destroy(child);
+				}
+				else
+				{
+					DestroyImmediate(child);
+				}
 			}
 		}
 
@@ -3592,6 +3664,8 @@ namespace SGG.PerfMeter
 
 		private void DestroyDuplicate()
 		{
+			DestroyOverlay();
+			gameObject.SetActive(false);
 			if (Application.isPlaying)
 			{
 				Destroy(gameObject);

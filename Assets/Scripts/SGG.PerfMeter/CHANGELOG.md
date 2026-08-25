@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added reusable core and URP Render Graph GPU-annotation workspaces so active, non-nested scopes can record with zero managed allocations after warm-up.
+- Runtime ownership is re-elected after domain reload; duplicate runtimes and orphaned child overlays deactivate immediately before Unity's deferred Play Mode destruction, preventing a hidden MCP visibility request from leaving a visible stale overlay.
+
 ## 2026.8.19-1
 
 - Added a RenderDoc-neutral public API for bounded typed GPU command annotations, ambient owner/generation context, and direct URP Render Graph command-buffer scopes.

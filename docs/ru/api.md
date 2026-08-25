@@ -214,6 +214,21 @@ using (PerfMeterGpuAnnotationScope scope =
 
 Внутри Render Graph pass используйте `PerfMeterRenderGraphGpuAnnotations.BeginScope(...)`. Есть прямые overloads для `RasterCommandBuffer`, `ComputeCommandBuffer` и `UnsafeCommandBuffer`; переводить raster/compute pass в unsafe pass не нужно.
 
+Для pass, который многократно записывается во время активного capture, храните один `PerfMeterGpuAnnotationBatch` и один `PerfMeterRenderGraphGpuAnnotationWorkspace`: очищайте и заново наполняйте batch, затем освобождайте возвращённый workspace после draw или dispatch. После первого успешного scope этот путь не создаёт managed allocations. Workspace намеренно не допускает вложенность: пока он активен, повторный `BeginScope(...)` возвращает `null`.
+
+```csharp
+annotations.Reset();
+annotations.TryAdd(PerfMeterGpuAnnotationKeys.Module, "com.sungeargames.sky");
+annotations.TryAdd(PerfMeterGpuAnnotationKeys.RenderGraphPass, "sky.volumetric_clouds.raymarch");
+
+using (workspace.BeginScope(commandBuffer, annotations))
+{
+    commandBuffer.DrawProcedural(Matrix4x4.identity, material, 0, MeshTopology.Triangles, 3);
+}
+```
+
+Для того же переиспользуемого паттерна со стандартным `CommandBuffer` используйте `PerfMeterGpuAnnotationWorkspace.BeginScope(...)`. Workspace владеет фиксированными bounded buffers записей и может переиспользоваться после `Dispose`; allocating legacy scope при этом переиспользуемым не становится.
+
 Контекст кадра или симуляции публикуется отдельно. Публикация не записывает GPU-команду; при начале pass scope берется последний immutable snapshot поколения владельца, а локальные значения pass имеют приоритет:
 
 ```csharp
