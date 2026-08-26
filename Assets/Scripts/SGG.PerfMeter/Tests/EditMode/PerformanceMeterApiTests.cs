@@ -1668,8 +1668,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(FindRule(rules, "cpu.frame.over_budget").Threshold, Is.EqualTo(1000d / 30d).Within(0.001d));
 			Assert.That(FindRule(rules, "cpu.frame.over_budget").ConsecutiveFrames, Is.EqualTo(6));
+			Assert.That(FindRule(rules, "cpu.frame.over_budget").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
+			Assert.That(FindRule(rules, "cpu.main.over_budget").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
+			Assert.That(FindRule(rules, "gpu.frame.over_budget").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
 			Assert.That(FindRule(rules, "fps.below_target").Threshold, Is.EqualTo(30d));
 			Assert.That(FindRule(rules, "fps.below_target").ConsecutiveFrames, Is.EqualTo(21));
+			Assert.That(FindRule(rules, "fps.below_target").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
 			Assert.That(FindRule(rules, "gpu.timing.unavailable").ConsecutiveFrames, Is.EqualTo(17));
 			Assert.That(FindRule(rules, "overdraw.ratio.high").Threshold, Is.EqualTo(2.25d).Within(0.001d));
 			Assert.That(FindRule(rules, "overdraw.ratio.high").ConsecutiveFrames, Is.EqualTo(4));

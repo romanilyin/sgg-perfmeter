@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Default CPU-frame, main-thread, GPU-frame and FPS budget alerts now remain available through callbacks and alert history without writing repetitive structured-log or Editor-warning entries. Explicit user-authored rules can still request log actions.
 - Added reusable core and URP Render Graph GPU-annotation workspaces so active, non-nested scopes can record with zero managed allocations after warm-up.
 - Runtime ownership is re-elected after domain reload; duplicate runtimes and orphaned child overlays deactivate immediately before Unity's deferred Play Mode destruction, preventing a hidden MCP visibility request from leaving a visible stale overlay.
 
