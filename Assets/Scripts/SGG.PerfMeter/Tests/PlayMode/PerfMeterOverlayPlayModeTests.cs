@@ -115,6 +115,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			overlay.SetFontFamily(PerfMeterOverlayFontFamily.Manrope);
 			overlay.SetModules(PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Warnings);
 			overlay.SetMode(PerfMeterOverlayMode.FpsOnly);
+			overlay.PanelRoot.style.width = 640f;
 			overlay.SetTuning(2f, 0.84f, 24f, 0.25f, 120);
 			yield return null;
 			yield return null;

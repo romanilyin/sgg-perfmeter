@@ -180,7 +180,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCores);
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
-			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.True);
+			Assert.That(
+				PerformanceMeter.EditorWarningLogsEnabled,
+				Is.EqualTo(PerformanceMeter.GetSettings().EditorWarningsEnabled));
 			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(true));
@@ -239,33 +241,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void StructuredLogApiDefaultsEnabledAndTogglesRuntimeState()
+		public void StructuredLogApiUsesConfiguredFallbackAndTogglesRuntimeState()
 		{
-			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.True);
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			bool configuredFallback = PerformanceMeter.GetSettings().StructuredLogsEnabled;
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 
-			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(false));
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
+			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(!configuredFallback));
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(!configuredFallback));
 
-			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(true));
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(configuredFallback));
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 
 			PerformanceMeter.Stop();
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 		}
 
 		[Test]
 		public void ApplySettingsUsesStructuredLogSettingAndStopRestoresApiFallback()
 		{
-			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.WithStructuredLogsEnabled(PerfMeterSettingsStore.Defaults, false);
+			bool configuredFallback = PerformanceMeter.GetSettings().StructuredLogsEnabled;
+			bool appliedValue = !configuredFallback;
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.WithStructuredLogsEnabled(
+				PerfMeterSettingsStore.Defaults,
+				appliedValue);
 
 			PerformanceMeter.ApplySettings(settings);
 
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
-			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(appliedValue));
+			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 
 			PerformanceMeter.Stop();
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 		}
 
 		[Test]
