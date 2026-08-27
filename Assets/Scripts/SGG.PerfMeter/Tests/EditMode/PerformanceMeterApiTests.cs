@@ -850,7 +850,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterCustomMetricCollection second = PerfMeterCustomMetricRegistry.Collect();
 
 			Assert.That(second.Buffer, Is.SameAs(first.Buffer));
-			Assert.That(second.Buffer.Length, Is.EqualTo(2));
+			Assert.That(second.Buffer.Length, Is.GreaterThanOrEqualTo(2),
+				"The allocation-free registry may retain capacity from an earlier collection in the same domain.");
 			Assert.That(second.Count, Is.EqualTo(1));
 
 			PerfMeterCustomMetricSnapshot[] publicMetrics = PerformanceMeter.GetCustomMetrics();
