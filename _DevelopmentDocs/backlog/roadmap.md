@@ -2,7 +2,7 @@
 
 Статус: внутренний приоритизированный backlog. Порядок отражает зависимости и продуктовую ценность, но не обещает календарный release scope.
 
-Основание: review текущего backlog и локального research report `C:\Work\Unity\deep-research-report-perfmeter-new-26-8-4.md`, актуализированные для published baseline `2026.8.11-2`; пакет review/RenderDoc research `C:\Work\Unity\perfmeter-temp` является историческим intake для baseline `2026.8.8-1` от августа 2026 года.
+Основание: review текущего backlog и локального research report `C:\Work\Unity\deep-research-report-perfmeter-new-26-8-4.md`, актуализированные для current published baseline `2026.8.19-1`; пакет review/RenderDoc research `C:\Work\Unity\perfmeter-temp` является историческим intake для baseline `2026.8.8-1` от августа 2026 года.
 
 ## Модель приоритетов
 
@@ -29,6 +29,7 @@
 - Target invariant для `PM-OBS-004` и будущих rule packs: derived diagnostics не подменяют raw evidence; classification публикует availability, provenance, confidence, coverage, contradicting evidence и verification steps.
 - `Nsight` не является единым backend/tool enum: Nsight Systems, Nsight Graphics, Nsight Perf SDK, Aftermath и Nsight Compute имеют независимые optional contracts, availability и product boundaries.
 - External tools и SDK остаются user-installed и allowlisted. Editor UI может сохранить выбранный пользователем path только после canonicalization, executable identity/version/capability validation и project-local policy check; MCP/settings JSON не принимают arbitrary executable/DLL paths. Package не устанавливает tools, не повышает права, не включает self-injection и не меняет clocks без отдельного explicit policy.
+- `PM-PROF-001` остается standalone-first: package-owned Editor service/UI и artifacts работают без Gateway, а optional MCP handlers только применяют host policy/approval к тому же service. Runtime и Editor package code не зависят от Gateway process/config/token/artifact store.
 
 ## Roadmap
 
@@ -67,6 +68,7 @@
 | `PM-UI-007` Built-in overlay width and default CPU-core cleanup | P1 | resolved, released `2026.8.13-2` | Все built-in visual presets используют bounded `780 px` cap, достаточный для пяти cards и двух budget bars без переноса; CPU-core bars выключены только в zero-code Default configuration и остаются доступны в Full Diagnostics и explicit module selection. | `PM-UI-003` |
 | `PM-UI-008` Active visual preset persistence | P1 | resolved, released `2026.8.13-2` | `Presets > Save` сохраняет descriptor и одновременно делает выбранный visual preset активным в project Resources settings, чтобы следующий Play Mode и build использовали ту же схему; Runtime-tab apply остаётся transient. | `PM-UI-003` |
 | `PM-UI-009` Smoothed graph raw-peak backdrop | P1 | resolved, released `2026.8.15-1` | Сглаженные CPU/GPU timing graphs остаются foreground-слоем, а raw peaks из того же history window отображаются позади них semantic red backdrop и видны только как превышение над сглаженной формой. Peak aggregation сохраняет максимум в каждом pixel bucket; raw peaks проецируются и clip-ятся в уже рассчитанный scale, но не участвуют в выборе `min/max`, не меняют scale labels и не перекрывают сглаженную линию/заливку. | `PM-UI-004`, `PM-UI-005` |
+| [`PM-PROF-001`](unity-profiler-recording.md) Standalone Unity Profiler recording | P2 | planned; standalone-first, implementation not started | Package-owned Editor service/UI явно запускает и останавливает local Unity Profiler recording, сохраняет bounded hash-verified `.data` artifacts и связывает их с PerfMeter session markers. Runtime остается без Editor/MCP dependencies; optional package MCP commands являются thin ask-gated adapter над тем же service, не второй реализацией. | `PM-OBS-002`, `PM-CI-001`, `PM-EXT-002`, `PM-CORE-001`, `PM-SETUP-001` |
 | `PM-RG-001` Deeper Render Graph diagnostics | P4 | waiting for stable public APIs | Добавлять pass/resource/aliasing/merge counters только через стабильные Unity APIs; сохранять degraded state вместо reflection. | Unity public APIs |
 | `PM-ANDROID-001` Android Perfetto/AGI | P4 | Deferred, deferred by explicit product direction | Low-overhead ATrace/ADPF correlation и Editor sidecar для `adb`, Perfetto config, artifact import и AGI workflow. | `PM-CAP-002`, `PM-PLAT-001` |
 | `PM-APPLE-001` Apple thermal, MetricKit and Metal | P4 | Deferred, deferred by explicit product direction | Optional native provider/backend для thermal/low-power/MetricKit и Development-only Metal capture. | `PM-CAP-002`, provider seams |
