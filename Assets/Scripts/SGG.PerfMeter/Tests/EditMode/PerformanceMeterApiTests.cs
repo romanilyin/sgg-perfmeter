@@ -2008,12 +2008,23 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			yield return new EnterPlayMode();
 			yield return null;
-			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+			PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
+			bool domainReloadDisabled = UnityEditor.EditorSettings.enterPlayModeOptionsEnabled
+				&& (UnityEditor.EditorSettings.enterPlayModeOptions & UnityEditor.EnterPlayModeOptions.DisableDomainReload) != 0;
+			PerfMeterRuntimeState expectedEntryState =
+				domainReloadDisabled
+					&& settings.LoadState == PerfMeterSettingsLoadState.Loaded
+					&& settings.Enabled
+					&& settings.AutoStart
+					? PerfMeterRuntimeState.Running
+					: PerfMeterRuntimeState.Stopped;
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(expectedEntryState));
 			PerfMeterMcpCommands.RuntimeEnsure();
 			yield return null;
 
 			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
+			Assert.That(Resources.FindObjectsOfTypeAll<PerfMeterRuntime>().Length, Is.EqualTo(1));
 			GameObject visibleOverlay = GameObject.Find("SGG PerfMeter Overlay");
 			PerfMeterRuntime visibleOverlayRuntime = visibleOverlay == null ? null : visibleOverlay.GetComponentInParent<PerfMeterRuntime>();
 			string visibleOverlayOwner = visibleOverlay == null
