@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Split configured custom-metric histories from the raw frame-time strip into a dedicated graph with independent per-series scales and live numeric legend values, so pass costs no longer disappear against the frame-budget visualization.
 - Made the custom-metric buffer reuse regression test independent of retained allocation capacity from earlier tests in the same editor domain, while preserving its stale-entry and zero-allocation coverage.
 - Default CPU-frame, main-thread, GPU-frame and FPS budget alerts now remain available through callbacks and alert history without writing repetitive structured-log or Editor-warning entries. Explicit user-authored rules can still request log actions.
 - Added reusable core and URP Render Graph GPU-annotation workspaces so active, non-nested scopes can record with zero managed allocations after warm-up.

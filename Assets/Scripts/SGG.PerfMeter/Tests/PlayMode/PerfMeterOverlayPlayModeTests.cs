@@ -229,9 +229,12 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			int childCount = container.childCount;
 			Assert.That(container[childCount - 1].name, Is.EqualTo("sgg-perfmeter-frame-time-strip-block"));
 			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-custom-metric-graph"), Is.Not.Null);
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-custom-metric-graph-section"), Is.Not.Null);
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-raw-frame-time-section"), Is.Not.Null);
 			Label customLegend = container.Q<Label>("sgg-perfmeter-frame-time-strip-custom-legend-0");
 			Assert.That(customLegend, Is.Not.Null);
-			Assert.That(customLegend.text, Does.Contain("movement.horizontal [-10..10] m/s x2"));
+			Assert.That(customLegend.text, Does.Contain("movement.horizontal n/a m/s [-10..10] x2"));
 
 			overlay.RecordFrameTimeSample(100, 16d, true);
 			overlay.RecordCustomMetricSamples(100, new[] { new PerfMeterCustomMetricSnapshot("movement.horizontal", "Horizontal", "movement", "m/s", -3d) }, 1);
@@ -258,6 +261,7 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(overlay.FrameTimeStripLastFrame, Is.EqualTo(302));
 			Assert.That(container.childCount, Is.EqualTo(childCount));
 			Assert.That(container.Q<VisualElement>("sgg-perfmeter-frame-time-strip"), Is.Not.Null);
+			Assert.That(container.Q<VisualElement>("sgg-perfmeter-custom-metric-graph"), Is.Not.Null);
 		}
 
 		[UnityTest]
