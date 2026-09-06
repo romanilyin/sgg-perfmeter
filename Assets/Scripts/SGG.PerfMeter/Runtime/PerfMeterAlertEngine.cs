@@ -166,12 +166,13 @@ namespace SGG.PerfMeter
 		internal static PerfMeterRule[] CreateDefaultRules(PerfMeterTargetFps targetFps, PerfMeterSettingsSnapshot settings)
 		{
 			double budget = PerfMeterRuntime.GetFrameBudgetMs(targetFps);
+			const PerfMeterAlertAction silentTimingActions = PerfMeterAlertAction.Callback;
 			return new[]
 			{
-				new PerfMeterRule("cpu.frame.over_budget", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
-				new PerfMeterRule("cpu.main.over_budget", PerfMeterMetric.CpuMainThreadFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
-				new PerfMeterRule("gpu.frame.over_budget", PerfMeterMetric.GpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames),
-				new PerfMeterRule("fps.below_target", PerfMeterMetric.AverageFps, PerfMeterComparison.LessThan, (int)targetFps, settings.AlertFpsConsecutiveFrames),
+				new PerfMeterRule("cpu.frame.over_budget", PerfMeterMetric.CpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames, 0f, silentTimingActions),
+				new PerfMeterRule("cpu.main.over_budget", PerfMeterMetric.CpuMainThreadFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames, 0f, silentTimingActions),
+				new PerfMeterRule("gpu.frame.over_budget", PerfMeterMetric.GpuFrameTimeMs, PerfMeterComparison.GreaterThan, budget, settings.AlertTimingConsecutiveFrames, 0f, silentTimingActions),
+				new PerfMeterRule("fps.below_target", PerfMeterMetric.AverageFps, PerfMeterComparison.LessThan, (int)targetFps, settings.AlertFpsConsecutiveFrames, 0f, silentTimingActions),
 				new PerfMeterRule("gpu.timing.unavailable", PerfMeterMetric.GpuFrameTimeAvailable, PerfMeterComparison.LessThan, 0.5d, settings.AlertGpuTimingUnavailableConsecutiveFrames),
 				new PerfMeterRule("overdraw.ratio.high", PerfMeterMetric.OverdrawRatio, PerfMeterComparison.GreaterThan, settings.AlertOverdrawRatioThreshold, settings.AlertOverdrawConsecutiveFrames),
 				new PerfMeterRule("thermal.throttling", PerfMeterMetric.ThermalWarningLevel, PerfMeterComparison.GreaterThanOrEqual, (int)PerfMeterThermalWarningLevel.ThrottlingImminent, 1, 10f)

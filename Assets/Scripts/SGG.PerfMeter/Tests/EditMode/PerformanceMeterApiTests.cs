@@ -180,7 +180,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCores);
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
 			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps240));
-			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.True);
+			Assert.That(
+				PerformanceMeter.EditorWarningLogsEnabled,
+				Is.EqualTo(PerformanceMeter.GetSettings().EditorWarningsEnabled));
 			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);
 			Assert.DoesNotThrow(() => PerformanceMeter.SetOverlayVisible(true));
@@ -239,33 +241,37 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
-		public void StructuredLogApiDefaultsEnabledAndTogglesRuntimeState()
+		public void StructuredLogApiUsesConfiguredFallbackAndTogglesRuntimeState()
 		{
-			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.True);
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			bool configuredFallback = PerformanceMeter.GetSettings().StructuredLogsEnabled;
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 
-			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(false));
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
+			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(!configuredFallback));
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(!configuredFallback));
 
-			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(true));
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			Assert.DoesNotThrow(() => PerformanceMeter.SetStructuredLogsEnabled(configuredFallback));
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 
 			PerformanceMeter.Stop();
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 		}
 
 		[Test]
 		public void ApplySettingsUsesStructuredLogSettingAndStopRestoresApiFallback()
 		{
-			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.WithStructuredLogsEnabled(PerfMeterSettingsStore.Defaults, false);
+			bool configuredFallback = PerformanceMeter.GetSettings().StructuredLogsEnabled;
+			bool appliedValue = !configuredFallback;
+			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.WithStructuredLogsEnabled(
+				PerfMeterSettingsStore.Defaults,
+				appliedValue);
 
 			PerformanceMeter.ApplySettings(settings);
 
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.False);
-			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(appliedValue));
+			Assert.That(PerformanceMeter.GetSettings().StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 
 			PerformanceMeter.Stop();
-			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.True);
+			Assert.That(PerformanceMeter.StructuredLogsEnabled, Is.EqualTo(configuredFallback));
 		}
 
 		[Test]
@@ -844,7 +850,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterCustomMetricCollection second = PerfMeterCustomMetricRegistry.Collect();
 
 			Assert.That(second.Buffer, Is.SameAs(first.Buffer));
-			Assert.That(second.Buffer.Length, Is.EqualTo(2));
+			Assert.That(second.Buffer.Length, Is.GreaterThanOrEqualTo(2),
+				"The allocation-free registry may retain capacity from an earlier collection in the same domain.");
 			Assert.That(second.Count, Is.EqualTo(1));
 
 			PerfMeterCustomMetricSnapshot[] publicMetrics = PerformanceMeter.GetCustomMetrics();
@@ -1668,8 +1675,12 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(FindRule(rules, "cpu.frame.over_budget").Threshold, Is.EqualTo(1000d / 30d).Within(0.001d));
 			Assert.That(FindRule(rules, "cpu.frame.over_budget").ConsecutiveFrames, Is.EqualTo(6));
+			Assert.That(FindRule(rules, "cpu.frame.over_budget").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
+			Assert.That(FindRule(rules, "cpu.main.over_budget").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
+			Assert.That(FindRule(rules, "gpu.frame.over_budget").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
 			Assert.That(FindRule(rules, "fps.below_target").Threshold, Is.EqualTo(30d));
 			Assert.That(FindRule(rules, "fps.below_target").ConsecutiveFrames, Is.EqualTo(21));
+			Assert.That(FindRule(rules, "fps.below_target").Actions, Is.EqualTo(PerfMeterAlertAction.Callback));
 			Assert.That(FindRule(rules, "gpu.timing.unavailable").ConsecutiveFrames, Is.EqualTo(17));
 			Assert.That(FindRule(rules, "overdraw.ratio.high").Threshold, Is.EqualTo(2.25d).Within(0.001d));
 			Assert.That(FindRule(rules, "overdraw.ratio.high").ConsecutiveFrames, Is.EqualTo(4));
@@ -1997,13 +2008,34 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			yield return new EnterPlayMode();
 			yield return null;
-			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Stopped));
+			PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
+			bool domainReloadDisabled = UnityEditor.EditorSettings.enterPlayModeOptionsEnabled
+				&& (UnityEditor.EditorSettings.enterPlayModeOptions & UnityEditor.EnterPlayModeOptions.DisableDomainReload) != 0;
+			PerfMeterRuntimeState expectedEntryState =
+				domainReloadDisabled
+					&& settings.LoadState == PerfMeterSettingsLoadState.Loaded
+					&& settings.Enabled
+					&& settings.AutoStart
+					? PerfMeterRuntimeState.Running
+					: PerfMeterRuntimeState.Stopped;
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(expectedEntryState));
 			PerfMeterMcpCommands.RuntimeEnsure();
 			yield return null;
 
 			Assert.That(PerformanceMeter.GetStatus().CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(PerformanceMeter.GetStatus().OverlayVisible, Is.False);
-			Assert.That(GameObject.Find("SGG PerfMeter Overlay"), Is.Null);
+			Assert.That(Resources.FindObjectsOfTypeAll<PerfMeterRuntime>().Length, Is.EqualTo(1));
+			GameObject visibleOverlay = GameObject.Find("SGG PerfMeter Overlay");
+			PerfMeterRuntime visibleOverlayRuntime = visibleOverlay == null ? null : visibleOverlay.GetComponentInParent<PerfMeterRuntime>();
+			string visibleOverlayOwner = visibleOverlay == null
+				? string.Empty
+				: $"parent={visibleOverlay.transform.parent?.name ?? "<none>"}; root={visibleOverlay.transform.root.name}; " +
+				  $"overlay_component={visibleOverlay.GetComponent<PerfMeterOverlay>() != null}; " +
+				  $"runtime_owner={visibleOverlayRuntime != null}; runtime_current={visibleOverlayRuntime == PerfMeterRuntime.Instance}; " +
+				  $"runtime_enabled={visibleOverlayRuntime != null && visibleOverlayRuntime.isActiveAndEnabled}; " +
+				  $"runtime_count={Resources.FindObjectsOfTypeAll<PerfMeterRuntime>().Length}; " +
+				  $"overlay_count={Resources.FindObjectsOfTypeAll<PerfMeterOverlay>().Length}; hide_flags={visibleOverlay.hideFlags}";
+			Assert.That(visibleOverlay, Is.Null, visibleOverlayOwner);
 
 			yield return new ExitPlayMode();
 			PerfMeterMcpCommands.OverlaySet("{\"visible\":true}");

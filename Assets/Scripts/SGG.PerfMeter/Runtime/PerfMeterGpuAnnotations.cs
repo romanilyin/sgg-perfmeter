@@ -447,6 +447,147 @@ namespace SGG.PerfMeter
 		}
 	}
 
+	/// <summary>Reusable non-nested scope storage for allocation-free active annotation recording after warm-up.</summary>
+	public sealed class PerfMeterGpuAnnotationWorkspace : IDisposable
+	{
+		private readonly PerfMeterGpuAnnotationEntry[] _beginEntries = new PerfMeterGpuAnnotationEntry[PerfMeterGpuAnnotationBatch.MaximumEntries];
+		private readonly PerfMeterGpuAnnotationEntry[] _endEntries = new PerfMeterGpuAnnotationEntry[PerfMeterGpuAnnotationBatch.MaximumEntries];
+		private readonly CommandBufferSink _commandBufferSink = new CommandBufferSink();
+		private IPerfMeterGpuAnnotationCommandSink _sink;
+		private PerfMeterGpuAnnotationPreparedEvent _endEvent;
+
+		public bool IsActive => _sink != null;
+
+		~PerfMeterGpuAnnotationWorkspace()
+		{
+			_endEvent.Cancel();
+			_commandBufferSink.CommandBuffer = null;
+		}
+
+		public PerfMeterGpuAnnotationWorkspace BeginScope(CommandBuffer commandBuffer, PerfMeterGpuAnnotationBatch annotations)
+		{
+			if (commandBuffer == null)
+			{
+				throw new ArgumentNullException(nameof(commandBuffer));
+			}
+			if (IsActive)
+			{
+				return null;
+			}
+
+			_commandBufferSink.CommandBuffer = commandBuffer;
+			try
+			{
+				if (PerfMeterGpuAnnotations.TryGetReadyProvider(out IPerfMeterGpuAnnotationProvider provider) &&
+					TryBegin(_commandBufferSink, annotations, provider))
+				{
+					return this;
+				}
+				_commandBufferSink.CommandBuffer = null;
+				return null;
+			}
+			catch
+			{
+				_commandBufferSink.CommandBuffer = null;
+				throw;
+			}
+		}
+
+		internal bool TryBegin(
+			IPerfMeterGpuAnnotationCommandSink sink,
+			PerfMeterGpuAnnotationBatch annotations,
+			IPerfMeterGpuAnnotationProvider provider)
+		{
+			if (IsActive || sink == null || annotations == null || annotations.Count == 0 || provider == null)
+			{
+				return false;
+			}
+
+			int beginCount = 0;
+			if (!PerfMeterGpuAnnotationContextRegistry.TryCopyTo(_beginEntries, ref beginCount))
+			{
+				return false;
+			}
+			for (int index = 0; index < annotations.Count; index++)
+			{
+				if (!PerfMeterGpuAnnotationContextRegistry.TryAddOrReplace(_beginEntries, ref beginCount, annotations.GetEntry(index)))
+				{
+					return false;
+				}
+			}
+			PerfMeterGpuAnnotationEntry schema = new PerfMeterGpuAnnotationEntry(
+				PerfMeterGpuAnnotationKeys.SchemaVersionKey,
+				PerfMeterGpuAnnotationValue.UInt32(PerfMeterGpuAnnotationKeys.SchemaVersion));
+			if (!PerfMeterGpuAnnotationContextRegistry.TryAddOrReplace(_beginEntries, ref beginCount, schema))
+			{
+				return false;
+			}
+
+			for (int index = 0; index < beginCount; index++)
+			{
+				_endEntries[index] = new PerfMeterGpuAnnotationEntry(_beginEntries[index].Key, PerfMeterGpuAnnotationValue.Empty());
+			}
+			if (!provider.TryCreateEvent(_beginEntries, beginCount, out PerfMeterGpuAnnotationPreparedEvent beginEvent))
+			{
+				return false;
+			}
+			if (!provider.TryCreateEvent(_endEntries, beginCount, out PerfMeterGpuAnnotationPreparedEvent endEvent))
+			{
+				beginEvent.Cancel();
+				return false;
+			}
+
+			try
+			{
+				sink.Issue(beginEvent.Callback, beginEvent.EventId, beginEvent.EventData);
+				beginEvent.MarkEnqueued();
+				_sink = sink;
+				_endEvent = endEvent;
+				return true;
+			}
+			catch
+			{
+				beginEvent.Cancel();
+				endEvent.Cancel();
+				throw;
+			}
+		}
+
+		public void Dispose()
+		{
+			IPerfMeterGpuAnnotationCommandSink sink = _sink;
+			_sink = null;
+			if (sink == null)
+			{
+				return;
+			}
+			try
+			{
+				sink.Issue(_endEvent.Callback, _endEvent.EventId, _endEvent.EventData);
+				_endEvent.MarkEnqueued();
+			}
+			catch
+			{
+				_endEvent.Cancel();
+				throw;
+			}
+			finally
+			{
+				_commandBufferSink.CommandBuffer = null;
+			}
+		}
+
+		private sealed class CommandBufferSink : IPerfMeterGpuAnnotationCommandSink
+		{
+			internal CommandBuffer CommandBuffer;
+
+			public void Issue(IntPtr callback, int eventId, IntPtr eventData)
+			{
+				CommandBuffer.IssuePluginEventAndData(callback, eventId, eventData);
+			}
+		}
+	}
+
 	internal static class PerfMeterGpuAnnotationProviderRegistry
 	{
 		private static readonly object Gate = new object();

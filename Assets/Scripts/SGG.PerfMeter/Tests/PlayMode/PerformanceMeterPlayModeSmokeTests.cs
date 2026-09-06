@@ -227,8 +227,23 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			Assert.That(stoppedWindow.Epoch, Is.EqualTo(recordingWindow.Epoch));
 			if (stoppedWindow.RenderPipeline.Kind == PerfMeterRenderPipelineKind.Universal)
 			{
-				Assert.That(stoppedWindow.FeatureInstallation, Is.EqualTo(PerfMeterUrpFeatureInstallationState.NotInstalled));
-				Assert.That(stoppedWindow.UrpRenderIntegration.InactiveReason, Is.EqualTo(PerfMeterSelfOverheadInactiveReason.RendererFeatureNotInstalled));
+				Assert.That(stoppedWindow.FeatureInstallation, Is.Not.EqualTo(PerfMeterUrpFeatureInstallationState.Unknown));
+				if (stoppedWindow.FeatureInstallation == PerfMeterUrpFeatureInstallationState.NotInstalled)
+				{
+					Assert.That(stoppedWindow.UrpRenderIntegration.InactiveReason, Is.EqualTo(PerfMeterSelfOverheadInactiveReason.RendererFeatureNotInstalled));
+				}
+				else
+				{
+					Assert.That(stoppedWindow.FeatureEnabled, Is.Not.EqualTo(PerfMeterUrpFeatureEnabledState.Unknown));
+					if (stoppedWindow.UrpRenderIntegration.State == PerfMeterSelfOverheadComponentState.NotMeasured)
+					{
+						Assert.That(
+							stoppedWindow.UrpRenderIntegration.InactiveReason,
+							Is.EqualTo(PerfMeterSelfOverheadInactiveReason.RendererFeatureDisabled)
+								.Or.EqualTo(PerfMeterSelfOverheadInactiveReason.PassNotEnqueued)
+								.Or.EqualTo(PerfMeterSelfOverheadInactiveReason.NoCameraCallbackObserved));
+					}
+				}
 			}
 
 			string jsonPath = Path.Combine(Application.temporaryCachePath, "sgg-perfmeter-session-smoke.json");

@@ -4,6 +4,7 @@ using System.IO;
 using System.Security.Cryptography;
 using NUnit.Framework;
 using SGG.PerfMeter.Editor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace SGG.PerfMeter.Tests.EditMode
@@ -263,7 +264,10 @@ namespace SGG.PerfMeter.Tests.EditMode
 			{
 				hash = BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", string.Empty).ToLowerInvariant();
 			}
-			string packageRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "Scripts", "SGG.PerfMeter"));
+			PackageInfo packageInfo = PackageInfo.FindForAssembly(typeof(PerformanceMeter).Assembly);
+			string packageRoot = packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath)
+				? packageInfo.resolvedPath
+				: Path.GetFullPath(Path.Combine(Application.dataPath, "Scripts", "SGG.PerfMeter"));
 			string request = ReadFixture("request-v1.json")
 				.Replace("Temp/PerfMeter/RenderDocCopies/golden/capture.rdc", captureRelativePath.Replace('\\', '/'))
 				.Replace("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", hash)
