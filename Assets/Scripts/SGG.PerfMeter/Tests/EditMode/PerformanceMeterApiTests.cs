@@ -65,7 +65,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
 			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCores);
 			AssertDoesNotHaveModule(status.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
-			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(status.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps240));
 			Assert.That(status.OverdrawHeatmapVisible, Is.False);
 			Assert.That(status.SessionState, Is.EqualTo(PerfMeterSessionState.Idle));
 			Assert.That(status.IsSessionRecording, Is.False);
@@ -126,7 +126,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterMetricsSnapshot runningMetrics = PerformanceMeter.GetLatestMetrics();
 			Assert.That(runningMetrics.State, Is.EqualTo(PerfMeterRuntimeState.Running));
 			Assert.That(runningMetrics.CollectionFrame, Is.GreaterThanOrEqualTo(0));
-			Assert.That(runningMetrics.FrameBudgetMs, Is.EqualTo(1000d / 60d).Within(0.001d));
+			Assert.That(runningMetrics.FrameBudgetMs, Is.EqualTo(1000d / 240d).Within(0.001d));
 			Assert.That(runningMetrics.SrpBatcherInstances, Is.GreaterThanOrEqualTo(0));
 			Assert.That(runningMetrics.GpuMemoryBytes, Is.GreaterThanOrEqualTo(0L));
 		}
@@ -179,7 +179,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreBars);
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCores);
 			AssertDoesNotHaveModule(PerformanceMeter.OverlayModules, PerfMeterOverlayModule.CpuCoreGraphs);
-			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(PerformanceMeter.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps240));
 			Assert.That(PerformanceMeter.EditorWarningLogsEnabled, Is.True);
 			Assert.That(PerformanceMeter.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Stopped));
 			Assert.That(PerformanceMeter.IsOverdrawHeatmapVisible, Is.False);

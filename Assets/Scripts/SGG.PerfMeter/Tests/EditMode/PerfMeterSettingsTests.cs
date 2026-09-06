@@ -27,7 +27,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.OverlayTheme, Is.EqualTo(PerfMeterOverlayTheme.ClassicDark));
 			Assert.That(settings.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.MetricBars));
 			Assert.That(settings.OverlayFontFamily, Is.EqualTo(PerfMeterOverlayFontFamily.Manrope));
-			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps240));
 			Assert.That(settings.ActivePreset, Is.EqualTo(nameof(PerfMeterOverlayPreset.Custom)));
 			Assert.That(settings.ActiveOverlayPresetId, Is.EqualTo(PerfMeterOverlayPresetDefaults.DefaultId));
 			Assert.That(settings.ActiveOverlayPreset, Is.Not.Null);
@@ -539,7 +539,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 			Assert.That(loaded, Is.False);
 			Assert.That(settings.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.UnsupportedVersion));
-			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps60));
+			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps240));
 			Assert.That(settings.Warning, Does.Contain("newer than supported"));
 		}
 
@@ -552,6 +552,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Invalid));
 			Assert.That(settings.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.Full));
 			Assert.That(settings.Warning, Does.Contain("empty"));
+		}
+
+		[Test]
+		public void InvalidTargetFpsUsesDefaultTarget()
+		{
+			bool loaded = PerfMeterSettingsStore.TryReadSnapshot(
+				"{\"schemaVersion\":1,\"enabled\":true,\"targetFps\":999}",
+				out PerfMeterSettingsSnapshot settings);
+
+			Assert.That(loaded, Is.True);
+			Assert.That(settings.TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps240));
+			Assert.That(settings.Warning, Does.Contain("240 FPS is used"));
 		}
 
 		[Test]

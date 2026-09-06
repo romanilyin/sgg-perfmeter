@@ -8,7 +8,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class PerfMeterRuntimeWorkflowExample : MonoBehaviour
 {
-	[SerializeField] private PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60;
+	[SerializeField] private PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps240;
 	[SerializeField] private PerfMeterOverlayPreset firstPreset = PerfMeterOverlayPreset.Timing;
 	[SerializeField] private PerfMeterOverlayPreset secondPreset = PerfMeterOverlayPreset.Rendering;
 	[SerializeField] private float presetSwitchIntervalSeconds = 4f;

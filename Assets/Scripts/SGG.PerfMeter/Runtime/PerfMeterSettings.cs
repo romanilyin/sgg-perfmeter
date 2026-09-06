@@ -171,7 +171,7 @@ namespace SGG.PerfMeter
 		public string collectionMode = nameof(PerfMeterCollectionMode.Overlay);
 		public bool overlayVisible = true;
 		public string overlayCorner = nameof(PerfMeterOverlayCorner.TopRight);
-		public int targetFps = (int)PerfMeterTargetFps.Fps60;
+		public int targetFps = (int)PerfMeterSettingsStore.DefaultTargetFps;
 		public string activePreset = PerfMeterSettingsStore.DefaultPresetId;
 		public string activeOverlayPresetId = string.Empty;
 		public PerfMeterPresetSettingsJson[] presets = Array.Empty<PerfMeterPresetSettingsJson>();
@@ -200,7 +200,7 @@ namespace SGG.PerfMeter
 	{
 		public string id = string.Empty;
 		public bool overlayVisible = true;
-		public int targetFps = (int)PerfMeterTargetFps.Fps60;
+		public int targetFps = (int)PerfMeterSettingsStore.DefaultTargetFps;
 		public string[] modules = Array.Empty<string>();
 	}
 
@@ -242,6 +242,7 @@ namespace SGG.PerfMeter
 	{
 		internal const int CurrentSchemaVersion = 1;
 		internal const string DefaultPresetId = "FullDiagnostics";
+		internal const PerfMeterTargetFps DefaultTargetFps = PerfMeterTargetFps.Fps240;
 		internal const string ResourcesLoadPath = "SGG.PerfMeter/perfmeter-settings";
 		internal const string ResourcesAssetPath = "Assets/Resources/SGG.PerfMeter/perfmeter-settings.json";
 		internal const float MinOverlayScale = 0.5f;
@@ -269,7 +270,7 @@ namespace SGG.PerfMeter
 				collectionMode = nameof(PerfMeterCollectionMode.Overlay),
 				overlayVisible = true,
 				overlayCorner = nameof(PerfMeterOverlayCorner.TopRight),
-				targetFps = (int)PerfMeterTargetFps.Fps60,
+				targetFps = (int)DefaultTargetFps,
 				activePreset = DefaultPresetId,
 				activeOverlayPresetId = PerfMeterOverlayPresetDefaults.DefaultId,
 				presets = CreateDefaultPresets(),
@@ -866,13 +867,13 @@ namespace SGG.PerfMeter
 		{
 			return new[]
 			{
-				CreatePreset("Minimal", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Minimal))),
-				CreatePreset("Timing", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Timing))),
-				CreatePreset("Rendering", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Rendering))),
-				CreatePreset("Memory", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Memory))),
-				CreatePreset("Overdraw", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Overdraw))),
-				CreatePreset(DefaultPresetId, true, PerfMeterTargetFps.Fps60, ModulesToNames(DefaultOverlayModules)),
-				CreatePreset("AgentDebug", true, PerfMeterTargetFps.Fps60, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.AgentDebug)))
+				CreatePreset("Minimal", true, DefaultTargetFps, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Minimal))),
+				CreatePreset("Timing", true, DefaultTargetFps, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Timing))),
+				CreatePreset("Rendering", true, DefaultTargetFps, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Rendering))),
+				CreatePreset("Memory", true, DefaultTargetFps, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Memory))),
+				CreatePreset("Overdraw", true, DefaultTargetFps, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.Overdraw))),
+				CreatePreset(DefaultPresetId, true, DefaultTargetFps, ModulesToNames(DefaultOverlayModules)),
+				CreatePreset("AgentDebug", true, DefaultTargetFps, ModulesToNames(GetPresetModules(PerfMeterOverlayPreset.AgentDebug)))
 			};
 		}
 
@@ -1041,7 +1042,7 @@ namespace SGG.PerfMeter
 			PerfMeterTargetFps targetFps = ParseTargetFps(settings.targetFps);
 			if ((int)targetFps != settings.targetFps)
 			{
-				warning = CombineWarnings(warning, "Invalid targetFps; 60 FPS is used.");
+				warning = CombineWarnings(warning, "Invalid targetFps; 240 FPS is used.");
 			}
 
 			settings.targetFps = (int)targetFps;
@@ -1228,7 +1229,7 @@ namespace SGG.PerfMeter
 				case 240:
 					return PerfMeterTargetFps.Fps240;
 				default:
-					return PerfMeterTargetFps.Fps60;
+					return DefaultTargetFps;
 			}
 		}
 

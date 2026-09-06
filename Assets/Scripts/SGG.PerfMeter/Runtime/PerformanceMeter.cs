@@ -947,7 +947,7 @@ namespace SGG.PerfMeter
 			get
 			{
 				PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-				return runtime != null ? runtime.TargetFps : PerfMeterTargetFps.Fps60;
+				return runtime != null ? runtime.TargetFps : PerfMeterSettingsStore.DefaultTargetFps;
 			}
 		}
 
@@ -1299,7 +1299,7 @@ namespace SGG.PerfMeter
 					PerfMeterOverlayLayout.MetricBars,
 					PerfMeterOverlayFontFamily.Manrope,
 					PerfMeterSettingsStore.DefaultOverlayModules,
-					PerfMeterTargetFps.Fps60);
+					PerfMeterSettingsStore.DefaultTargetFps);
 			}
 
 			return new PerfMeterOverlayConfiguration(
@@ -1373,7 +1373,7 @@ namespace SGG.PerfMeter
 				case PerfMeterTargetFps.Fps240:
 					return targetFps;
 				default:
-					return PerfMeterTargetFps.Fps60;
+					return PerfMeterSettingsStore.DefaultTargetFps;
 			}
 		}
 

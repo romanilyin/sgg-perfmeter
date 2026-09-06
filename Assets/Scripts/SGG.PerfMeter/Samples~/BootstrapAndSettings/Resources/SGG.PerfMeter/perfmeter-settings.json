@@ -5,7 +5,7 @@
   "collectionMode": "Background",
   "overlayVisible": false,
   "overlayCorner": "TopRight",
-  "targetFps": 60,
+  "targetFps": 240,
   "activePreset": "AgentDebug",
   "presets": [],
   "overlay": {

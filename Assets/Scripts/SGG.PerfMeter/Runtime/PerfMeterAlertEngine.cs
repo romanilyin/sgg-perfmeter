@@ -29,7 +29,7 @@ namespace SGG.PerfMeter
 		private bool _firedEventsTruncated;
 
 		internal PerfMeterAlertEngine()
-			: this(CreateDefaultRules(PerfMeterTargetFps.Fps60, PerfMeterSettingsStore.Defaults))
+			: this(CreateDefaultRules(PerfMeterSettingsStore.DefaultTargetFps, PerfMeterSettingsStore.Defaults))
 		{
 		}
 

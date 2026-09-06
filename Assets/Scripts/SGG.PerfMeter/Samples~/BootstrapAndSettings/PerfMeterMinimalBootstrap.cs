@@ -6,7 +6,7 @@ using UnityEngine;
 public sealed class PerfMeterMinimalBootstrap : MonoBehaviour
 {
 	[SerializeField] private PerfMeterCollectionMode collectionMode = PerfMeterCollectionMode.Overlay;
-	[SerializeField] private PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60;
+	[SerializeField] private PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps240;
 	[SerializeField] private PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics;
 	[SerializeField] private PerfMeterOverlayCorner overlayCorner = PerfMeterOverlayCorner.TopRight;
 

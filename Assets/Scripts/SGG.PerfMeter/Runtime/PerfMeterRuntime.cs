@@ -63,7 +63,7 @@ namespace SGG.PerfMeter
 		private PerfMeterOverlayPresetJson _visualLayoutDescriptor;
 		private PerfMeterCustomMetricGraphJson[] _customMetricGraphs = Array.Empty<PerfMeterCustomMetricGraphJson>();
 		private PerfMeterOverlayModule _overlayModules = PerfMeterSettingsStore.DefaultOverlayModules;
-		private PerfMeterTargetFps _targetFps = PerfMeterTargetFps.Fps60;
+		private PerfMeterTargetFps _targetFps = PerfMeterSettingsStore.DefaultTargetFps;
 		private float _overlayScale = 1f;
 		private float _overlayOpacity = 0.84f;
 		private float _overlayFontSize = 12f;
@@ -2003,7 +2003,7 @@ namespace SGG.PerfMeter
 				PerfMeterOverlayTheme.ClassicDark,
 				PerfMeterOverlayLayout.MetricBars,
 				PerfMeterOverlayFontFamily.Manrope,
-				PerfMeterTargetFps.Fps60,
+				PerfMeterSettingsStore.DefaultTargetFps,
 				PerfMeterOverlayPreset.FullDiagnostics,
 				PerfMeterSettingsStore.DefaultOverlayModules,
 				PerfMeterSessionState.Idle,
@@ -2039,7 +2039,7 @@ namespace SGG.PerfMeter
 			PerfMeterOverlayTheme overlayTheme = PerfMeterOverlayTheme.ClassicDark,
 			PerfMeterOverlayLayout overlayLayout = PerfMeterOverlayLayout.MetricBars,
 			PerfMeterOverlayFontFamily overlayFontFamily = PerfMeterOverlayFontFamily.Manrope,
-			PerfMeterTargetFps targetFps = PerfMeterTargetFps.Fps60,
+			PerfMeterTargetFps targetFps = PerfMeterSettingsStore.DefaultTargetFps,
 			PerfMeterOverlayPreset overlayPreset = PerfMeterOverlayPreset.FullDiagnostics,
 			PerfMeterOverlayModule overlayModules = PerfMeterOverlayModule.Fps | PerfMeterOverlayModule.Timing | PerfMeterOverlayModule.Graphs | PerfMeterOverlayModule.Rendering | PerfMeterOverlayModule.SrpBatcher | PerfMeterOverlayModule.Brg | PerfMeterOverlayModule.Uploads | PerfMeterOverlayModule.Memory | PerfMeterOverlayModule.Gc | PerfMeterOverlayModule.GpuMemory | PerfMeterOverlayModule.Overdraw | PerfMeterOverlayModule.Heatmap | PerfMeterOverlayModule.Warnings | PerfMeterOverlayModule.CustomMetrics,
 			PerfMeterSessionState sessionState = PerfMeterSessionState.Idle,
@@ -2625,7 +2625,7 @@ namespace SGG.PerfMeter
 				case PerfMeterTargetFps.Fps240:
 					return targetFps;
 				default:
-					return PerfMeterTargetFps.Fps60;
+					return PerfMeterSettingsStore.DefaultTargetFps;
 			}
 		}
 

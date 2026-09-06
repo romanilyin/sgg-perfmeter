@@ -5,7 +5,7 @@ namespace SGG.PerfMeter
 {
 	internal sealed class PerfMeterCollector
 	{
-		internal const double DefaultFrameBudgetMs = 1000d / 60d;
+		internal const double DefaultFrameBudgetMs = 1000d / (int)PerfMeterSettingsStore.DefaultTargetFps;
 		internal const double MaxFrameTimingSampleMs = 60000d;
 
 		private const string OpenGlGpuTimingWarning = "GPU frame timing can be unavailable or unreliable on OpenGL/OpenGLES. Prefer Vulkan/Metal/D3D for GPU-bound classification.";

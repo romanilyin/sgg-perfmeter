@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.9.6-1
+
+- Changed the default target from 60 FPS to 240 FPS (4.17 ms frame budget) across missing/invalid settings, built-in presets, runtime fallback state, and package samples. Explicit project targets remain unchanged.
+
 ## 2026.8.19-1
 
 - Added a RenderDoc-neutral public API for bounded typed GPU command annotations, ambient owner/generation context, and direct URP Render Graph command-buffer scopes.
