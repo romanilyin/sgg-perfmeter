@@ -24,6 +24,25 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void Unity2021_3IsImportCompatibleOnly()
+		{
+			PerfMeterCompatibilityStatus status = Evaluate("2021.3.45f2", PerfMeterRenderPipelineKind.Unknown, string.Empty, string.Empty, false);
+
+			Assert.That(status.ImportCompatible, Is.True);
+			Assert.That(status.CoreRuntimeCompatible, Is.False);
+			Assert.That(status.RenderIntegrationCompatible, Is.False);
+		}
+
+		[Test]
+		public void Unity2021_2IsBelowImportFloor()
+		{
+			PerfMeterCompatibilityStatus status = Evaluate("2021.2.19f1", PerfMeterRenderPipelineKind.Unknown, string.Empty, string.Empty, false);
+
+			Assert.That(status.ImportCompatible, Is.False);
+			Assert.That(status.ImportReason, Does.Contain("2021.3"));
+		}
+
+		[Test]
 		public void Unity2022_3IsImportCompatibleOnly()
 		{
 			PerfMeterCompatibilityStatus status = Evaluate("2022.3.0f1", PerfMeterRenderPipelineKind.Unknown, string.Empty, string.Empty, false);
@@ -151,7 +170,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(status.ImportCompatible, Is.True);
 			Assert.That(status.CoreRuntimeCompatible, Is.True);
 			Assert.That(status.RenderIntegrationCompatible, Is.True);
-			Assert.That(status.ImportUnityVersionFloor, Is.EqualTo("2022.3"));
+			Assert.That(status.ImportUnityVersionFloor, Is.EqualTo("2021.3"));
 			Assert.That(status.CoreRuntimeUnityVersionFloor, Is.EqualTo("6000.4"));
 			Assert.That(status.RenderIntegrationPipelinePackageVersionFloor, Is.EqualTo("17.4"));
 			Assert.That(report, Does.Contain("Import compatibility:"));
@@ -194,7 +213,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(compatibilityPayload.import_compatible, Is.True);
 			Assert.That(compatibilityPayload.core_runtime_compatible, Is.True);
 			Assert.That(compatibilityPayload.render_integration_compatible, Is.True);
-			Assert.That(compatibilityPayload.import_unity_version_floor, Is.EqualTo("2022.3"));
+			Assert.That(compatibilityPayload.import_unity_version_floor, Is.EqualTo("2021.3"));
 			Assert.That(compatibilityPayload.core_runtime_unity_version_floor, Is.EqualTo("6000.4"));
 			Assert.That(compatibilityPayload.render_integration_pipeline_package_version_floor, Is.EqualTo("17.4"));
 			Assert.That(setupPayload, Is.Not.Null);

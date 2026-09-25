@@ -86,13 +86,20 @@ namespace SGG.PerfMeter
 			frameTimingAvailability = hasValidCpuFrameTiming ? PerfMeterFrameTimingAvailability.Available : PerfMeterFrameTimingAvailability.Unavailable;
 
 			double cpuFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuFrameTime : 0d;
+#if UNITY_2022_1_OR_NEWER
 			double cpuMainThreadFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuMainThreadFrameTime : 0d;
 			double cpuRenderThreadFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuRenderThreadFrameTime : 0d;
 			double cpuMainThreadPresentWaitTimeMs = hasValidCpuFrameTiming ? timing.cpuMainThreadPresentWaitTime : 0d;
+#else
+			double cpuMainThreadFrameTimeMs = 0d;
+			double cpuRenderThreadFrameTimeMs = 0d;
+			double cpuMainThreadPresentWaitTimeMs = 0d;
+#endif
 			double gpuFrameTimeMs = hasValidCpuFrameTiming && IsValidFrameTimingSampleMs(timing.gpuFrameTime) ? timing.gpuFrameTime : 0d;
 			bool gpuFrameTimeAvailable = gpuFrameTimeMs > 0d;
 			bool invalidGpuFrameTiming = hasValidCpuFrameTiming && timing.gpuFrameTime > 0d && !gpuFrameTimeAvailable;
 
+#if UNITY_2022_1_OR_NEWER
 			PerfMeterBottleneck bottleneck = ClassifyBottleneck(
 				frameTimingAvailability,
 				frameBudgetMs,
@@ -102,6 +109,10 @@ namespace SGG.PerfMeter
 				cpuMainThreadPresentWaitTimeMs,
 				gpuFrameTimeMs,
 				gpuFrameTimeAvailable);
+#else
+			// Thread and present-wait timings are absent; the detailed classification is not reliable.
+			PerfMeterBottleneck bottleneck = PerfMeterBottleneck.Unknown;
+#endif
 			PerfMeterProfilerInstrumentation.RecordFrameTimings(
 				hasValidCpuFrameTiming,
 				cpuFrameTimeMs,
@@ -203,10 +214,14 @@ namespace SGG.PerfMeter
 
 		private static bool HasValidCpuFrameTiming(FrameTiming timing)
 		{
+#if UNITY_2022_1_OR_NEWER
 			return IsValidFrameTimingSampleMs(timing.cpuFrameTime) &&
 				IsValidFrameTimingComponentMs(timing.cpuMainThreadFrameTime) &&
 				IsValidFrameTimingComponentMs(timing.cpuRenderThreadFrameTime) &&
 				IsValidFrameTimingComponentMs(timing.cpuMainThreadPresentWaitTime);
+#else
+			return IsValidFrameTimingSampleMs(timing.cpuFrameTime);
+#endif
 		}
 
 		internal static PerfMeterBottleneck ClassifyBottleneck(
