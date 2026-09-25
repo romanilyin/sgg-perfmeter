@@ -1875,7 +1875,7 @@ namespace SGG.PerfMeter
 		{
 			if (_container != null)
 			{
-				_container.style.scale = new StyleScale(new Vector2(_overlayScale, _overlayScale));
+				_container.style.scale = new StyleScale(new Scale(new Vector3(_overlayScale, _overlayScale, 1f)));
 			}
 
 			Color background = GetBackgroundColor();
@@ -4679,7 +4679,9 @@ namespace SGG.PerfMeter
 				style.width = Length.Percent(100f);
 				style.height = CpuCoreGraphCellHeight;
 				SetHistoryCapacity(historyCapacity);
+#if UNITY_2022_1_OR_NEWER
 				generateVisualContent += OnGenerateVisualContent;
+#endif
 			}
 
 			internal void SetHistoryCapacity(int historyCapacity)
@@ -4737,6 +4739,7 @@ namespace SGG.PerfMeter
 				MarkDirtyRepaint();
 			}
 
+#if UNITY_2022_1_OR_NEWER
 			private void OnGenerateVisualContent(MeshGenerationContext context)
 			{
 				Rect rect = contentRect;
@@ -4813,6 +4816,7 @@ namespace SGG.PerfMeter
 					painter.Stroke();
 				}
 			}
+#endif
 
 			private double GetLastValue(int core)
 			{
@@ -4833,6 +4837,7 @@ namespace SGG.PerfMeter
 				return (_index - _count + sample + _capacity) % _capacity;
 			}
 
+#if UNITY_2022_1_OR_NEWER
 			private static void DrawRect(Painter2D painter, Rect rect, Color fill, Color stroke)
 			{
 				painter.fillColor = fill;
@@ -4854,6 +4859,7 @@ namespace SGG.PerfMeter
 				painter.ClosePath();
 				painter.Stroke();
 			}
+#endif
 
 			private static float PercentToY(Rect rect, double percent)
 			{
@@ -5585,7 +5591,9 @@ namespace SGG.PerfMeter
 				{
 					_customSeries[i] = new CustomMetricSeries(historyCapacity);
 				}
+#if UNITY_2022_1_OR_NEWER
 				generateVisualContent += OnGenerateVisualContent;
+#endif
 			}
 
 			internal int SampleCount => _history.Count;
@@ -5711,6 +5719,7 @@ namespace SGG.PerfMeter
 				}
 			}
 
+#if UNITY_2022_1_OR_NEWER
 			private void OnGenerateVisualContent(MeshGenerationContext context)
 			{
 				Rect rect = contentRect;
@@ -5803,6 +5812,7 @@ namespace SGG.PerfMeter
 					painter.Stroke();
 				}
 			}
+#endif
 
 			private Color GetSeverityColor(double frameTimeMs)
 			{
@@ -5844,6 +5854,7 @@ namespace SGG.PerfMeter
 				return false;
 			}
 
+#if UNITY_2022_1_OR_NEWER
 			private void DrawCustomMetricSeries(Painter2D painter, Rect rect)
 			{
 				for (int series = 0; series < _customSeriesCount; series++)
@@ -5875,6 +5886,7 @@ namespace SGG.PerfMeter
 					}
 				}
 			}
+#endif
 
 			private static float CustomValueToY(Rect rect, double value, PerfMeterCustomMetricGraphConfiguration configuration)
 			{
@@ -6015,7 +6027,9 @@ namespace SGG.PerfMeter
 				style.height = height;
 				style.backgroundColor = GraphBackgroundColor;
 				UpdateScaleLabels();
+#if UNITY_2022_1_OR_NEWER
 				generateVisualContent += OnGenerateVisualContent;
+#endif
 			}
 
 			internal double ScaleMs { get; private set; } = PerfMeterCollector.DefaultFrameBudgetMs * 2d;
@@ -6184,6 +6198,7 @@ namespace SGG.PerfMeter
 					max);
 			}
 
+#if UNITY_2022_1_OR_NEWER
 			private void OnGenerateVisualContent(MeshGenerationContext context)
 			{
 				Rect rect = contentRect;
@@ -6242,6 +6257,7 @@ namespace SGG.PerfMeter
 					painter.Stroke();
 				}
 			}
+#endif
 
 			internal bool TryGetRawPeakBucket(int bucket, int bucketCount, out int sampleIndex, out double smoothedValue, out double rawPeak)
 			{
@@ -6281,6 +6297,7 @@ namespace SGG.PerfMeter
 				return Math.Max(1d, Math.Ceiling(scale));
 			}
 
+#if UNITY_2022_1_OR_NEWER
 			private void DrawGrid(Painter2D painter, Rect rect, double scaleMs)
 			{
 				painter.lineWidth = 1f;
@@ -6394,6 +6411,7 @@ namespace SGG.PerfMeter
 					painter.Stroke();
 				}
 			}
+#endif
 
 			private PerfMeterSeriesStats CalculateStats(double[] values)
 			{

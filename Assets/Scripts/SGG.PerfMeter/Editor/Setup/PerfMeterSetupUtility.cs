@@ -12,7 +12,7 @@ namespace SGG.PerfMeter.Editor.Setup
 	internal static class PerfMeterSetupUtility
 	{
 		internal const string UnsupportedCompatibilityMessage = "SGG PerfMeter officially supports Unity 6000.4+ with URP 17.4+ or HDRP 17.4+. Older Unity/SRP versions are import-safe only; runtime render integrations are unsupported and bug reports for older versions are not accepted.";
-		internal const string ImportUnityVersionFloor = "2022.3";
+		internal const string ImportUnityVersionFloor = "2021.3";
 		internal const string CoreRuntimeUnityVersionFloor = "6000.4";
 		internal const string RenderIntegrationPipelinePackageVersionFloor = "17.4";
 
@@ -996,7 +996,7 @@ public static class PerfMeterBootstrap
 					unityVersionParsed,
 					importCompatible,
 					ImportUnityVersionFloor,
-					"Import compatibility requires Unity 2022.3+.");
+					"Import compatibility requires Unity 2021.3+.");
 				string coreRuntimeReason = GetUnityReason(
 					currentUnityVersion,
 					unityVersionParsed,

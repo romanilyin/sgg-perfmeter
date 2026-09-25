@@ -20,7 +20,11 @@ namespace SGG.PerfMeter
 		private static PerfMeterDeviceSnapshot CreateSnapshotCore()
 		{
 			Resolution currentResolution = Screen.currentResolution;
+#if UNITY_2022_1_OR_NEWER
 			RefreshRate currentRefreshRate = currentResolution.refreshRateRatio;
+#else
+			int currentRefreshRate = currentResolution.refreshRate;
+#endif
 			Vector2Int mainWindowPosition = default;
 			bool mainWindowPositionAvailable = TryGetMainWindowPosition(out mainWindowPosition);
 			bool hasMainWindowDisplay = TryGetMainWindowDisplay(out DisplayInfo mainWindowDisplay);
@@ -54,9 +58,15 @@ namespace SGG.PerfMeter
 				Screen.height,
 				currentResolution.width,
 				currentResolution.height,
+#if UNITY_2022_1_OR_NEWER
 				currentRefreshRate.numerator,
 				currentRefreshRate.denominator,
 				currentRefreshRate.value,
+#else
+				(uint)Math.Max(0, currentRefreshRate),
+				1u,
+				currentRefreshRate,
+#endif
 				Screen.dpi,
 				Screen.fullScreen,
 				Screen.fullScreenMode,
@@ -90,7 +100,11 @@ namespace SGG.PerfMeter
 
 			if (DisplaysBuffer.Count == 0)
 			{
+#if UNITY_2022_1_OR_NEWER
 				RefreshRate fallbackRefreshRate = currentResolution.refreshRateRatio;
+#else
+				int fallbackRefreshRate = currentResolution.refreshRate;
+#endif
 				return new[]
 				{
 					new PerfMeterDisplaySnapshot(
@@ -102,9 +116,15 @@ namespace SGG.PerfMeter
 						0,
 						currentResolution.width,
 						currentResolution.height,
+#if UNITY_2022_1_OR_NEWER
 						fallbackRefreshRate.numerator,
 						fallbackRefreshRate.denominator,
 						fallbackRefreshRate.value,
+#else
+						(uint)Math.Max(0, fallbackRefreshRate),
+						1u,
+						fallbackRefreshRate,
+#endif
 						true,
 						true)
 				};

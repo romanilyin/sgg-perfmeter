@@ -208,7 +208,7 @@ bool canRunCore = compatibility.CoreRuntimeCompatible;
 bool canUseRenderIntegration = compatibility.RenderIntegrationCompatible;
 ```
 
-This Editor-only snapshot keeps the package import floor (`2022.3`), supported core runtime floor (`6000.4`), and active URP/HDRP render integration (`17.4+` plus the corresponding adapter) separate. Each field has an explicit reason. Render compatibility is capability, not renderer/configuration readiness; use setup status for installation state.
+This Editor-only snapshot keeps the package import floor (`2021.3`), supported core runtime floor (`6000.4`), and active URP/HDRP render integration (`17.4+` plus the corresponding adapter) separate. Each field has an explicit reason. Render compatibility is capability, not renderer/configuration readiness; use setup status for installation state.
 
 ## External GPU Capture Coordinator
 
