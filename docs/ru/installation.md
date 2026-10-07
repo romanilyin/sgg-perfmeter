@@ -1,6 +1,6 @@
 # Установка
 
-SGG PerfMeter распространяется как пакет Unity с именем `com.sungeargames.perfmeter`. Текущая публичная npm-версия: `2026.8.19-1`; установка через Git UPM и локальную копию остается доступной.
+SGG PerfMeter распространяется как пакет Unity с именем `com.sungeargames.perfmeter`. Текущая публичная npm-версия: `2026.10.7-1`; установка через Git UPM и локальную копию остается доступной.
 
 ## Требования
 
@@ -12,6 +12,8 @@ SGG PerfMeter распространяется как пакет Unity с име
 - UPM-пакет остается без бинарников и никогда не устанавливает RenderDoc. FTUE загружает или локально устанавливает только отдельно опубликованный bridge с точным совпадением размера, SHA-256 и AMD64 native PE contract; после этого требуется перезапуск Editor.
 
 Метаданные пакета используют Unity `2021.3` как import-safety floor для проверок импорта и компиляции. Актуальная поддерживаемая runtime-цель - Unity `6000.4+` с URP `17.4+` Render Graph или HDRP `17.4+` Custom Pass integration.
+
+Точные проверенные версии Editor/SRP указаны в [матрице релиза 2026.10.7-1](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.7-1), включая импорт/компиляцию на Unity `2021.3.45f2` и проверки Unity 7 `7000.0.0a7` alpha. Проверка alpha не означает гарантию поддержки стабильной Unity 7.
 
 Это разные уровни compatibility: `ImportCompatible` не обещает supported runtime behavior; `CoreRuntimeCompatible` требует Unity `6000.4+`, но не конкретный pipeline; `RenderIntegrationCompatible` дополнительно требует active URP/HDRP `17.4+` и доступный PerfMeter adapter. Проверяйте их через `PerfMeterSetupActions.GetCompatibilityStatus()` или MCP `perfmeter.compatibility.status`; configuration readiness сообщается отдельно.
 
@@ -31,7 +33,7 @@ SGG PerfMeter распространяется как пакет Unity с име
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.19-1"
+    "com.sungeargames.perfmeter": "2026.10.7-1"
   }
 }
 ```
@@ -71,7 +73,7 @@ Assets/Scripts/SGG.PerfMeter
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.8.19-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.10.7-1"
   }
 }
 ```
