@@ -36,6 +36,28 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator TargetOverrideSurvivesAutoSettingsAndOverlayRebuild()
+		{
+			PerfMeterSettingsBootstrap.ResetExplicitSettingsApplication();
+			PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps120);
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.targetFps = 60;
+			foreach (PerfMeterPresetSettingsJson preset in settings.presets) preset.targetFps = 60;
+			Assert.That(PerfMeterSettingsBootstrap.TryAutoStartFromSettings(
+				PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty)), Is.True);
+			PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout.Graphs);
+			yield return null;
+			yield return null;
+			Assert.That(PerformanceMeter.GetStatus().TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
+			Assert.That(PerformanceMeter.GetLatestMetrics().FrameBudgetMs, Is.EqualTo(1000d / 120).Within(0.0001d));
+#if UNITY_6000_4_OR_NEWER
+			PerfMeterOverlay overlay = GameObject.Find(OverlayObjectName).GetComponent<PerfMeterOverlay>();
+			Assert.That(overlay.FrameTimeStripBudgetMs, Is.EqualTo(1000d / 120).Within(0.0001d));
+#endif
+			PerfMeterSettingsBootstrap.ResetExplicitSettingsApplication();
+		}
+
+		[UnityTest]
 		public IEnumerator StopRecoversLostSingletonAndOverlayReferenceAfterDeferredDestroy()
 		{
 			PerformanceMeter.EnsureRunning();

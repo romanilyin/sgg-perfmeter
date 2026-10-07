@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2026.10.7-3
+
+- Preserve a successful explicit target-FPS override across automatic Resources bootstrap without suppressing unrelated settings (MCP-PR-171). Add `TrySetTargetFps` with requested/effective mutation results; explicit full JSON settings remain authoritative.
+- Preserve explicitly configured 60 FPS when parsing settings instead of treating it as the 240 FPS default.
+
 ## 2026.10.7-2
 
 - Recover stopped PerfMeter-owned transient runtime, overlay and marked UI-host infrastructure even when the runtime singleton or overlay reference was lost (MCP-PR-240). Foreign UI and persistent/authored objects are preserved; pending capture/graphics cleanup returns `PendingCleanup` instead of a false no-change result.

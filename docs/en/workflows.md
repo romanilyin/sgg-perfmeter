@@ -89,6 +89,8 @@ Use this explicit bootstrap instead of the Resources zero-code settings path whe
 
 ## Runtime Overlay
 
+`SetTargetFps` / `TrySetTargetFps` set the diagnostic frame budget, not VSync or `Application.targetFrameRate`. A successful explicit call (including a same-value call) survives the automatic Resources bootstrap for the current domain; other configured defaults still apply. Explicit full settings JSON can replace this budget and suppresses automatic bootstrap. Failed setters do not record an override; subsystem registration clears it. `TrySetTargetFps` reports requested/effective values and rejection/normalization instead of a silent no-op.
+
 Use the overlay when you need immediate in-game visibility.
 
 ```csharp

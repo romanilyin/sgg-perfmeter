@@ -1041,6 +1041,7 @@ namespace SGG.PerfMeter
 
 			bool wasNormalized = !OverlayConfigurationsEqual(configuration, normalized);
 			bool changed = !OverlayConfigurationsEqual(previous, effective);
+			PerfMeterSettingsBootstrap.MarkTargetFpsOverride(effective.TargetFps);
 			return MutationResult(
 				wasNormalized ? PerfMeterMutationStatus.Normalized : changed ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
 				wasNormalized ? PerfMeterMutationReason.ValueNormalized : changed ? PerfMeterMutationReason.None : PerfMeterMutationReason.AlreadyInRequestedState,
@@ -1176,16 +1177,32 @@ namespace SGG.PerfMeter
 
 		public static void SetTargetFps(PerfMeterTargetFps targetFps)
 		{
-			if (!PerfMeterRuntime.EnsureRunning())
+			TrySetTargetFps(targetFps);
+		}
+
+		/// <summary>Sets the diagnostic frame budget; a successful override survives automatic Resources bootstrap.</summary>
+		public static PerfMeterMutationResultSnapshot TrySetTargetFps(PerfMeterTargetFps targetFps)
+		{
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
 			{
-				return;
+				return RuntimeUnavailableMutation(targetFps, TargetFps);
 			}
 
-			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
-			if (runtime != null)
+			PerfMeterTargetFps normalized = NormalizeTargetFps(targetFps);
+			PerfMeterTargetFps previous = runtime.TargetFps;
+			runtime.SetTargetFps(normalized);
+			if (runtime.TargetFps != normalized)
 			{
-				runtime.SetTargetFps(targetFps);
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, targetFps, runtime.TargetFps);
 			}
+			PerfMeterSettingsBootstrap.MarkTargetFpsOverride(normalized);
+			bool wasNormalized = normalized != targetFps;
+			bool changed = previous != normalized;
+			return MutationResult(
+				wasNormalized ? PerfMeterMutationStatus.Normalized : changed ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
+				wasNormalized ? PerfMeterMutationReason.ValueNormalized : changed ? PerfMeterMutationReason.None : PerfMeterMutationReason.AlreadyInRequestedState,
+				targetFps,
+				runtime.TargetFps);
 		}
 
 		public static void SetOverlayUpdateOptions(float refreshIntervalSeconds, int graphHistoryLength)
