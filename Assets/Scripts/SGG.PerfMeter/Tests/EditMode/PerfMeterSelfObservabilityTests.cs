@@ -260,6 +260,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(window.FeatureEnabled, Is.EqualTo(PerfMeterUrpFeatureEnabledState.Enabled));
 			Assert.That(window.EnqueueCount, Is.Zero);
 			Assert.That(window.UrpRenderIntegration.InactiveReason, Is.EqualTo(PerfMeterSelfOverheadInactiveReason.PassNotEnqueued));
+			Assert.That(window.Warning, Does.Contain("RecordOverlayMarkerPass").And.Contain("custom provider collection do not request a pass"));
 		}
 
 		[TestCase(PerfMeterUrpFeatureEnabledState.Disabled, false, PerfMeterSelfOverheadInactiveReason.RendererFeatureDisabled)]

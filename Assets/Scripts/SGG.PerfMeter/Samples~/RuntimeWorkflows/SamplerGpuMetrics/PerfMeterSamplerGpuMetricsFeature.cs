@@ -16,7 +16,7 @@ namespace SGG.PerfMeter.Samples
 		public override void Create()
 		{
 			_pass?.Dispose();
-#if UNITY_6000_6_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
 			string featureIdentity = EntityId.ToULong(GetEntityId()).ToString();
 #else
 			string featureIdentity = GetInstanceID().ToString();

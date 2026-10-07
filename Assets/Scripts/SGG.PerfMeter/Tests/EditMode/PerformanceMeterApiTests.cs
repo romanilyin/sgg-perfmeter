@@ -1090,8 +1090,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snapshot.GpuResidentDrawer.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
 
 			PerfMeterVariableRateShadingContextSnapshot vrs = snapshot.VariableRateShading;
+		#if UNITY_6000_4_OR_NEWER
 			Assert.That(vrs.Availability, Is.Not.EqualTo(PerfMeterAvailability.Unknown));
 			Assert.That(vrs.SupportsVariableRateShading, Is.EqualTo(SystemInfo.supportsVariableRateShading));
+		#else
+			Assert.That(vrs.Availability, Is.EqualTo(PerfMeterAvailability.Unknown));
+			Assert.That(vrs.SupportsVariableRateShading, Is.False);
+		#endif
 			Assert.That(vrs.ConfigurationAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
 			Assert.That(vrs.ActivityAvailability, Is.EqualTo(PerfMeterAvailability.Unknown));
 			Assert.That(vrs.IsConfigured, Is.False);

@@ -1,0 +1,32 @@
+{
+    "name": "SGG.PerfMeter.Tests.URP.PlayMode",
+    "rootNamespace": "SGG.PerfMeter.Tests.URP.PlayMode",
+    "references": [
+        "SGG.PerfMeter",
+        "SGG.PerfMeter.URP",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_EDITOR",
+        "UNITY_6000_4_OR_NEWER",
+        "SGG_PERFMETER_URP_17_4_OR_NEWER"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "17.4.0",
+            "define": "SGG_PERFMETER_URP_17_4_OR_NEWER"
+        }
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

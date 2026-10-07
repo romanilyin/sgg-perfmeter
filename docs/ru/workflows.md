@@ -183,6 +183,8 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Пользовательские метрики доступны через API-чтение, экспорт сессии в JSON, latest metrics в MCP и до восьми строк оверлея при включенном модуле `CustomMetrics`.
 
+Session JSON экспортирует retained `custom_metrics` каждого допущенного sample, а не текущую overlay history или providers на момент export. Сверяйте `session_id`: `StopSession()` сохраняет сессию при работающем runtime, тогда как `Stop()` удаляет runtime. Warm-up, интервал sampling, scene-ignore и capacity определяют admission. `TryCollect=false` исключает provider; возвращённый unavailable snapshot или исключение provider сохраняются как unavailable series. CSV содержит только встроенные колонки. Для missing series сначала сравните `GetSessionSamples()` той же сессии с настоящими JSON bytes.
+
 Для Render Graph timing optional URP assembly предоставляет `PerfMeterProfilingSamplerMetricProvider`. Передайте **тот же sampler instance**, который используется в `AddComputePass` / `AddRasterRenderPass`, зарегистрируйте provider обычным API, включите recording как владелец sampler и вызовите `SetEnabled(true)`. Scheduling/gates передавайте через `ReportProducerState`, а `ReportPassExecution` — из настоящего render function. Unavailable/no-samples/stale остаются явными метриками; sampled zero не равен отсутствию samples. Provider не переключает shared recording, не уничтожает sampler и не включает global profiling. Значения — delayed sampler-wide aggregates; CPU observation frame не является GPU source frame, неизменные значения консервативно устаревают. FTUE installation count не гарантирует arbitrary named GPU markers. В Runtime Workflows добавлен opt-in compute/raster sample с описанием этих ограничений.
 
 ## Инструментация Unity Profiler
@@ -200,6 +202,8 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 Для receipt, привязанного к точной session/capture, используйте `PerformanceMeter.GetSelfOverheadWindow(kind, identity)`. Результат содержит epoch и frame containment, quality/pipeline/renderer identity, evidence состояний feature installed/enabled/enqueued, границы callbacks/invocations и typed inactive reason. Capture/session JSON и MCP status сохраняют тот же window identity и fail closed с `CaptureWindowMismatch` или `UnknownInactiveReason`, а не присоединяют stale live data.
 
 URP value охватывает только package-owned CPU-side регистрацию `RecordRenderGraph()` и allocations текущего потока. Несколько камер могут дать больше invocations, чем кадров с callbacks. GPU attribution явно имеет состояние `Unavailable`, а whole-frame CPU/GPU/hitch/GC остаются отдельным контекстом. Accounting носит только диагностический характер: PerfMeter не вычитает overhead и не корректирует существующие CPU/GPU-метрики.
+
+`PassNotEnqueued` может быть корректным при активных overlay/providers: они не запрашивают URP pass. Для enqueue нужен opt-in `RecordOverlayMarkerPass` в feature или активный overdraw/heatmap на выбранном renderer. Сравнивайте две **новые** сессии: dormant gates не должны давать registration callbacks; включённый marker должен измерять настоящие `RecordRenderGraph` callbacks и достигать `Ready` через минимум 120 кадров от первого measurement callback, не от старта сессии. После StopSession проверяйте identity, `inactive_reason=None` и containment. Учитывайте выбор camera/quality renderer. Не включайте дополнительный marker pass незаметно и не заменяйте CPU registration measurement GPU timing.
 
 ## MCP-автоматизация
 

@@ -92,6 +92,10 @@ SGG PerfMeter explains whether a frame is limited by CPU, GPU, render thread, pr
 - Device, URP/HDRP camera, render-integration, status, metrics, alerts, session, and custom metric snapshots for code and MCP automation.
 - Integration-neutral render context: current pipeline/source, observed camera and frame freshness, integration/pass/injection details, actual PerfMeter pass count, effective mode where Unity exposes it, typed GRD support/activity/effectiveness, and explicit VRS availability.
 
+## Exact Render Graph GPU Metrics (URP)
+
+The optional `PerfMeterProfilingSamplerMetricProvider` adapts the **exact** `ProfilingSampler` used by a compute/raster pass to the existing custom-metric API and retained session JSON. The caller owns recording and sampler lifetime; explicit scheduling/callback evidence and bounded observations distinguish unavailable, pending and stale data from sampled zero. Values are delayed sampler-wide aggregates, not GPU source-frame or per-camera attribution. Import the opt-in Runtime Workflows sample or follow the [custom-metrics workflow](./docs/en/workflows.md#custom-metrics). Installing the PerfMeter renderer feature alone does not provide arbitrary named GPU timings.
+
 ## Optional RenderDoc Command Annotations
 
 `PerfMeterGpuAnnotations` lets packages and projects attach bounded typed semantic state to GPU work without exposing RenderDoc enums, function pointers, or native handles. `PerfMeterRenderGraphGpuAnnotations` accepts raster, compute, and unsafe Render Graph command buffers directly. Ambient owner/generation context is merged with pass-local keys when a scope is recorded.

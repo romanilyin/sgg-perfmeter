@@ -4,6 +4,8 @@
 База: опубликованный `2026.10.7-1`, release commit `d4bf372`; исследованный `main f0f31fb` отличается от тега только документацией.
 Источник: `C:\Work\Unity\!alex\perfmeter-open-reports-2026-10-07.md` — семь исходных репортов, объединённых в шесть проблем.
 
+Это initial triage для baseline `2026.10.7-1`, не итоговый список закрытий. Реализованные increments, новые Editor/GPU gates и остающиеся Player/Gateway/original-workload проверки фиксируются в [общем release record](../release/2026.10.7-mcpreports-release.md).
+
 ## Границы выводов
 
 - Выполнено сопоставление репортов с текущими исходниками, тестами, документацией и историей изменений. Новое воспроизведение в исходном consuming project, Gateway или IL2CPP Player не проводилось.

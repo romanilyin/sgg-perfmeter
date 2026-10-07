@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2026.10.7-6
+
+- Use the Unity 6000.4+ entity identity API in the imported GPU sample, including the supported URP 17.4 boundary.
+- Guard the VRS API test at the same Unity 6000.4+ boundary as the runtime, preserving compilation on older import-only versions.
+- Explain the actual URP pass-enqueue gates in `PassNotEnqueued` diagnostics instead of implying that overlay/providers automatically enqueue work. Add fresh dormant/active Render Graph integration regressions.
+- Add a live four-provider / 300-sample same-session MCP JSON regression, including sampled zero, unavailable/failing providers and cross-session buffer isolation. The existing JSON exporter already preserves custom series; CSV remains built-in-only.
+
 ## 2026.10.7-5
 
 - Add an optional URP custom-metric provider for the exact `ProfilingSampler` passed to Render Graph builders (MCP-PR-172), with explicit producer/callback evidence, bounded delayed observations and unavailable reasons. Recording and sampler lifetime remain caller-owned; no named lookup or GPU source-frame attribution is promised. Include an opt-in compute/raster sample and deterministic allocation/availability regressions.
