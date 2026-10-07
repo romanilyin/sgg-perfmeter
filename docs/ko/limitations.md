@@ -7,7 +7,7 @@ SGG PerfMeter는 low-overhead runtime diagnostics layer로 설계되었습니다
 - Supported runtime target: Unity `6000.4+` with URP `17.4+` Render Graph 또는 HDRP `17.4+` Custom Pass integration.
 - Built-in Render Pipeline은 unsupported이며 planned 상태가 아닙니다.
 - HDRP overdraw 및 heatmap은 unsupported입니다. HDRP projects에서도 FPS, CPU, GPU, memory, sessions, alerts, camera, device, setup, MCP diagnostics는 사용할 수 있습니다.
-- Unity `2022.3`부터 `6000.3`까지는 compile-safety를 위해 import될 수 있지만, runtime behavior 및 support target은 Unity `6000.4+`입니다.
+- Unity `2021.3`부터 `6000.3`까지는 compile-safety를 위해 import될 수 있지만, runtime behavior 및 support target은 Unity `6000.4+`입니다.
 
 ## Timing Availability
 

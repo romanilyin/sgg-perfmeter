@@ -868,17 +868,24 @@ namespace SGG.PerfMeter.Tests.EditMode
 			System.GC.WaitForPendingFinalizers();
 			System.GC.Collect();
 
-			int lastCount = 0;
+			long allocatedBytes = MeasureCustomMetricCollectionAllocations(out int lastCount);
+
+			Assert.That(lastCount, Is.EqualTo(1));
+			Assert.That(allocatedBytes, Is.Zero);
+		}
+
+		// Keep assertion boxing outside the measured region even when CoreCLR inlines the test body.
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+		private static long MeasureCustomMetricCollectionAllocations(out int lastCount)
+		{
+			lastCount = 0;
 			long before = System.GC.GetAllocatedBytesForCurrentThread();
 			for (int iteration = 0; iteration < 1000; iteration++)
 			{
 				PerfMeterCustomMetricCollection metrics = PerfMeterCustomMetricRegistry.Collect();
 				lastCount = metrics.Count;
 			}
-			long allocatedBytes = System.GC.GetAllocatedBytesForCurrentThread() - before;
-
-			Assert.That(lastCount, Is.EqualTo(1));
-			Assert.That(allocatedBytes, Is.Zero);
+			return System.GC.GetAllocatedBytesForCurrentThread() - before;
 		}
 
 		[Test]
@@ -1520,22 +1527,13 @@ namespace SGG.PerfMeter.Tests.EditMode
 					true);
 				PerfMeterRenderGraphAnalytics.PrepareObservation(camera);
 
-				long before = System.GC.GetAllocatedBytesForCurrentThread();
-				PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
-					camera,
-					effectiveRenderingMode,
-					injectionPoint,
-					gpuResidentDrawer,
-					true,
-					true,
-					false,
-					PerfMeterAvailability.Available,
-					true,
-					PerfMeterAvailability.Available,
-					true);
-				long allocatedBytes = System.GC.GetAllocatedBytesForCurrentThread() - before;
+				long allocatedBytes = MeasurePreparedRenderObservationAllocations(camera, effectiveRenderingMode, injectionPoint, gpuResidentDrawer);
 
 				Assert.That(allocatedBytes, Is.EqualTo(0L));
+				PerfMeterRenderGraphSnapshot snapshot = PerformanceMeter.GetRenderGraphSnapshot();
+				Assert.That(snapshot.State, Is.EqualTo(PerfMeterRenderGraphState.Observed));
+				Assert.That(snapshot.ObservedCameraName, Is.EqualTo("PerfMeter Allocation Camera"));
+				Assert.That(snapshot.PerfMeterPassCount, Is.EqualTo(3));
 			}
 			finally
 			{
@@ -1546,6 +1544,29 @@ namespace SGG.PerfMeter.Tests.EditMode
 
 				PerfMeterRenderGraphAnalytics.ResetForTests();
 			}
+		}
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+		private static long MeasurePreparedRenderObservationAllocations(
+			Camera camera,
+			string effectiveRenderingMode,
+			string injectionPoint,
+			PerfMeterGpuResidentDrawerContextSnapshot gpuResidentDrawer)
+		{
+			long before = System.GC.GetAllocatedBytesForCurrentThread();
+			PerfMeterRenderGraphAnalytics.RecordFeatureSnapshot(
+				camera,
+				effectiveRenderingMode,
+				injectionPoint,
+				gpuResidentDrawer,
+				true,
+				true,
+				false,
+				PerfMeterAvailability.Available,
+				true,
+				PerfMeterAvailability.Available,
+				true);
+			return System.GC.GetAllocatedBytesForCurrentThread() - before;
 		}
 
 		[Test]

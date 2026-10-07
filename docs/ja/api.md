@@ -147,7 +147,7 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 ## Editor Compatibility Status
 
-Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` は `PerfMeterCompatibilityStatus` を返し、Unity `2022.3` package floor の `ImportCompatible`、supported runtime Unity `6000.4+` の `CoreRuntimeCompatible`、available adapter を持つ active URP/HDRP `17.4+` の `RenderIntegrationCompatible` を分離します。各結果には reason があります。render compatibility は renderer assets の設定完了を意味しないため、configuration readiness には setup status を使用します。
+Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` は `PerfMeterCompatibilityStatus` を返し、Unity `2021.3` package floor の `ImportCompatible`、supported runtime Unity `6000.4+` の `CoreRuntimeCompatible`、available adapter を持つ active URP/HDRP `17.4+` の `RenderIntegrationCompatible` を分離します。各結果には reason があります。render compatibility は renderer assets の設定完了を意味しないため、configuration readiness には setup status を使用します。
 
 ## External GPU Capture Coordinator
 

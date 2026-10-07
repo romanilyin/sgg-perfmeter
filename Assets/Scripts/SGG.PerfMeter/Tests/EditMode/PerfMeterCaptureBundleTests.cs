@@ -2047,7 +2047,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 			PerfMeterCaptureBundleExportCoordinator coordinator,
 			string exportId)
 		{
-			for (int i = 0; i < 500; i++)
+			System.Diagnostics.Stopwatch timeout = System.Diagnostics.Stopwatch.StartNew();
+			while (timeout.Elapsed < TimeSpan.FromSeconds(30))
 			{
 				PerfMeterCaptureBundleExportStatusSnapshot status = coordinator.GetStatus(exportId);
 				if (status.IsTerminal)
@@ -2058,7 +2059,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Thread.Sleep(10);
 			}
 
-			return coordinator.GetStatus(exportId);
+			PerfMeterCaptureBundleExportStatusSnapshot timedOut = coordinator.GetStatus(exportId);
+			Assert.That(timedOut.IsTerminal, Is.True, "Export did not reach a terminal state within 30 seconds: " + timedOut.Phase + " " + timedOut.Error + " " + timedOut.Warning);
+			return timedOut;
 		}
 
 		private sealed class ShutdownCaptureBackend : IPerfMeterCaptureBackend

@@ -101,7 +101,7 @@ Advanced FPS Counter と Graphy は、汎用の drop-in visual overlay として
 - build で FrameTimingManager に依存する前に Frame Timing Stats を有効化。
 - GPU timing が重要な Android では Vulkan を推奨。
 
-Unity `2022.3` から `6000.3` は compile checks 用に import-safe な場合がありますが、runtime overlay、render integration、overdraw passes、support expectations は Unity `6000.4+` と URP `17.4+` または HDRP `17.4+` を対象にしています。HDRP overdraw/heatmap は unsupported ですが、core diagnostics は利用できます。
+Unity `2021.3` から `6000.3` は compile checks 用に import-safe な場合がありますが、runtime overlay、render integration、overdraw passes、support expectations は Unity `6000.4+` と URP `17.4+` または HDRP `17.4+` を対象にしています。HDRP overdraw/heatmap は unsupported ですが、core diagnostics は利用できます。
 
 ## ライセンス
 

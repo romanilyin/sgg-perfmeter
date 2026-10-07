@@ -32,7 +32,7 @@ The main user documentation lives in the repository-level GitHub docs:
 - Vulkan preferred on Android when GPU frame timing matters.
 - Optional native RenderDoc capture: Windows x64 Unity Editor with Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are unsupported.
 
-Unity `2022.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. HDRP overdraw and heatmap are unsupported; core runtime diagnostics remain available.
+Unity `2021.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. HDRP overdraw and heatmap are unsupported; core runtime diagnostics remain available.
 
 ## Install
 

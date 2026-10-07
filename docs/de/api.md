@@ -138,7 +138,7 @@ PerformanceMeter.SetEditorWarningLogsEnabled(false);
 
 ## Editor Compatibility Status
 
-Die Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` liefert `PerfMeterCompatibilityStatus` und meldet `ImportCompatible` fuer den Unity-`2022.3` Package-Floor, `CoreRuntimeCompatible` fuer den unterstuetzten Unity-`6000.4+` Runtime-Floor und `RenderIntegrationCompatible` fuer aktives URP/HDRP `17.4+` mit verfuegbarem Adapter getrennt. Jeder Wert hat einen Grund. Render-Kompatibilitaet bedeutet nicht, dass Renderer Assets bereits konfiguriert sind; dafuer dient setup status.
+Die Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` liefert `PerfMeterCompatibilityStatus` und meldet `ImportCompatible` fuer den Unity-`2021.3` Package-Floor, `CoreRuntimeCompatible` fuer den unterstuetzten Unity-`6000.4+` Runtime-Floor und `RenderIntegrationCompatible` fuer aktives URP/HDRP `17.4+` mit verfuegbarem Adapter getrennt. Jeder Wert hat einen Grund. Render-Kompatibilitaet bedeutet nicht, dass Renderer Assets bereits konfiguriert sind; dafuer dient setup status.
 
 ## External GPU Capture Coordinator
 
