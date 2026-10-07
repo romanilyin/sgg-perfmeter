@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 2026.10.7-6
+
+- Use the Unity 6000.4+ entity identity API in the imported GPU sample, including the supported URP 17.4 boundary.
+- Guard the VRS API test at the same Unity 6000.4+ boundary as the runtime, preserving compilation on older import-only versions.
+- Explain the actual URP pass-enqueue gates in `PassNotEnqueued` diagnostics instead of implying that overlay/providers automatically enqueue work. Add fresh dormant/active Render Graph integration regressions.
+- Add a live four-provider / 300-sample same-session MCP JSON regression, including sampled zero, unavailable/failing providers and cross-session buffer isolation. The existing JSON exporter already preserves custom series; CSV remains built-in-only.
+
+## 2026.10.7-5
+
+- Add an optional URP custom-metric provider for the exact `ProfilingSampler` passed to Render Graph builders (MCP-PR-172), with explicit producer/callback evidence, bounded delayed observations and unavailable reasons. Recording and sampler lifetime remain caller-owned; no named lookup or GPU source-frame attribution is promised. Include an opt-in compute/raster sample and deterministic allocation/availability regressions.
+
+## 2026.10.7-4
+
+- MCP session export reports `path_policy_violation` / `invalid_path` and a project-local recovery action instead of a misleading schema failure (MCP-PR-195). In-project absolute paths and existing-file refusal remain supported; descriptors explain custom JSON versus built-in CSV sampling.
+- Decode JSON string escapes correctly in MCP arguments so Unicode paths and escaped invalid characters reach path validation unchanged.
+
+## 2026.10.7-3
+
+- Preserve a successful explicit target-FPS override across automatic Resources bootstrap without suppressing unrelated settings (MCP-PR-171). Add `TrySetTargetFps` with requested/effective mutation results; explicit full JSON settings remain authoritative.
+- Preserve explicitly configured 60 FPS when parsing settings instead of treating it as the 240 FPS default.
+
+## 2026.10.7-2
+
+- Recover stopped PerfMeter-owned transient runtime, overlay and marked UI-host infrastructure even when the runtime singleton or overlay reference was lost (MCP-PR-240). Foreign UI and persistent/authored objects are preserved; pending capture/graphics cleanup returns `PendingCleanup` instead of a false no-change result.
+
 ## 2026.10.7-1
 
 - Lowered the package import floor to Unity `2021.3`, with guarded frame-timing, refresh-rate, and UI Toolkit APIs. Thanks to [@mihvotak](https://github.com/mihvotak) for [#37](https://github.com/romanilyin/sgg-perfmeter/pull/37).

@@ -89,6 +89,8 @@ Use this explicit bootstrap instead of the Resources zero-code settings path whe
 
 ## Runtime Overlay
 
+`SetTargetFps` / `TrySetTargetFps` set the diagnostic frame budget, not VSync or `Application.targetFrameRate`. A successful explicit call (including a same-value call) survives the automatic Resources bootstrap for the current domain; other configured defaults still apply. Explicit full settings JSON can replace this budget and suppresses automatic bootstrap. Failed setters do not record an override; subsystem registration clears it. `TrySetTargetFps` reports requested/effective values and rejection/normalization instead of a silent no-op.
+
 Use the overlay when you need immediate in-game visibility.
 
 ```csharp
@@ -102,6 +104,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 The overlay uses UI Toolkit and does not intercept gameplay input. It supports FPS-only, compact text, graph, full diagnostics, metric bars, visual themes, module filters, CPU/GPU graphs, CPU core widgets, and limited custom metric rows.
 
 PerfMeter creates and owns a versioned UI Toolkit host for the overlay: Unity `6000.4` uses `UIDocument`, while Unity `6000.5+` uses `PanelRenderer`. The owned host is separate from foreign UI and preserves foreign panel settings and children; rebuilds remove only the PerfMeter-owned container.
+
+`PerformanceMeter.TryStop()` also recovers transient package-owned runtime/overlay objects and explicitly marked UI hosts after a lost singleton or overlay reference. It does not remove authored/persistent objects or foreign UI by name. Unfinished capture/graphics resource cleanup returns `Rejected / PendingCleanup`; retry after the operation's cleanup completes before starting again. In Play Mode, Unity object destruction completes at the end of the frame. Legacy detached generic UI hosts without ownership evidence cannot safely be removed automatically.
 
 ## Background Collection
 
@@ -201,6 +205,10 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Custom metrics are exposed through API reads, session JSON export, MCP latest metrics, and up to eight overlay rows when the `CustomMetrics` module is enabled.
 
+Session JSON exports the retained `custom_metrics` for each admitted sample—not current overlay history or whatever providers are registered at export time. Match the exported `session_id` to the session you recorded; `StopSession()` retains that session while leaving the runtime alive, whereas `Stop()` removes the runtime. Warm-up, sampling interval, scene-ignore windows and capacity still determine sample admission. `TryCollect=false` omits that provider; a returned unavailable snapshot or provider exception remains an explicit unavailable series. CSV has built-in columns only. To investigate a missing series, compare the same session's `GetSessionSamples()` with actual JSON bytes before changing the exporter.
+
+For Render Graph pass timings, the optional URP assembly provides `PerfMeterProfilingSamplerMetricProvider`. Pass the **same sampler instance** supplied to `AddComputePass` / `AddRasterRenderPass`, register the provider normally, enable the sampler's recording as its owner, and then call `SetEnabled(true)`. Report scheduling/gating with `ReportProducerState` and call `ReportPassExecution` from the actual render function. Unavailable/no-sample/stale states remain explicit metrics; sampled zero is not the same as zero samples. The provider never toggles shared recording, disposes the sampler or enables global profiling. Values are delayed sampler-wide aggregates; its CPU observation frame is not a GPU source frame, and unchanged readings conservatively expire. FTUE renderer installation does not guarantee arbitrary named GPU markers. The Runtime Workflows sample includes an opt-in exact-sampler compute/raster example with these limitations documented.
+
 ## Unity Profiler Instrumentation
 
 The instrumentation is internal and visible only while profiling the Editor, a Development Build, or another profiler-enabled build. Non-profiler Release players treat these markers/counters as no-ops and produce no instrumentation data; public API, status, MCP, and export schemas are unchanged.
@@ -214,6 +222,8 @@ The instrumentation is internal and visible only while profiling the Editor, a D
 Use `PerformanceMeter.GetSelfOverhead()` or `PerformanceMeter.GetStatus().SelfOverhead` to inspect diagnostic CPU callback cost and allocations for collector, custom providers, CPU-core provider, overlay, and URP/HDRP integration. Measurements use fixed 120-frame windows, per-invocation averages, and component-specific CPU/allocation budgets.
 
 Use `PerformanceMeter.GetSelfOverheadWindow(kind, identity)` for an exact session/capture receipt. The bounded result includes epoch and frame containment, quality/pipeline/renderer identity, feature installed/enabled/enqueued evidence, callback/invocation bounds, and a typed inactive reason. Capture/session JSON and MCP status preserve the same window identity and fail closed with `CaptureWindowMismatch` or `UnknownInactiveReason` rather than attaching stale live data.
+
+`PassNotEnqueued` can be correct with overlay and custom providers active: they do not request a URP pass. Enqueue requires the feature's opt-in `RecordOverlayMarkerPass` or an active overdraw/heatmap request on the selected renderer. Compare two **fresh** sessions: dormant gates should have no registration callbacks; enabling the marker should measure real `RecordRenderGraph` callbacks and reach `Ready` after at least 120 frames counted from the first measurement callback, not session start. Complete the session and check identity, `inactive_reason=None` and measurement containment. Also verify camera/quality renderer selection. Do not enable the extra marker pass silently or substitute GPU timings for this CPU registration measurement.
 
 The URP value covers only package-owned CPU-side `RecordRenderGraph()` registration and current-thread allocation. Multiple cameras can produce more invocations than callback frames. GPU attribution is explicitly `Unavailable`, and whole-frame CPU/GPU/hitch/GC values remain separate context. Accounting is diagnostic only: PerfMeter does not subtract overhead from or otherwise adjust existing CPU/GPU metrics.
 

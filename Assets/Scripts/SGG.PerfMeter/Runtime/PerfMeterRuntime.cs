@@ -23,6 +23,7 @@ namespace SGG.PerfMeter
 		private const string AlertScopeLeasePrefix = "perfmeter-alert-";
 		internal const string MemorySnapshotCleanupWarning = "memory_snapshot_cleanup_failed";
 		private static PerfMeterRuntime _instance;
+		private static bool _stopInProgress;
 		private static bool _duplicateRuntimeScanRequired = true;
 		private static PerfMeterCaptureCoordinator _pendingCaptureCleanup;
 		private static PendingCaptureBundleFinalization _pendingCaptureBundleFinalization;
@@ -97,6 +98,9 @@ namespace SGG.PerfMeter
 		private int _captureEndOfFrameGeneration = -1;
 
 		internal static PerfMeterRuntime Instance => _instance;
+		internal static bool HasStoppedCleanupPending => _stopInProgress || _instance != null || _pendingCaptureCleanup != null ||
+			(_pendingGraphicsStateCleanup != null && _pendingGraphicsStateCleanup.HasPendingCleanup);
+		internal static bool StopRefusedUnownedRuntime => _instance != null && !PerfMeterOwnedInfrastructure.IsTransient(_instance.gameObject);
 		internal static PerfMeterCaptureStatusSnapshot PendingCaptureStatus => _pendingCaptureCleanup != null ? _pendingCaptureCleanup.Status : PerfMeterCaptureStatusSnapshot.NotRunning;
 		internal static PerfMeterGraphicsStateCollectionStatusSnapshot PendingGraphicsStateCollectionStatus => _pendingGraphicsStateCleanup != null ? _pendingGraphicsStateCleanup.GetStatus() : PerfMeterGraphicsStateCollectionStatusSnapshot.Idle;
 		internal static string PendingAlertCaptureId => _pendingAlertCaptureId;
@@ -388,6 +392,10 @@ namespace SGG.PerfMeter
 
 		internal static bool EnsureRunning()
 		{
+			if (_stopInProgress)
+			{
+				return false;
+			}
 			if (!TryReleasePendingGraphicsStateCleanup())
 			{
 				return false;
@@ -427,6 +435,7 @@ namespace SGG.PerfMeter
 			_duplicateRuntimeScanRequired = true;
 			GameObject gameObject = new GameObject(GameObjectName);
 			gameObject.hideFlags = HideFlags.DontSave;
+			PerfMeterOwnedInfrastructure.Mark(gameObject, PerfMeterInfrastructureKind.Runtime);
 			_instance = gameObject.AddComponent<PerfMeterRuntime>();
 			if (Application.isPlaying)
 			{
@@ -469,21 +478,90 @@ namespace SGG.PerfMeter
 			}
 		}
 
-		internal static void StopRunning()
+		internal static bool StopRunning()
 		{
-			if (_instance == null)
+			if (_stopInProgress || StopRefusedUnownedRuntime)
 			{
-				if (!TryReleasePendingCaptureCleanup())
-				{
-					PerfMeterSelfObservability.Stop();
-					return;
-				}
+				return false;
+			}
+			_stopInProgress = true;
+			try
+			{
+				return StopOwnedInfrastructure();
+			}
+			finally
+			{
+				_stopInProgress = false;
+			}
+		}
 
-				PerfMeterProfilerInstrumentation.Reset();
+		private static bool StopOwnedInfrastructure()
+		{
+			bool changed = _instance != null || _pendingCaptureCleanup != null || _pendingGraphicsStateCleanup != null;
+			if (_instance != null)
+			{
+				StopCurrentRuntime();
+			}
+			if (HasStoppedCleanupPending && _instance != null)
+			{
+				return changed;
+			}
+			if (!TryReleasePendingCaptureCleanup() || !TryReleasePendingGraphicsStateCleanup())
+			{
 				PerfMeterSelfObservability.Stop();
-				return;
+				return changed;
 			}
 
+			// Explicit shutdown recovery only: never enumerate infrastructure on the collection hot path.
+			PerfMeterRuntime[] runtimes = Resources.FindObjectsOfTypeAll<PerfMeterRuntime>();
+			for (int index = 0; index < runtimes.Length; index++)
+			{
+				PerfMeterRuntime runtime = runtimes[index];
+				if (runtime == null || !PerfMeterOwnedInfrastructure.IsTransient(runtime.gameObject))
+				{
+					continue;
+				}
+				PerfMeterOwnedInfrastructure marker = runtime.GetComponent<PerfMeterOwnedInfrastructure>();
+				if (marker != null && marker.DestroyRequested)
+				{
+					continue;
+				}
+				_instance = runtime;
+				changed = true;
+				StopCurrentRuntime();
+				if (_instance != null || _pendingCaptureCleanup != null || _pendingGraphicsStateCleanup != null)
+				{
+					return changed;
+				}
+			}
+
+			// Legacy overlays carry a package-specific component. Standalone UI hosts require our marker;
+			// a name or a generic PanelRenderer/UIDocument is never sufficient ownership evidence.
+			PerfMeterOverlay[] overlays = Resources.FindObjectsOfTypeAll<PerfMeterOverlay>();
+			for (int index = 0; index < overlays.Length; index++)
+			{
+				PerfMeterOverlay overlay = overlays[index];
+				if (overlay != null && PerfMeterOwnedInfrastructure.IsTransient(overlay.gameObject))
+				{
+					changed |= PerfMeterOwnedInfrastructure.DestroyOwned(overlay.gameObject, PerfMeterInfrastructureKind.Overlay);
+				}
+			}
+			PerfMeterOwnedInfrastructure[] markers = Resources.FindObjectsOfTypeAll<PerfMeterOwnedInfrastructure>();
+			for (int index = 0; index < markers.Length; index++)
+			{
+				PerfMeterOwnedInfrastructure marker = markers[index];
+				if (marker != null && PerfMeterOwnedInfrastructure.IsTransient(marker.gameObject))
+				{
+					changed |= PerfMeterOwnedInfrastructure.DestroyOwned(marker.gameObject, marker.Kind);
+				}
+			}
+			PerfMeterProfilerInstrumentation.Reset();
+			PerfMeterSelfObservability.Stop();
+			return changed;
+		}
+
+		private static void StopCurrentRuntime()
+		{
 			PerfMeterRuntime runtime = _instance;
 			runtime._collector.Stop();
 			runtime._frameStatsSampler.Reset();
@@ -505,6 +583,7 @@ namespace SGG.PerfMeter
 			runtime._alertEngine.Clear();
 			runtime._overdrawHeatmapVisible = false;
 			runtime.DestroyOverlay();
+			runtime.DestroyOrphanedOverlayChildren();
 			runtime._status = CreateStoppedStatus();
 			runtime._latestMetrics = PerfMeterMetricsSnapshot.Stopped;
 			runtime._latestCustomMetricBuffer = System.Array.Empty<PerfMeterCustomMetricSnapshot>();
@@ -524,14 +603,7 @@ namespace SGG.PerfMeter
 			_instance = null;
 			_duplicateRuntimeScanRequired = true;
 
-			if (Application.isPlaying)
-			{
-				Destroy(runtime.gameObject);
-			}
-			else
-			{
-				DestroyImmediate(runtime.gameObject);
-			}
+			PerfMeterOwnedInfrastructure.DestroyOwned(runtime.gameObject, PerfMeterInfrastructureKind.Runtime);
 		}
 
 		internal static PerfMeterStatusSnapshot CreateStoppedStatus()
@@ -2395,6 +2467,7 @@ namespace SGG.PerfMeter
 				DestroyOrphanedOverlayChildren();
 				GameObject overlayObject = new GameObject("SGG PerfMeter Overlay");
 				overlayObject.hideFlags = HideFlags.DontSave;
+				PerfMeterOwnedInfrastructure.Mark(overlayObject, PerfMeterInfrastructureKind.Overlay);
 				overlayObject.transform.SetParent(transform, worldPositionStays: false);
 				_overlay = overlayObject.AddComponent<PerfMeterOverlay>();
 			}

@@ -41,6 +41,7 @@ namespace SGG.PerfMeter
 				hideFlags = HideFlags.DontSave
 			};
 			_hostObject.transform.SetParent(owner.transform, false);
+			PerfMeterOwnedInfrastructure.Mark(_hostObject, PerfMeterInfrastructureKind.PanelHost);
 
 #if UNITY_6000_5_OR_NEWER
 			_panelRenderer = _hostObject.AddComponent<PanelRenderer>();

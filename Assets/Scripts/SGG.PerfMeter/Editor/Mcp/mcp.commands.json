@@ -880,7 +880,7 @@
     {
       "id": "perfmeter.session.export",
       "title": "Export PerfMeter session",
-      "description": "Export the current SGG PerfMeter session to a project-local JSON or CSV file.",
+      "description": "Export the retained current SGG PerfMeter session to a new project-local JSON or CSV file. Out-of-project paths return path_policy_violation with next_action, malformed paths return invalid_path, and existing destinations return file_exists. This unsafe command must not be retried automatically. JSON includes sampled custom metrics; CSV includes built-in columns only.",
       "handler": "SGG.PerfMeter.Editor.Mcp.PerfMeterMcpCommands.SessionExport",
       "risk": "write",
       "idempotency": "unsafe",
@@ -890,7 +890,7 @@
       "schema": {
         "type": "object",
         "properties": {
-          "path": { "type": "string" },
+          "path": { "type": "string", "description": "Prefer a project-relative destination such as Temp/PerfMeter/session.json. Absolute paths inside the project are also accepted; canonical traversal or absolute paths outside the project are rejected by package path policy. Use a new destination; existing files are not overwritten." },
           "format": { "type": "string", "enum": ["json", "csv"] }
         },
         "required": ["path", "format"],

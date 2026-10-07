@@ -654,12 +654,11 @@ namespace SGG.PerfMeter
 				activeOverlayPreset: activeOverlayPreset);
 		}
 
-		internal static bool ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings)
+		internal static bool ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings, bool preserveRuntimeOverrides = false)
 		{
 			if (!settings.Enabled || settings.CollectionMode == PerfMeterCollectionMode.Stopped)
 			{
-				PerformanceMeter.Stop();
-				return PerfMeterRuntime.Instance == null;
+				return PerformanceMeter.TryStop().Succeeded;
 			}
 
 			if (!PerfMeterRuntime.EnsureRunning())
@@ -680,7 +679,11 @@ namespace SGG.PerfMeter
 				PerformanceMeter.SetOverlayModules(settings.OverlayModules);
 				PerformanceMeter.SetOverlayLayout(settings.OverlayLayout);
 			}
-			PerformanceMeter.SetTargetFps(settings.TargetFps);
+			PerfMeterTargetFps targetFps = preserveRuntimeOverrides
+				? PerfMeterSettingsBootstrap.ResolveAutoStartTargetFps(settings.TargetFps)
+				: settings.TargetFps;
+			// Applying configured defaults is not itself an explicit per-field override.
+			PerfMeterRuntime.Instance.SetTargetFps(targetFps);
 			PerformanceMeter.SetOverlayCorner(settings.OverlayCorner);
 			PerformanceMeter.SetCollectionMode(settings.CollectionMode);
 			if (settings.CollectionMode == PerfMeterCollectionMode.Overlay)
@@ -1220,6 +1223,8 @@ namespace SGG.PerfMeter
 					return PerfMeterTargetFps.Fps15;
 				case 30:
 					return PerfMeterTargetFps.Fps30;
+				case 60:
+					return PerfMeterTargetFps.Fps60;
 				case 90:
 					return PerfMeterTargetFps.Fps90;
 				case 120:
@@ -1252,16 +1257,35 @@ namespace SGG.PerfMeter
 	internal static class PerfMeterSettingsBootstrap
 	{
 		private static bool _explicitSettingsApplied;
+		private static bool _hasTargetFpsOverride;
+		private static PerfMeterTargetFps _targetFpsOverride;
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
 		internal static void ResetExplicitSettingsApplication()
 		{
 			_explicitSettingsApplied = false;
+			_hasTargetFpsOverride = false;
 		}
 
 		internal static void MarkExplicitSettingsApplied()
 		{
 			_explicitSettingsApplied = true;
+		}
+
+		internal static void MarkTargetFpsOverride(PerfMeterTargetFps effective)
+		{
+			_hasTargetFpsOverride = true;
+			_targetFpsOverride = effective;
+		}
+
+		internal static PerfMeterTargetFps ResolveAutoStartTargetFps(PerfMeterTargetFps configured)
+		{
+			return _hasTargetFpsOverride ? _targetFpsOverride : configured;
+		}
+
+		internal static bool TryAutoStartFromSettings(PerfMeterSettingsSnapshot settings)
+		{
+			return ShouldAutoStartFromSettings(settings) && PerfMeterSettingsStore.ApplySnapshotToRuntime(settings, preserveRuntimeOverrides: true);
 		}
 
 		internal static bool ShouldAutoStartFromSettings(PerfMeterSettingsSnapshot settings)
@@ -1273,10 +1297,7 @@ namespace SGG.PerfMeter
 		private static void AutoStartFromSettings()
 		{
 			PerfMeterSettingsSnapshot settings = PerfMeterSettingsStore.LoadFromResources();
-			if (ShouldAutoStartFromSettings(settings))
-			{
-				PerfMeterSettingsStore.ApplySnapshotToRuntime(settings);
-			}
+			TryAutoStartFromSettings(settings);
 		}
 	}
 }

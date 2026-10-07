@@ -2,7 +2,9 @@
 
 Статус: внутренний приоритизированный backlog. Порядок отражает зависимости и продуктовую ценность, но не обещает календарный release scope.
 
-Основание: review текущего backlog и локального research report `C:\Work\Unity\deep-research-report-perfmeter-new-26-8-4.md`, актуализированные для current published baseline `2026.8.19-1`; пакет review/RenderDoc research `C:\Work\Unity\perfmeter-temp` является историческим intake для baseline `2026.8.8-1` от августа 2026 года.
+Историческое основание: review backlog и локального research report `C:\Work\Unity\deep-research-report-perfmeter-new-26-8-4.md` для baseline `2026.8.19-1`; пакет review/RenderDoc research `C:\Work\Unity\perfmeter-temp` является историческим intake для baseline `2026.8.8-1` от августа 2026 года.
+
+Текущая база стабилизации — опубликованный `2026.10.7-1`. [Разбор открытых репортов от 2026-10-07](2026-10-07-open-reports-triage.md) задаёт ближайшую P1 lane: owned orphan cleanup (`MCP-PR-240`), target-FPS override/IL2CPP (`MCP-PR-171`), export path-policy diagnostics (`MCP-PR-195`) и exact-sampler GPU adapter (`MCP-PR-172`). Same-session custom-series export и self-overhead enqueue получают P2 verification/diagnostics; подтверждённая потеря retained данных повышается до P1. Эта lane предшествует новым стратегическим/native features; исходные reports не объявлены закрытыми. Ранние release rows ниже сохраняют исторический scope и evidence.
 
 ## Модель приоритетов
 

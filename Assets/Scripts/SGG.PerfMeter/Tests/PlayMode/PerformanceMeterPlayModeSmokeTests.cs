@@ -36,6 +36,50 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator TargetOverrideSurvivesAutoSettingsAndOverlayRebuild()
+		{
+			PerfMeterSettingsBootstrap.ResetExplicitSettingsApplication();
+			PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps120);
+			PerfMeterSettingsJson settings = PerfMeterSettingsStore.CreateDefault();
+			settings.targetFps = 60;
+			foreach (PerfMeterPresetSettingsJson preset in settings.presets) preset.targetFps = 60;
+			Assert.That(PerfMeterSettingsBootstrap.TryAutoStartFromSettings(
+				PerfMeterSettingsStore.ToSnapshot(settings, PerfMeterSettingsLoadState.Loaded, string.Empty)), Is.True);
+			PerformanceMeter.SetOverlayLayout(PerfMeterOverlayLayout.Graphs);
+			yield return null;
+			yield return null;
+			Assert.That(PerformanceMeter.GetStatus().TargetFps, Is.EqualTo(PerfMeterTargetFps.Fps120));
+			Assert.That(PerformanceMeter.GetLatestMetrics().FrameBudgetMs, Is.EqualTo(1000d / 120).Within(0.0001d));
+#if UNITY_6000_4_OR_NEWER
+			PerfMeterOverlay overlay = GameObject.Find(OverlayObjectName).GetComponent<PerfMeterOverlay>();
+			Assert.That(overlay.FrameTimeStripBudgetMs, Is.EqualTo(1000d / 120).Within(0.0001d));
+#endif
+			PerfMeterSettingsBootstrap.ResetExplicitSettingsApplication();
+		}
+
+		[UnityTest]
+		public IEnumerator StopRecoversLostSingletonAndOverlayReferenceAfterDeferredDestroy()
+		{
+			PerformanceMeter.EnsureRunning();
+			yield return null;
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic;
+			typeof(PerfMeterRuntime).GetField("_overlay", flags | System.Reflection.BindingFlags.Instance).SetValue(runtime, null);
+			typeof(PerfMeterRuntime).GetField("_instance", flags | System.Reflection.BindingFlags.Static).SetValue(null, null);
+
+			Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.Applied));
+			Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.NoChange));
+			yield return null;
+
+			Assert.That(runtime == null, Is.True);
+			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+			foreach (PerfMeterOwnedInfrastructure marker in Resources.FindObjectsOfTypeAll<PerfMeterOwnedInfrastructure>())
+			{
+				Assert.That(PerfMeterOwnedInfrastructure.IsTransient(marker.gameObject), Is.False);
+			}
+		}
+
+		[UnityTest]
 		public IEnumerator OverlayLifecycleAndSnapshotsUpdateAcrossFrames()
 		{
 			PerformanceMeter.EnsureRunning();

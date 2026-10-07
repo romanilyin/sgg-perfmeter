@@ -1,0 +1,12 @@
+#pragma kernel CSMain
+
+RWStructuredBuffer<float> _Output;
+
+[numthreads(64, 1, 1)]
+void CSMain(uint3 dispatchId : SV_DispatchThreadID)
+{
+	float value = dispatchId.x * 0.0001;
+	for (uint iteration = 0; iteration < 128; iteration++)
+		value = sin(value + iteration * 0.001) + 0.25;
+	_Output[dispatchId.x] = value;
+}

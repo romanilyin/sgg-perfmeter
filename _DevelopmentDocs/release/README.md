@@ -4,7 +4,7 @@
 
 ## Current Release
 
-- Release candidate: none.
+- Release candidate: `2026.10.7-6` (one consolidated `mcpreports` release; no intermediate tags/publications).
 - Current published release: `2026.10.7-1`
 - Current npm `latest`: `2026.10.7-1`
 - Previous published release: `2026.8.19-1`
@@ -31,7 +31,7 @@
 - GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
 
 Current release record: `_DevelopmentDocs/release/2026.10.7-1-unity-matrix-release.md`.
-Current release candidate record: none.
+Current release candidate record: `_DevelopmentDocs/release/2026.10.7-mcpreports-release.md`.
 Previous published release record: `_DevelopmentDocs/release/2026.8.19-1-renderdoc-annotations-release.md`.
 Earlier published release record: `_DevelopmentDocs/release/2026.8.15-1-smoothed-peak-backdrop-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.

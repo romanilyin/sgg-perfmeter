@@ -994,7 +994,7 @@ namespace SGG.PerfMeter
 				case PerfMeterSelfOverheadInactiveReason.RendererFeatureDisabled:
 					return "The installed PerfMeter renderer feature was disabled.";
 				case PerfMeterSelfOverheadInactiveReason.PassNotEnqueued:
-					return "The installed PerfMeter renderer feature had no active pass enqueue condition.";
+					return "The installed PerfMeter renderer feature did not enqueue a pass. URP enqueue requires RecordOverlayMarkerPass or active overdraw/heatmap; overlay visibility and custom provider collection do not request a pass. Check the active camera and quality renderer selection as well.";
 				case PerfMeterSelfOverheadInactiveReason.NoCameraCallbackObserved:
 					return "A PerfMeter pass was enqueued but no RecordRenderGraph measurement callback was observed.";
 				case PerfMeterSelfOverheadInactiveReason.WindowIncomplete:
