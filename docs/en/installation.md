@@ -1,6 +1,6 @@
 # Installation
 
-SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmeter`. The current public npm registry package is `2026.8.19-1`; Git UPM and local-copy installs remain available.
+SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmeter`. The current public npm registry package is `2026.10.7-1`; Git UPM and local-copy installs remain available.
 
 ## Requirements
 
@@ -11,6 +11,8 @@ SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmete
 - Optional native RenderDoc capture requires the Windows x64 Unity Editor with Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are unsupported.
 
 Package metadata keeps Unity `2021.3` as an import-safety floor for import and compile checks. The current supported runtime target is Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
+
+See the [2026.10.7-1 release compatibility matrix](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.7-1) for exact tested editor/SRP versions, including Unity `2021.3.45f2` import/compile and Unity 7 `7000.0.0a7` alpha checks. Alpha validation is not a stable-version support guarantee.
 
 These are separate compatibility levels. `ImportCompatible` does not imply supported runtime behavior. `CoreRuntimeCompatible` requires Unity `6000.4+` but no specific pipeline. `RenderIntegrationCompatible` additionally requires the active URP/HDRP package `17.4+` and its PerfMeter adapter assembly. Query them through the Editor API `PerfMeterSetupActions.GetCompatibilityStatus()` or MCP `perfmeter.compatibility.status`; renderer installation and project setup are reported separately.
 
@@ -32,7 +34,7 @@ Add the npm registry as a Unity Package Manager scoped registry in your Unity pr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.8.19-1"
+    "com.sungeargames.perfmeter": "2026.10.7-1"
   }
 }
 ```
@@ -72,7 +74,7 @@ Pin a tag or commit for repeatable installs:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.8.19-1"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.10.7-1"
   }
 }
 ```
