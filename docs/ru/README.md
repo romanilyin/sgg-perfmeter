@@ -143,7 +143,7 @@ Advanced FPS Counter и Graphy - сильные универсальные ви�
 - Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
 - Vulkan предпочтителен на Android, если важен GPU timing.
 
-Unity от `2022.3` до `6000.3` может импортироваться для проверки компиляции, но оверлей во время выполнения, render integration, overdraw passes и ожидаемая поддержка требуют Unity `6000.4+` с URP `17.4+` или HDRP `17.4+`. HDRP overdraw/heatmap не поддерживаются, но core diagnostics остаются доступны.
+Unity от `2021.3` до `6000.3` может импортироваться для проверки компиляции, но оверлей во время выполнения, render integration, overdraw passes и ожидаемая поддержка требуют Unity `6000.4+` с URP `17.4+` или HDRP `17.4+`. HDRP overdraw/heatmap не поддерживаются, но core diagnostics остаются доступны.
 
 ## Лицензия
 

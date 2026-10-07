@@ -97,18 +97,21 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(error, Is.EqualTo("unsupported_schema_version"));
 		}
 
-		[Test]
-		public void RequiredBooleanPresenceIsEnforced()
+		[TestCase("\n")]
+		[TestCase("\r\n")]
+		public void RequiredBooleanPresenceIsEnforced(string lineEnding)
 		{
-			string request = ReadFixture("request-v1.json");
-			string missingRequestBoolean = request.Replace("    \"include_action_tree\": true,\n", string.Empty);
+			string request = ReadFixtureWithLineEnding("request-v1.json", lineEnding);
+			string missingRequestBoolean = request.Replace("    \"include_action_tree\": true," + lineEnding, string.Empty);
 			string duplicateRequestBoolean = request.Replace(
 				"    \"include_action_tree\": true,",
 				"    \"include_action_tree\": true, \"include_action_tree\": false,");
 			PerfMeterRenderDocAnalysisRequest parsedRequest = ReadRequest();
-			string failure = ReadFixture("error-v1.json");
-			string missingErrorBoolean = failure.Replace("    \"retryable\": false\n", string.Empty);
+			string failure = ReadFixtureWithLineEnding("error-v1.json", lineEnding);
+			string missingErrorBoolean = failure.Replace("," + lineEnding + "    \"retryable\": false", string.Empty);
 
+			Assert.That(missingRequestBoolean, Is.Not.EqualTo(request), "The fixture mutation must remove the request boolean.");
+			Assert.That(missingErrorBoolean, Is.Not.EqualTo(failure), "The fixture mutation must remove the error boolean.");
 			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadRequest(missingRequestBoolean, out _, out string error), Is.False);
 			Assert.That(error, Is.EqualTo("missing_required_boolean"));
 			Assert.That(PerfMeterRenderDocAnalyzerProtocol.TryReadRequest(duplicateRequestBoolean, out _, out error), Is.False);
@@ -117,11 +120,14 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(error, Is.EqualTo("missing_required_boolean"));
 		}
 
-		[Test]
-		public void RequiredFieldsMustAppearAtCanonicalPathsAndOnce()
+		[TestCase("\n")]
+		[TestCase("\r\n")]
+		public void RequiredFieldsMustAppearAtCanonicalPathsAndOnce(string lineEnding)
 		{
-			string request = ReadFixture("request-v1.json");
-			string movedBoolean = request.Replace("    \"include_action_tree\": true,\n", string.Empty).Replace(
+			string request = ReadFixtureWithLineEnding("request-v1.json", lineEnding);
+			string withoutBoolean = request.Replace("    \"include_action_tree\": true," + lineEnding, string.Empty);
+			Assert.That(withoutBoolean, Is.Not.EqualTo(request), "The fixture mutation must remove the canonical boolean before moving it.");
+			string movedBoolean = withoutBoolean.Replace(
 				"\"schema_version\": 1,",
 				"\"schema_version\": 1, \"include_action_tree\": true,");
 			string result = ReadFixture("result-v1.json");
@@ -410,6 +416,11 @@ namespace SGG.PerfMeter.Tests.EditMode
 		private static string ReadFixture(string fileName)
 		{
 			return PerfMeterTestAssets.ReadRenderDocAnalyzerAsset(FixtureRoot + fileName);
+		}
+
+		private static string ReadFixtureWithLineEnding(string fileName, string lineEnding)
+		{
+			return ReadFixture(fileName).Replace("\r\n", "\n").Replace("\n", lineEnding);
 		}
 
 		private static string ReadSchema(string fileName)

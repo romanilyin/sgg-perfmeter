@@ -11,7 +11,7 @@ SGG PerfMeter est distribue comme package Unity nomme `com.sungeargames.perfmete
 - La capture native RenderDoc optionnelle prend uniquement en charge l'Editor Unity Windows x64 avec Direct3D 11, Direct3D 12 ou Vulkan; Development Player, Linux natif, IL2CPP, mobile et macOS natif ne sont pas pris en charge.
 - Le package UPM reste sans binaire et n'installe jamais RenderDoc. FTUE peut seulement telecharger ou installer localement le bridge publie separement et epingle par taille, SHA-256 et contrat PE AMD64; un redemarrage de l'Editor est ensuite requis.
 
-Les metadonnees du package conservent Unity `2022.3` comme plancher de securite pour l'import et les verifications de compilation. La cible runtime actuellement prise en charge est Unity `6000.4+` avec URP `17.4+` Render Graph ou HDRP `17.4+` Custom Pass integration.
+Les metadonnees du package conservent Unity `2021.3` comme plancher de securite pour l'import et les verifications de compilation. La cible runtime actuellement prise en charge est Unity `6000.4+` avec URP `17.4+` Render Graph ou HDRP `17.4+` Custom Pass integration.
 
 Ce sont des niveaux de compatibilite distincts: `ImportCompatible` ne promet pas un runtime pris en charge; `CoreRuntimeCompatible` exige Unity `6000.4+` sans pipeline specifique; `RenderIntegrationCompatible` exige en plus URP/HDRP actif `17.4+` et l'adapter PerfMeter. Consultez-les via `PerfMeterSetupActions.GetCompatibilityStatus()` ou MCP `perfmeter.compatibility.status`; la configuration readiness est rapportee separement.
 

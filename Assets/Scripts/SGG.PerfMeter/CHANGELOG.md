@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 2026.10.7-1
+
+- Lowered the package import floor to Unity `2021.3`, with guarded frame-timing, refresh-rate, and UI Toolkit APIs. Thanks to [@mihvotak](https://github.com/mihvotak) for [#37](https://github.com/romanilyin/sgg-perfmeter/pull/37).
+- Corrected the fractional refresh-rate API guard to Unity `2022.2+`, preserving the integer fallback on Unity `2021.3` and `2022.1`.
+- Made analyzer-protocol fixture tests cover both LF and CRLF, and gave functional asynchronous-export tests bounded, monotonic waiting with explicit timeout diagnostics.
+- Isolated strict zero-allocation test measurements from assertion boxing under Unity 7 CoreCLR without changing runtime workloads or the `0 B` budget.
+- Older Unity versions are import-safe only; officially supported runtime diagnostics remain Unity `6000.4+` with URP/HDRP `17.4+` integration. Unity 7 alpha validation is compatibility evidence, not a stable-version support guarantee.
+- Verified import/compile on Unity `2021.3.45f2`, `2022.3.62f3`, `6000.1.17f1`, `6000.2.15f1`, and `6000.3.20f1`.
+- Verified compile, full URP EditMode (557 passed, one opt-in RenderDoc replay test ignored), and PlayMode (20/20) on each of Unity `6000.4.12f1`, `6000.5.9f1`, `6000.6.4f1`, `6000.7.0b3`, and Unity 7 `7000.0.0a7`. HDRP adapter compilation passed on the same five editors with SRP `17.4.0`, `17.5.0`, `17.6.0`, and `17.7.0` as appropriate. Validation is Windows x64 Editor/Direct3D 12; no new player/device/native capture coverage is claimed.
+
 ## 2026.9.6-2
 
 - Changed the default target from 60 FPS to 240 FPS (4.17 ms frame budget) across missing/invalid settings, built-in presets, runtime fallback state, and package samples. Explicit project targets remain unchanged.

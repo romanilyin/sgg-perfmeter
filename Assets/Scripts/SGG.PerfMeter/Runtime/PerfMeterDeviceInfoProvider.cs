@@ -20,7 +20,7 @@ namespace SGG.PerfMeter
 		private static PerfMeterDeviceSnapshot CreateSnapshotCore()
 		{
 			Resolution currentResolution = Screen.currentResolution;
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2022_2_OR_NEWER
 			RefreshRate currentRefreshRate = currentResolution.refreshRateRatio;
 #else
 			int currentRefreshRate = currentResolution.refreshRate;
@@ -58,7 +58,7 @@ namespace SGG.PerfMeter
 				Screen.height,
 				currentResolution.width,
 				currentResolution.height,
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2022_2_OR_NEWER
 				currentRefreshRate.numerator,
 				currentRefreshRate.denominator,
 				currentRefreshRate.value,
@@ -100,7 +100,7 @@ namespace SGG.PerfMeter
 
 			if (DisplaysBuffer.Count == 0)
 			{
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2022_2_OR_NEWER
 				RefreshRate fallbackRefreshRate = currentResolution.refreshRateRatio;
 #else
 				int fallbackRefreshRate = currentResolution.refreshRate;
@@ -116,7 +116,7 @@ namespace SGG.PerfMeter
 						0,
 						currentResolution.width,
 						currentResolution.height,
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2022_2_OR_NEWER
 						fallbackRefreshRate.numerator,
 						fallbackRefreshRate.denominator,
 						fallbackRefreshRate.value,
