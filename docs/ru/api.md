@@ -127,6 +127,7 @@ PerformanceMeter.SetOverlayTheme(PerfMeterOverlayTheme.ClassicDark);
 PerformanceMeter.SetOverlayFontFamily(PerfMeterOverlayFontFamily.Manrope);
 PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.FullDiagnostics);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
+PerfMeterMutationResultSnapshot budgetMutation = PerformanceMeter.TrySetTargetFps(PerfMeterTargetFps.Fps120);
 ```
 
 Устаревшие режимы оверлея и семантические флаги модулей остаются доступными для совместимости и фильтрации.
@@ -248,6 +249,8 @@ Schema v1 всегда записывает `SGG.Annotation.SchemaVersion = 1`. 
 Scopes в v1 не должны быть вложенными и обязаны освобождаться после записи описываемой работы. End event очищает все принадлежащие scope ключи, чтобы состояние не протекало в соседний pass. Начальный transport — отдельно устанавливаемый, закреплённый пакетом Windows x64 Editor bridge `2026.8.19-1` с реализацией D3D12; UPM-пакет остаётся без бинарников, а сам RenderDoc PerfMeter не поставляет и не загружает. Более старые capture-only bridges возвращают для аннотаций `BridgeTooOld`. Vulkan, D3D11, Player и resource/object annotations требуют отдельных validation gates.
 
 ## Пользовательские метрики
+
+Для exact Render Graph GPU sampler см. [workflow пользовательских метрик](./workflows.md) и opt-in sample `SamplerGpuMetrics`. Optional URP `PerfMeterProfilingSamplerMetricProvider` реализует тот же provider interface: recording/lifetime sampler принадлежат вызывающему коду, availability явная, CPU observation frame не идентифицирует GPU source frame.
 
 ```csharp
 PerformanceMeter.RegisterCustomMetricProvider(provider);

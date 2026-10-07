@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.10.7-5
+
+- Add an optional URP custom-metric provider for the exact `ProfilingSampler` passed to Render Graph builders (MCP-PR-172), with explicit producer/callback evidence, bounded delayed observations and unavailable reasons. Recording and sampler lifetime remain caller-owned; no named lookup or GPU source-frame attribution is promised. Include an opt-in compute/raster sample and deterministic allocation/availability regressions.
+
 ## 2026.10.7-4
 
 - MCP session export reports `path_policy_violation` / `invalid_path` and a project-local recovery action instead of a misleading schema failure (MCP-PR-195). In-project absolute paths and existing-file refusal remain supported; descriptors explain custom JSON versus built-in CSV sampling.

@@ -1,7 +1,7 @@
 # PerfMeter MCP Problem Reports
 
 Статус: active internal ledger.
-Дата актуализации: 2026-07-19.
+Дата актуализации: 2026-10-07.
 
 Источник raw reports:
 
@@ -12,6 +12,8 @@
 Raw JSON остается в Gateway audit-каталоге. Этот документ хранит PerfMeter ownership, ожидаемое поведение и порядок будущего исправления пакета.
 
 ## PerfMeter-Owned Reports
+
+Новый внешний intake от `2026-10-07` разобран отдельно: [triage и приоритеты](2026-10-07-open-reports-triage.md), [общий stabilization release record](../release/2026.10.7-mcpreports-release.md). В ветке `mcpreports` реализованы и проверены в Editor cleanup (`MCP-PR-240`, increment `2026.10.7-2`), FPS/bootstrap и 60 FPS parsing (`MCP-PR-171`, `2026.10.7-3`), typed path policy/JSON escapes (`MCP-PR-195`, `2026.10.7-4`). Exact-sampler adapter (`MCP-PR-172`) и исходные Player/GPU/Gateway acceptance gates отслеживаются в release record. Промежуточные версии не опубликованы; внешние report IDs не объявлены закрытыми. Статусы исторических `PM-MCP-001..007` ниже не переоткрываются.
 
 | ID | Priority | Status | Scope |
 | --- | --- | --- | --- |

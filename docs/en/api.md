@@ -139,6 +139,7 @@ PerformanceMeter.SetOverlayTheme(PerfMeterOverlayTheme.ClassicDark);
 PerformanceMeter.SetOverlayFontFamily(PerfMeterOverlayFontFamily.Manrope);
 PerformanceMeter.SetOverlayPreset(PerfMeterOverlayPreset.FullDiagnostics);
 PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
+PerfMeterMutationResultSnapshot budgetMutation = PerformanceMeter.TrySetTargetFps(PerfMeterTargetFps.Fps120);
 ```
 
 Legacy overlay modes and semantic module flags remain available for compatibility and filtering.
@@ -299,6 +300,8 @@ Schema v1 always records `SGG.Annotation.SchemaVersion = 1`. Keys are case-sensi
 Scopes are non-nested in v1 and must be disposed after recording the described work. The end event clears every key owned by the scope so state does not leak into a neighboring pass. The initial transport is the separately installed, package-pinned `2026.8.19-1` Windows x64 Editor bridge and implements D3D12; the UPM package remains binary-free and RenderDoc itself is never shipped or loaded by PerfMeter. Older capture-only bridges report `BridgeTooOld` for annotations. Vulkan, D3D11, Player, and resource/object annotations require separate validation gates.
 
 ## Custom Metrics
+
+For exact Render Graph GPU sampler integration, see [Custom Metrics workflow](./workflows.md#custom-metrics) and the opt-in `SamplerGpuMetrics` sample. The optional URP `PerfMeterProfilingSamplerMetricProvider` implements the same provider interface; sampler recording/lifetime are caller-owned, availability is explicit, and CPU observation frames do not identify GPU source frames.
 
 ```csharp
 PerformanceMeter.RegisterCustomMetricProvider(provider);

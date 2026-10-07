@@ -183,6 +183,8 @@ PerfMeterCustomMetricSnapshot[] customMetrics = PerformanceMeter.GetCustomMetric
 
 Пользовательские метрики доступны через API-чтение, экспорт сессии в JSON, latest metrics в MCP и до восьми строк оверлея при включенном модуле `CustomMetrics`.
 
+Для Render Graph timing optional URP assembly предоставляет `PerfMeterProfilingSamplerMetricProvider`. Передайте **тот же sampler instance**, который используется в `AddComputePass` / `AddRasterRenderPass`, зарегистрируйте provider обычным API, включите recording как владелец sampler и вызовите `SetEnabled(true)`. Scheduling/gates передавайте через `ReportProducerState`, а `ReportPassExecution` — из настоящего render function. Unavailable/no-samples/stale остаются явными метриками; sampled zero не равен отсутствию samples. Provider не переключает shared recording, не уничтожает sampler и не включает global profiling. Значения — delayed sampler-wide aggregates; CPU observation frame не является GPU source frame, неизменные значения консервативно устаревают. FTUE installation count не гарантирует arbitrary named GPU markers. В Runtime Workflows добавлен opt-in compute/raster sample с описанием этих ограничений.
+
 ## Инструментация Unity Profiler
 
 Инструментация является внутренней и видна только при профилировании Editor, Development Build или другого profiler-enabled build. В Release player без Profiler эти markers/counters являются no-op и не создают instrumentation data; public API, status, MCP и export schemas не меняются.
