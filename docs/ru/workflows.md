@@ -95,6 +95,8 @@ PerformanceMeter.SetTargetFps(PerfMeterTargetFps.Fps60);
 
 PerfMeter создает и владеет версионированным host UI Toolkit для оверлея: в Unity `6000.4` используется `UIDocument`, а в Unity `6000.5+` — `PanelRenderer`. Собственный host отделен от чужого UI и сохраняет его panel settings и children; при rebuild удаляется только container, принадлежащий PerfMeter.
 
+`PerformanceMeter.TryStop()` также очищает transient runtime/overlay пакета и явно маркированные UI hosts при потерянной ссылке singleton или overlay. Authored/persistent объекты и чужой UI по совпадению имени не удаляются. Незавершённый cleanup capture/graphics ресурсов возвращает `Rejected / PendingCleanup`; перед новым запуском повторите Stop после завершения cleanup операции. В Play Mode уничтожение Unity-объектов завершается в конце кадра. Старый отсоединённый generic UI host без свидетельств ownership нельзя безопасно удалить автоматически.
+
 ## Фоновый сбор
 
 Фоновый режим подходит для тестов, прогонов на устройствах и агентских сценариев без видимого UI.

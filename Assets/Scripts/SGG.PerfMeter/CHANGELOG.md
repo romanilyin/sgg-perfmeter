@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.10.7-2
+
+- Recover stopped PerfMeter-owned transient runtime, overlay and marked UI-host infrastructure even when the runtime singleton or overlay reference was lost (MCP-PR-240). Foreign UI and persistent/authored objects are preserved; pending capture/graphics cleanup returns `PendingCleanup` instead of a false no-change result.
+
 ## 2026.10.7-1
 
 - Lowered the package import floor to Unity `2021.3`, with guarded frame-timing, refresh-rate, and UI Toolkit APIs. Thanks to [@mihvotak](https://github.com/mihvotak) for [#37](https://github.com/romanilyin/sgg-perfmeter/pull/37).

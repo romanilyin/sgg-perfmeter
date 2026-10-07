@@ -36,6 +36,28 @@ namespace SGG.PerfMeter.Tests.PlayMode
 		}
 
 		[UnityTest]
+		public IEnumerator StopRecoversLostSingletonAndOverlayReferenceAfterDeferredDestroy()
+		{
+			PerformanceMeter.EnsureRunning();
+			yield return null;
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic;
+			typeof(PerfMeterRuntime).GetField("_overlay", flags | System.Reflection.BindingFlags.Instance).SetValue(runtime, null);
+			typeof(PerfMeterRuntime).GetField("_instance", flags | System.Reflection.BindingFlags.Static).SetValue(null, null);
+
+			Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.Applied));
+			Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.NoChange));
+			yield return null;
+
+			Assert.That(runtime == null, Is.True);
+			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+			foreach (PerfMeterOwnedInfrastructure marker in Resources.FindObjectsOfTypeAll<PerfMeterOwnedInfrastructure>())
+			{
+				Assert.That(PerfMeterOwnedInfrastructure.IsTransient(marker.gameObject), Is.False);
+			}
+		}
+
+		[UnityTest]
 		public IEnumerator OverlayLifecycleAndSnapshotsUpdateAcrossFrames()
 		{
 			PerformanceMeter.EnsureRunning();

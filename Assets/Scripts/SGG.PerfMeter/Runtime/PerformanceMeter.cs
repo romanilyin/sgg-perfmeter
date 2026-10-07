@@ -578,16 +578,19 @@ namespace SGG.PerfMeter
 
 		public static PerfMeterMutationResultSnapshot TryStop()
 		{
-			bool hadRuntime = PerfMeterRuntime.Instance != null;
-			PerfMeterRuntime.StopRunning();
-			if (PerfMeterRuntime.Instance != null)
+			bool changed = PerfMeterRuntime.StopRunning();
+			if (PerfMeterRuntime.StopRefusedUnownedRuntime)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, PerfMeterRuntimeState.Stopped, GetStatus().State);
+			}
+			if (PerfMeterRuntime.HasStoppedCleanupPending)
 			{
 				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.PendingCleanup, PerfMeterRuntimeState.Stopped, GetStatus().State);
 			}
 
 			return MutationResult(
-				hadRuntime ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
-				hadRuntime ? PerfMeterMutationReason.None : PerfMeterMutationReason.AlreadyInRequestedState,
+				changed ? PerfMeterMutationStatus.Applied : PerfMeterMutationStatus.NoChange,
+				changed ? PerfMeterMutationReason.None : PerfMeterMutationReason.AlreadyInRequestedState,
 				PerfMeterRuntimeState.Stopped,
 				PerfMeterRuntimeState.Stopped);
 		}

@@ -573,6 +573,62 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(coordinator.GetStatus().Warning, Is.EqualTo(warning));
 		}
 
+		[Test]
+		public void RuntimeStopRejectsNestedShutdownFromBackendCallback()
+		{
+			PerformanceMeter.EnsureRunning();
+			FakeBackend backend = new FakeBackend();
+			PerfMeterGraphicsStateCollectionBackendRegistry.Register(backend);
+			PerfMeterGraphicsStateCollectionCoordinator coordinator = new PerfMeterGraphicsStateCollectionCoordinator(new FakeStorage());
+			Assert.That(coordinator.RequestTrace(new PerfMeterGraphicsStateTraceOptions("nested-stop", 10)), Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.Started));
+			SetRuntimeCoordinator(coordinator);
+			PerfMeterMutationResultSnapshot nested = default;
+			backend.OnCancel = () => nested = PerformanceMeter.TryStop();
+
+			Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.Applied));
+			Assert.That(nested.Status, Is.EqualTo(PerfMeterMutationStatus.Rejected));
+			Assert.That(nested.Reason, Is.EqualTo(PerfMeterMutationReason.PendingCleanup));
+			Assert.That(backend.CancelCount, Is.EqualTo(1));
+			Assert.That(PerfMeterRuntime.Instance, Is.Null);
+		}
+
+		[TestCase(false)]
+		[TestCase(true)]
+		public void RuntimeStopPreservesPendingGraphicsCleanupAndReportsSuccessfulRetry(bool loseSingleton)
+		{
+			PerformanceMeter.EnsureRunning();
+			FakeBackend backend = new FakeBackend();
+			FakeStorage storage = new FakeStorage { DeleteSucceeds = false };
+			PerfMeterGraphicsStateCollectionBackendRegistry.Register(backend);
+			PerfMeterGraphicsStateCollectionCoordinator coordinator = new PerfMeterGraphicsStateCollectionCoordinator(storage);
+			Assert.That(coordinator.RequestTrace(new PerfMeterGraphicsStateTraceOptions("pending-stop", 10)), Is.EqualTo(PerfMeterGraphicsStateCollectionRequestResult.Started));
+			SetRuntimeCoordinator(coordinator);
+			if (loseSingleton)
+			{
+				typeof(PerfMeterRuntime).GetField("_instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).SetValue(null, null);
+			}
+			try
+			{
+				Assert.That(PerformanceMeter.TryStop().Reason, Is.EqualTo(PerfMeterMutationReason.PendingCleanup));
+				Assert.That(coordinator.HasPendingCleanup, Is.True);
+				Assert.That(PerformanceMeter.TryEnsureRunning().Succeeded, Is.False);
+				storage.DeleteSucceeds = true;
+				Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.Applied));
+				Assert.That(coordinator.HasPendingCleanup, Is.False);
+				Assert.That(PerformanceMeter.TryStop().Status, Is.EqualTo(PerfMeterMutationStatus.NoChange));
+			}
+			finally
+			{
+				storage.DeleteSucceeds = true;
+				PerformanceMeter.Stop();
+			}
+		}
+
+		private static void SetRuntimeCoordinator(PerfMeterGraphicsStateCollectionCoordinator coordinator)
+		{
+			typeof(PerfMeterRuntime).GetField("_graphicsStateCollectionCoordinator", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(PerfMeterRuntime.Instance, coordinator);
+		}
+
 		private sealed class FakeBackend : IPerfMeterGraphicsStateCollectionBackend
 		{
 			internal bool BeginSucceeds { get; set; } = true;
@@ -589,6 +645,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			internal int PrewarmCount { get; private set; }
 			internal Action OnEnd { get; set; }
 			internal Action OnPrewarm { get; set; }
+			internal Action OnCancel { get; set; }
 
 			public string Id
 			{
@@ -627,6 +684,9 @@ namespace SGG.PerfMeter.Tests.EditMode
 			public void CancelTrace()
 			{
 				CancelCount++;
+				Action callback = OnCancel;
+				OnCancel = null;
+				callback?.Invoke();
 				if (ThrowOnCancel)
 				{
 					throw new InvalidOperationException("cancel failed");

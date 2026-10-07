@@ -103,6 +103,8 @@ The overlay uses UI Toolkit and does not intercept gameplay input. It supports F
 
 PerfMeter creates and owns a versioned UI Toolkit host for the overlay: Unity `6000.4` uses `UIDocument`, while Unity `6000.5+` uses `PanelRenderer`. The owned host is separate from foreign UI and preserves foreign panel settings and children; rebuilds remove only the PerfMeter-owned container.
 
+`PerformanceMeter.TryStop()` also recovers transient package-owned runtime/overlay objects and explicitly marked UI hosts after a lost singleton or overlay reference. It does not remove authored/persistent objects or foreign UI by name. Unfinished capture/graphics resource cleanup returns `Rejected / PendingCleanup`; retry after the operation's cleanup completes before starting again. In Play Mode, Unity object destruction completes at the end of the frame. Legacy detached generic UI hosts without ownership evidence cannot safely be removed automatically.
+
 ## Background Collection
 
 Use background mode for tests, device runs, or agent workflows where visible UI is not needed.
