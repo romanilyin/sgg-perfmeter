@@ -555,11 +555,18 @@ namespace SGG.PerfMeter.Editor.Mcp
 
 		public static string SessionExport(string argsJson)
 		{
-			string path = RequireString(argsJson, "path");
+			if (!TryExtractString(argsJson, "path", out string path))
+			{
+				throw new InvalidOperationException("schema_validation_failed\nArgument path must be a string");
+			}
 			string format = RequireString(argsJson, "format");
-			string safePath = ResolveProjectLocalPath(path);
 			string normalizedFormat = NormalizeEnumToken(format);
 			PerfMeterSessionSummarySnapshot summary = RuntimePerformanceMeter.GetSessionSummary();
+			if (!TryResolveProjectLocalPath(path, out string safePath, out string pathError))
+			{
+				return SessionCommandJson(false, string.Empty, pathError, "not_exported", summary,
+					nextAction: "Choose a new project-relative destination such as Temp/PerfMeter/session.json (or .csv). Paths must stay inside the project; do not retry this unsafe export automatically.");
+			}
 			PerfMeterSessionSampleSnapshot[] samples = RuntimePerformanceMeter.GetSessionSamples();
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			PerfMeterSessionExportResult result;
@@ -982,13 +989,18 @@ namespace SGG.PerfMeter.Editor.Mcp
 			string status,
 			PerfMeterSessionSummarySnapshot summary,
 			string mutationOperation = "",
-			PerfMeterMutationResultSnapshot mutation = default)
+			PerfMeterMutationResultSnapshot mutation = default,
+			string nextAction = "")
 		{
 			StringBuilder builder = new StringBuilder(1024);
 			builder.Append("{\"success\":").Append(JsonBool(success));
 			builder.Append(",\"path\":").Append(JsonString(path));
 			builder.Append(",\"error\":").Append(JsonString(error));
 			builder.Append(",\"status\":").Append(JsonString(status));
+			if (!string.IsNullOrEmpty(nextAction))
+			{
+				builder.Append(",\"next_action\":").Append(JsonString(nextAction));
+			}
 			builder.Append(",\"summary\":");
 			AppendSessionSummary(builder, summary);
 			builder.Append(",\"self_overhead_window\":");
@@ -1804,10 +1816,42 @@ namespace SGG.PerfMeter.Editor.Mcp
 					return true;
 				}
 
-				if (character == '\\' && index + 1 < json.Length)
+				if (character == '\\')
 				{
+					if (index + 1 >= json.Length) return false;
 					index++;
 					character = json[index];
+					switch (character)
+					{
+						case '"':
+						case '\\':
+						case '/':
+							break;
+						case 'b': character = '\b'; break;
+						case 'f': character = '\f'; break;
+						case 'n': character = '\n'; break;
+						case 'r': character = '\r'; break;
+						case 't': character = '\t'; break;
+						case 'u':
+							if (index + 4 >= json.Length) return false;
+							int codeUnit = 0;
+							for (int digitIndex = 1; digitIndex <= 4; digitIndex++)
+							{
+								char hex = json[index + digitIndex];
+								int digit = hex >= '0' && hex <= '9' ? hex - '0' :
+									hex >= 'a' && hex <= 'f' ? hex - 'a' + 10 : hex >= 'A' && hex <= 'F' ? hex - 'A' + 10 : -1;
+								if (digit < 0) return false;
+								codeUnit = (codeUnit << 4) | digit;
+							}
+							character = (char)codeUnit;
+							index += 4;
+							break;
+						default: return false;
+					}
+				}
+				else if (character < 0x20)
+				{
+					return false;
 				}
 
 				builder.Append(character);
@@ -2048,18 +2092,44 @@ namespace SGG.PerfMeter.Editor.Mcp
 			throw new InvalidOperationException("schema_validation_failed\nArgument source must be Auto, MainCamera, NameFilter, or FirstGameCamera");
 		}
 
-		private static string ResolveProjectLocalPath(string path)
+		private static bool TryResolveProjectLocalPath(string path, out string fullPath, out string error)
 		{
-			string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-			string combinedPath = Path.IsPathRooted(path) ? path : Path.Combine(projectRoot, path);
-			string fullPath = Path.GetFullPath(combinedPath);
-			string normalizedRoot = projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-			if (!fullPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+			fullPath = string.Empty;
+			error = string.Empty;
+			if (string.IsNullOrWhiteSpace(path) || path.IndexOf('\0') >= 0)
 			{
-				throw new InvalidOperationException("schema_validation_failed\nArgument path must stay inside the Unity project directory");
+				error = "invalid_path";
+				return false;
+			}
+			try
+			{
+				string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+				string combinedPath = Path.IsPathRooted(path) ? path : Path.Combine(projectRoot, path);
+				string resolved = Path.GetFullPath(combinedPath);
+				string normalizedRoot = projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+				StringComparison comparison = Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+				if (!resolved.StartsWith(normalizedRoot, comparison))
+				{
+					error = "path_policy_violation";
+					return false;
+				}
+				fullPath = resolved;
+				return true;
+			}
+			catch (ArgumentException)
+			{
+				error = "invalid_path";
+			}
+			catch (NotSupportedException)
+			{
+				error = "invalid_path";
+			}
+			catch (PathTooLongException)
+			{
+				error = "invalid_path";
 			}
 
-			return fullPath;
+			return false;
 		}
 
 		private static int FindPropertyColon(string json, string property)

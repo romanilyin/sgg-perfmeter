@@ -47,6 +47,8 @@ Assets/Scripts/SGG.PerfMeter/Editor/Mcp/mcp.commands.json
 | `perfmeter.capture.export.request` | Поставить single-flight export в очередь и вернуть export ID и прогресс. |
 | `perfmeter.capture.export.status` | Прочитать фазу, прогресс, отмену, retry и authority артефакта. |
 | `perfmeter.capture.export.cancel` | Запросить отмену соответствующего активного export. |
+
+Session export принимает относительный project-local путь и absolute внутри проекта. Строка за пределами проекта возвращает `success:false`, `status:"not_exported"`, `error:"path_policy_violation"` и project-local `next_action`; некорректный/пустой путь — `invalid_path`. Ошибки типа аргумента остаются schema failures. Используйте новое имя: `file_exists` сохраняет исходные bytes. Unsafe export автоматически не повторяется. JSON содержит retained sampled custom metrics; CSV — только встроенные колонки.
 | `perfmeter.capture.capabilities` | Прочитать schema, quota, retention, screenshot и provenance capabilities. |
 
 Предпочитайте `perfmeter.capture.export.request`, затем опрашивайте `perfmeter.capture.export.status` и при необходимости вызывайте `perfmeter.capture.export.cancel`. Legacy-команда `perfmeter.capture.export` блокируется для совместимости. Ответы включают универсальный envelope `external_artifact` с association, authority, finalization, content, политикой privacy/share, размером, а также source- и post-copy-хешами. Read-only команды lease предоставляют process-local состояние конфликтов без получения lease.

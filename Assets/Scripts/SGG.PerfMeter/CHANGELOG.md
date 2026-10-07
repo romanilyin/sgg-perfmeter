@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2026.10.7-4
+
+- MCP session export reports `path_policy_violation` / `invalid_path` and a project-local recovery action instead of a misleading schema failure (MCP-PR-195). In-project absolute paths and existing-file refusal remain supported; descriptors explain custom JSON versus built-in CSV sampling.
+- Decode JSON string escapes correctly in MCP arguments so Unicode paths and escaped invalid characters reach path validation unchanged.
+
 ## 2026.10.7-3
 
 - Preserve a successful explicit target-FPS override across automatic Resources bootstrap without suppressing unrelated settings (MCP-PR-171). Add `TrySetTargetFps` with requested/effective mutation results; explicit full JSON settings remain authoritative.

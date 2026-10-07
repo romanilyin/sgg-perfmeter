@@ -47,6 +47,8 @@ The goal is structured JSON output for agents instead of screenshot parsing, ove
 | `perfmeter.capture.export.request` | Queue a single-flight bundle export and return its export ID and progress. |
 | `perfmeter.capture.export.status` | Read export phase, progress, cancellation, retry, and artifact authority. |
 | `perfmeter.capture.export.cancel` | Request cancellation of the matching active export. |
+
+Session export accepts project-relative paths and absolute paths inside the project. A string outside the project returns `success:false`, `status:"not_exported"`, `error:"path_policy_violation"` and a project-local `next_action`; malformed/empty paths return `invalid_path`. Argument-type errors remain schema failures. Use a new destination: `file_exists` preserves existing bytes. Export is unsafe and must not be retried automatically. JSON includes retained sampled custom metrics; CSV has built-in columns only.
 | `perfmeter.capture.capabilities` | Read bundle schema, quota, retention, screenshot, and provenance capabilities. |
 
 Prefer `perfmeter.capture.export.request`, then poll `perfmeter.capture.export.status` and optionally call `perfmeter.capture.export.cancel`. The legacy `perfmeter.capture.export` command blocks for compatibility. Export responses include the generic `external_artifact` envelope with association, authority, finalization, content, privacy/share policy, size, and source/post-copy hashes. The read-only lease commands expose process-local conflict state without acquiring a lease.
