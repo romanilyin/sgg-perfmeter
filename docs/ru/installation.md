@@ -11,6 +11,8 @@ SGG PerfMeter распространяется как пакет Unity с име
 - Опциональный native RenderDoc capture поддерживается только в Windows x64 Unity Editor с Direct3D 11, Direct3D 12 или Vulkan; Development Player, Linux native, IL2CPP, mobile и macOS native не поддерживаются.
 - UPM-пакет остается без бинарников и никогда не устанавливает RenderDoc. FTUE загружает или локально устанавливает только отдельно опубликованный bridge с точным совпадением размера, SHA-256 и AMD64 native PE contract; после этого требуется перезапуск Editor.
 
+В сборках Dedicated Server runtime-сборки PerfMeter и runtime-примеры исключаются по `UNITY_SERVER`; устаревшая платформа Linux headless simulation исключается через имя `CloudRendering` в asmdef. Инструменты Editor остаются доступны при выбранной серверной платформе. Свои вызовы PerfMeter защищайте условием `#if !UNITY_SERVER || UNITY_EDITOR` или таким же define constraint и исключением `CloudRendering` в asmdef. Запуск обычного клиента с `-batchmode -nographics` не выбирает сборку Dedicated Server.
+
 Метаданные пакета используют Unity `2021.3` как import-safety floor для проверок импорта и компиляции. Актуальная поддерживаемая runtime-цель - Unity `6000.4+` с URP `17.4+` Render Graph или HDRP `17.4+` Custom Pass integration.
 
 Точные проверенные версии Editor/SRP указаны в [матрице релиза 2026.10.7-1](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.7-1), включая импорт/компиляцию на Unity `2021.3.45f2` и проверки Unity 7 `7000.0.0a7` alpha. Проверка alpha не означает гарантию поддержки стабильной Unity 7.

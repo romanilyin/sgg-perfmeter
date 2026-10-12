@@ -6,12 +6,15 @@
         "Unity.AdaptivePerformance"
     ],
     "includePlatforms": [],
-    "excludePlatforms": [],
+    "excludePlatforms": [
+        "CloudRendering"
+    ],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR",
         "UNITY_6000_4_OR_NEWER",
         "SGG_PERFMETER_ADAPTIVE_PERFORMANCE_5_1_OR_NEWER"
     ],

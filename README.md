@@ -212,6 +212,8 @@ Use [Comparison](./docs/en/comparison.md) as product and architecture context ra
 - Vulkan is preferred on Android when GPU timing matters.
 - Optional native RenderDoc capture is supported only in the Windows x64 Unity Editor on Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are not supported.
 
+Dedicated Server builds exclude PerfMeter runtime assemblies and runtime samples via `UNITY_SERVER`; the legacy Linux headless simulation target is excluded with the asmdef platform name `CloudRendering`. Editor tooling remains available with a server build target selected. Guard your own PerfMeter calls with `#if !UNITY_SERVER || UNITY_EDITOR`, or apply the same define constraint and `CloudRendering` exclusion to their assembly. Launching a regular client with `-batchmode -nographics` does not select the Dedicated Server build target.
+
 Unity `2021.3` through `6000.3` may be import-safe for compile checks, but runtime overlay, render integration, overdraw passes, and support expectations target Unity `6000.4+` with URP `17.4+` or HDRP `17.4+`. Some features may not work in versions before `6000.4`.
 
 In the Editor, `PerfMeterSetupActions.GetCompatibilityStatus()` reports `ImportCompatible`, `CoreRuntimeCompatible`, and `RenderIntegrationCompatible` independently with the detected Unity/SRP versions and explicit reasons. The same structured state is available through `perfmeter.compatibility.status` and inside `perfmeter.setup.status`; render compatibility does not imply that renderer assets are already configured.

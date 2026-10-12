@@ -1,0 +1,13 @@
+{
+    "name": "SGG.PerfMeter.Samples.BootstrapAndSettings",
+    "references": [
+        "SGG.PerfMeter"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [
+        "CloudRendering"
+    ],
+    "defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR"
+    ]
+}

@@ -143,6 +143,8 @@ Advanced FPS Counter и Graphy - сильные универсальные ви�
 - Frame Timing Stats включен перед использованием FrameTimingManager в билдах.
 - Vulkan предпочтителен на Android, если важен GPU timing.
 
+В сборках Dedicated Server runtime-сборки PerfMeter и runtime-примеры исключаются по `UNITY_SERVER`; устаревшая платформа Linux headless simulation исключается через имя `CloudRendering` в asmdef. Инструменты Editor остаются доступны при выбранной серверной платформе. Свои вызовы PerfMeter защищайте условием `#if !UNITY_SERVER || UNITY_EDITOR` или таким же define constraint и исключением `CloudRendering` в asmdef. Запуск обычного клиента с `-batchmode -nographics` не выбирает сборку Dedicated Server.
+
 Unity от `2021.3` до `6000.3` может импортироваться для проверки компиляции, но оверлей во время выполнения, render integration, overdraw passes и ожидаемая поддержка требуют Unity `6000.4+` с URP `17.4+` или HDRP `17.4+`. HDRP overdraw/heatmap не поддерживаются, но core diagnostics остаются доступны.
 
 ## Лицензия

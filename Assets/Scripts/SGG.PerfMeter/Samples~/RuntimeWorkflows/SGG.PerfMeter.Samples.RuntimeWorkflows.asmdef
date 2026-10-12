@@ -1,0 +1,13 @@
+{
+    "name": "SGG.PerfMeter.Samples.RuntimeWorkflows",
+    "references": [
+        "SGG.PerfMeter"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [
+        "CloudRendering"
+    ],
+    "defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR"
+    ]
+}

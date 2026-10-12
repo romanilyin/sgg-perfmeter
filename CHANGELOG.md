@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.10.12-1
+
+- Exclude runtime integrations, PlayMode assemblies and runtime samples from Dedicated Server builds using `UNITY_SERVER`, while preserving Editor tooling for server targets. Also exclude the legacy `CloudRendering` headless simulation target. Thanks to [@AndrzejKebab](https://github.com/AndrzejKebab) for reporting [#42](https://github.com/romanilyin/sgg-perfmeter/issues/42).
+
 ## 2026.10.7-6
 
 - Use the Unity 6000.4+ entity identity API in the imported GPU sample, including the supported URP 17.4 boundary.

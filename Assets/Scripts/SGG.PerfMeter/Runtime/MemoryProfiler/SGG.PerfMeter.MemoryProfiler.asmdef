@@ -6,12 +6,15 @@
 		"Unity.MemoryProfiler"
 	],
 	"includePlatforms": [],
-	"excludePlatforms": [],
+	"excludePlatforms": [
+        "CloudRendering"
+    ],
 	"allowUnsafeCode": false,
 	"overrideReferences": false,
 	"precompiledReferences": [],
 	"autoReferenced": true,
 	"defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR",
 		"UNITY_6000_4_OR_NEWER",
 		"SGG_PERFMETER_MEMORY_PROFILER_1_1_OR_NEWER"
 	],
