@@ -8,12 +8,15 @@
         "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
-    "excludePlatforms": [],
+    "excludePlatforms": [
+        "CloudRendering"
+    ],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR",
         "UNITY_6000_4_OR_NEWER",
         "SGG_PERFMETER_URP_17_4_OR_NEWER"
     ],

@@ -5,12 +5,15 @@
 		"SGG.PerfMeter"
 	],
 	"includePlatforms": [],
-	"excludePlatforms": [],
+	"excludePlatforms": [
+        "CloudRendering"
+    ],
 	"allowUnsafeCode": false,
 	"overrideReferences": false,
 	"precompiledReferences": [],
 	"autoReferenced": true,
 	"defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR",
 		"UNITY_6000_4_OR_NEWER"
 	],
 	"versionDefines": [],

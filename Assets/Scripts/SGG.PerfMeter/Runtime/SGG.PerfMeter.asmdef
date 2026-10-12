@@ -3,12 +3,16 @@
 	"rootNamespace": "SGG.PerfMeter",
 	"references": [],
     "includePlatforms": [],
-    "excludePlatforms": [],
+    "excludePlatforms": [
+        "CloudRendering"
+    ],
     "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

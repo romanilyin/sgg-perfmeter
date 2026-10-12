@@ -10,6 +10,8 @@ SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmete
 - Frame Timing Stats enabled before relying on FrameTimingManager in builds.
 - Optional native RenderDoc capture requires the Windows x64 Unity Editor with Direct3D 11, Direct3D 12, or Vulkan. Development Player, Linux native, IL2CPP, mobile, and macOS native paths are unsupported.
 
+Dedicated Server builds exclude PerfMeter runtime assemblies and runtime samples via `UNITY_SERVER`; the legacy Linux headless simulation target is excluded with the asmdef platform name `CloudRendering`. Editor tooling remains available with a server build target selected. Guard your own PerfMeter calls with `#if !UNITY_SERVER || UNITY_EDITOR`, or apply the same define constraint and `CloudRendering` exclusion to their assembly. Launching a regular client with `-batchmode -nographics` does not select the Dedicated Server build target.
+
 Package metadata keeps Unity `2021.3` as an import-safety floor for import and compile checks. The current supported runtime target is Unity `6000.4+` with URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration.
 
 See the [2026.10.7-1 release compatibility matrix](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.7-1) for exact tested editor/SRP versions, including Unity `2021.3.45f2` import/compile and Unity 7 `7000.0.0a7` alpha checks. Alpha validation is not a stable-version support guarantee.
