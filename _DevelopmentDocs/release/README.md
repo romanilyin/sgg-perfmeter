@@ -5,37 +5,22 @@
 ## Current Release
 
 - Release candidate: none.
-- Current published release: `2026.10.7-6`
-- Current npm `latest`: `2026.10.7-6`
-- Previous published release: `2026.10.7-1`
-- First public release: `2026.6.5-1`
-- GitHub Release type: normal release
-- Release merge: [PR #40](https://github.com/romanilyin/sgg-perfmeter/pull/40) merged to `main` with an explicitly authorized admin bypass as commit `f4a2411bd560b996fc736c0c83bd7d0a8c497535`
-- Last published GitHub Release: https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.7-6 (published 2026-10-07 UTC)
-- Annotated Git tag `2026.10.7-6` dereferences to main merge commit `f4a2411bd560b996fc736c0c83bd7d0a8c497535`
-- Last published npm: `com.sungeargames.perfmeter@2026.10.7-6` through Trusted Publishing OIDC with verified SLSA provenance v1
-- npm dist-tag: `latest` -> `2026.10.7-6`
-- Last published npm workflow run: https://github.com/romanilyin/sgg-perfmeter/actions/runs/37687137447 (completed successfully and published npm)
-- Last published npm SHA-1: `2f035e1b9cb35f6cf95e9e40354fea6efaafb6fa`
-- Last published npm integrity: `sha512-8yyfgnz2tLr7OYMAqZ8inBLiIavAaBEEsncJPgfW/uDt2pvzkVzx96yLt86VpjnF8GsCU0o1zxJmfCUZsvtFYg==`
-- Registry signature key ID: `SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U`
-- npm audit signatures: one package's registry signature and provenance attestation verified.
-- SLSA provenance v1 resolves `refs/tags/2026.10.7-6`, commit `f4a2411bd560b996fc736c0c83bd7d0a8c497535`, and workflow run `37687137447`. All 408 tarball files match immutable Git blobs byte-for-byte.
-- Repository-facing public npm and Git UPM install examples point to verified `2026.10.7-6` after both clean consumers passed. Pins advance through one authorized docs-only PR without another release. The immutable release tag retains prepublication install examples; neither tag nor tarball is rewritten. The optional native bridge remains pinned to `2026.8.19-1`; no new native-capture matrix is claimed.
-- Package: `com.sungeargames.perfmeter`
-- Last published import-only validation: `2022.3.62f3` / URP `14.0.12`, core/Editor compile/type loading. Older versions are not supported runtime targets.
-- Last published primary validation: `6000.6.4f1` / URP `17.6.0`: 148 targeted EditMode, 618 full EditMode passed with one expected opt-in replay ignored, 25/25 full PlayMode. Local exact-sampler D3D12 GPU smoke passed. HDRP `17.6.0` compile/type loading passed; no new HDRP GPU/PlayMode result claimed.
-- `6000.5.9f1` / URP `17.5.0`: imported sample compile plus 25/25 adapter cases. `6000.7.0b3` and `7000.0.0a7`: URP compile/type loading only. Fresh true `6000.4` / `17.4` validation is deferred; two IL2CPP builds succeeded but actual Player runtime timed out and remains unverified.
-- The prior `2026.10.7-1` ten-version matrix remains historical evidence. This release uses one primary full-suite version; beta/alpha compile results apply only to the exact tested versions and do not imply stable-release support.
-- Fresh Git UPM and npm scoped-registry consumers on `6000.6.4f1` passed compile/core/Editor/URP type loading and installed-source/authored-metadata comparison. Git resolved the exact annotated-tag merge commit; npm resolved `2026.10.7-6` from the public registry.
-- Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration
-- Release work date: 2026-10-07
-- GitHub Actions npm workflow: `.github/workflows/publish-npm.yml`, npm Trusted Publishing with OIDC
+- Current published GitHub/npm release: `2026.10.12-1`; npm `latest` points to this version.
+- Previous published release: `2026.10.7-6`.
+- First public release: `2026.6.5-1`.
+- Package: `com.sungeargames.perfmeter`.
+- [PR #43](https://github.com/romanilyin/sgg-perfmeter/pull/43) merged to main as `df4d00ce95bdb2a72d2bc20ecc7119b1214f6fb6` using the user's explicitly authorized admin merge; branch protection is unchanged.
+- Normal [GitHub Release 2026.10.12-1](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.12-1), published 2026-10-12 UTC. Its annotated tag resolves to the merge commit.
+- npm Trusted Publishing [workflow 38266617427](https://github.com/romanilyin/sgg-perfmeter/actions/runs/38266617427) succeeded with verified SLSA v1 provenance. All 414 tarball files match the tag; registry signature and provenance verification passed.
+- npm SHA-1: `fe712da09d270a1a764099a91b0580defc82bff2`.
+- Unity `6000.6.5f1` / URP `17.6.0`: 621 EditMode passed with one expected opt-in replay skipped, 25/25 PlayMode passed. Windows x64 Mono Development Dedicated Server build/runtime passed with no PerfMeter assemblies, 180 frames and zero runtime errors. Server-target Editor tooling and imported samples passed.
+- User-approved validation scope is one Unity version. The prior multi-version matrix remains historical evidence; no new Linux/macOS/cloud native build or optional-package device validation is claimed.
+- Fresh Git UPM and npm scoped-registry consumers on the same Unity version passed compile/type loading and installed-source comparison. Public install pins advance only after these checks.
+- Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration. Dedicated Server/CloudRendering runtime assemblies are excluded. Optional native bridge remains pinned to `2026.8.19-1`.
 
-Current release record: `_DevelopmentDocs/release/2026.10.7-mcpreports-release.md`.
-Current release candidate record: none.
-Previous published release record: `_DevelopmentDocs/release/2026.10.7-1-unity-matrix-release.md`.
-Earlier published release record: `_DevelopmentDocs/release/2026.8.19-1-renderdoc-annotations-release.md`.
+Current release record: `_DevelopmentDocs/release/2026.10.12-dedicated-server-release.md`.
+Previous release record: `_DevelopmentDocs/release/2026.10.7-mcpreports-release.md`.
+Historical full matrix: `_DevelopmentDocs/release/2026.10.7-1-unity-matrix-release.md`.
 Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
 
 ## Local Gates

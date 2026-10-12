@@ -1,6 +1,6 @@
 # Installation
 
-SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmeter`. The current public npm registry package is `2026.10.7-6`; Git UPM and local-copy installs remain available.
+SGG PerfMeter is distributed as a Unity package named `com.sungeargames.perfmeter`. The current public npm registry package is `2026.10.12-1`; Git UPM and local-copy installs remain available.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ Add the npm registry as a Unity Package Manager scoped registry in your Unity pr
     }
   ],
   "dependencies": {
-    "com.sungeargames.perfmeter": "2026.10.7-6"
+    "com.sungeargames.perfmeter": "2026.10.12-1"
   }
 }
 ```
@@ -76,7 +76,7 @@ Pin a tag or commit for repeatable installs:
 ```json
 {
   "dependencies": {
-    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.10.7-6"
+    "com.sungeargames.perfmeter": "https://github.com/romanilyin/sgg-perfmeter.git?path=/Assets/Scripts/SGG.PerfMeter#2026.10.12-1"
   }
 }
 ```
