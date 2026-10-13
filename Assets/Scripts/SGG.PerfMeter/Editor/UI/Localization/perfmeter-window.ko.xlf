@@ -289,6 +289,8 @@
       <trans-unit id="label.settings_json"><source>Settings JSON</source><target>설정 JSON</target></trans-unit>
       <trans-unit id="label.visual_overlay_presets"><source>Visual Overlay Presets</source><target>시각적 오버레이 프리셋</target></trans-unit>
       <trans-unit id="label.collect_metrics"><source>Collect Metrics</source><target>메트릭 수집</target></trans-unit>
+      <trans-unit id="label.collect_when_unfocused"><source>Collect when unfocused</source><target>포커스가 없어도 수집</target></trans-unit>
+      <trans-unit id="tooltip.collect_when_unfocused"><source>Enabled by default. Keep collecting after focus loss where Unity can run in the background. Application pause or OS suspension still stops samples.</source><target>기본적으로 활성화됩니다. Unity가 백그라운드에서 실행될 수 있으면 포커스를 잃어도 수집을 계속합니다. 앱 일시 정지나 OS 실행 중단 시에는 샘플 수집이 중단됩니다.</target></trans-unit>
       <trans-unit id="label.show_overlay"><source>Show Overlay</source><target>오버레이 표시</target></trans-unit>
       <trans-unit id="label.overdraw_diagnostics_heatmap"><source>Overdraw diagnostics / heatmap</source><target>오버드로우 진단 / 히트맵</target></trans-unit>
       <trans-unit id="label.update_interval"><source>Update interval</source><target>업데이트 간격</target></trans-unit>

@@ -23,6 +23,14 @@ Modos de coleta:
 - `Overlay`
 - `OverdrawDiagnostic`
 
+A coleta sem foco é ativada por padrão. Os setters de runtime alteram a configuração ativa sem salvar o JSON do projeto; veja [os fluxos e limites de plataforma](workflows.md).
+
+```csharp
+PerformanceMeter.SetCollectWhenUnfocused(false);
+PerfMeterMutationResultSnapshot focusResult = PerformanceMeter.TrySetCollectWhenUnfocused(true);
+bool collectWhenUnfocused = PerformanceMeter.CollectWhenUnfocused;
+```
+
 ## Status E Metrics
 
 ```csharp

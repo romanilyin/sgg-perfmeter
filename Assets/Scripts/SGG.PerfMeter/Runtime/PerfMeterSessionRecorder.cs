@@ -498,6 +498,7 @@ namespace SGG.PerfMeter
 		{
 			private double _frameTimeTotalMs;
 			private double _fpsTotal;
+			private int _timingSampleCount;
 
 			public string SceneName;
 			public int SampleCount;
@@ -529,6 +530,7 @@ namespace SGG.PerfMeter
 				LastSampleTimeSeconds = timeSeconds;
 				_frameTimeTotalMs = 0d;
 				_fpsTotal = 0d;
+				_timingSampleCount = 0;
 				MinFrameTimeMs = double.MaxValue;
 				MaxFrameTimeMs = 0d;
 				MinFps = double.MaxValue;
@@ -546,9 +548,6 @@ namespace SGG.PerfMeter
 
 			public void Add(PerfMeterSessionSampleSnapshot sample, PerfMeterMetricsSnapshot metrics)
 			{
-				double frameTimeMs = GetFrameTimeMs(metrics);
-				double fps = frameTimeMs > 0d ? 1000d / frameTimeMs : 0d;
-
 				if (SampleCount == 0)
 				{
 					FirstFrame = sample.CollectionFrame;
@@ -557,6 +556,18 @@ namespace SGG.PerfMeter
 				SampleCount++;
 				LastFrame = sample.CollectionFrame;
 				LastSampleTimeSeconds = sample.CollectionTimeSeconds;
+				LatestFrameSpikeCount = Mathf.Max(0, metrics.FrameSpikeCount - FrameSpikeBaseline);
+				LatestSevereFrameSpikeCount = Mathf.Max(0, metrics.SevereFrameSpikeCount - SevereFrameSpikeBaseline);
+
+				// Non-timing samples still carry memory/custom/platform data. A target
+				// frame budget is configuration, never a substitute for a measurement.
+				double frameTimeMs = metrics.CpuFrameTimeMs;
+				if (!PerfMeterCollector.IsValidFrameTimingSampleMs(frameTimeMs))
+				{
+					return;
+				}
+				double fps = 1000d / frameTimeMs;
+				_timingSampleCount++;
 				_frameTimeTotalMs += frameTimeMs;
 				_fpsTotal += fps;
 				MinFrameTimeMs = System.Math.Min(MinFrameTimeMs, frameTimeMs);
@@ -580,9 +591,6 @@ namespace SGG.PerfMeter
 						break;
 				}
 
-				LatestFrameSpikeCount = Mathf.Max(0, metrics.FrameSpikeCount - FrameSpikeBaseline);
-				LatestSevereFrameSpikeCount = Mathf.Max(0, metrics.SevereFrameSpikeCount - SevereFrameSpikeBaseline);
-
 				if (!WorstFrame.IsAvailable || frameTimeMs > WorstFrame.FrameTimeMs)
 				{
 					WorstFrame = new PerfMeterSessionWorstFrameSnapshot(sample.CollectionFrame, sample.CollectionTimeSeconds, sample.SceneName, frameTimeMs, fps, metrics.Bottleneck);
@@ -602,12 +610,12 @@ namespace SGG.PerfMeter
 					StartTimeSeconds,
 					LastSampleTimeSeconds,
 					durationSeconds,
-					SampleCount > 0 ? _frameTimeTotalMs / SampleCount : 0d,
-					SampleCount > 0 ? MinFrameTimeMs : 0d,
-					SampleCount > 0 ? MaxFrameTimeMs : 0d,
-					SampleCount > 0 ? _fpsTotal / SampleCount : 0d,
-					SampleCount > 0 ? MinFps : 0d,
-					SampleCount > 0 ? MaxFps : 0d,
+					_timingSampleCount > 0 ? _frameTimeTotalMs / _timingSampleCount : 0d,
+					_timingSampleCount > 0 ? MinFrameTimeMs : 0d,
+					_timingSampleCount > 0 ? MaxFrameTimeMs : 0d,
+					_timingSampleCount > 0 ? _fpsTotal / _timingSampleCount : 0d,
+					_timingSampleCount > 0 ? MinFps : 0d,
+					_timingSampleCount > 0 ? MaxFps : 0d,
 					GpuBoundSampleCount,
 					CpuMainThreadBoundSampleCount,
 					CpuRenderThreadBoundSampleCount,
@@ -616,11 +624,6 @@ namespace SGG.PerfMeter
 					LatestSevereFrameSpikeCount,
 					WorstFrame);
 			}
-		}
-
-		private static double GetFrameTimeMs(PerfMeterMetricsSnapshot metrics)
-		{
-			return metrics.CpuFrameTimeMs > 0d ? metrics.CpuFrameTimeMs : metrics.FrameBudgetMs;
 		}
 
 	}

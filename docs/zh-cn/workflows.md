@@ -103,6 +103,12 @@ PerfMeter 为 overlay 创建并拥有 versioned UI Toolkit host：Unity `6000.4`
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background` 控制叠加层的可见性。独立选项 **Settings > Work mode > 失去焦点时继续采集** 默认启用；旧 JSON 未包含 `collectWhenUnfocused` 时也默认启用。在 Play Mode 或 Player 中采集期间，PerfMeter 会启用 `Application.runInBackground`，并在停止采集或禁用选项时恢复之前的值。因此，在受支持的桌面环境中，仅失去窗口焦点不会阻止继续采集。
+
+要禁用此行为，请取消勾选 **失去焦点时继续采集** 并保存项目设置，在 `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` 的根级设置 `"collectWhenUnfocused": false`，或在运行时调用 `PerformanceMeter.SetCollectWhenUnfocused(false)`。`PerformanceMeter.TrySetCollectWhenUnfocused(false)` 返回更改结果；`PerformanceMeter.CollectWhenUnfocused` 读取当前设置。运行时 setter 不会保存项目 JSON。
+
+应用暂停和操作系统真正挂起进程时仍无法采样；此选项不能强制已挂起的移动应用或进程执行。后台限速和渲染节奏变化可能使结果不同于前台测量，因此应分开记录和比较。焦点/暂停状态及会话计数仍反映真实情况。现有 `focus_paused_duration_seconds` 记录失去焦点或暂停的实际时间，即使采样仍在继续；它不是缺失样本计数。请在每个目标平台上验证行为。
+
 ## Session Recording And Export
 
 使用 sessions 创建可重复的性能分析窗口。

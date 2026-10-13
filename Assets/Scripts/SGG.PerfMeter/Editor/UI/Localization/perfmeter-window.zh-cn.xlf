@@ -289,6 +289,8 @@
       <trans-unit id="label.settings_json"><source>Settings JSON</source><target>设置 JSON</target></trans-unit>
       <trans-unit id="label.visual_overlay_presets"><source>Visual Overlay Presets</source><target>视觉叠加层预设</target></trans-unit>
       <trans-unit id="label.collect_metrics"><source>Collect Metrics</source><target>采集指标</target></trans-unit>
+      <trans-unit id="label.collect_when_unfocused"><source>Collect when unfocused</source><target>失去焦点时继续采集</target></trans-unit>
+      <trans-unit id="tooltip.collect_when_unfocused"><source>Enabled by default. Keep collecting after focus loss where Unity can run in the background. Application pause or OS suspension still stops samples.</source><target>默认启用。如果 Unity 可以在后台运行，失去焦点后仍会继续采集。应用暂停或操作系统挂起仍会停止采样。</target></trans-unit>
       <trans-unit id="label.show_overlay"><source>Show Overlay</source><target>显示叠加层</target></trans-unit>
       <trans-unit id="label.overdraw_diagnostics_heatmap"><source>Overdraw diagnostics / heatmap</source><target>过度绘制 诊断 / 热力图</target></trans-unit>
       <trans-unit id="label.update_interval"><source>Update interval</source><target>更新间隔</target></trans-unit>

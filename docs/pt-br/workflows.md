@@ -103,6 +103,12 @@ Use o modo em segundo plano para testes, execucoes em dispositivos ou workflows 
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background` controla a visibilidade do overlay. A opção separada **Settings > Work mode > Coletar sem foco** é ativada por padrão, inclusive quando um JSON antigo omite `collectWhenUnfocused`. Durante a coleta no Play Mode ou Player, o PerfMeter ativa `Application.runInBackground` e restaura o valor anterior quando a coleta para ou a opção é desativada. Em ambientes desktop compatíveis, perder o foco da janela permite continuar a coleta.
+
+Para desativar, desmarque **Coletar sem foco** e salve as configurações do projeto, defina `"collectWhenUnfocused": false` na raiz de `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` ou chame `PerformanceMeter.SetCollectWhenUnfocused(false)` em runtime. `PerformanceMeter.TrySetCollectWhenUnfocused(false)` retorna o resultado da alteração; `PerformanceMeter.CollectWhenUnfocused` lê a configuração ativa. O setter de runtime não salva o JSON do projeto.
+
+A pausa do aplicativo e a suspensão real pelo sistema continuam bloqueando amostras; a opção não força a execução de um aplicativo móvel ou processo suspenso. A limitação em segundo plano e mudanças no ritmo de renderização podem produzir resultados diferentes dos obtidos em primeiro plano: registre e compare separadamente. O estado de foco/pausa e os contadores de sessão continuam fiéis. `focus_paused_duration_seconds` conta o tempo sem foco ou em pausa mesmo quando as amostras continuam; não é uma contagem de amostras ausentes. Valide o comportamento em cada plataforma de destino.
+
 ## Gravacao E Exportacao De Sessao
 
 Use sessoes para janelas de profiling reproduziveis.

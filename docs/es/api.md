@@ -23,6 +23,14 @@ Modos de recolección:
 - `Overlay`
 - `OverdrawDiagnostic`
 
+La recopilación sin foco está activada de forma predeterminada. Los setters de runtime cambian el ajuste activo sin guardar el JSON del proyecto; consulta [los flujos y límites de plataforma](workflows.md).
+
+```csharp
+PerformanceMeter.SetCollectWhenUnfocused(false);
+PerfMeterMutationResultSnapshot focusResult = PerformanceMeter.TrySetCollectWhenUnfocused(true);
+bool collectWhenUnfocused = PerformanceMeter.CollectWhenUnfocused;
+```
+
 ## Estado Y Métricas
 
 ```csharp

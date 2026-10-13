@@ -23,6 +23,14 @@ Collection modes:
 - `Overlay`
 - `OverdrawDiagnostic`
 
+Die Erfassung ohne Fokus ist standardmäßig aktiviert. Die Runtime-Setter ändern die aktive Einstellung, ohne die Projekt-JSON zu speichern; siehe [Workflows und Plattformgrenzen](workflows.md).
+
+```csharp
+PerformanceMeter.SetCollectWhenUnfocused(false);
+PerfMeterMutationResultSnapshot focusResult = PerformanceMeter.TrySetCollectWhenUnfocused(true);
+bool collectWhenUnfocused = PerformanceMeter.CollectWhenUnfocused;
+```
+
 ## Status Und Metrics
 
 ```csharp
