@@ -654,6 +654,36 @@ namespace SGG.PerfMeter
 				effectiveMode);
 		}
 
+		public static bool CollectWhenUnfocused => GetOperationSettings().CollectWhenUnfocused;
+
+		public static void SetCollectWhenUnfocused(bool enabled)
+		{
+			TrySetCollectWhenUnfocused(enabled);
+		}
+
+		public static PerfMeterMutationResultSnapshot TrySetCollectWhenUnfocused(bool enabled)
+		{
+			if (!TryGetMutableRuntime(out PerfMeterRuntime runtime))
+			{
+				return RuntimeUnavailableMutation(enabled, CollectWhenUnfocused);
+			}
+
+			bool previous = runtime.ConfiguredSettings.CollectWhenUnfocused;
+			runtime.SetCollectWhenUnfocused(enabled);
+			bool effective = runtime.ConfiguredSettings.CollectWhenUnfocused;
+			if (effective != enabled)
+			{
+				return MutationResult(PerfMeterMutationStatus.Rejected, PerfMeterMutationReason.RuntimeRejected, enabled, effective);
+			}
+
+			PerfMeterSettingsBootstrap.MarkCollectWhenUnfocusedOverride(effective);
+			return MutationResult(
+				previous == effective ? PerfMeterMutationStatus.NoChange : PerfMeterMutationStatus.Applied,
+				previous == effective ? PerfMeterMutationReason.AlreadyInRequestedState : PerfMeterMutationReason.None,
+				enabled,
+				effective);
+		}
+
 		public static bool IsSessionRecording
 		{
 			get

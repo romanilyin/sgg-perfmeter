@@ -103,6 +103,12 @@ visible UI が不要な tests、device runs、agent workflows では background 
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background` はオーバーレイの表示を制御します。別の設定である **Settings > Work mode > フォーカスがなくても収集** は既定で有効です。古い JSON に `collectWhenUnfocused` がない場合も有効になります。Play Mode または Player で収集中、PerfMeter は `Application.runInBackground` を有効にし、収集の停止時または設定の無効化時に以前の値へ戻します。対応するデスクトップ環境では、ウィンドウのフォーカスを失っても収集を継続できます。
+
+無効にするには、**フォーカスがなくても収集** をオフにしてプロジェクト設定を保存するか、`Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` のルートに `"collectWhenUnfocused": false` を設定するか、実行時に `PerformanceMeter.SetCollectWhenUnfocused(false)` を呼び出します。`PerformanceMeter.TrySetCollectWhenUnfocused(false)` は変更結果を返し、`PerformanceMeter.CollectWhenUnfocused` は有効な設定を読み取ります。実行時の setter はプロジェクトの JSON を保存しません。
+
+アプリの一時停止や OS による実際の中断中は引き続きサンプルを収集できません。この設定で中断されたモバイルアプリやプロセスの実行を強制することはできません。バックグラウンドの速度制限や描画間隔の変化により、フォアグラウンドとは測定値が異なる場合があるため、別々に記録して比較してください。フォーカス・一時停止状態とセッションのカウンターは実際の状態を保持します。既存の `focus_paused_duration_seconds` は、収集が続いていてもフォーカスがない時間や一時停止時間を数えるもので、欠落サンプル数ではありません。対象プラットフォームごとに動作を確認してください。
+
 ## Session Recording And Export
 
 repeatable profiling windows には sessions を使用します。

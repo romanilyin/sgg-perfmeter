@@ -743,6 +743,7 @@ namespace SGG.PerfMeter
 			builder.Append(",\"alert_gpu_timing_unavailable_consecutive_frames\":").Append(settings.AlertGpuTimingUnavailableConsecutiveFrames);
 			builder.Append(",\"alert_overdraw_consecutive_frames\":").Append(settings.AlertOverdrawConsecutiveFrames);
 			builder.Append(",\"load_state\":").Append(JsonString(settings.LoadState.ToString()));
+			builder.Append(",\"collect_when_unfocused\":").Append(JsonBool(settings.CollectWhenUnfocused));
 			builder.Append(",\"warning\":").Append(JsonString(settings.Warning));
 			builder.Append('}');
 		}

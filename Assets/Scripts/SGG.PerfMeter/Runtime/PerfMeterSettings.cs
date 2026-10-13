@@ -54,10 +54,12 @@ namespace SGG.PerfMeter
 			bool editorWarningsEnabled = true,
 			string activeOverlayPresetId = "",
 			PerfMeterOverlayPresetJson activeOverlayPreset = null,
-			bool structuredLogsEnabled = true)
+			bool structuredLogsEnabled = true,
+			bool collectWhenUnfocused = true)
 		{
 			Enabled = enabled;
 			AutoStart = autoStart;
+			CollectWhenUnfocused = collectWhenUnfocused;
 			CollectionMode = NormalizeCollectionMode(collectionMode);
 			OverlayVisible = overlayVisible;
 			OverlayCorner = overlayCorner;
@@ -108,6 +110,7 @@ namespace SGG.PerfMeter
 
 		public bool Enabled { get; }
 		public bool AutoStart { get; }
+		public bool CollectWhenUnfocused { get; }
 		public PerfMeterCollectionMode CollectionMode { get; }
 		public bool OverlayVisible { get; }
 		public PerfMeterOverlayCorner OverlayCorner { get; }
@@ -168,6 +171,7 @@ namespace SGG.PerfMeter
 		public int schemaVersion = PerfMeterSettingsStore.CurrentSchemaVersion;
 		public bool enabled = true;
 		public bool autoStart = true;
+		public bool collectWhenUnfocused = true;
 		public string collectionMode = nameof(PerfMeterCollectionMode.Overlay);
 		public bool overlayVisible = true;
 		public string overlayCorner = nameof(PerfMeterOverlayCorner.TopRight);
@@ -287,6 +291,7 @@ namespace SGG.PerfMeter
 			PerfMeterSettingsJson settings = CreateDefault();
 			settings.enabled = snapshot.Enabled;
 			settings.autoStart = snapshot.AutoStart;
+			settings.collectWhenUnfocused = snapshot.CollectWhenUnfocused;
 			settings.collectionMode = snapshot.CollectionMode.ToString();
 			settings.overlayVisible = snapshot.OverlayVisible;
 			settings.overlayCorner = snapshot.OverlayCorner.ToString();
@@ -369,7 +374,8 @@ namespace SGG.PerfMeter
 				editorWarningsEnabled: editorWarningsEnabled,
 				activeOverlayPresetId: snapshot.ActiveOverlayPresetId,
 				activeOverlayPreset: snapshot.ActiveOverlayPreset,
-				structuredLogsEnabled: snapshot.StructuredLogsEnabled);
+				structuredLogsEnabled: snapshot.StructuredLogsEnabled,
+				collectWhenUnfocused: snapshot.CollectWhenUnfocused);
 		}
 
 		internal static PerfMeterSettingsSnapshot WithStructuredLogsEnabled(PerfMeterSettingsSnapshot snapshot, bool structuredLogsEnabled)
@@ -414,7 +420,54 @@ namespace SGG.PerfMeter
 				editorWarningsEnabled: snapshot.EditorWarningsEnabled,
 				activeOverlayPresetId: snapshot.ActiveOverlayPresetId,
 				activeOverlayPreset: snapshot.ActiveOverlayPreset,
-				structuredLogsEnabled: structuredLogsEnabled);
+				structuredLogsEnabled: structuredLogsEnabled,
+				collectWhenUnfocused: snapshot.CollectWhenUnfocused);
+		}
+
+		internal static PerfMeterSettingsSnapshot WithCollectWhenUnfocused(PerfMeterSettingsSnapshot snapshot, bool collectWhenUnfocused)
+		{
+			return new PerfMeterSettingsSnapshot(
+				snapshot.Enabled,
+				snapshot.AutoStart,
+				snapshot.CollectionMode,
+				snapshot.OverlayVisible,
+				snapshot.OverlayCorner,
+				snapshot.OverlayMode,
+				snapshot.TargetFps,
+				snapshot.ActivePreset,
+				snapshot.OverlayModules,
+				snapshot.SessionWarmupFrames,
+				snapshot.SessionWarmupSeconds,
+				snapshot.SessionSampleIntervalSeconds,
+				snapshot.SessionMaxSamples,
+				snapshot.SessionResetOnSceneLoad,
+				snapshot.SessionSceneLoadIgnoreFrames,
+				snapshot.SessionSceneLoadIgnoreSeconds,
+				snapshot.EditorWarningCooldownSeconds,
+				snapshot.StructuredLogCooldownSeconds,
+				snapshot.CallbackCooldownSeconds,
+				snapshot.LoadState,
+				snapshot.Warning,
+				overlayScale: snapshot.OverlayScale,
+				overlayOpacity: snapshot.OverlayOpacity,
+				overlayFontSize: snapshot.OverlayFontSize,
+				overlayRefreshIntervalSeconds: snapshot.OverlayRefreshIntervalSeconds,
+				overlayGraphHistoryLength: snapshot.OverlayGraphHistoryLength,
+				overdrawDefaultFrameCount: snapshot.OverdrawDefaultFrameCount,
+				overdrawMaxFrameCount: snapshot.OverdrawMaxFrameCount,
+				alertOverdrawRatioThreshold: snapshot.AlertOverdrawRatioThreshold,
+				alertTimingConsecutiveFrames: snapshot.AlertTimingConsecutiveFrames,
+				alertFpsConsecutiveFrames: snapshot.AlertFpsConsecutiveFrames,
+				alertGpuTimingUnavailableConsecutiveFrames: snapshot.AlertGpuTimingUnavailableConsecutiveFrames,
+				alertOverdrawConsecutiveFrames: snapshot.AlertOverdrawConsecutiveFrames,
+				overlayTheme: snapshot.OverlayTheme,
+				overlayLayout: snapshot.OverlayLayout,
+				overlayFontFamily: snapshot.OverlayFontFamily,
+				editorWarningsEnabled: snapshot.EditorWarningsEnabled,
+				activeOverlayPresetId: snapshot.ActiveOverlayPresetId,
+				activeOverlayPreset: snapshot.ActiveOverlayPreset,
+				structuredLogsEnabled: snapshot.StructuredLogsEnabled,
+				collectWhenUnfocused: collectWhenUnfocused);
 		}
 
 		internal static PerfMeterSettingsSnapshot WithRuntimeState(
@@ -476,7 +529,8 @@ namespace SGG.PerfMeter
 				editorWarningsEnabled: configured.EditorWarningsEnabled,
 				structuredLogsEnabled: configured.StructuredLogsEnabled,
 				activeOverlayPresetId: activeOverlayPresetId,
-				activeOverlayPreset: null);
+				activeOverlayPreset: null,
+				collectWhenUnfocused: configured.CollectWhenUnfocused);
 		}
 
 		internal static string ToJson(PerfMeterSettingsJson settings)
@@ -651,7 +705,8 @@ namespace SGG.PerfMeter
 				editorWarningsEnabled: settings.ruleDefaults == null || settings.ruleDefaults.editorWarningsEnabled,
 				structuredLogsEnabled: settings.ruleDefaults == null || settings.ruleDefaults.structuredLogsEnabled,
 				activeOverlayPresetId: activeOverlayPresetId,
-				activeOverlayPreset: activeOverlayPreset);
+				activeOverlayPreset: activeOverlayPreset,
+				collectWhenUnfocused: settings.collectWhenUnfocused);
 		}
 
 		internal static bool ApplySnapshotToRuntime(PerfMeterSettingsSnapshot settings, bool preserveRuntimeOverrides = false)
@@ -666,6 +721,10 @@ namespace SGG.PerfMeter
 				return false;
 			}
 
+			if (preserveRuntimeOverrides)
+			{
+				settings = WithCollectWhenUnfocused(settings, PerfMeterSettingsBootstrap.ResolveAutoStartCollectWhenUnfocused(settings.CollectWhenUnfocused));
+			}
 			PerformanceMeter.ApplyOverlayTuning(settings);
 			if (settings.ActiveOverlayPreset != null)
 			{
@@ -1259,12 +1318,15 @@ namespace SGG.PerfMeter
 		private static bool _explicitSettingsApplied;
 		private static bool _hasTargetFpsOverride;
 		private static PerfMeterTargetFps _targetFpsOverride;
+		private static bool _hasCollectWhenUnfocusedOverride;
+		private static bool _collectWhenUnfocusedOverride;
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
 		internal static void ResetExplicitSettingsApplication()
 		{
 			_explicitSettingsApplied = false;
 			_hasTargetFpsOverride = false;
+			_hasCollectWhenUnfocusedOverride = false;
 		}
 
 		internal static void MarkExplicitSettingsApplied()
@@ -1281,6 +1343,17 @@ namespace SGG.PerfMeter
 		internal static PerfMeterTargetFps ResolveAutoStartTargetFps(PerfMeterTargetFps configured)
 		{
 			return _hasTargetFpsOverride ? _targetFpsOverride : configured;
+		}
+
+		internal static void MarkCollectWhenUnfocusedOverride(bool effective)
+		{
+			_hasCollectWhenUnfocusedOverride = true;
+			_collectWhenUnfocusedOverride = effective;
+		}
+
+		internal static bool ResolveAutoStartCollectWhenUnfocused(bool configured)
+		{
+			return _hasCollectWhenUnfocusedOverride ? _collectWhenUnfocusedOverride : configured;
 		}
 
 		internal static bool TryAutoStartFromSettings(PerfMeterSettingsSnapshot settings)

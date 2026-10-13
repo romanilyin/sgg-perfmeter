@@ -115,6 +115,12 @@ Use background mode for tests, device runs, or agent workflows where visible UI 
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background` controls overlay visibility. **Settings > Work mode > Collect when unfocused** is a separate option, enabled by default, including when older JSON omits `collectWhenUnfocused`. While collecting in Play Mode or a Player, PerfMeter requests `Application.runInBackground` and restores its previous value when collection stops or the option is disabled. On supported desktop environments, losing window focus alone therefore allows collection to continue.
+
+To opt out, clear **Collect when unfocused** and save the project settings JSON, set root `"collectWhenUnfocused": false` in `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`, or call `PerformanceMeter.SetCollectWhenUnfocused(false)` at runtime. `PerformanceMeter.TrySetCollectWhenUnfocused(false)` returns the mutation outcome; `PerformanceMeter.CollectWhenUnfocused` reads the active setting. The runtime setter does not save the project JSON.
+
+Application pause and genuine OS suspension still block samples; this option cannot force a suspended mobile app or platform process to execute. Background throttling and changed rendering cadence can make unfocused measurements differ from foreground results, so record and compare them separately. Focus/pause status and session counts remain truthful. The existing `focus_paused_duration_seconds` metadata counts unfocused/paused wall time, even if samples continued; it is not a missing-sample count. Validate behavior on each target platform.
+
 ## Session Recording And Export
 
 Use sessions for repeatable profiling windows.

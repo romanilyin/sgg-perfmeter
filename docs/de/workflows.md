@@ -103,6 +103,12 @@ Background mode eignet sich fuer Tests, Device-Runs oder Agent-Workflows ohne si
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background` steuert die Sichtbarkeit des Overlays. Die separate Option **Settings > Work mode > Ohne Fokus erfassen** ist standardmäßig aktiviert, auch wenn ältere JSON-Dateien `collectWhenUnfocused` nicht enthalten. Während der Erfassung im Play Mode oder Player aktiviert PerfMeter `Application.runInBackground` und stellt den vorherigen Wert wieder her, wenn die Erfassung endet oder die Option deaktiviert wird. In unterstützten Desktop-Umgebungen kann die Erfassung bei Fokusverlust weiterlaufen.
+
+Zum Deaktivieren **Ohne Fokus erfassen** abwählen und die Projekteinstellungen speichern, im Stamm von `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` `"collectWhenUnfocused": false` setzen oder zur Laufzeit `PerformanceMeter.SetCollectWhenUnfocused(false)` aufrufen. `PerformanceMeter.TrySetCollectWhenUnfocused(false)` liefert das Änderungsergebnis; `PerformanceMeter.CollectWhenUnfocused` liest die aktive Einstellung. Der Laufzeit-Setter speichert die Projekt-JSON nicht.
+
+Eine Anwendungspause oder echte Suspendierung durch das Betriebssystem unterbricht die Samples weiterhin; die Option kann eine suspendierte mobile App oder einen Prozess nicht zur Ausführung zwingen. Drosselung im Hintergrund und veränderte Rendering-Intervalle können andere Ergebnisse als im Vordergrund liefern; diese getrennt erfassen und vergleichen. Fokus-/Pausenstatus und Sitzungszähler bleiben korrekt. `focus_paused_duration_seconds` zählt Zeit ohne Fokus oder während einer Pause, auch wenn Samples weiterlaufen; es ist kein Zähler fehlender Samples. Das Verhalten auf jeder Zielplattform prüfen.
+
 ## Session Recording Und Export
 
 Sessions dienen wiederholbaren Profiling-Fenstern.

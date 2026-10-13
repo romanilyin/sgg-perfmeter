@@ -103,6 +103,12 @@ Utilisez le mode arriere-plan pour les tests, les executions sur appareil ou les
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background` contrôle la visibilité de l’overlay. L’option distincte **Settings > Work mode > Collecter sans focus** est activée par défaut, même si un ancien JSON omet `collectWhenUnfocused`. Pendant la collecte en Play Mode ou dans un Player, PerfMeter active `Application.runInBackground` et restaure sa valeur précédente lorsque la collecte s’arrête ou que l’option est désactivée. Dans les environnements de bureau compatibles, une simple perte du focus permet donc de poursuivre la collecte.
+
+Pour désactiver cette option, décochez **Collecter sans focus** et enregistrez les paramètres du projet, définissez `"collectWhenUnfocused": false` à la racine de `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json` ou appelez `PerformanceMeter.SetCollectWhenUnfocused(false)` à l’exécution. `PerformanceMeter.TrySetCollectWhenUnfocused(false)` renvoie le résultat de la modification ; `PerformanceMeter.CollectWhenUnfocused` lit le paramètre actif. Le setter runtime n’enregistre pas le JSON du projet.
+
+Une pause de l’application ou une véritable suspension par le système bloque toujours les mesures ; cette option ne force pas l’exécution d’une application mobile ou d’un processus suspendu. La limitation en arrière-plan et les changements de cadence du rendu peuvent donner des résultats différents du premier plan : enregistrez-les et comparez-les séparément. Les états de focus/pause et les compteurs de session restent fidèles. `focus_paused_duration_seconds` compte le temps sans focus ou en pause, même si les mesures continuent ; il ne compte pas les échantillons manquants. Vérifiez le comportement sur chaque plateforme cible.
+
 ## Enregistrement Et Export De Session
 
 Utilisez les sessions pour des fenetres de profilage reproductibles.

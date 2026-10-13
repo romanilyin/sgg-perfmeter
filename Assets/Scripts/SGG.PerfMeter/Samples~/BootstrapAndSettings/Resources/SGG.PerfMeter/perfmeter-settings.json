@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "enabled": true,
   "autoStart": true,
+  "collectWhenUnfocused": true,
   "collectionMode": "Background",
   "overlayVisible": false,
   "overlayCorner": "TopRight",

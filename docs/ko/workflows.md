@@ -103,6 +103,12 @@ PerfMeter는 overlay를 위해 versioned UI Toolkit host를 생성하고 소유�
 PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 ```
 
+`Background`는 오버레이 표시 여부를 제어합니다. 별도 옵션인 **Settings > Work mode > 포커스가 없어도 수집**은 기본적으로 활성화되며, 이전 JSON에 `collectWhenUnfocused`가 없어도 활성화됩니다. Play Mode 또는 Player에서 수집하는 동안 PerfMeter는 `Application.runInBackground`를 활성화하고, 수집을 중지하거나 옵션을 끄면 이전 값을 복원합니다. 지원되는 데스크톱 환경에서는 창이 포커스를 잃어도 수집을 계속할 수 있습니다.
+
+끄려면 **포커스가 없어도 수집**을 해제하고 프로젝트 설정을 저장하거나, `Assets/Resources/SGG.PerfMeter/perfmeter-settings.json`의 루트에 `"collectWhenUnfocused": false`를 설정하거나, 런타임에 `PerformanceMeter.SetCollectWhenUnfocused(false)`를 호출합니다. `PerformanceMeter.TrySetCollectWhenUnfocused(false)`는 변경 결과를 반환하며 `PerformanceMeter.CollectWhenUnfocused`는 현재 설정을 읽습니다. 런타임 setter는 프로젝트 JSON을 저장하지 않습니다.
+
+앱 일시 정지와 OS에 의한 실제 실행 중단은 여전히 샘플 수집을 막습니다. 이 옵션은 중단된 모바일 앱이나 프로세스를 강제로 실행하지 못합니다. 백그라운드 속도 제한과 렌더링 주기 변화로 측정값이 포그라운드와 달라질 수 있으므로 별도로 기록하고 비교하세요. 포커스/일시 정지 상태와 세션 카운터는 실제 상태를 유지합니다. 기존 `focus_paused_duration_seconds`는 샘플 수집이 계속되어도 포커스가 없거나 일시 정지된 시간을 계산하며, 누락 샘플 수가 아닙니다. 각 대상 플랫폼에서 동작을 확인하세요.
+
 ## Session Recording 및 Export
 
 반복 가능한 profiling window에는 session을 사용합니다.

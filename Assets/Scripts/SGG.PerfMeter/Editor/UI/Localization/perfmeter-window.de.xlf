@@ -289,6 +289,8 @@
       <trans-unit id="label.settings_json"><source>Settings JSON</source><target>Einstellungen-JSON</target></trans-unit>
       <trans-unit id="label.visual_overlay_presets"><source>Visual Overlay Presets</source><target>Visuelle Overlay-Voreinstellungen</target></trans-unit>
       <trans-unit id="label.collect_metrics"><source>Collect Metrics</source><target>Metriken erfassen</target></trans-unit>
+      <trans-unit id="label.collect_when_unfocused"><source>Collect when unfocused</source><target>Ohne Fokus erfassen</target></trans-unit>
+      <trans-unit id="tooltip.collect_when_unfocused"><source>Enabled by default. Keep collecting after focus loss where Unity can run in the background. Application pause or OS suspension still stops samples.</source><target>Standardmäßig aktiviert. Nach Fokusverlust weiter erfassen, wenn Unity im Hintergrund laufen kann. Anwendungspause oder Betriebssystem-Suspendierung unterbrechen die Erfassung weiterhin.</target></trans-unit>
       <trans-unit id="label.show_overlay"><source>Show Overlay</source><target>Overlay anzeigen</target></trans-unit>
       <trans-unit id="label.overdraw_diagnostics_heatmap"><source>Overdraw diagnostics / heatmap</source><target>Overdraw-Diagnose / Heatmap</target></trans-unit>
       <trans-unit id="label.update_interval"><source>Update interval</source><target>Aktualisierungsintervall</target></trans-unit>

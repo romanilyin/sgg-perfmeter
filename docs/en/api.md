@@ -33,6 +33,14 @@ Collection modes:
 - `Overlay`
 - `OverdrawDiagnostic`
 
+Unfocused collection is enabled by default. The runtime setters change the active setting without saving the project JSON; see [background collection and platform limits](workflows.md#background-collection).
+
+```csharp
+PerformanceMeter.SetCollectWhenUnfocused(false);
+PerfMeterMutationResultSnapshot focusResult = PerformanceMeter.TrySetCollectWhenUnfocused(true);
+bool collectWhenUnfocused = PerformanceMeter.CollectWhenUnfocused;
+```
+
 ## Status And Metrics
 
 ```csharp

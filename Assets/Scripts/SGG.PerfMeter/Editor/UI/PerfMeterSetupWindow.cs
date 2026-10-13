@@ -60,6 +60,7 @@ namespace SGG.PerfMeter.Editor.UI
 		private Toggle _settingsEnabled;
 		private Toggle _settingsAutoStart;
 		private Toggle _settingsCollectMetrics;
+		private Toggle _settingsCollectWhenUnfocused;
 		private Toggle _settingsOverlayVisible;
 		private Toggle _settingsOverdrawDiagnostics;
 		private EnumField _settingsTargetFps;
@@ -160,6 +161,7 @@ namespace SGG.PerfMeter.Editor.UI
 		internal const string SettingsEnabledElementName = "settings-enabled";
 		internal const string SettingsAutoStartElementName = "settings-auto-start";
 		internal const string SettingsCollectMetricsElementName = "settings-collect-metrics";
+		internal const string SettingsCollectWhenUnfocusedElementName = "settings-collect-when-unfocused";
 		internal const string SettingsCollectionModeElementName = "settings-collection-mode";
 		internal const string SettingsOverlayVisibleElementName = "settings-overlay-visible";
 		internal const string SettingsOverdrawDiagnosticsElementName = "settings-overdraw-diagnostics";
@@ -457,6 +459,8 @@ namespace SGG.PerfMeter.Editor.UI
 			_settingsEnabled = NameElement(AddWorkModeToggle(workModeActions, "Enabled"), SettingsEnabledElementName);
 			_settingsAutoStart = NameElement(AddWorkModeToggle(workModeActions, "Auto Start"), SettingsAutoStartElementName);
 			_settingsCollectMetrics = NameElement(AddWorkModeToggle(workModeActions, "Collect Metrics"), SettingsCollectMetricsElementName);
+			_settingsCollectWhenUnfocused = NameElement(AddWorkModeToggle(workModeActions, "Collect when unfocused"), SettingsCollectWhenUnfocusedElementName);
+			_settingsCollectWhenUnfocused.tooltip = "Enabled by default. Keep collecting after focus loss where Unity can run in the background. Application pause or OS suspension still stops samples.";
 			_settingsOverlayVisible = NameElement(AddWorkModeToggle(workModeActions, "Show Overlay"), SettingsOverlayVisibleElementName);
 			_settingsOverdrawDiagnostics = NameElement(AddWorkModeToggle(workModeActions, "Overdraw diagnostics / heatmap"), SettingsOverdrawDiagnosticsElementName);
 
@@ -1288,6 +1292,7 @@ namespace SGG.PerfMeter.Editor.UI
 				_settingsLegacyOverlayModules.text = settings.OverlayModules.ToString();
 			}
 			_settingsCollectMetrics?.SetValueWithoutNotify(settings.CollectionMode != PerfMeterCollectionMode.Stopped && settings.Enabled);
+			_settingsCollectWhenUnfocused?.SetValueWithoutNotify(settings.CollectWhenUnfocused);
 			_settingsOverlayVisible?.SetValueWithoutNotify(settings.OverlayVisible);
 			_settingsOverdrawDiagnostics?.SetValueWithoutNotify(settings.CollectionMode == PerfMeterCollectionMode.OverdrawDiagnostic);
 			_settingsTargetFps?.SetValueWithoutNotify(settings.TargetFps);
@@ -1367,7 +1372,7 @@ namespace SGG.PerfMeter.Editor.UI
 			return settings != null && settings.FileExists && settings.Snapshot.LoadState == PerfMeterSettingsLoadState.Loaded;
 		}
 
-		private PerfMeterSetupActionResult SaveSettingsFromControls()
+		internal PerfMeterSetupActionResult SaveSettingsFromControls()
 		{
 			ApplyStyleControlsToEditingPreset(false);
 			PerfMeterOverlayPresetJson activeVisualPreset = PerfMeterOverlayPresetUtility.Clone(_editingOverlayPreset);
@@ -1422,7 +1427,8 @@ namespace SGG.PerfMeter.Editor.UI
 				editorWarningsEnabled: _settingsEditorWarningsEnabled == null ? currentSettings.EditorWarningsEnabled : _settingsEditorWarningsEnabled.value,
 				activeOverlayPresetId: activeVisualPresetId,
 				activeOverlayPreset: activeVisualPreset,
-				structuredLogsEnabled: _settingsStructuredLogsEnabled == null ? currentSettings.StructuredLogsEnabled : _settingsStructuredLogsEnabled.value);
+				structuredLogsEnabled: _settingsStructuredLogsEnabled == null ? currentSettings.StructuredLogsEnabled : _settingsStructuredLogsEnabled.value,
+				collectWhenUnfocused: _settingsCollectWhenUnfocused == null ? currentSettings.CollectWhenUnfocused : _settingsCollectWhenUnfocused.value);
 		}
 
 		private PerfMeterCollectionMode GetSettingsCollectionModeFromControls(PerfMeterCollectionMode fallback)
@@ -2598,7 +2604,7 @@ namespace SGG.PerfMeter.Editor.UI
 			}
 		}
 
-		private void SaveRuntimeTechnicalSettingsToProject()
+		internal void SaveRuntimeTechnicalSettingsToProject()
 		{
 			PerfMeterSettingsSnapshot current = PerfMeterSetupActions.LoadSettings();
 			PerfMeterSettingsSnapshot settings = new PerfMeterSettingsSnapshot(
@@ -2641,7 +2647,8 @@ namespace SGG.PerfMeter.Editor.UI
 				editorWarningsEnabled: current.EditorWarningsEnabled,
 				activeOverlayPresetId: current.ActiveOverlayPresetId,
 				activeOverlayPreset: current.ActiveOverlayPreset,
-				structuredLogsEnabled: current.StructuredLogsEnabled);
+				structuredLogsEnabled: current.StructuredLogsEnabled,
+				collectWhenUnfocused: current.CollectWhenUnfocused);
 			PerfMeterSetupActions.SaveSettings(settings);
 		}
 
@@ -3062,6 +3069,7 @@ namespace SGG.PerfMeter.Editor.UI
 			RefreshWorkModeToggle(_settingsEnabled, "Enabled");
 			RefreshWorkModeToggle(_settingsAutoStart, "Auto Start");
 			RefreshWorkModeToggle(_settingsCollectMetrics, "Collect Metrics");
+			RefreshWorkModeToggle(_settingsCollectWhenUnfocused, "Collect when unfocused");
 			RefreshWorkModeToggle(_settingsOverlayVisible, "Show Overlay");
 			RefreshWorkModeToggle(_settingsOverdrawDiagnostics, "Overdraw diagnostics / heatmap");
 		}

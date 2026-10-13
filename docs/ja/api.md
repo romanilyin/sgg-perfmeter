@@ -23,6 +23,14 @@ Collection modes:
 - `Overlay`
 - `OverdrawDiagnostic`
 
+フォーカスがないときの収集は既定で有効です。実行時の setter は有効な設定を変更しますが、プロジェクトの JSON は保存しません。[ワークフローとプラットフォームの制限](workflows.md)を参照してください。
+
+```csharp
+PerformanceMeter.SetCollectWhenUnfocused(false);
+PerfMeterMutationResultSnapshot focusResult = PerformanceMeter.TrySetCollectWhenUnfocused(true);
+bool collectWhenUnfocused = PerformanceMeter.CollectWhenUnfocused;
+```
+
 ## Status And Metrics
 
 ```csharp

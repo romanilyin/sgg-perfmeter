@@ -33,6 +33,14 @@ PerfMeterMutationResultSnapshot overdrawResult = PerformanceMeter.TryRequestOver
 - `Overlay`
 - `OverdrawDiagnostic`
 
+Сбор без фокуса включён по умолчанию. Runtime setters меняют активную настройку без сохранения JSON проекта; см. [фоновый сбор и ограничения платформ](workflows.md#фоновый-сбор).
+
+```csharp
+PerformanceMeter.SetCollectWhenUnfocused(false);
+PerfMeterMutationResultSnapshot focusResult = PerformanceMeter.TrySetCollectWhenUnfocused(true);
+bool collectWhenUnfocused = PerformanceMeter.CollectWhenUnfocused;
+```
+
 ## Статус и метрики
 
 ```csharp

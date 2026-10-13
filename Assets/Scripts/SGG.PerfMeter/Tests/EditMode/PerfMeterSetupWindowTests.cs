@@ -29,6 +29,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			"settings-enabled",
 			"settings-auto-start",
 			"settings-collect-metrics",
+			"settings-collect-when-unfocused",
 			"settings-collection-mode",
 			"settings-overlay-visible",
 			"settings-overdraw-diagnostics",
@@ -192,6 +193,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(PerfMeterSetupActions.CreateDefaultSettings().Success, Is.True);
 				Assert.That(PerfMeterSettingsStore.TryReadJson(File.ReadAllText(settingsPath), out PerfMeterSettingsJson initialSettings, out PerfMeterSettingsLoadState _, out string warning), Is.True, warning);
 				initialSettings.enabled = false;
+				initialSettings.collectWhenUnfocused = false;
 				initialSettings.session.maxSamples = 1234;
 				initialSettings.presets = new[]
 				{
@@ -238,6 +240,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 				Assert.That(reloaded.OverlayLayout, Is.EqualTo(PerfMeterOverlayLayout.FpsOnly));
 				Assert.That(reloaded.OverlayMode, Is.EqualTo(PerfMeterOverlayMode.FpsOnly));
 				Assert.That(savedSettings.enabled, Is.False);
+				Assert.That(savedSettings.collectWhenUnfocused, Is.False);
 				Assert.That(savedSettings.session.maxSamples, Is.EqualTo(1234));
 				Assert.That(savedSettings.presets, Has.Length.EqualTo(1));
 				Assert.That(savedSettings.presets[0].id, Is.EqualTo("project-legacy"));
@@ -351,6 +354,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snippet, Does.Contain("PerformanceMeter.TryApplySettingsJson(SettingsJson, out string warning)"));
 			Assert.That(snippet, Does.Contain("\"\"editorWarningsEnabled\"\""));
 			Assert.That(snippet, Does.Contain("\"\"structuredLogsEnabled\"\""));
+			Assert.That(snippet, Does.Contain("\"\"collectWhenUnfocused\"\": true"));
 			Assert.That(snippet, Does.Contain("\"\"editorWarningCooldownSeconds\"\""));
 			Assert.That(snippet, Does.Contain("\"\"overdrawRatioThreshold\"\""));
 			Assert.That(snippet, Does.Contain("\"\"warmupFrames\"\""));
@@ -358,6 +362,49 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(snippet, Does.Contain("\"\"refreshIntervalSeconds\"\""));
 			Assert.That(snippet, Does.Not.Contain("PerformanceMeter.RequestCapture"));
 			Assert.That(snippet, Does.Not.Contain("PerformanceMeter.StartSession"));
+		}
+
+		[Test]
+		public void CollectWhenUnfocusedDefaultsOnAndPersistsThroughSettingsAndTechnicalSaves()
+		{
+			string settingsPath = PerfMeterSettingsStore.ResourcesAssetPath;
+			FileBackup settingsBackup = FileBackup.Capture(settingsPath);
+			try
+			{
+				Assert.That(PerfMeterSetupActions.CreateDefaultSettings().Success, Is.True);
+				CreateWindow();
+				Toggle collectWhenUnfocused = _window.rootVisualElement.Q<Toggle>(PerfMeterSetupWindow.SettingsCollectWhenUnfocusedElementName);
+				Assert.That(collectWhenUnfocused.value, Is.True);
+				collectWhenUnfocused.value = false;
+				Assert.That(_window.SaveSettingsFromControls().Success, Is.True);
+				Assert.That(PerfMeterSetupActions.LoadSettings().CollectWhenUnfocused, Is.False);
+
+				UnityEngine.Object.DestroyImmediate(_window);
+				CreateWindow();
+				collectWhenUnfocused = _window.rootVisualElement.Q<Toggle>(PerfMeterSetupWindow.SettingsCollectWhenUnfocusedElementName);
+				Assert.That(collectWhenUnfocused.value, Is.False);
+				_window.SaveRuntimeTechnicalSettingsToProject();
+				Assert.That(PerfMeterSetupActions.LoadSettings().CollectWhenUnfocused, Is.False);
+
+				collectWhenUnfocused.value = true;
+				Assert.That(_window.SaveSettingsFromControls().Success, Is.True);
+				Assert.That(PerfMeterSetupActions.LoadSettings().CollectWhenUnfocused, Is.True);
+			}
+			finally
+			{
+				settingsBackup.Restore();
+				AssetDatabase.Refresh();
+			}
+		}
+
+		[Test]
+		public void CollectWhenUnfocusedHasRussianLabelAndLocalizedGuidance()
+		{
+			PerfMeterWindowLocalization.CurrentLanguage = "ru";
+			CreateWindow();
+			Toggle collectWhenUnfocused = _window.rootVisualElement.Q<Toggle>(PerfMeterSetupWindow.SettingsCollectWhenUnfocusedElementName);
+			Assert.That(collectWhenUnfocused.text, Is.EqualTo("Собирать без фокуса"));
+			Assert.That(collectWhenUnfocused.tooltip, Does.StartWith("Включено по умолчанию."));
 		}
 
 		[Test]

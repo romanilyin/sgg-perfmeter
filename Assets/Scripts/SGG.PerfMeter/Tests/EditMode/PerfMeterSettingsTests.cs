@@ -20,6 +20,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(settings.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Missing));
 			Assert.That(settings.Enabled, Is.True);
 			Assert.That(settings.AutoStart, Is.True);
+			Assert.That(settings.CollectWhenUnfocused, Is.True);
 			Assert.That(settings.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Overlay));
 			Assert.That(settings.OverlayVisible, Is.True);
 			Assert.That(settings.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.TopRight));
@@ -104,7 +105,8 @@ namespace SGG.PerfMeter.Tests.EditMode
 				overlayLayout: PerfMeterOverlayLayout.DiagnosticsWide,
 				overlayFontFamily: PerfMeterOverlayFontFamily.JetBrainsMono,
 				editorWarningsEnabled: false,
-				structuredLogsEnabled: false);
+				structuredLogsEnabled: false,
+				collectWhenUnfocused: false);
 
 			string json = PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateFromSnapshot(source));
 
@@ -117,6 +119,7 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(json, Does.Not.Contain("disableEditorWarnings"));
 			Assert.That(PerfMeterSettingsStore.TryReadSnapshot(json, out PerfMeterSettingsSnapshot loaded), Is.True);
 			Assert.That(loaded.LoadState, Is.EqualTo(PerfMeterSettingsLoadState.Loaded));
+			Assert.That(loaded.CollectWhenUnfocused, Is.False);
 			Assert.That(loaded.CollectionMode, Is.EqualTo(PerfMeterCollectionMode.Background));
 			Assert.That(loaded.OverlayVisible, Is.False);
 			Assert.That(loaded.OverlayCorner, Is.EqualTo(PerfMeterOverlayCorner.BottomLeft));

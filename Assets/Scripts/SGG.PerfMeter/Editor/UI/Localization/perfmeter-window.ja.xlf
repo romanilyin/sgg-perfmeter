@@ -289,6 +289,8 @@
       <trans-unit id="label.settings_json"><source>Settings JSON</source><target>設定 JSON</target></trans-unit>
       <trans-unit id="label.visual_overlay_presets"><source>Visual Overlay Presets</source><target>ビジュアルオーバーレイ プリセット</target></trans-unit>
       <trans-unit id="label.collect_metrics"><source>Collect Metrics</source><target>メトリックを収集</target></trans-unit>
+      <trans-unit id="label.collect_when_unfocused"><source>Collect when unfocused</source><target>フォーカスがなくても収集</target></trans-unit>
+      <trans-unit id="tooltip.collect_when_unfocused"><source>Enabled by default. Keep collecting after focus loss where Unity can run in the background. Application pause or OS suspension still stops samples.</source><target>既定で有効です。Unity がバックグラウンドで動作できる場合、フォーカスを失っても収集を続けます。アプリの一時停止や OS による中断中は収集できません。</target></trans-unit>
       <trans-unit id="label.show_overlay"><source>Show Overlay</source><target>オーバーレイ を表示</target></trans-unit>
       <trans-unit id="label.overdraw_diagnostics_heatmap"><source>Overdraw diagnostics / heatmap</source><target>オーバードロー 診断 / ヒートマップ</target></trans-unit>
       <trans-unit id="label.update_interval"><source>Update interval</source><target>更新間隔</target></trans-unit>

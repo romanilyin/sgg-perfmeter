@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.10.13-1
+
+- Collect metrics while unfocused by default. Configure Collect when unfocused in the Setup window, the collectWhenUnfocused JSON setting, or the runtime API. Older settings files inherit the enabled default.
+- Keep desktop Player execution active while collection owns Run In Background, restoring its previous value when collection stops or the option is disabled. Actual application pause and resume warm-up remain respected.
+- Reject repeated or missing frame-timing timestamps during unfocused collection while allowing other available metrics to continue. Preserve observed focus/pause metadata and include the policy in exported settings.
+
 ## 2026.10.12-1
 
 - Exclude runtime integrations, PlayMode assemblies and runtime samples from Dedicated Server builds using `UNITY_SERVER`, while preserving Editor tooling for server targets. Also exclude the legacy `CloudRendering` headless simulation target. Thanks to [@AndrzejKebab](https://github.com/AndrzejKebab) for reporting [#42](https://github.com/romanilyin/sgg-perfmeter/issues/42).

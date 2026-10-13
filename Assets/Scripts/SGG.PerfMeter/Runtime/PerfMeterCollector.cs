@@ -13,10 +13,13 @@ namespace SGG.PerfMeter
 		private const string InvalidFrameTimingWarning = "Ignored invalid FrameTimingManager sample outside the 0-60000 ms sanity range.";
 		private const string MissingCountersWarning = "Some ProfilerRecorder counters are unavailable on this Unity version, platform, or render path.";
 		private const string CollectorStoppedWarning = "PerfMeter collector is not running.";
+		private const string StaleFrameTimingWarning = "No fresh FrameTimingManager sample is available while the application is unfocused.";
 
 		private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
 		private readonly PerfMeterProfilerMetricCatalog _profilerMetricCatalog = new PerfMeterProfilerMetricCatalog();
 		private bool _isRunning;
+		private ulong _lastFrameStartTimestamp;
+		internal bool IsRunning => _isRunning;
 
 		internal PerfMeterCounterAvailability AvailableCounters => _profilerMetricCatalog.AvailableCounters;
 		internal PerfMeterCounterAvailability UnavailableCounters => _profilerMetricCatalog.UnavailableCounters;
@@ -32,6 +35,7 @@ namespace SGG.PerfMeter
 			}
 
 			_profilerMetricCatalog.Start();
+			_lastFrameStartTimestamp = 0;
 			_isRunning = true;
 		}
 
@@ -51,16 +55,16 @@ namespace SGG.PerfMeter
 			return _profilerMetricCatalog.GetSnapshot();
 		}
 
-		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
+		internal PerfMeterMetricsSnapshot Collect(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored, bool requireFreshTiming = false)
 		{
 			using (PerfMeterSelfObservability.Measure(PerfMeterSelfOverheadComponent.Collector))
 			using (PerfMeterProfilerInstrumentation.CollectMarker.Auto())
 			{
-				return CollectCore(collectionFrame, frameBudgetMs, out frameTimingAvailability, out warning, out frameTimingSampleIgnored);
+				return CollectCore(collectionFrame, frameBudgetMs, out frameTimingAvailability, out warning, out frameTimingSampleIgnored, requireFreshTiming);
 			}
 		}
 
-		private PerfMeterMetricsSnapshot CollectCore(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored)
+		private PerfMeterMetricsSnapshot CollectCore(int collectionFrame, double frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored, bool requireFreshTiming)
 		{
 			if (!_isRunning)
 			{
@@ -83,6 +87,8 @@ namespace SGG.PerfMeter
 				hasValidCpuFrameTiming = timingCount > 0 && HasValidCpuFrameTiming(timing);
 			}
 			frameTimingSampleIgnored = timingCount > 0 && !hasValidCpuFrameTiming;
+			bool staleTiming = timingCount > 0 && !AcceptFrameTimingTimestamp(timing.frameStartTimestamp, requireFreshTiming);
+			hasValidCpuFrameTiming &= !staleTiming;
 			frameTimingAvailability = hasValidCpuFrameTiming ? PerfMeterFrameTimingAvailability.Available : PerfMeterFrameTimingAvailability.Unavailable;
 
 			double cpuFrameTimeMs = hasValidCpuFrameTiming ? timing.cpuFrameTime : 0d;
@@ -123,7 +129,7 @@ namespace SGG.PerfMeter
 				gpuFrameTimeMs);
 			PerfMeterProfilerInstrumentation.RecordBottleneck(bottleneck);
 
-			warning = GetWarning(gpuFrameTimeAvailable, frameTimingSampleIgnored || invalidGpuFrameTiming);
+			warning = staleTiming ? StaleFrameTimingWarning : GetWarning(gpuFrameTimeAvailable, frameTimingSampleIgnored || invalidGpuFrameTiming);
 
 			return new PerfMeterMetricsSnapshot(
 				PerfMeterRuntimeState.Running,
@@ -163,6 +169,16 @@ namespace SGG.PerfMeter
 				profilerMetricCatalogRevision: _profilerMetricCatalog.Revision,
 				shaderGpuProgramCreationCapability: _profilerMetricCatalog.GetCapability(PerfMeterProfilerMetricSemantic.ShaderGpuProgramCreation),
 				graphicsPipelineCreationCapability: _profilerMetricCatalog.GetCapability(PerfMeterProfilerMetricSemantic.GraphicsPipelineCreation));
+		}
+
+		internal bool AcceptFrameTimingTimestamp(ulong timestamp, bool requireFreshTiming)
+		{
+			bool fresh = timestamp != 0 && timestamp > _lastFrameStartTimestamp;
+			if (timestamp > _lastFrameStartTimestamp)
+			{
+				_lastFrameStartTimestamp = timestamp;
+			}
+			return !requireFreshTiming || fresh;
 		}
 
 		private int ReadCounter(PerfMeterCounterAvailability counter)

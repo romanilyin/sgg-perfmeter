@@ -78,6 +78,8 @@ namespace SGG.PerfMeter
 		private bool _overdrawHeatmapVisible;
 		private bool _applicationFocused = true;
 		private bool _applicationPaused;
+		private bool _runInBackgroundAcquired;
+		private bool _previousRunInBackground;
 		private bool _cpuCoreSamplingActive;
 		private bool _structuredLogsEnabled = true;
 		private bool _captureCleanupPending;
@@ -428,6 +430,7 @@ namespace SGG.PerfMeter
 
 				PerfMeterSelfObservability.EnsureStarted(PerfMeterRenderPipelineDetector.GetActiveKind());
 				_instance._collector.Start();
+				_instance.UpdateRunInBackground();
 				_instance.EnsureOverlayState();
 				return true;
 			}
@@ -564,6 +567,7 @@ namespace SGG.PerfMeter
 		{
 			PerfMeterRuntime runtime = _instance;
 			runtime._collector.Stop();
+			runtime.RestoreRunInBackground();
 			runtime._frameStatsSampler.Reset();
 			runtime._cpuCoreSampler.Reset();
 			runtime._cpuCoreSamplingActive = false;
@@ -634,6 +638,7 @@ namespace SGG.PerfMeter
 
 		private void Awake()
 		{
+			_applicationFocused = Application.isBatchMode || Application.isFocused;
 			if (_instance != null && _instance != this)
 			{
 				DestroyDuplicate();
@@ -721,7 +726,7 @@ namespace SGG.PerfMeter
 
 			int frame = Time.frameCount;
 			double frameBudgetMs = GetFrameBudgetMs(_targetFps);
-			PerfMeterMetricsSnapshot collectedMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored);
+			PerfMeterMetricsSnapshot collectedMetrics = _collector.Collect(frame, frameBudgetMs, out PerfMeterFrameTimingAvailability frameTimingAvailability, out string warning, out bool frameTimingSampleIgnored, requireFreshTiming: !_applicationFocused);
 			if (frameTimingSampleIgnored)
 			{
 				double ignoredSampleTimeSeconds = Time.realtimeSinceStartupAsDouble;
@@ -809,7 +814,7 @@ namespace SGG.PerfMeter
 			}
 
 			_applicationFocused = hasFocus;
-			if (hasFocus)
+			if (hasFocus && !_settings.CollectWhenUnfocused)
 			{
 				_focusResumeIgnoreFrames = FocusResumeIgnoreFrames;
 			}
@@ -1879,6 +1884,7 @@ namespace SGG.PerfMeter
 			}
 
 			_settings = settings;
+			UpdateRunInBackground();
 			_overlayScale = settings.OverlayScale;
 			_overlayOpacity = settings.OverlayOpacity;
 			_overlayFontSize = settings.OverlayFontSize;
@@ -1941,8 +1947,51 @@ namespace SGG.PerfMeter
 			return 1000d / (int)NormalizeTargetFps(targetFps);
 		}
 
+		internal void SetCollectWhenUnfocused(bool enabled)
+		{
+			if (!CanMutateRuntime)
+			{
+				return;
+			}
+
+			_settings = PerfMeterSettingsStore.WithCollectWhenUnfocused(_settings, enabled);
+			UpdateRunInBackground();
+		}
+
+		private void UpdateRunInBackground()
+		{
+			if (!Application.isPlaying || !CanMutateRuntime || !_collector.IsRunning || !_settings.CollectWhenUnfocused)
+			{
+				RestoreRunInBackground();
+				return;
+			}
+
+			if (!_runInBackgroundAcquired)
+			{
+				_previousRunInBackground = Application.runInBackground;
+				_runInBackgroundAcquired = true;
+				Application.runInBackground = true;
+			}
+		}
+
+		private void RestoreRunInBackground()
+		{
+			if (!_runInBackgroundAcquired)
+			{
+				return;
+			}
+
+			// Preserve a later external write that differs from the value we applied.
+			if (Application.runInBackground)
+			{
+				Application.runInBackground = _previousRunInBackground;
+			}
+			_runInBackgroundAcquired = false;
+		}
+
 		private void OnDisable()
 		{
+			RestoreRunInBackground();
 			if (_instance == this)
 			{
 				_collector.Stop();
@@ -1986,6 +2035,7 @@ namespace SGG.PerfMeter
 
 		private void OnDestroy()
 		{
+			RestoreRunInBackground();
 			FinalizeCaptureBundleForShutdown("Runtime destroyed during capture.");
 			bool captureReleased = TryResetCaptureCoordinator();
 			TryReleaseMemorySnapshotLeaseIfIdle();
@@ -2316,7 +2366,7 @@ namespace SGG.PerfMeter
 
 		private bool TrySkipCollectionForFocusState(out string warning)
 		{
-			if (_applicationPaused || !_applicationFocused)
+			if (_applicationPaused || (!_applicationFocused && !_settings.CollectWhenUnfocused))
 			{
 				warning = FocusPausedWarning;
 				return true;
@@ -2654,6 +2704,7 @@ namespace SGG.PerfMeter
 		private void ApplyAlertSettings()
 		{
 			_settings = PerfMeterSettingsStore.LoadFromResources();
+			UpdateRunInBackground();
 			_structuredLogsEnabled = _settings.StructuredLogsEnabled;
 			if (!_alertEngineInitialized)
 			{
@@ -2670,6 +2721,7 @@ namespace SGG.PerfMeter
 		private void ApplyAlertSettings(PerfMeterSettingsSnapshot settings)
 		{
 			_settings = settings;
+			UpdateRunInBackground();
 			_structuredLogsEnabled = settings.StructuredLogsEnabled;
 			_overdrawDefaultFrameCount = settings.OverdrawDefaultFrameCount;
 			_overdrawMaxFrameCount = settings.OverdrawMaxFrameCount;
