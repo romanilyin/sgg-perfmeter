@@ -8,6 +8,8 @@ using Gsc = UnityEngine.Rendering.GraphicsStateCollection;
 using Gsc = UnityEngine.Experimental.Rendering.GraphicsStateCollection;
 #endif
 
+[assembly: UnityEngine.Scripting.AlwaysLinkAssembly]
+
 namespace SGG.PerfMeter
 {
 	internal sealed class PerfMeterUnityGraphicsStateCollectionBackend : IPerfMeterGraphicsStateCollectionBackend

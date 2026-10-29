@@ -63,6 +63,31 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(checkedAssemblies, Is.GreaterThanOrEqualTo(11), "Include runtime integrations, PlayMode tests and imported samples.");
 		}
 
+		[Test]
+		public void RuntimeBootstrapAssembliesDeclareLinkerRoots()
+		{
+			string corePath = CompilationPipeline.GetAssemblyDefinitionFilePathFromAssemblyName("SGG.PerfMeter");
+			Assert.That(corePath, Is.Not.Empty, "SGG.PerfMeter asmdef");
+			UnityEditor.PackageManager.PackageInfo package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(corePath);
+			string packageRoot = package != null && !string.IsNullOrEmpty(package.resolvedPath)
+				? package.resolvedPath
+				: Path.GetDirectoryName(Path.GetDirectoryName(corePath));
+			AssertBootstrapAssemblyLinkerRoot(packageRoot, "SGG.PerfMeter", "Runtime/PerfMeterSettings.cs");
+			AssertBootstrapAssemblyLinkerRoot(
+				packageRoot, "SGG.PerfMeter.GraphicsStateCollection",
+				"Runtime/GraphicsStateCollection/PerfMeterUnityGraphicsStateCollectionBackend.cs");
+		}
+
+		private static void AssertBootstrapAssemblyLinkerRoot(string packageRoot, string assemblyName, string sourceRelativePath)
+		{
+			string assemblyPath = CompilationPipeline.GetAssemblyDefinitionFilePathFromAssemblyName(assemblyName);
+			Assert.That(assemblyPath, Is.Not.Empty, assemblyName + " asmdef");
+			string source = File.ReadAllText(Path.Combine(packageRoot, sourceRelativePath));
+			Assert.That(source, Does.Contain("[assembly: UnityEngine.Scripting.AlwaysLinkAssembly]")
+				.And.Contain("[RuntimeInitializeOnLoadMethod("),
+				assemblyName + " linker root");
+		}
+
 		[Serializable]
 		private sealed class AssemblyDefinition
 		{

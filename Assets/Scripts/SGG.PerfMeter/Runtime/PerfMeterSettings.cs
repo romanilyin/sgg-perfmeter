@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+[assembly: UnityEngine.Scripting.AlwaysLinkAssembly]
+
 namespace SGG.PerfMeter
 {
 	public enum PerfMeterSettingsLoadState
