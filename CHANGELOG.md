@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep runtime bootstrap callbacks and the optional GraphicsStateCollection backend discoverable during managed stripping. Document the same assembly-root requirement for auto-registering custom-provider integrations.
+
 ## 2026.10.13-1
 
 - Collect metrics while unfocused by default. Configure Collect when unfocused in the Setup window, the collectWhenUnfocused JSON setting, or the runtime API. Older settings files inherit the enabled default.
