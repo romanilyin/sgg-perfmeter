@@ -189,9 +189,12 @@ PerfMeterSessionSampleSnapshot[] samples = PerformanceMeter.GetSessionSamples();
 
 PerformanceMeter.ExportSessionJson("Logs/perfmeter-session.json");
 PerformanceMeter.ExportSessionCsv("Logs/perfmeter-session.csv");
+PerformanceMeter.ExportSessionJson("Logs/perfmeter-session-compact.json", PerfMeterSessionJsonFormat.Compact);
 ```
 
 Session options include warm-up frames/seconds, sample interval, maximum samples, reset-on-scene-load, and scene-load ignore windows.
+
+`ExportSessionJson(path)` remains full schema 2. The explicit `PerfMeterSessionJsonFormat.Compact` overload writes schema 3 with session-local descriptor/warning tables. See the [compact JSON reader contract](compact-session-json.md) before consuming it. Both formats use the same atomic file writer; capture-samples schema 1 and CSV are unchanged.
 
 ## Alerts
 

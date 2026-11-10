@@ -45,6 +45,8 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			PerformanceMeter.ClearCustomMetricProviders();
 			if (File.Exists(_firstPath)) File.Delete(_firstPath);
 			if (File.Exists(_secondPath)) File.Delete(_secondPath);
+			if (File.Exists(_firstPath + ".compact.json")) File.Delete(_firstPath + ".compact.json");
+			if (File.Exists(_secondPath + ".compact.json")) File.Delete(_secondPath + ".compact.json");
 		}
 
 		[UnityTest]
@@ -141,6 +143,32 @@ namespace SGG.PerfMeter.Tests.PlayMode
 					Assert.That(item.warning, Is.EqualTo(metric.Warning));
 				}
 			}
+			string compactPath = path + ".compact.json";
+			string compactEnvelope = (string)export.Invoke(null, new object[] { "{\"path\":\"" + compactPath + "\",\"format\":\"json_compact\"}" });
+			Assert.That(compactEnvelope, Does.Contain("\"success\":true"));
+			CompactSessionJson compact = JsonUtility.FromJson<CompactSessionJson>(File.ReadAllText(compactPath));
+			Assert.That(compact.schema_version, Is.EqualTo(3));
+			Assert.That(compact.session_id, Is.EqualTo(sessionId));
+			Assert.That(compact.samples.Length, Is.EqualTo(retained.Length));
+			for (int i = 0; i < retained.Length; i++)
+			{
+				Assert.That(compact.samples[i].frame, Is.EqualTo(retained[i].CollectionFrame));
+				Assert.That(compact.samples[i].time_seconds, Is.EqualTo(retained[i].CollectionTimeSeconds).Within(0.000000001d));
+				Assert.That(compact.samples[i].custom_metrics.Length, Is.EqualTo(retained[i].CustomMetrics.Length));
+				for (int j = 0; j < retained[i].CustomMetrics.Length; j++)
+				{
+					PerfMeterCustomMetricSnapshot metric = retained[i].CustomMetrics[j];
+					CompactMetricJson item = compact.samples[i].custom_metrics[j];
+					MetricJson descriptor = compact.custom_metric_descriptors[item.descriptor];
+					Assert.That(descriptor.id, Is.EqualTo(metric.Id));
+					Assert.That(descriptor.name, Is.EqualTo(metric.Name));
+					Assert.That(descriptor.category, Is.EqualTo(metric.Category));
+					Assert.That(descriptor.unit, Is.EqualTo(metric.Unit));
+					Assert.That(item.value, Is.EqualTo(metric.Value));
+					Assert.That(item.available, Is.EqualTo(metric.Available));
+					Assert.That(compact.custom_metric_warnings[item.warning], Is.EqualTo(metric.Warning));
+				}
+			}
 			return bytes;
 		}
 
@@ -162,6 +190,9 @@ namespace SGG.PerfMeter.Tests.PlayMode
 			}
 		}
 
+		[Serializable] private sealed class CompactSessionJson { public int schema_version; public string session_id; public MetricJson[] custom_metric_descriptors; public string[] custom_metric_warnings; public CompactSampleJson[] samples; }
+		[Serializable] private sealed class CompactSampleJson { public int frame; public double time_seconds; public CompactMetricJson[] custom_metrics; }
+		[Serializable] private sealed class CompactMetricJson { public int descriptor; public double value; public bool available; public int warning; }
 		[Serializable] private sealed class SessionJson { public string session_id; public MetadataJson metadata; public SampleJson[] samples; }
 		[Serializable] private sealed class MetadataJson { public int custom_metric_sample_count; }
 		[Serializable] private sealed class SampleJson { public int frame; public double time_seconds; public MetricJson[] custom_metrics; }

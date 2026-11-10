@@ -570,7 +570,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 			PerfMeterSessionSampleSnapshot[] samples = RuntimePerformanceMeter.GetSessionSamples();
 			PerfMeterStatusSnapshot status = RuntimePerformanceMeter.GetStatus();
 			PerfMeterSessionExportResult result;
-			if (string.Equals(normalizedFormat, "json", StringComparison.OrdinalIgnoreCase))
+			bool compactJson = string.Equals(normalizedFormat, "jsoncompact", StringComparison.OrdinalIgnoreCase);
+			if (compactJson || string.Equals(normalizedFormat, "json", StringComparison.OrdinalIgnoreCase))
 			{
 				PackageManagerInfo packageInfo = PackageManagerInfo.FindForAssembly(typeof(RuntimePerformanceMeter).Assembly);
 				PerfMeterPackageIdentity packageIdentity = packageInfo != null
@@ -586,7 +587,8 @@ namespace SGG.PerfMeter.Editor.Mcp
 					packageIdentity,
 					string.IsNullOrEmpty(summary.SessionId)
 						? PerfMeterSelfOverheadWindowSnapshot.Unavailable
-						: RuntimePerformanceMeter.GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId));
+						: RuntimePerformanceMeter.GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId),
+					compactJson ? PerfMeterSessionJsonFormat.Compact : PerfMeterSessionJsonFormat.Full);
 			}
 			else if (string.Equals(normalizedFormat, "csv", StringComparison.OrdinalIgnoreCase))
 			{
@@ -594,7 +596,7 @@ namespace SGG.PerfMeter.Editor.Mcp
 			}
 			else
 			{
-				throw new InvalidOperationException("schema_validation_failed\nArgument format must be json or csv");
+				throw new InvalidOperationException("schema_validation_failed\nArgument format must be json, json_compact, or csv");
 			}
 
 			return SessionCommandJson(result.Success, result.Path, result.Error, result.Status, summary);

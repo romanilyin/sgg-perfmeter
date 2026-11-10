@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -60,11 +61,12 @@ namespace SGG.PerfMeter
 			PerfMeterStatusSnapshot status,
 			bool overwriteExisting,
 			PerfMeterPackageIdentity packageIdentity,
-			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow)
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow,
+			PerfMeterSessionJsonFormat format = PerfMeterSessionJsonFormat.Full)
 		{
 			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
 			{
-				return Export(path, BuildJson(summary, samples, status, packageIdentity, timeline, selfOverheadWindow), overwriteExisting);
+				return Export(path, BuildJson(summary, samples, status, packageIdentity, timeline, selfOverheadWindow, format), overwriteExisting);
 			}
 		}
 
@@ -79,6 +81,11 @@ namespace SGG.PerfMeter
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
 			return BuildJson(summary, samples, status, PackageIdentity, PerfMeterSessionTimelineSnapshot.Empty);
+		}
+
+		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, PerfMeterSessionJsonFormat format)
+		{
+			return BuildJson(summary, samples, status, PackageIdentity, PerfMeterSessionTimelineSnapshot.Empty, PerfMeterSelfOverheadWindowSnapshot.Unavailable, format);
 		}
 
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status, PerfMeterPackageIdentity packageIdentity)
@@ -102,11 +109,18 @@ namespace SGG.PerfMeter
 			PerfMeterStatusSnapshot status,
 			PerfMeterPackageIdentity packageIdentity,
 			PerfMeterSessionTimelineSnapshot timeline,
-			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow)
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow,
+			PerfMeterSessionJsonFormat format = PerfMeterSessionJsonFormat.Full)
 		{
+			if (format != PerfMeterSessionJsonFormat.Full && format != PerfMeterSessionJsonFormat.Compact)
+			{
+				throw new ArgumentOutOfRangeException(nameof(format));
+			}
+
 			PerfMeterSessionSampleSnapshot[] safeSamples = samples ?? Array.Empty<PerfMeterSessionSampleSnapshot>();
+			CompactMetricTable compactMetrics = format == PerfMeterSessionJsonFormat.Compact ? new CompactMetricTable(safeSamples) : null;
 			StringBuilder builder = new StringBuilder(2048 + safeSamples.Length * 768);
-			builder.Append("{\"schema_version\":").Append(SchemaVersion);
+			builder.Append("{\"schema_version\":").Append(compactMetrics != null ? 3 : SchemaVersion);
 			builder.Append(",\"session_id\":").Append(JsonString(summary.SessionId));
 			builder.Append(",\"package\":").Append(JsonString(packageIdentity.Name));
 			builder.Append(",\"package_version\":").Append(JsonString(packageIdentity.Version));
@@ -135,6 +149,7 @@ namespace SGG.PerfMeter
 			builder.Append('}');
 			builder.Append(",\"self_overhead_window\":");
 			AppendSelfOverheadWindow(builder, selfOverheadWindow);
+			compactMetrics?.AppendTables(builder);
 			builder.Append(",\"samples\":[");
 			for (int i = 0; i < safeSamples.Length; i++)
 			{
@@ -143,7 +158,7 @@ namespace SGG.PerfMeter
 					builder.Append(',');
 				}
 
-				AppendSample(builder, safeSamples[i]);
+				AppendSample(builder, safeSamples[i], compactMetrics);
 			}
 
 			builder.Append("]");
@@ -748,7 +763,7 @@ namespace SGG.PerfMeter
 			builder.Append('}');
 		}
 
-		private static void AppendSample(StringBuilder builder, PerfMeterSessionSampleSnapshot sample)
+		private static void AppendSample(StringBuilder builder, PerfMeterSessionSampleSnapshot sample, CompactMetricTable compactMetrics = null)
 		{
 			PerfMeterMetricsSnapshot metrics = sample.Metrics;
 			builder.Append('{');
@@ -757,7 +772,14 @@ namespace SGG.PerfMeter
 			builder.Append(",\"scene\":").Append(JsonString(sample.SceneName));
 			builder.Append(",\"graphics_state_trace_id\":").Append(JsonString(sample.GraphicsStateTraceId));
 			AppendMetrics(builder, metrics);
-			AppendCustomMetrics(builder, sample.CustomMetrics);
+			if (compactMetrics == null)
+			{
+				AppendCustomMetrics(builder, sample.CustomMetrics);
+			}
+			else
+			{
+				compactMetrics.AppendMetrics(builder, sample.CustomMetrics);
+			}
 			AppendPlatformTelemetry(builder, sample.PlatformTelemetry);
 			builder.Append('}');
 		}
@@ -804,6 +826,84 @@ namespace SGG.PerfMeter
 			builder.Append(",\"available\":").Append(JsonBool(metric.Available));
 			builder.Append(",\"warning\":").Append(JsonString(metric.Warning));
 			builder.Append('}');
+		}
+
+		// Export-local tables use captured metadata, never the current provider registry.
+		// Ordinal tuple identity includes every descriptor field; IDs alone are not identities.
+		private sealed class CompactMetricTable
+		{
+			private readonly Dictionary<(string, string, string, string), int> _descriptorIndices = new Dictionary<(string, string, string, string), int>();
+			private readonly List<PerfMeterCustomMetricSnapshot> _descriptors = new List<PerfMeterCustomMetricSnapshot>();
+			private readonly Dictionary<string, int> _warningIndices = new Dictionary<string, int>(StringComparer.Ordinal);
+			private readonly List<string> _warnings = new List<string>();
+
+			internal CompactMetricTable(PerfMeterSessionSampleSnapshot[] samples)
+			{
+				for (int sampleIndex = 0; sampleIndex < samples.Length; sampleIndex++)
+				{
+					PerfMeterCustomMetricSnapshot[] metrics = samples[sampleIndex].CustomMetrics ?? Array.Empty<PerfMeterCustomMetricSnapshot>();
+					for (int metricIndex = 0; metricIndex < metrics.Length; metricIndex++)
+					{
+						PerfMeterCustomMetricSnapshot metric = metrics[metricIndex];
+						var identity = Identity(metric);
+						if (!_descriptorIndices.ContainsKey(identity))
+						{
+							_descriptorIndices.Add(identity, _descriptors.Count);
+							_descriptors.Add(metric);
+						}
+						string warning = metric.Warning ?? string.Empty;
+						if (!_warningIndices.ContainsKey(warning))
+						{
+							_warningIndices.Add(warning, _warnings.Count);
+							_warnings.Add(warning);
+						}
+					}
+				}
+			}
+
+			internal void AppendTables(StringBuilder builder)
+			{
+				builder.Append(",\"custom_metric_descriptors\":[");
+				for (int i = 0; i < _descriptors.Count; i++)
+				{
+					if (i > 0) builder.Append(',');
+					PerfMeterCustomMetricSnapshot metric = _descriptors[i];
+					builder.Append("{\"id\":").Append(JsonString(metric.Id));
+					builder.Append(",\"name\":").Append(JsonString(metric.Name));
+					builder.Append(",\"category\":").Append(JsonString(metric.Category));
+					builder.Append(",\"unit\":").Append(JsonString(metric.Unit));
+					builder.Append('}');
+				}
+				builder.Append("],\"custom_metric_warnings\":[");
+				for (int i = 0; i < _warnings.Count; i++)
+				{
+					if (i > 0) builder.Append(',');
+					builder.Append(JsonString(_warnings[i]));
+				}
+				builder.Append(']');
+			}
+
+			internal void AppendMetrics(StringBuilder builder, PerfMeterCustomMetricSnapshot[] customMetrics)
+			{
+				PerfMeterCustomMetricSnapshot[] metrics = customMetrics ?? Array.Empty<PerfMeterCustomMetricSnapshot>();
+				builder.Append(",\"custom_metrics\":[");
+				for (int i = 0; i < metrics.Length; i++)
+				{
+					if (i > 0) builder.Append(',');
+					PerfMeterCustomMetricSnapshot metric = metrics[i];
+					builder.Append("{\"descriptor\":").Append(_descriptorIndices[Identity(metric)]);
+					builder.Append(",\"value\":").Append(JsonNumber(metric.Value));
+					builder.Append(",\"available\":").Append(JsonBool(metric.Available));
+					builder.Append(",\"warning\":").Append(_warningIndices[metric.Warning ?? string.Empty]);
+					builder.Append('}');
+				}
+				builder.Append(']');
+			}
+
+			private static (string, string, string, string) Identity(PerfMeterCustomMetricSnapshot metric)
+			{
+				return (metric.Id ?? string.Empty, metric.Name ?? string.Empty, metric.Category ?? string.Empty, metric.Unit ?? string.Empty);
+			}
 		}
 
 		private static void AppendPlatformTelemetry(StringBuilder builder, PerfMeterPlatformTelemetrySnapshot telemetry)
