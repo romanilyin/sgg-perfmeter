@@ -632,16 +632,17 @@ namespace SGG.PerfMeter.Tests.EditMode
 			Assert.That(capability.Availability == PerfMeterAvailability.Available, Is.EqualTo(expectedAvailable));
 		}
 
-		[Test]
-		public void ExternalGpuProfilerRequiresDevelopmentBuildAndAttachment()
+		[TestCase(false, false, false, "Development builds")]
+		[TestCase(false, true, false, "Development builds")]
+		[TestCase(true, false, false, "not attached")]
+		[TestCase(true, true, true, "")]
+		public void ExternalGpuProfilerRequiresDevelopmentBuildAndAttachment(bool captureBuild, bool attached, bool available, string warning)
 		{
-			PerfMeterCaptureBackendCapability release = PerfMeterExternalGpuProfilerBackend.EvaluateCapability(PerfMeterCaptureTool.RenderDoc, RuntimePlatform.WindowsPlayer, GraphicsDeviceType.Direct3D12, false, true);
-			PerfMeterCaptureBackendCapability detached = PerfMeterExternalGpuProfilerBackend.EvaluateCapability(PerfMeterCaptureTool.RenderDoc, RuntimePlatform.WindowsPlayer, GraphicsDeviceType.Direct3D12, true, false);
+			PerfMeterCaptureBackendCapability capability = PerfMeterExternalGpuProfilerBackend.EvaluateCapability(
+				PerfMeterCaptureTool.RenderDoc, RuntimePlatform.WindowsPlayer, GraphicsDeviceType.Direct3D12, captureBuild, attached);
 
-			Assert.That(release.Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
-			Assert.That(release.Warning, Does.Contain("Development builds"));
-			Assert.That(detached.Availability, Is.EqualTo(PerfMeterAvailability.Unavailable));
-			Assert.That(detached.Warning, Does.Contain("not attached"));
+			Assert.That(capability.Availability == PerfMeterAvailability.Available, Is.EqualTo(available));
+			Assert.That(capability.Warning, Does.Contain(warning));
 		}
 
 		[Test]

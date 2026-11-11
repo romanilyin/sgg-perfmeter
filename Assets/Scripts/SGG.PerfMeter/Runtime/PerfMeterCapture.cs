@@ -1992,7 +1992,13 @@ namespace SGG.PerfMeter
 
 		public PerfMeterCaptureBackendCapability GetCapability(PerfMeterCaptureTool tool)
 		{
-		#if UNITY_EDITOR || DEVELOPMENT_BUILD
+		#if UNITY_EDITOR || DEVELOPMENT_BUILD || UNITY_7000_0_OR_NEWER
+			// Unity 7 removed DEVELOPMENT_BUILD; keep its compiled API path behind the runtime development-build gate.
+			if (!Application.isEditor && !Debug.isDebugBuild)
+			{
+				return EvaluateCapability(tool, Application.platform, SystemInfo.graphicsDeviceType, false, false);
+			}
+
 			bool attached;
 			try
 			{
@@ -2011,7 +2017,13 @@ namespace SGG.PerfMeter
 
 		public bool TryBegin(PerfMeterCaptureTool tool, out string error)
 		{
-		#if UNITY_EDITOR || DEVELOPMENT_BUILD
+		#if UNITY_EDITOR || DEVELOPMENT_BUILD || UNITY_7000_0_OR_NEWER
+			if (!Application.isEditor && !Debug.isDebugBuild)
+			{
+				error = "External GPU capture is unavailable in non-development builds.";
+				return false;
+			}
+
 			try
 			{
 				UnityEngine.Experimental.Rendering.ExternalGPUProfiler.BeginGPUCapture();
@@ -2031,7 +2043,13 @@ namespace SGG.PerfMeter
 
 		public bool TryEnd(out string error)
 		{
-		#if UNITY_EDITOR || DEVELOPMENT_BUILD
+		#if UNITY_EDITOR || DEVELOPMENT_BUILD || UNITY_7000_0_OR_NEWER
+			if (!Application.isEditor && !Debug.isDebugBuild)
+			{
+				error = "External GPU capture is unavailable in non-development builds.";
+				return false;
+			}
+
 			try
 			{
 				UnityEngine.Experimental.Rendering.ExternalGPUProfiler.EndGPUCapture();

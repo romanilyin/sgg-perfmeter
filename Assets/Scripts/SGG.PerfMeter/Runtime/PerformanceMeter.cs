@@ -764,6 +764,11 @@ namespace SGG.PerfMeter
 
 		public static bool ExportSessionJson(string path)
 		{
+			return ExportSessionJson(path, PerfMeterSessionJsonFormat.Full);
+		}
+
+		public static bool ExportSessionJson(string path, PerfMeterSessionJsonFormat format)
+		{
 			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
 			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
 			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
@@ -780,7 +785,8 @@ namespace SGG.PerfMeter
 				status,
 				true,
 				PerfMeterSessionExporter.RuntimePackageIdentity,
-				selfOverheadWindow).Success;
+				selfOverheadWindow,
+				format).Success;
 		}
 
 		public static bool ExportSessionCsv(string path)
