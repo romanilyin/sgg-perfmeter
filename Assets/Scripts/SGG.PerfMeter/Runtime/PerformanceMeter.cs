@@ -797,6 +797,36 @@ namespace SGG.PerfMeter
 			return PerfMeterSessionExporter.ExportCsv(path, summary, samples, GetStatus());
 		}
 
+		/// <summary>Writes the retained session as UTF-8 without a BOM to a caller-owned writable stream.</summary>
+		/// <remarks>Leaves the stream open. Does not seek or make output atomic. False may leave partial output;
+		/// the caller owns compression, disposal, durability, and publication. Serialization still builds a string in memory.</remarks>
+		public static bool WriteSessionJson(System.IO.Stream destination, PerfMeterSessionJsonFormat format = PerfMeterSessionJsonFormat.Full)
+		{
+			PerfMeterSessionExporter.ValidateDestination(destination);
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
+			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+			PerfMeterSessionTimelineSnapshot timeline = runtime != null ? runtime.GetSessionTimeline() : PerfMeterSessionTimelineSnapshot.Empty;
+			PerfMeterStatusSnapshot status = GetStatus();
+			PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow = string.IsNullOrEmpty(summary.SessionId)
+				? PerfMeterSelfOverheadWindowSnapshot.Unavailable
+				: GetSelfOverheadWindow(PerfMeterSelfOverheadWindowKind.Session, summary.SessionId);
+			return PerfMeterSessionExporter.WriteJson(destination, summary, samples, timeline, status,
+				PerfMeterSessionExporter.RuntimePackageIdentity, selfOverheadWindow, format);
+		}
+
+		/// <summary>Writes retained session CSV as UTF-8 without a BOM, leaving the caller-owned stream open.</summary>
+		/// <remarks>Does not seek or make output atomic. False may leave partial output. The caller owns compression,
+		/// disposal, durability, and publication. Serialization still builds a string in memory.</remarks>
+		public static bool WriteSessionCsv(System.IO.Stream destination)
+		{
+			PerfMeterSessionExporter.ValidateDestination(destination);
+			PerfMeterRuntime runtime = PerfMeterRuntime.Instance;
+			PerfMeterSessionSummarySnapshot summary = runtime != null ? runtime.GetSessionSummary() : PerfMeterSessionSummarySnapshot.Empty;
+			PerfMeterSessionSampleSnapshot[] samples = runtime != null ? runtime.GetSessionSamples() : System.Array.Empty<PerfMeterSessionSampleSnapshot>();
+			return PerfMeterSessionExporter.WriteCsv(destination, summary, samples, GetStatus());
+		}
+
 		public static void RequestOverdrawMeasurement(int frameCount = 0)
 		{
 			TryRequestOverdrawMeasurement(frameCount);

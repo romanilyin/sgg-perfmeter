@@ -196,6 +196,35 @@ Session options include warm-up frames/seconds, sample interval, maximum samples
 
 `ExportSessionJson(path)` remains full schema 2. The explicit `PerfMeterSessionJsonFormat.Compact` overload writes schema 3 with session-local descriptor/warning tables. See the [compact JSON reader contract](compact-session-json.md) before consuming it. Both formats use the same atomic file writer; capture-samples schema 1 and CSV are unchanged.
 
+For caller-owned streams, use `PerformanceMeter.WriteSessionJson(destination, format)` or
+`PerformanceMeter.WriteSessionCsv(destination)`. The distinct names leave existing path calls
+(including null-literal calls) unchanged. The destination must be writable; null and non-writable
+streams throw argument exceptions. Non-seekable streams such as `GZipStream` are supported.
+Both methods write the same UTF-8 bytes as the corresponding file export, without a BOM or an
+added newline, and always leave the destination open. A write or flush failure returns `false`
+and may leave partial output. Invalid JSON formats still throw `ArgumentOutOfRangeException`.
+The caller owns compression, stream disposal, durable flush, atomic publication and output limits;
+`true` does not finalize a surrounding compressor or prove durable storage.
+
+These methods reuse the existing session serializer. They avoid a whole UTF-8 byte-array copy,
+but the JSON/CSV string and its serializer buffers are still built in memory. They do not stream
+sample collection or reduce retained samples. No default export or capture-bundle behavior changes.
+
+```csharp
+using (var file = new System.IO.FileStream(freshTemporaryPath, System.IO.FileMode.CreateNew))
+{
+    using (var gzip = new System.IO.Compression.GZipStream(file,
+        System.IO.Compression.CompressionLevel.Fastest, leaveOpen: true))
+    {
+        if (!PerformanceMeter.WriteSessionJson(gzip, PerfMeterSessionJsonFormat.Compact))
+            throw new System.IO.IOException("Incomplete session export; do not publish this file.");
+    } // Finalizes the gzip footer; the caller checks its compressed-output budget here.
+    file.Flush(flushToDisk: true);
+}
+// Publish only after successful compressor disposal, budget validation and durable flush.
+```
+
+
 ## Alerts
 
 ```csharp

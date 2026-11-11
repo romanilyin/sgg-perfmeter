@@ -78,6 +78,53 @@ namespace SGG.PerfMeter
 			}
 		}
 
+		internal static void ValidateDestination(Stream destination)
+		{
+			if (destination == null) throw new ArgumentNullException(nameof(destination));
+			if (!destination.CanWrite) throw new ArgumentException("Session destination must be writable.", nameof(destination));
+		}
+
+		internal static bool WriteJson(Stream destination, PerfMeterSessionSummarySnapshot summary,
+			PerfMeterSessionSampleSnapshot[] samples, PerfMeterSessionTimelineSnapshot timeline, PerfMeterStatusSnapshot status,
+			PerfMeterPackageIdentity packageIdentity, PerfMeterSelfOverheadWindowSnapshot selfOverheadWindow,
+			PerfMeterSessionJsonFormat format = PerfMeterSessionJsonFormat.Full)
+		{
+			ValidateDestination(destination);
+			using (PerfMeterProfilerInstrumentation.ExportJsonMarker.Auto())
+			{
+				return WriteUtf8(destination, BuildJson(summary, samples, status, packageIdentity, timeline, selfOverheadWindow, format));
+			}
+		}
+
+		internal static bool WriteCsv(Stream destination, PerfMeterSessionSummarySnapshot summary,
+			PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
+		{
+			ValidateDestination(destination);
+			using (PerfMeterProfilerInstrumentation.ExportCsvMarker.Auto())
+			{
+				return WriteUtf8(destination, BuildCsv(summary, samples, status));
+			}
+		}
+
+		private static bool WriteUtf8(Stream destination, string content)
+		{
+			try
+			{
+				// Match Encoding.UTF8.GetBytes used by the existing path writer: no BOM or added newline.
+				// StreamWriter bounds encoding buffers but does not change BuildJson/BuildCsv string allocation.
+				using (StreamWriter writer = new StreamWriter(destination, new UTF8Encoding(false), 4096, true))
+				{
+					writer.Write(content);
+				}
+				return true;
+			}
+			catch (Exception)
+			{
+				// The caller retains ownership of any partial output and must not publish it as successful.
+				return false;
+			}
+		}
+
 		internal static string BuildJson(PerfMeterSessionSummarySnapshot summary, PerfMeterSessionSampleSnapshot[] samples, PerfMeterStatusSnapshot status)
 		{
 			return BuildJson(summary, samples, status, PackageIdentity, PerfMeterSessionTimelineSnapshot.Empty);
