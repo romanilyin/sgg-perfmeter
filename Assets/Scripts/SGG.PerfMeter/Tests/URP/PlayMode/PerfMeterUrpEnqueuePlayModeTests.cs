@@ -17,6 +17,7 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 		private PerfMeterRenderGraphFeature _feature;
 		private SentinelProvider _sentinel;
 		private bool _runtimeOwned;
+		private bool _admitted;
 		private int _sessionStartFrame;
 		private long _previousEpoch;
 		private string _previousIdentity;
@@ -25,6 +26,9 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 		[UnitySetUp]
 		public IEnumerator SetUp()
 		{
+			_admitted = false;
+			UrpCameraPipelineControlCustody.RequireEmpty();
+			Assert.That(UrpCameraPipelineScope.RetainedScopeCount, Is.Zero, "An earlier pipeline scope still holds cleanup custody.");
 			_cleanupErrors.Clear();
 			_runtimeOwned = false;
 			_previousEpoch = 0;
@@ -46,6 +50,7 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 			PerfMeterGraphicsStateCollectionStatusSnapshot graphics = PerformanceMeter.GetGraphicsStateCollectionStatus();
 			Assert.That(graphics.IsBusy || graphics.HasPendingCleanup, Is.False, "BLOCKED_PENDING_GRAPHICS: existing graphics cleanup must complete before this fixture.");
 			Assert.That(PerformanceMeter.GetMemorySnapshotStatus().IsActive, Is.False, "BLOCKED_PENDING_MEMORY: another snapshot workflow is active.");
+			_admitted = true; // Teardown owns partial construction only after all foreign-work admission gates.
 			_pipeline = new UrpCameraPipelineScope();
 			_feature = ScriptableObject.CreateInstance<PerfMeterRenderGraphFeature>();
 			_feature.hideFlags = HideFlags.HideAndDontSave;
@@ -96,6 +101,7 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 			Assert.That(active.LastEnqueueFrame, Is.InRange(active.FirstEnqueueFrame, active.WindowEndFrame));
 			Assert.That(active.MeasurementContained, Is.True);
 			Assert.That(active.Warning, Is.Empty);
+			WriteWindowObservation("active-accepted", active);
 			yield return null; // Real callbacks outside a stopped session must not change its frozen window.
 			PerfMeterSelfOverheadWindowSnapshot frozen = Read(activeId);
 			Assert.That(frozen.WindowEndFrame, Is.EqualTo(active.WindowEndFrame));
@@ -121,11 +127,12 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 		[UnityTearDown]
 		public IEnumerator TearDown()
 		{
+			if (!_admitted) yield break; // A refused admission must not retry or mutate the previous owner's debt.
 			if (_runtimeOwned) Cleanup(PerformanceMeter.Stop);
 			if (_sentinel != null) Cleanup(() => PerformanceMeter.UnregisterCustomMetricProvider(_sentinel));
 			if (_pipeline != null) yield return _pipeline.Restore();
 			// Covers feature creation followed by configuration/setup failure before pipeline ownership was captured.
-			if (_feature != null) Cleanup(() => Object.DestroyImmediate(_feature));
+			if (_feature != null && (_pipeline == null || !_pipeline.HasFeatureCustody(_feature))) Cleanup(() => Object.DestroyImmediate(_feature));
 			yield return null;
 			if (_runtimeOwned)
 			{
@@ -135,6 +142,7 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 			if (_sentinel != null)
 				foreach (PerfMeterCustomMetricSnapshot metric in PerformanceMeter.GetCustomMetrics()) Assert.That(metric.Id, Is.Not.EqualTo(_sentinel.Id));
 			Assert.That(_cleanupErrors, Is.Empty, string.Join("; ", _cleanupErrors));
+			_pipeline?.AssertRestored(); // Never bypass a retained scope by independently destroying its feature.
 		}
 
 		private void ConfigureFeature(bool marker, bool enabled = true)
@@ -233,6 +241,20 @@ namespace SGG.PerfMeter.Tests.URP.PlayMode
 			Assert.That(window.FirstEnqueueFrame, Is.EqualTo(-1));
 			Assert.That(window.LastEnqueueFrame, Is.EqualTo(-1));
 			Assert.That(window.MeasurementContained, Is.False);
+			WriteWindowObservation("dormant-accepted", window);
+		}
+
+		private static void WriteWindowObservation(string label, PerfMeterSelfOverheadWindowSnapshot window)
+		{
+			var m = window.UrpRenderIntegration;
+			var culture = System.Globalization.CultureInfo.InvariantCulture;
+			TestContext.WriteLine("CPU-registration-only " + label + " id=" + window.Identity + " epoch=" + window.Epoch +
+				" window=" + window.WindowStartFrame + ".." + window.WindowEndFrame + " measured=" + m.MeasurementFirstFrame + ".." + m.MeasurementLastFrame +
+				" complete=" + window.WindowComplete + " contained=" + window.MeasurementContained + " enqueues=" + window.EnqueueCount +
+				" invocations=" + m.InvocationCount + " callbackFrames=" + m.CallbackFrameCount + " state=" + m.State + " reason=" + m.InactiveReason +
+				" cpuAverageMs=" + m.AverageCpuTimeMs.ToString("R", culture) + " cpuMaxMs=" + m.MaxCpuTimeMs.ToString("R", culture) +
+				" threadAllocatedBytes=" + m.AllocatedBytes + " averageAllocatedBytes=" + m.AverageAllocatedBytes.ToString("R", culture) +
+				" gpuAttribution=" + m.GpuAttributionAvailability + " (n/a; no GPU-overhead measurement)");
 		}
 
 		private void AssertRunningGates()

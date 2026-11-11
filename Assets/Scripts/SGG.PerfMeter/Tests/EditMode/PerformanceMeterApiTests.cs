@@ -537,6 +537,11 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[Test]
 		public void SessionCapturesConfiguredAndEffectiveRuntimeSettingsSeparately()
 		{
+			// Own this test's configured input instead of inheriting the consumer's Resources defaults.
+			// Existing TearDown stops this runtime and resets explicit settings application.
+			Assert.That(PerformanceMeter.TryApplySettingsJson(
+				PerfMeterSettingsStore.ToJson(PerfMeterSettingsStore.CreateDefault()), out string warning), Is.True, warning);
+			Assert.That(warning, Is.Empty);
 			PerformanceMeter.EnsureRunning();
 			PerformanceMeter.SetCollectionMode(PerfMeterCollectionMode.Background);
 			PerformanceMeter.StartSession(new PerfMeterSessionOptions(0, 0.01f, 2));
@@ -2030,18 +2035,18 @@ namespace SGG.PerfMeter.Tests.EditMode
 		[UnityTest]
 		public IEnumerator McpHiddenVisibilitySurvivesPlayModeTransition()
 		{
-			PerfMeterMcpCommands.OverlaySet("{\"visible\":false}");
+			string hiddenJson = PerfMeterMcpCommands.OverlaySet("{\"visible\":false}");
+			Assert.That(hiddenJson, Does.Contain("\"success\":true"));
+			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(PerfMeterRuntimeState.Running),
+				"The explicit hidden command owns a running instance before Play entry.");
 
 			yield return new EnterPlayMode();
 			yield return null;
-			PerfMeterSettingsSnapshot settings = PerformanceMeter.GetSettings();
 			bool domainReloadDisabled = UnityEditor.EditorSettings.enterPlayModeOptionsEnabled
 				&& (UnityEditor.EditorSettings.enterPlayModeOptions & UnityEditor.EnterPlayModeOptions.DisableDomainReload) != 0;
 			PerfMeterRuntimeState expectedEntryState =
+				// AutoStart controls creation; it does not stop this explicit instance.
 				domainReloadDisabled
-					&& settings.LoadState == PerfMeterSettingsLoadState.Loaded
-					&& settings.Enabled
-					&& settings.AutoStart
 					? PerfMeterRuntimeState.Running
 					: PerfMeterRuntimeState.Stopped;
 			Assert.That(PerformanceMeter.GetStatus().State, Is.EqualTo(expectedEntryState));
