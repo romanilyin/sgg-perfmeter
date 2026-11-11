@@ -45,6 +45,15 @@
 - Сохранять degraded `-1` вместо ломкого reflection, когда counters недоступны.
 - Добавить явные warnings по custom renderer features, которые ломают mobile-friendly Render Graph paths, только если это можно определить надежно.
 
+## Frame Debugger Export And Analysis
+
+Текущий статус: planned; implementation not started. Приоритеты и acceptance описаны в [Frame Debugger Export Plan](frame-debugger-export.md), roadmap IDs `PM-FD-001..004`.
+
+- P2: standalone optional Editor service/UI для ручной выгрузки текущего local Frame Debugger capture в versioned JSON и компактный CSV, с проверкой свежести события, timeout/cancel и explicit partial data.
+- P3: сводки shader/pass/RT/SRP batch cause, semantic A/B comparison и optional thin MCP adapter/diagnostic bundle attachment.
+- Version-fragile reflection ограничен Editor adapter. Deeper Render Graph diagnostics выше сохраняет public-API-only policy и degraded counters.
+- Event inventory описывает состав отрисовки; event count, draw-call count, Render Graph passes и GPU duration имеют отдельную семантику. Точная связь с ранее записанным worst frame требует самостоятельного evidence.
+
 ## Session Analysis UI
 
 Текущий статус: реализовано для `PM-SESSION-001`, ожидает общий P3/P3.5 release pass.
