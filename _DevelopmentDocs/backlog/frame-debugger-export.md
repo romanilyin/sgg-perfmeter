@@ -1,9 +1,10 @@
 # Frame Debugger Export Plan
 
-Статус: planned, docs-only design; реализация не начата.
+Статус: `PM-FD-001` реализован локально, unreleased; базовый ручной экспорт принят. `PM-FD-002..004` остаются planned.
 Roadmap IDs: `PM-FD-001..004`.
-Дата актуализации: 2026-11-11.
-Source baseline: `main`, commit `d5520626e9002a6fd841b4ade20e05aa87eb45c4`, package `2026.10.13-1`.
+Дата актуализации: 2026-11-13.
+Исполнительский baseline: `main`, commit `912baec7209d48aa438442abf92246d11cfeb6a3`, package `2026.11.12-1`. Новая реализация находится поверх этой базы и не входит в опубликованный пакет. Исходный design/source review выполнялся на `d5520626e9002a6fd841b4ade20e05aa87eb45c4`.
+Приоритет: `PM-FD-001` — **P0, первая задача** по решению пользователя. Оба прежних P1 отложены; их завершение не является условием ручного экспорта. `PM-FD-002..004` сохраняют P3.
 
 ## Цель И Продуктовая Ценность
 
@@ -16,22 +17,38 @@ Source baseline: `main`, commit `d5520626e9002a6fd841b4ade20e05aa87eb45c4`, pack
 - [Sumzap: Frame Debugger all events to CSV](https://tech.sumzap.co.jp/entry/frame-debugger-all-events-to-csv) описывает последовательный обход событий через internal Editor APIs, ожидание выбранного индекса и экспорт render state/shader properties. Автор проверял Unity `6000.4`/URP `17`; полный интегрируемый модуль PerfMeter в статье отсутствует.
 - [Unity 6000.6: event information](https://docs.unity3d.com/6000.6/Documentation/Manual/frame-debugger-window-event-information.html) определяет свойства события, Draw Calls и SRP Batch cause. [Copy event information](https://docs.unity3d.com/6000.6/Documentation/Manual/FrameDebugger-share-event-information.html) описывает штатное копирование отдельного события/свойств.
 - Статическая сверка [UnityCsReference `6000.6.8f1`](https://github.com/Unity-Technologies/UnityCsReference/blob/6000.6.8f1/Editor/Mono/PerformanceTools/FrameDebugger.bindings.cs) подтверждает наличие event metadata, `m_FrameEventIndex`, `m_DrawCallCount`, `GetFrameEventData`, `eventsHash` и признаков remote data. Возврат `false` из `GetFrameEventData` означает предыдущие данные; наличие этих членов не подтверждает работоспособность будущего адаптера в Editor.
-- В baseline нет Frame Debugger exporter или MCP-команды. [Session exporter](../../Assets/Scripts/SGG.PerfMeter/Runtime/PerfMeterSessionExporter.cs) сохраняет samples; [RenderDoc analyzer DTO](../../Assets/Scripts/SGG.PerfMeter/Editor/RenderDoc/PerfMeterRenderDocAnalyzerProtocolDtos.cs) содержит action tree/counters. Этот анализатор остаётся экспериментальной инфраструктурой без public UI/API/MCP entry point, согласно [release scope](../release/2026.8.13-1-renderdoc-analyzer-release.md).
+- В опубликованном baseline Frame Debugger exporter отсутствует; новая реализация описана ниже. [Session exporter](../../Assets/Scripts/SGG.PerfMeter/Runtime/PerfMeterSessionExporter.cs) сохраняет samples; [RenderDoc analyzer DTO](../../Assets/Scripts/SGG.PerfMeter/Editor/RenderDoc/PerfMeterRenderDocAnalyzerProtocolDtos.cs) содержит action tree/counters. Этот анализатор остаётся экспериментальной инфраструктурой без public UI/API/MCP entry point, согласно [release scope](../release/2026.8.13-1-renderdoc-analyzer-release.md).
 
-Первый verification target: Windows x64 Editor, Unity `6000.6.8f1`, URP `17.6.0`, D3D12. До real capture acceptance этот target считается planned. Package runtime floor `6000.4+` автоматически не распространяет поддержку нового Editor adapter на все версии. Remote Player/iOS/Android, HDRP и другие OS/API/Unity rows требуют отдельных реализационных решений и реальных проверок.
+Первый verification target: Windows x64 Editor, Unity `6000.6.8f1`, URP `17.6.0`, D3D12. Adapter включён только для этой версии Editor/OS/API. Package runtime floor `6000.4+` автоматически не распространяет поддержку нового Editor adapter на все версии. Remote Player/iOS/Android, HDRP и другие OS/API/Unity rows требуют отдельных реализационных решений и реальных проверок.
+
+## Текущее состояние реализации
+
+Отдельная сборка `SGG.PerfMeter.Editor.FrameDebugger` содержит точный reflection adapter, service/state machine, worker writer и UI Toolkit window. Меню **SGG > Perfmeter > Frame Debugger Export** использует уже включённый local capture и сохраняет `events.json`, `events.csv`, optional `properties.csv`, `manifest.json` в `Temp/PerfMeter/FrameDebuggerExports/<export-id>/`. [Инструкция](../../docs/ru/frame-debugger-export.md), [schema v1](../../Assets/Scripts/SGG.PerfMeter/Editor/FrameDebugger/frame-debugger-v1.schema.json), [reader fixture](../../Assets/Scripts/SGG.PerfMeter/Tests/Fixtures/FrameDebugger/events-v1.json).
+
+Лимиты: 2048 events по умолчанию, максимум 8192; 128 fields/event по умолчанию, максимум 256; до 128 property entries; 8 Mi символов detached snapshot; 60 секунд обхода по умолчанию, максимум 120; writing cancellation deadline 30 секунд; output 64 MiB; retention 8 exports / 256 MiB. Ограничения дают explicit partial/unavailable либо отказ публикации. Shader properties по умолчанию выключены. Publication атомарная, файлы имеют SHA-256; cleanup работает только с собственными marker-owned результатами.
+
+Обход владеет shared diagnostic leases и отмечает `EditorDiagnostic` gaps в уже работающей сессии. Collector автоматически не запускается. Direct native local/remote flags определяют target: `receivingRemoteFrameEventData` наблюдался `true` при local capture и не используется как признак remote ownership. Success/index/list/hash/target/selection проверяются отдельно; exact source-frame provenance не заявляется.
+
+Проверка: компиляция Unity `6000.6.8f1` чистая, focused independent code review завершён. Fake-backend, state-machine, writer и timeline regressions добавлены и скомпилированы; NUnit/EditMode/PlayMode suites по указанию пользователя не запускались. Draft 2020-12 schema и reader fixture проверены через `jsonschema 4.25.1`; Unity metas/GUIDs, ссылки и whitespace проверены.
+
+Ручной acceptance 2026-11-13: GUI Editor / D3D12, проект URP `17.6.0`, один retained command buffer с clear и двумя mesh draws, неизменные RT `128×128`, shader `Universal Render Pipeline/Unlit` и pass `Unlit`. Сначала прямой native probe подтвердил `GetFrameEventData == true` и точный индекс; затем публичный service сохранил **3/3 события, 0 missing, completeness complete** за 3.27 секунды вместе с подготовкой. JSON/CSV rows, manifest sizes и все три SHA-256 совпали. Исходная selection восстановлена; сцены, focus и active RT сохранены; preview scene освобождена; helper-owned debugger отключён; collector не запускался. Clear event shader/pass остались unavailable.
+
+Evidence сохранён локально в `C:\Work\Unity\perfmeter-temp\frame-debugger-20261113`: `manual-smoke-retained-commands-success.json` (SHA-256 `67f04a33b5bfa91af393e7220e4c0dec47b3bf9a2cc220aca07c717ae296db00`), `accepted-export-20c3d9620ee64b389260baf5e9fba980/manifest.json` (`2df76ff4242fd221ebf216196def524921901abc20390ecb19ae82f2378b5848`) и code freeze `CODE-FINAL.json` (`f78711cb58ae57fb228875c06ea6bd27c51e1ceee5961066d26c4bfd7eb324c3`). Одноразовый helper не входит в пакет.
+
+Граница результата: это реальный native export на синтетическом неизменном command buffer, а не приёмка полного URP Render Graph workload. Повторный `SubmitRenderRequest` в отдельном preview создавал новый native hash на каждом render; exporter корректно завершился `Partial: capture_or_target_changed`. Удерживаемый без render capture возвращал данные прежнего selected event, и readiness guard их отверг. Широкий URP workload (shadows, transparent, postprocess, compute, BRG/GRD), HDRP, remote Player и остальные версии/API остаются без qualification. Для постоянно пересоздаваемого capture exporter сохраняет partial, даже если изображение визуально не меняется; hash guard не ослаблен ради принятия сценария.
 
 ## Архитектурная Граница
 
-- Предлагаемый модуль `SGG.PerfMeter.Editor.FrameDebugger` является optional Editor-only assembly. Название и public API фиксируются при implementation review. Runtime collector не получает reflection, `UnityEditor`, Gateway или RenderDoc dependencies.
+- Модуль `SGG.PerfMeter.Editor.FrameDebugger` является отдельной Editor-only assembly. Public entry point — `PerfMeterFrameDebuggerExport`, UI — `PerfMeterFrameDebuggerWindow`. Runtime collector не получает reflection, `UnityEditor`, Gateway или RenderDoc dependencies.
 - Internal type/member resolution, signature checks и version mapping находятся в одном adapter. Missing members и неподтверждённые signatures дают typed `Unsupported`/`Unavailable`; подстановка ложных нулей и повторная mutation через speculative fallback запрещены.
 - Явный экспорт использует уже включённый local Frame Debugger. Первый slice не включает автоматический enable/disable, выбор remote target, continuous recording или alert-triggered capture. Открытие UI/status не изменяет Frame Debugger.
 - Editor service владеет обходом и progress/cancel; UI Toolkit window отображает состояние. Unity-owned data копируются в immutable DTO на main thread; serialization, hashing и filesystem I/O выполняются worker слоем по модели `PM-CORE-001`.
-- Предусмотреть отдельную session/capture diagnostic boundary для интервала работы Frame Debugger; samples из этого интервала не считать normal baseline. Если отладчик был включён до запроса, нельзя реконструировать начало паузы или приписывать ему прошлые timings без evidence.
+- Отдельная session/capture diagnostic boundary исключает интервал обхода из normal baseline. Если отладчик был включён до запроса, нельзя реконструировать начало паузы или приписывать ему прошлые timings без evidence.
 - [Public render-integration boundary](../decisions/render-integration-context.md) сохраняется: `PM-RG-001` по-прежнему ждёт стабильных public pass/resource/aliasing/merge APIs. Frame Debugger events не заполняют эти runtime counters.
 
 ## PM-FD-001 Editor Export Foundation
 
-Priority: P2, после текущей P1 stabilization lane. Dependencies: `PM-EXT-002`, `PM-CORE-001`, `PM-COMP-002`.
+Priority: P0, первая задача текущей итерации. Dependencies: существующие `PM-EXT-002`, `PM-CORE-001`, `PM-COMP-002`; отложенная P1 приёмка и настройка CI не являются предварительными условиями.
 
 ### Первый Рабочий Сценарий
 
@@ -103,11 +120,11 @@ Priority: P3. Dependencies: `PM-FD-001`, `PM-CAP-002`, `PM-CORE-003`, `PM-COMP-0
 | Isolation/overhead | Без модуля и без активного экспорта runtime collector/overlay работают штатно; bounded UI responsiveness и diagnostic interval проверены отдельно от normal performance evidence. |
 | Automation/bundle | Работа без Gateway, thin MCP parity, request cancellation, bounded output, manifest/legacy-reader fixtures и unverified frame association покрыты тестами; imported text не исполняется. |
 
-Эти строки задают будущие gates; ни один runtime test или real capture не считается пройденным данным docs-only изменением. HDRP, remote Player/mobile, другие версии Unity и graphics APIs получают собственные evidence rows перед support claim.
+Это полный набор gates для последующих расширений и релиза; текущие фактические результаты указаны в checkpoint выше. Summary/diff и automation/bundle относятся к `PM-FD-002..004`. HDRP, remote Player/mobile, другие версии Unity и graphics APIs получают собственные evidence rows перед support claim.
 
 ## Порядок Реализации
 
-1. После P1 stabilization выполнить `PM-FD-001`: adapter, bounded session, JSON/CSV, ручной UI и pinned local Editor acceptance.
+1. Первым выполнить P0 `PM-FD-001`: adapter, bounded session, JSON/CSV, ручной UI и pinned local Editor acceptance. Дополнительную приёмку старых reports и настройку CI сейчас не выполнять.
 2. Добавить `PM-FD-002` и `PM-FD-003`: сначала сводки с raw evidence, затем semantic comparison.
 3. Выполнить `PM-FD-004`: MCP и bundle attachment после стабилизации snapshot schema. Это не является зависимостью ручного экспорта.
 4. Отдельно оценить remote Player/HDRP/version expansion по реальным потребностям; сохранять эти rows deferred до отдельного scope и validation.

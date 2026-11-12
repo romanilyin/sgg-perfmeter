@@ -274,3 +274,7 @@ perfmeter.render.snapshot {}
 GRD diagnosis では `DegradedReason`、SRP support、project configuration、compute support、URP mode compatibility、`ActivityAvailability` を確認します。`IsObservedActive` は Unity の global enabled state です。`Effectiveness` は aggregate BRG workload context としてのみ使用してください。`AvailableNoSample`/`Unavailable` は workload 0 を意味せず、positive BRG counter も特定 renderer の GRD use を証明しません。
 
 capture bundle の schema `sgg.perfmeter.capture-context` version `1` は既存の `render` を保持し、`render_integration` を追加します。external GPU capture では `Capturing` phase の最初の sample で context を freeze し、Memory Profiler bundle では memory request の完了時に記録します。session JSON/CSV schema は変更されません。public API に安定した RenderGraph/CustomPass viewer や pass target はないため、この workflow は Editor navigation を約束しません。
+
+## Frame Debugger のエクスポート
+
+**SGG > Perfmeter > Frame Debugger Export** で現在のローカルキャプチャを JSON/CSV に出力できます。最初のアダプターは Unity 6000.6.8f1 / Windows Editor / D3D12 用です。[手順と制限（英語）](../en/frame-debugger-export.md)。

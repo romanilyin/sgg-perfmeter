@@ -19,6 +19,20 @@ namespace SGG.PerfMeter.Tests.EditMode
 		}
 
 		[Test]
+		public void EditorDiagnosticReasonSurvivesRecorderAndJsonExport()
+		{
+			PerfMeterSessionRecorder recorder = new PerfMeterSessionRecorder();
+			recorder.Start(new PerfMeterSessionOptions(0, 0.01f, 0.01f, 8, false, 0, 0f), default, default, PerfMeterSettingsStore.Defaults, 1, 1d, PerfMeterMetricsSnapshot.Stopped);
+			recorder.RecordMissingCollection(2, 1.02d, PerfMeterSessionTimelineReasonFlags.EditorDiagnostic, PerfMeterCaptureStatusSnapshot.NotRunning, string.Empty);
+			PerfMeterSessionTimelineSnapshot timeline = recorder.GetTimelineCopy();
+			Assert.That(timeline.Events[0].Kind, Is.EqualTo(PerfMeterSessionTimelineKind.Missing));
+			Assert.That(timeline.Events[0].Reason, Is.EqualTo(PerfMeterSessionTimelineReasonFlags.EditorDiagnostic));
+			string json = PerfMeterSessionExporter.BuildJson(recorder.GetSummary(), recorder.GetSamplesCopy(), default,
+				PerfMeterSessionExporter.RuntimePackageIdentity, timeline);
+			StringAssert.Contains("EditorDiagnostic", json);
+		}
+
+		[Test]
 		public void TimelineEnumsKeepStableNumericBaselines()
 		{
 			Assert.That((int)PerfMeterSessionTimelineKind.Unknown, Is.EqualTo(0));

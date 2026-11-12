@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("SGG.PerfMeter.Tests.PlayMode")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.Tests.Performance")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.Editor")]
+[assembly: InternalsVisibleTo("SGG.PerfMeter.Editor.FrameDebugger")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.URP")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.HDRP")]
 [assembly: InternalsVisibleTo("SGG.PerfMeter.RenderDoc")]

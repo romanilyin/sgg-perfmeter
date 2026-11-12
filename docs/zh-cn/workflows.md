@@ -274,3 +274,7 @@ perfmeter.render.snapshot {}
 诊断 GRD 时，请检查 `DegradedReason`、SRP support、project configuration、compute support、URP mode compatibility 和 `ActivityAvailability`。`IsObservedActive` 是 Unity 的 global enabled state。`Effectiveness` 仅作为 aggregate BRG workload context：`AvailableNoSample`/`Unavailable` 不表示 workload 为零，positive BRG counters 也不证明某个 renderer 使用了 GRD。
 
 capture bundle 的 schema `sgg.perfmeter.capture-context` version `1` 保留已有的 `render` 并添加 `render_integration`。external GPU capture 在 `Capturing` phase 的第一个 sample 冻结 context；Memory Profiler bundle 在 memory request 完成时记录 context。session JSON/CSV schema 不变。public API 没有稳定的 RenderGraph/CustomPass viewer 或 pass target，因此该 workflow 不承诺 Editor navigation。
+
+## Frame Debugger 导出
+
+通过 **SGG > Perfmeter > Frame Debugger Export** 将当前本地捕获导出为 JSON/CSV。首个适配器适用于 Unity 6000.6.8f1 / Windows Editor / D3D12。[操作步骤与限制（英文）](../en/frame-debugger-export.md)。

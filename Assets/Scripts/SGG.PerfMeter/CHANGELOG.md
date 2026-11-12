@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add standalone **SGG > Perfmeter > Frame Debugger Export** for an already enabled local Editor capture on Unity 6000.6.8f1 / Windows / D3D12. Save bounded JSON/CSV, optional shader properties and SHA-256 manifests with explicit partial/unavailable results and ownership-safe selection restoration.
+- Exclude the export traversal from normal PerfMeter measurements with additive `EditorDiagnostic` timeline gaps; exporting does not start collection. Keep the new Editor adapter isolated from runtime dependencies.
+
 ## 2026.11.12-1
 
 - Add opt-in compact session JSON schema 3 with interned custom-metric descriptors and warnings. Select it with `PerfMeterSessionJsonFormat.Compact` or MCP `format: "json_compact"`; the existing full JSON, capture-bundle samples, and CSV formats remain compatible.

@@ -100,6 +100,10 @@ namespace SGG.PerfMeter
 		private int _captureEndOfFrameGeneration = -1;
 
 		internal static PerfMeterRuntime Instance => _instance;
+		internal PerfMeterProfilerLeaseCoordinator EditorDiagnosticLeaseCoordinator => _profilerLeaseCoordinator;
+		internal static bool CanBeginEditorDiagnostic() => !_stopInProgress && _pendingCaptureCleanup == null &&
+			_pendingCaptureBundleFinalization == null && _pendingGraphicsStateCleanup == null;
+		internal void ResumeAfterEditorDiagnostic() { _focusResumeIgnoreFrames = Math.Max(_focusResumeIgnoreFrames, 3); }
 		internal static bool HasStoppedCleanupPending => _stopInProgress || _instance != null || _pendingCaptureCleanup != null ||
 			(_pendingGraphicsStateCleanup != null && _pendingGraphicsStateCleanup.HasPendingCleanup);
 		internal static bool StopRefusedUnownedRuntime => _instance != null && !PerfMeterOwnedInfrastructure.IsTransient(_instance.gameObject);
@@ -394,6 +398,7 @@ namespace SGG.PerfMeter
 
 		internal static bool EnsureRunning()
 		{
+			if (PerfMeterEditorDiagnosticScope.IsActive) return false;
 			if (_stopInProgress)
 			{
 				return false;
@@ -698,6 +703,16 @@ namespace SGG.PerfMeter
 		private void Update()
 		{
 			PumpCaptureBundleExports();
+			if (PerfMeterEditorDiagnosticScope.IsActive)
+			{
+				// Explicit diagnostic gaps never become normal timing/session/alert measurements.
+				double now = Time.realtimeSinceStartupAsDouble;
+				_overlay?.RecordFrameTimingSample(Time.frameCount, 0d, false, 0d, false);
+				RecordMissingTimeline(Time.frameCount, now, PerfMeterSessionTimelineReasonFlags.EditorDiagnostic, PerfMeterCaptureStatusSnapshot.NotRunning);
+				PerfMeterProfilerInstrumentation.ResetFrameTimings();
+				RefreshRunningStatus(Time.frameCount, PerfMeterFrameTimingAvailability.NotCollected, "frame_debugger_diagnostic_interval");
+				return;
+			}
 			PerfMeterGraphicsStateCollectionStatusSnapshot graphicsStateStatus = _graphicsStateCollectionCoordinator != null
 				? _graphicsStateCollectionCoordinator.GetStatus()
 				: PerfMeterGraphicsStateCollectionStatusSnapshot.Idle;
