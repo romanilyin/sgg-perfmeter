@@ -2,7 +2,13 @@
 
 ## Unreleased
 
-- Keep runtime bootstrap callbacks and the optional GraphicsStateCollection backend discoverable during managed stripping. Document the same assembly-root requirement for auto-registering custom-provider integrations.
+## 2026.11.12-1
+
+- Add opt-in compact session JSON schema 3 with interned custom-metric descriptors and warnings. Select it with `PerfMeterSessionJsonFormat.Compact` or MCP `format: "json_compact"`; the existing full JSON, capture-bundle samples, and CSV formats remain compatible.
+- Add `PerformanceMeter.WriteSessionJson(...)` and `WriteSessionCsv(...)` for caller-owned writable streams, including non-seekable compression streams. They preserve UTF-8 output and leave the destination open; callers own compression finalization, partial-output handling, and atomic publication. Serialization still builds the complete string in memory.
+- Keep runtime bootstrap callbacks and the optional GraphicsStateCollection backend discoverable during managed stripping. Document the assembly-root requirement for auto-registering custom-provider integrations.
+- Compile Unity 7 external GPU capture wrappers while retaining the Editor/development-build runtime gate. Actual Unity 7 Player capture qualification remains pending.
+- Harden URP PlayMode test resource ownership and isolate public API lifecycle fixtures across Unity 6 and Unity 7.
 
 ## 2026.10.13-1
 

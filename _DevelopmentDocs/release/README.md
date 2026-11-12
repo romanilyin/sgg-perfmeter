@@ -4,24 +4,15 @@
 
 ## Current Release
 
-- Release candidate: none.
-- Current published GitHub/npm release: `2026.10.12-1`; npm `latest` points to this version.
-- Previous published release: `2026.10.7-6`.
-- First public release: `2026.6.5-1`.
-- Package: `com.sungeargames.perfmeter`.
-- [PR #43](https://github.com/romanilyin/sgg-perfmeter/pull/43) merged to main as `df4d00ce95bdb2a72d2bc20ecc7119b1214f6fb6` using the user's explicitly authorized admin merge; branch protection is unchanged.
-- Normal [GitHub Release 2026.10.12-1](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.10.12-1), published 2026-10-12 UTC. Its annotated tag resolves to the merge commit.
-- npm Trusted Publishing [workflow 38266617427](https://github.com/romanilyin/sgg-perfmeter/actions/runs/38266617427) succeeded with verified SLSA v1 provenance. All 414 tarball files match the tag; registry signature and provenance verification passed.
-- npm SHA-1: `fe712da09d270a1a764099a91b0580defc82bff2`.
-- Unity `6000.6.5f1` / URP `17.6.0`: 621 EditMode passed with one expected opt-in replay skipped, 25/25 PlayMode passed. Windows x64 Mono Development Dedicated Server build/runtime passed with no PerfMeter assemblies, 180 frames and zero runtime errors. Server-target Editor tooling and imported samples passed.
-- User-approved validation scope is one Unity version. The prior multi-version matrix remains historical evidence; no new Linux/macOS/cloud native build or optional-package device validation is claimed.
-- Fresh Git UPM and npm scoped-registry consumers on the same Unity version passed compile/type loading and installed-source comparison. Public install pins advance only after these checks.
-- Runtime target: Unity `6000.4+`, URP `17.4+` Render Graph or HDRP `17.4+` Custom Pass integration. Dedicated Server/CloudRendering runtime assemblies are excluded. Optional native bridge remains pinned to `2026.8.19-1`.
-
-Current release record: `_DevelopmentDocs/release/2026.10.12-dedicated-server-release.md`.
-Previous release record: `_DevelopmentDocs/release/2026.10.7-mcpreports-release.md`.
-Historical full matrix: `_DevelopmentDocs/release/2026.10.7-1-unity-matrix-release.md`.
-Trusted publishing setup: `_DevelopmentDocs/release/npm-trusted-publishing.md`.
+- Release candidate: `2026.11.12-1`, including all changes merged through `9408eef`.
+- Current published GitHub/npm release: `2026.10.13-1`; npm `latest` points to this version.
+- Candidate record: [`2026.11.12-session-export-release.md`](2026.11.12-session-export-release.md).
+- Candidate verification is reused from completed Unity `6000.6.8f1` and `7000.0.0a16` runs: full EditMode 668/665 passed respectively, one skipped each, zero failures; targeted stream tests 16/16 each. User requested no test rerun.
+- Publication uses a normal GitHub Release and the existing npm Trusted Publishing workflow. Public install pins advance after registry/provenance/payload verification.
+- Previous release record: [`2026.10.13-unfocused-collection-release.md`](2026.10.13-unfocused-collection-release.md).
+- Historical full matrix: [`2026.10.7-1-unity-matrix-release.md`](2026.10.7-1-unity-matrix-release.md).
+- Trusted publishing setup: [`npm-trusted-publishing.md`](npm-trusted-publishing.md).
+- Supported runtime: Unity `6000.4+` with URP/HDRP `17.4+`. Older Unity versions are import-safe only. Optional native bridge stays pinned to `2026.8.19-1`.
 
 ## Local Gates
 
