@@ -4,6 +4,7 @@
     "references": [
         "SGG.PerfMeter",
         "SGG.PerfMeter.Editor",
+        "SGG.PerfMeter.Editor.FrameDebugger",
         "SGG.PerfMeter.RenderDoc"
     ],
     "includePlatforms": [

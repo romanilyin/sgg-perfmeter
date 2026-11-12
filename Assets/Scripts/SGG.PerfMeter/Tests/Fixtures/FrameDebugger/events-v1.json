@@ -1,0 +1,21 @@
+{
+  "schema": "sgg.perfmeter.frame-debugger",
+  "schema_version": 1,
+  "provenance": "observed_not_exact_frame",
+  "metadata": {
+    "export_id": "fixture-export", "started_utc": "2026-11-13T00:00:00Z", "completed_utc": "2026-11-13T00:00:01Z",
+    "unity_version": "6000.6.8f1", "render_pipeline": "URP", "graphics_api": "Direct3D12", "original_limit": 1, "include_properties": false
+  },
+  "completeness": {
+    "state": "complete", "warning": "", "total_event_count": 1, "requested_event_count": 1, "exported_event_count": 1,
+    "missing_event_count": 0, "truncated_event_count": 0, "selection_restored": true, "restoration_reason": "restored"
+  },
+  "events": [{
+    "index": 0, "raw_event_type": 999, "type": "Unknown", "name": "Fixture draw", "status": "available", "reason": "", "truncated": false,
+    "fields": [
+      { "name": "draw_calls", "kind": "int", "available": true, "value": 0, "reason": "", "truncated": false },
+      { "name": "shader", "kind": "string", "available": false, "value": null, "reason": "unavailable", "truncated": false },
+      { "name": "keywords", "kind": "string[]", "available": true, "value": ["FOO", null], "reason": "", "truncated": false }
+    ]
+  }]
+}

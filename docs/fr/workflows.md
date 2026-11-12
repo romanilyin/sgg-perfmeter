@@ -274,3 +274,7 @@ Ces lectures ne démarrent pas la collecte du runtime. Vérifiez ensemble `State
 Pour diagnostiquer GRD, vérifiez `DegradedReason`, le support SRP, la configuration du projet, le support compute, la compatibilité du mode URP et `ActivityAvailability`. `IsObservedActive` est l'état enabled global de Unity. Utilisez `Effectiveness` uniquement comme contexte BRG agrégé: `AvailableNoSample`/`Unavailable` ne signifient pas une charge nulle, et des compteurs BRG positifs ne prouvent pas l'utilisation GRD d'un renderer précis.
 
 Dans le bundle de capture, le schema `sgg.perfmeter.capture-context` version `1` conserve `render` et ajoute `render_integration`. Pour un external GPU capture, le contexte est figé au premier sample de la phase `Capturing`; un bundle Memory Profiler l'enregistre à la fin de la requête mémoire. Les schemas JSON/CSV de session ne changent pas. L'API publique ne fournit pas de viewer stable RenderGraph/CustomPass ni de pass targets; ce workflow ne promet donc pas de navigation dans l'Editor.
+
+## Export Frame Debugger
+
+Exportez la capture locale actuelle en JSON/CSV via **SGG > Perfmeter > Frame Debugger Export**. Premier adaptateur : Unity 6000.6.8f1 / Windows Editor / D3D12. [Guide et limites (anglais)](../en/frame-debugger-export.md).

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SGG PerfMeter Frame Debugger event snapshot v1",
+  "type": "object",
+  "required": ["schema", "schema_version", "provenance", "metadata", "completeness", "events"],
+  "properties": {
+    "schema": { "const": "sgg.perfmeter.frame-debugger" },
+    "schema_version": { "const": 1 },
+    "provenance": { "const": "observed_not_exact_frame" },
+    "metadata": {
+      "type": "object",
+      "required": ["export_id", "started_utc", "completed_utc", "unity_version", "render_pipeline", "graphics_api", "original_limit", "include_properties"],
+      "properties": {
+        "export_id": { "type": "string", "maxLength": 128 },
+        "original_limit": { "type": "integer" },
+        "include_properties": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "completeness": {
+      "type": "object",
+      "required": ["state", "warning", "total_event_count", "requested_event_count", "exported_event_count", "missing_event_count", "truncated_event_count", "selection_restored", "restoration_reason"],
+      "properties": {
+        "state": { "enum": ["complete", "partial"] },
+        "selection_restored": { "type": "boolean" },
+        "total_event_count": { "type": "integer", "minimum": 0, "maximum": 16384 },
+        "requested_event_count": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "exported_event_count": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "missing_event_count": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "truncated_event_count": { "type": "integer", "minimum": 0, "maximum": 16384 }
+      },
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "array", "maxItems": 8192,
+      "items": {
+        "type": "object",
+        "required": ["index", "raw_event_type", "type", "name", "status", "reason", "truncated", "fields"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0, "maximum": 8191 },
+          "raw_event_type": { "type": "integer" },
+          "type": { "type": "string", "maxLength": 4096 },
+          "name": { "type": "string", "maxLength": 4096 },
+          "status": { "type": "string" },
+          "reason": { "type": "string", "maxLength": 4096 },
+          "truncated": { "type": "boolean" },
+          "fields": {
+            "type": "array", "maxItems": 384,
+            "items": {
+              "type": "object",
+              "required": ["name", "kind", "available", "value", "reason", "truncated"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 4096 },
+                "kind": { "type": "string", "maxLength": 4096 },
+                "available": { "type": "boolean" },
+                "value": { "type": ["null", "string", "boolean", "number", "array"], "maxLength": 4096, "maxItems": 4096, "items": { "type": ["number", "string", "null"], "maxLength": 4096 } },
+                "reason": { "type": "string", "maxLength": 4096 },
+                "truncated": { "type": "boolean" }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

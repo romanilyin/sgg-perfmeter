@@ -1,0 +1,7 @@
+{
+	"name": "SGG.PerfMeter.Editor.FrameDebugger",
+	"rootNamespace": "SGG.PerfMeter.Editor.FrameDebugger",
+	"references": ["SGG.PerfMeter"],
+	"includePlatforms": ["Editor"],
+	"autoReferenced": true
+}

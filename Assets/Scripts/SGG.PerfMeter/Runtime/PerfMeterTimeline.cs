@@ -31,6 +31,7 @@ namespace SGG.PerfMeter
 		SampleBufferFull = 1 << 5,
 		Warmup = 1 << 6,
 		SceneLoadIgnore = 1 << 7,
+		EditorDiagnostic = 1 << 8,
 		Unknown = 1 << 30
 	}
 
@@ -195,7 +196,8 @@ namespace SGG.PerfMeter
 				PerfMeterSessionTimelineReasonFlags.CaptureFrameMissing |
 				PerfMeterSessionTimelineReasonFlags.SampleBufferFull |
 				PerfMeterSessionTimelineReasonFlags.Warmup |
-				PerfMeterSessionTimelineReasonFlags.SceneLoadIgnore;
+				PerfMeterSessionTimelineReasonFlags.SceneLoadIgnore |
+				PerfMeterSessionTimelineReasonFlags.EditorDiagnostic;
 			PerfMeterSessionTimelineReasonFlags unknown = value & ~known;
 			return (value & known) | (unknown != 0 ? PerfMeterSessionTimelineReasonFlags.Unknown : PerfMeterSessionTimelineReasonFlags.None);
 		}
@@ -539,6 +541,7 @@ namespace SGG.PerfMeter
 				PerfMeterSessionTimelineReasonFlags.SampleBufferFull |
 				PerfMeterSessionTimelineReasonFlags.Warmup |
 				PerfMeterSessionTimelineReasonFlags.SceneLoadIgnore |
+				PerfMeterSessionTimelineReasonFlags.EditorDiagnostic |
 				PerfMeterSessionTimelineReasonFlags.Unknown;
 			return (value & ~known) == 0;
 		}
@@ -757,7 +760,8 @@ namespace SGG.PerfMeter
 				PerfMeterSessionTimelineReasonFlags.CaptureFrameMissing |
 				PerfMeterSessionTimelineReasonFlags.SampleBufferFull |
 				PerfMeterSessionTimelineReasonFlags.Warmup |
-				PerfMeterSessionTimelineReasonFlags.SceneLoadIgnore;
+				PerfMeterSessionTimelineReasonFlags.SceneLoadIgnore |
+				PerfMeterSessionTimelineReasonFlags.EditorDiagnostic;
 			PerfMeterSessionTimelineReasonFlags unknown = value & ~known;
 			return (value & known) | (unknown != 0 ? PerfMeterSessionTimelineReasonFlags.Unknown : PerfMeterSessionTimelineReasonFlags.None);
 		}

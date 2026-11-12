@@ -47,9 +47,9 @@
 
 ## Frame Debugger Export And Analysis
 
-Текущий статус: planned; implementation not started. Приоритеты и acceptance описаны в [Frame Debugger Export Plan](frame-debugger-export.md), roadmap IDs `PM-FD-001..004`.
+Текущий статус: `PM-FD-001` реализован для `2026.11.13-1`; базовый ручной экспорт принят. `PM-FD-002..004` остаются planned. Возможности и фактические проверки описаны в [Frame Debugger Export Plan](frame-debugger-export.md#текущее-состояние-реализации).
 
-- P2: standalone optional Editor service/UI для ручной выгрузки текущего local Frame Debugger capture в versioned JSON и компактный CSV, с проверкой свежести события, timeout/cancel и explicit partial data.
+- P0 реализован: standalone Editor service/UI для ручной выгрузки текущего local Frame Debugger capture в versioned JSON и компактный CSV, с проверкой свежести события, timeout/cancel и explicit partial data. Первый adapter — Unity `6000.6.8f1` / Windows Editor / D3D12. Отложенные P1 приёмка старых reports и настройка CI остаются вне этой итерации.
 - P3: сводки shader/pass/RT/SRP batch cause, semantic A/B comparison и optional thin MCP adapter/diagnostic bundle attachment.
 - Version-fragile reflection ограничен Editor adapter. Deeper Render Graph diagnostics выше сохраняет public-API-only policy и degraded counters.
 - Event inventory описывает состав отрисовки; event count, draw-call count, Render Graph passes и GPU duration имеют отдельную семантику. Точная связь с ранее записанным worst frame требует самостоятельного evidence.
