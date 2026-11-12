@@ -4,11 +4,14 @@
 
 ## Current Release
 
-- Release candidate: `2026.11.12-1`, including all changes merged through `9408eef`.
-- Current published GitHub/npm release: `2026.10.13-1`; npm `latest` points to this version.
-- Candidate record: [`2026.11.12-session-export-release.md`](2026.11.12-session-export-release.md).
-- Candidate verification is reused from completed Unity `6000.6.8f1` and `7000.0.0a16` runs: full EditMode 668/665 passed respectively, one skipped each, zero failures; targeted stream tests 16/16 each. User requested no test rerun.
-- Publication uses a normal GitHub Release and the existing npm Trusted Publishing workflow. Public install pins advance after registry/provenance/payload verification.
+- Release candidate: none.
+- Current published GitHub/npm release: `2026.11.12-1`; npm `latest` points to this version.
+- Previous published release: `2026.10.13-1`.
+- [GitHub Release 2026.11.12-1](https://github.com/romanilyin/sgg-perfmeter/releases/tag/2026.11.12-1), immutable annotated tag, and package metadata resolve to release commit `eee4ebdff196cf28e7c94965b8c932c3e5d9a374` ([PR #50](https://github.com/romanilyin/sgg-perfmeter/pull/50)).
+- npm Trusted Publishing [workflow 43291020817](https://github.com/romanilyin/sgg-perfmeter/actions/runs/43291020817) succeeded. npm signatures/provenance passed; SLSA v1 provenance binds the archive to the exact tag/commit. All 426 published package files match the tag byte-for-byte.
+- npm SHA-1: `d6276d730b7f91b6b958d150074cb2913d54087a`.
+- Preserved Unity `6000.6.8f1` and `7000.0.0a16` verification: full EditMode 668/665 passed respectively, one skipped each, zero failures; targeted stream tests 16/16 each. User requested no test rerun; no new Unity consumer-import qualification is claimed.
+- Current record: [`2026.11.12-session-export-release.md`](2026.11.12-session-export-release.md).
 - Previous release record: [`2026.10.13-unfocused-collection-release.md`](2026.10.13-unfocused-collection-release.md).
 - Historical full matrix: [`2026.10.7-1-unity-matrix-release.md`](2026.10.7-1-unity-matrix-release.md).
 - Trusted publishing setup: [`npm-trusted-publishing.md`](npm-trusted-publishing.md).
