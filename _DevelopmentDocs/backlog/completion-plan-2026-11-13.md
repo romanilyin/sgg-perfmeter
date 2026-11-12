@@ -1,6 +1,6 @@
 # План доделок SGG PerfMeter после 2026.11.12-1
 
-Дата: 13 ноября 2026. Статус: актуальная очередь; P0 реализован для `2026.11.13-1`, базовый ручной экспорт принят. [Статус публикации](../release/2026.11.13-frame-debugger-release.md).
+Дата: 13 ноября 2026. Статус: актуальная очередь; P0 выпущен в `2026.11.13-1`, базовый ручной экспорт принят. [Статус публикации](../release/2026.11.13-frame-debugger-release.md).
 
 База: `main` / `912baec7209d48aa438442abf92246d11cfeb6a3`, опубликованный пакет `2026.11.12-1`, release commit `eee4ebd`. Полный каталог задач и архитектурные границы: [roadmap.md](roadmap.md). Этот документ задаёт актуальную очередь доделок и критерии завершения для этой базы.
 
@@ -11,7 +11,7 @@
 - В `2026.11.12-1` вошли compact JSON schema 3, выбор формата через API/MCP, JSON/CSV в caller-owned streams, stripping roots bootstrap-сборок, Unity 7 capture guards и исправления ownership/lifecycle тестовых fixtures.
 - Сохранённая проверка последнего функционального среза: Unity `6000.6.8f1` — 668 EditMode passed, Unity `7000.0.0a16` — 665 passed; по одному skipped, ноль failed; stream tests — 16/16 на каждой версии. Это Editor evidence, которое не закрывает приёмку исходного Player workload.
 - GitHub/npm publication, подписи, provenance и соответствие 426 файлов тегу проверены. Эти результаты относятся к опубликованному `2026.11.12-1`.
-- `PM-FD-001` реализован в отдельном Editor-модуле: ручной UI, bounded service, JSON/CSV, optional shader properties, manifest SHA-256 и diagnostic interval. Компиляция нового кода чистая; новые автоматические тесты добавлены, но по указанию пользователя не запускались. Результат ручной приёмки и границы поддержки: [checkpoint](frame-debugger-export.md#текущее-состояние-реализации).
+- В `2026.11.13-1` выпущен `PM-FD-001` в отдельном Editor-модуле: ручной UI, bounded service, JSON/CSV, optional shader properties, manifest SHA-256 и diagnostic interval. Компиляция нового кода чистая; новые автоматические тесты добавлены, но по указанию пользователя не запускались. Результат ручной приёмки и границы поддержки: [checkpoint](frame-debugger-export.md#текущее-состояние-реализации).
 
 ## Решение по текущей итерации
 
@@ -25,7 +25,7 @@ Custom metrics уже работали, их сбор и экспорт реал
 
 | Очередь | Приоритет | Доделка | Критерий готовности |
 | --- | --- | --- | --- |
-| 1 | **P0** | Ручной Frame Debugger export: `PM-FD-001`, реализован локально | Standalone Editor UI/service сохраняет snapshot JSON/CSV с проверкой свежести событий, limits, cancel/partial status и безопасным восстановлением selection. Базовый ручной экспорт 3/3 принят; широкий URP workload остаётся без qualification. |
+| 1 | **P0** | Ручной Frame Debugger export: `PM-FD-001`, выпущен в `2026.11.13-1` | Standalone Editor UI/service сохраняет snapshot JSON/CSV с проверкой свежести событий, limits, cancel/partial status и безопасным восстановлением selection. Базовый ручной экспорт 3/3 принят; широкий URP workload остаётся без qualification. |
 | 2 | P2 | Standalone Unity Profiler recording: `PM-PROF-001` | Без Gateway работают capability/start/stop/save, bounded `.data` artifact, ownership и связь с PerfMeter session. |
 | 3 | P2 | PIX 2610.28: `PM-PIX-002` | Закреплены tool/SDK identity и реальные generic GPU capture результаты; feasibility timing/API/CLI оформлена отдельным решением. |
 | 4 | P3 | Frame Debugger analysis: `PM-FD-002 → 003 → 004` | Сводки, semantic A/B diff, затем optional MCP/bundle attachment после `PM-FD-001`. |
